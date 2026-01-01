@@ -1,6 +1,6 @@
 {
   "functions": {
-    "api/send-ride-notification.js": {
+    "api/send-push.js": {
       "maxDuration": 10
     }
   },

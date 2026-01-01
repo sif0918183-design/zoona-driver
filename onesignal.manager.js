@@ -55,11 +55,17 @@ class OneSignalManager {
      * that returns the ONESIGNAL_APP_ID environment variable.
      */
     async fetchOneSignalAppId() {
-        // This is a placeholder. Replace with your actual backend endpoint.
-        // For demonstration, we will use a hardcoded value.
-        // In a real-world scenario, you would fetch this from your server.
-        // return await fetch('/api/get-onesignal-id').then(res => res.json()).then(data => data.appId);
-        return 'YOUR_ONESIGNAL_APP_ID'; // Replace this with the actual App ID from your environment
+        try {
+            const response = await fetch('/api/get-onesignal-id');
+            if (!response.ok) {
+                throw new Error(`Failed to fetch OneSignal App ID: ${response.statusText}`);
+            }
+            const data = await response.json();
+            return data.appId;
+        } catch (error) {
+            console.error('Error fetching OneSignal App ID:', error);
+            return null;
+        }
     }
 
 
