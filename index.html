@@ -1177,59 +1177,76 @@
 
     // Driver Login
     async function loginDriver() {
-        const phone = document.getElementById('driver-phone').value.trim();
-        const password = document.getElementById('driver-password').value;
+    const phone = document.getElementById('driver-phone').value.trim();
+    const password = document.getElementById('driver-password').value;
 
-        if (!phone || !password) {
-            showNotification('الرجاء إدخال رقم الواتساب وكلمة المرور', 'error');
+    // 1. التحقق من إدخال البيانات
+    if (!phone || !password) {
+        showNotification('الرجاء إدخال رقم الواتساب وكلمة المرور', 'error');
+        return;
+    }
+
+    // 2. تجهيز زر تسجيل الدخول (حالة التحميل)
+    const loginBtn = document.querySelector('#driverLoginForm button');
+    const originalText = loginBtn.innerHTML;
+    loginBtn.innerHTML = '<span class="loading"></span> جاري تسجيل الدخول...';
+    loginBtn.disabled = true;
+
+    try {
+        // 3. الاستعلام من قاعدة بيانات Supabase
+        const { data: driver, error } = await tarhalDB
+            .from('drivers')
+            .select('*')
+            .eq('whatsapp_number', phone)
+            .eq('is_active', true)
+            .single();
+
+        // 4. معالجة أخطاء الاستعلام
+        if (error || !driver) {
+            showNotification('رقم الواتساب غير مسجل أو الحساب غير مفعل', 'error');
             return;
         }
 
-        const loginBtn = document.querySelector('#driverLoginForm button');
-        const originalText = loginBtn.innerHTML;
-        loginBtn.innerHTML = '<span class="loading"></span> جاري تسجيل الدخول...';
-        loginBtn.disabled = true;
-
-        try {
-            const { data: driver, error } = await tarhalDB
-                .from('drivers')
-                .select('*')
-                .eq('whatsapp_number', phone)
-                .eq('is_active', true)
-                .single();
-
-            if (error) {
-                showNotification('رقم الواتساب غير مسجل أو الحساب غير مفعل', 'error');
-                loginBtn.innerHTML = originalText;
-                loginBtn.disabled = false;
-                return;
-            }
-
-            if (driver.password !== password) {
-                showNotification('كلمة المرور غير صحيحة', 'error');
-                loginBtn.innerHTML = originalText;
-                loginBtn.disabled = false;
-                return;
-            }
-
-            currentDriver = driver;
-            localStorage.setItem('tarhal_driver', JSON.stringify(driver));
-
-            showNotification('مرحباً بعودتك أيها السائق!', 'success');
-            showScreen('driver-dashboard-screen');
-            updateDriverDashboard();
-            
-            // تهيئة الأنظمة بعد تسجيل الدخول
-            await initDriverSystems();
-
-        } catch (error) {
-            console.error('Driver login error:', error);
-            showNotification('حدث خطأ أثناء تسجيل الدخول', 'error');
-        } finally {
-            loginBtn.innerHTML = originalText;
-            loginBtn.disabled = false;
+        // 5. التحقق من كلمة المرور
+        if (driver.password !== password) {
+            showNotification('كلمة المرور غير صحيحة', 'error');
+            return;
         }
+
+        // === نجاح تسجيل الدخول ===
+        currentDriver = driver;
+        
+        // حفظ بيانات السائق محلياً في المتصفح
+        localStorage.setItem('tarhal_driver', JSON.stringify(driver));
+
+        // --- الجزء المضاف للربط مع تطبيق Flutter (مهم جداً للإشعارات) ---
+        // نقوم بإضافة driver_id للرابط الحالي لكي يلتقطه WebView في Flutter عبر onLoadStop
+        const url = new URL(window.location.href);
+        url.searchParams.set('driver_id', driver.id);
+        window.history.replaceState({}, '', url); 
+        // -----------------------------------------------------------
+
+        showNotification('مرحباً بعودتك أيها السائق!', 'success');
+        
+        // الانتقال لشاشة لوحة التحكم
+        showScreen('driver-dashboard-screen');
+        
+        // تحديث إحصائيات لوحة التحكم
+        updateDriverDashboard();
+        
+        // تهيئة أنظمة OneSignal والصوت للسائق
+        await initDriverSystems();
+
+    } catch (error) {
+        console.error('Driver login error:', error);
+        showNotification('حدث خطأ أثناء تسجيل الدخول، حاول مرة أخرى', 'error');
+    } finally {
+        // إعادة الزر لحالته الطبيعية
+        loginBtn.innerHTML = originalText;
+        loginBtn.disabled = false;
     }
+}
+
 
     // Driver Dashboard
     async function updateDriverDashboard() {
