@@ -1,0 +1,3545 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>لوحة تحكم - ترحال زونا</title>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Tajawal Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        /* ============================================
+           ADMIN PANEL STYLES - FIXED VERSION
+           ============================================ */
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #3730a3;
+            --primary-light: #e0e7ff;
+            --secondary: #059669;
+            --secondary-light: #d1fae5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --warning-light: #fef3c7;
+            --danger: #ef4444;
+            --danger-light: #fee2e2;
+            --info: #3b82f6;
+            --info-light: #dbeafe;
+            --light: #f9fafb;
+            --dark: #111827;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            
+            --radius-sm: 0.375rem;
+            --radius: 0.5rem;
+            --radius-md: 0.75rem;
+            --radius-lg: 1rem;
+            --radius-xl: 1.5rem;
+            
+            --transition: all 0.3s ease;
+            --transition-fast: all 0.15s ease;
+            
+            --sidebar-width: 280px;
+        }
+
+        /* Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            font-size: 16px;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-900);
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Admin Container */
+        .admin-container {
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: linear-gradient(135deg, var(--gray-900) 0%, var(--dark) 100%);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            right: 0;
+            height: 100vh;
+            z-index: 100;
+            box-shadow: var(--shadow-xl);
+            transition: var(--transition);
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .logo-img {
+            width: 50px;
+            height: 50px;
+            background: white;
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: var(--primary);
+        }
+
+        .sidebar-title {
+            font-size: 1.25rem;
+            font-weight: 800;
+            margin: 0;
+            color: white;
+        }
+
+        .sidebar-subtitle {
+            font-size: 0.875rem;
+            opacity: 0.7;
+            margin: 0;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 1rem 0;
+            overflow-y: auto;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.5rem;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            transition: var(--transition);
+            border-right: 4px solid transparent;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            border-right-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-item.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border-right-color: var(--primary);
+        }
+
+        .nav-item i {
+            width: 20px;
+            text-align: center;
+            font-size: 1.125rem;
+        }
+
+        .sidebar-footer {
+            padding: 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.875rem;
+            opacity: 0.7;
+            text-align: center;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-right: var(--sidebar-width);
+            min-height: 100vh;
+        }
+
+        .main-header {
+            background: white;
+            padding: 1.25rem 2rem;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            box-shadow: var(--shadow);
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--gray-800);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin: 0;
+        }
+
+        .admin-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .admin-avatar {
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 1.125rem;
+            box-shadow: var(--shadow);
+            border: 2px solid white;
+        }
+
+        .admin-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .admin-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--gray-800);
+        }
+
+        .admin-role {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+        }
+
+        /* Content Area */
+        .content-area {
+            padding: 2rem;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--gray-200);
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .stat-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            flex-shrink: 0;
+        }
+
+        .stat-content {
+            flex: 1;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--gray-900);
+            line-height: 1;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            color: var(--gray-600);
+            font-size: 0.95rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-change {
+            font-size: 0.875rem;
+            font-weight: 600;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .stat-change.positive {
+            background: var(--secondary-light);
+            color: var(--secondary);
+        }
+
+        .stat-change.negative {
+            background: var(--danger-light);
+            color: var(--danger);
+        }
+
+        /* Charts Grid */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--gray-200);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .chart-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--gray-800);
+            margin: 0;
+        }
+
+        /* Tables Container */
+        .tables-container {
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--gray-200);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .table-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--gray-50);
+        }
+
+        .table-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--gray-800);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .table-actions {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .table-content {
+            overflow-x: auto;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+
+        .table thead {
+            background: var(--gray-50);
+        }
+
+        .table th {
+            padding: 1rem 1.25rem;
+            text-align: right;
+            font-weight: 700;
+            color: var(--gray-700);
+            border-bottom: 2px solid var(--gray-200);
+            white-space: nowrap;
+        }
+
+        .table td {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--gray-200);
+            vertical-align: middle;
+            color: var(--gray-700);
+        }
+
+        .table tbody tr {
+            transition: var(--transition-fast);
+        }
+
+        .table tbody tr:hover {
+            background: var(--gray-50);
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.375rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .badge-success {
+            background: var(--secondary-light);
+            color: var(--secondary);
+        }
+
+        .badge-warning {
+            background: var(--warning-light);
+            color: #92400e;
+        }
+
+        .badge-danger {
+            background: var(--danger-light);
+            color: var(--danger);
+        }
+
+        .badge-info {
+            background: var(--info-light);
+            color: var(--info);
+        }
+
+        .badge-primary {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--radius);
+            border: none;
+            font-family: 'Tajawal', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: 1px solid var(--primary);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--secondary) 0%, #047857 100%);
+            color: white;
+            border: 1px solid var(--secondary);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success) 0%, var(--secondary) 100%);
+            color: white;
+            border: 1px solid var(--success);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%);
+            color: white;
+            border: 1px solid var(--danger);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+
+        .btn-outline:hover {
+            background: var(--primary-light);
+        }
+
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--gray-700);
+            font-size: 0.95rem;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius);
+            font-family: 'Tajawal', sans-serif;
+            font-size: 1rem;
+            transition: var(--transition);
+            background: white;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .form-select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: left 1rem center;
+            background-size: 1.25rem;
+            padding-left: 3rem;
+        }
+
+        /* Filters */
+        .filters {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+
+        .filter-group {
+            min-width: 200px;
+        }
+
+        /* Modals */
+        .hidden {
+            display: none !important;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 1rem;
+            backdrop-filter: blur(4px);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: var(--radius-xl);
+            padding: 2rem;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-2xl);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--gray-100);
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--gray-500);
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: var(--radius-sm);
+            transition: var(--transition-fast);
+        }
+
+        .modal-close:hover {
+            color: var(--danger);
+            background: var(--danger-light);
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid var(--gray-200);
+            margin-bottom: 1.5rem;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab {
+            padding: 1rem 1.5rem;
+            font-weight: 600;
+            color: var(--gray-600);
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition);
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            white-space: nowrap;
+            font-family: 'Tajawal', sans-serif;
+            font-size: 1rem;
+        }
+
+        .tab:hover {
+            color: var(--primary);
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        /* Section Management */
+        .section {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1.5rem;
+            color: var(--gray-500);
+        }
+
+        .empty-icon {
+            font-size: 4rem;
+            color: var(--gray-300);
+            margin-bottom: 1rem;
+        }
+
+        .empty-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--gray-600);
+        }
+
+        .empty-description {
+            font-size: 1rem;
+            color: var(--gray-500);
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1.5rem;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .page-link {
+            padding: 0.5rem 0.875rem;
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius);
+            background: white;
+            color: var(--gray-700);
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: 'Tajawal', sans-serif;
+            font-size: 0.95rem;
+        }
+
+        .page-link:hover {
+            background: var(--gray-100);
+            border-color: var(--gray-400);
+        }
+
+        .page-link.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .page-link.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Loading State */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+            color: var(--gray-500);
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--gray-200);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        /* Notification System */
+        .notification-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            max-width: 400px;
+        }
+
+        .notification {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            box-shadow: var(--shadow-xl);
+            border-right: 4px solid var(--primary);
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            animation: slideInRight 0.3s ease;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .notification-success {
+            border-right-color: var(--success);
+        }
+
+        .notification-error {
+            border-right-color: var(--danger);
+        }
+
+        .notification-warning {
+            border-right-color: var(--warning);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 992px) {
+            :root {
+                --sidebar-width: 250px;
+            }
+            
+            .content-area {
+                padding: 1.5rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(100%);
+            }
+            
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-right: 0;
+            }
+            
+            .main-header {
+                padding: 1rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .filters {
+                flex-direction: column;
+            }
+            
+            .filter-group {
+                min-width: 100%;
+            }
+            
+            .mobile-menu-toggle {
+                display: block;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .content-area {
+                padding: 1rem;
+            }
+            
+            .stat-card {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .table-header {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: stretch;
+            }
+            
+            .table-actions {
+                flex-wrap: wrap;
+            }
+            
+            .modal-content {
+                padding: 1.5rem;
+            }
+        }
+
+        /* Mobile Menu Toggle */
+        .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--gray-700);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: var(--radius);
+        }
+
+        @media (max-width: 768px) {
+            .mobile-menu-toggle {
+                display: block;
+            }
+        }
+
+        /* Dark Mode Toggle */
+        .dark-mode-toggle {
+            background: none;
+            border: none;
+            color: var(--gray-600);
+            font-size: 1.25rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: var(--radius);
+            transition: var(--transition);
+        }
+
+        .dark-mode-toggle:hover {
+            background: var(--gray-100);
+            color: var(--gray-800);
+        }
+
+        /* Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--gray-300);
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--primary);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        /* Login Section */
+        .login-section {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 80vh;
+        }
+
+        .login-card {
+            background: white;
+            border-radius: var(--radius-xl);
+            padding: 2.5rem;
+            box-shadow: var(--shadow-2xl);
+            max-width: 450px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .login-logo {
+            font-size: 3.5rem;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+        }
+
+        .login-title {
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: var(--gray-800);
+            margin-bottom: 0.5rem;
+        }
+
+        .login-subtitle {
+            color: var(--gray-600);
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <div class="logo-img">🚗</div>
+                    <div>
+                        <h2 class="sidebar-title">ترحال زونا</h2>
+                        <p class="sidebar-subtitle">لوحة التحكم الإدارية</p>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a class="nav-item active" onclick="showSection('dashboard')">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>لوحة التحكم</span>
+                </a>
+                
+                <a class="nav-item" onclick="showSection('rides')">
+                    <i class="fas fa-road"></i>
+                    <span>إدارة الرحلات</span>
+                </a>
+                
+                <a class="nav-item" onclick="showSection('prices')">
+                    <i class="fas fa-tags"></i>
+                    <span>أسعار الرحلات</span>
+                </a>
+                
+                <a class="nav-item" onclick="showSection('drivers')">
+                    <i class="fas fa-car"></i>
+                    <span>السائقون</span>
+                </a>
+                
+                <a class="nav-item" onclick="showSection('passengers')">
+                    <i class="fas fa-users"></i>
+                    <span>الركاب</span>
+                </a>
+                
+                <a class="nav-item" onclick="showSection('reports')">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>التقارير</span>
+                </a>
+                
+                <a class="nav-item" onclick="showSection('settings')">
+                    <i class="fas fa-cog"></i>
+                    <span>الإعدادات</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <p>ترحال زونا © 2024</p>
+                <p style="font-size: 0.75rem; opacity: 0.5;">v2.0.0</p>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="main-header">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <button class="mobile-menu-toggle" onclick="toggleSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h1 class="page-title" id="page-title">
+                        <i class="fas fa-tachometer-alt"></i>
+                        لوحة التحكم
+                    </h1>
+                </div>
+                
+                <div class="admin-info">
+                    <button class="dark-mode-toggle" onclick="toggleDarkMode()">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <div class="admin-avatar" id="admin-avatar">م</div>
+                    <div class="admin-details">
+                        <div class="admin-name" id="admin-name">مدير النظام</div>
+                        <div class="admin-role" id="admin-role">مسؤول</div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Login Section -->
+                <section id="login-section" class="section active">
+                    <div class="login-section">
+                        <div class="login-card">
+                            <div class="login-logo">🔐</div>
+                            <h2 class="login-title">تسجيل دخول المشرف</h2>
+                            <p class="login-subtitle">لوحة تحكم ترحال زونا</p>
+                            
+                            <form id="admin-login-form">
+                                <div class="form-group">
+                                    <label class="form-label">اسم المشرف</label>
+                                    <input type="text" class="form-control" id="admin-name-input" required 
+                                           placeholder="أدخل اسمك">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">كود المرور</label>
+                                    <input type="password" class="form-control" id="admin-passcode" required 
+                                           placeholder="أدخل كود المرور">
+                                </div>
+                                
+                                <div id="login-error" style="
+                                    background: var(--danger-light);
+                                    color: var(--danger);
+                                    padding: 1rem;
+                                    border-radius: var(--radius);
+                                    margin-bottom: 1rem;
+                                    display: none;
+                                ">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    <span id="error-message">كود المرور غير صحيح</span>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary btn-block" style="margin-top: 1rem; padding: 1rem;">
+                                    <i class="fas fa-sign-in-alt"></i> دخول إلى لوحة التحكم
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Dashboard Section -->
+                <section id="dashboard-section" class="section">
+                    <!-- Stats Cards -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: linear-gradient(135deg, #4f46e5, #3730a3); color: white;">
+                                <i class="fas fa-road"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value" id="total-rides">0</div>
+                                <div class="stat-label">إجمالي الرحلات</div>
+                                <div class="stat-change positive">
+                                    <i class="fas fa-arrow-up"></i>
+                                    <span>12% عن الشهر الماضي</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
+                                <i class="fas fa-money-bill-wave"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value" id="total-revenue">0 ج</div>
+                                <div class="stat-label">إجمالي الإيرادات</div>
+                                <div class="stat-change positive">
+                                    <i class="fas fa-arrow-up"></i>
+                                    <span>18% عن الشهر الماضي</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b, #eab308); color: white;">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value" id="active-drivers">0</div>
+                                <div class="stat-label">سائقون نشطون</div>
+                                <div class="stat-change positive">
+                                    <i class="fas fa-arrow-up"></i>
+                                    <span>5% عن الشهر الماضي</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white;">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value" id="pending-rides">0</div>
+                                <div class="stat-label">طلبات قيد الانتظار</div>
+                                <div class="stat-change negative">
+                                    <i class="fas fa-arrow-down"></i>
+                                    <span>8% عن الأسبوع الماضي</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts -->
+                    <div class="charts-grid">
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3 class="chart-title">رحلات الشهر الحالي</h3>
+                            </div>
+                            <canvas id="ridesChart" height="250"></canvas>
+                        </div>
+                        
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3 class="chart-title">الإيرادات حسب الفئة</h3>
+                            </div>
+                            <canvas id="revenueChart" height="250"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Recent Rides -->
+                    <div class="tables-container">
+                        <div class="table-header">
+                            <h3 class="table-title">
+                                <i class="fas fa-history"></i>
+                                آخر الرحلات
+                            </h3>
+                            <div class="table-actions">
+                                <button class="btn btn-outline btn-sm" onclick="refreshData()">
+                                    <i class="fas fa-sync-alt"></i> تحديث
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="table-content">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>الرحلة</th>
+                                        <th>الراكب</th>
+                                        <th>السائق</th>
+                                        <th>المبلغ</th>
+                                        <th>الحالة</th>
+                                        <th>التاريخ</th>
+                                        <th>الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recent-rides-table">
+                                    <!-- Will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Rides Management Section -->
+                <section id="rides-section" class="section">
+                    <div class="tables-container">
+                        <div class="table-header">
+                            <h3 class="table-title">
+                                <i class="fas fa-road"></i>
+                                إدارة الرحلات
+                            </h3>
+                            <div class="table-actions">
+                                <div class="filters">
+                                    <div class="filter-group">
+                                        <select class="form-control form-select" id="filter-status" onchange="filterRides()">
+                                            <option value="">جميع الحالات</option>
+                                            <option value="pending">قيد النشر</option>
+                                            <option value="accepted">قيد التواصل</option>
+                                            <option value="confirmed">تم الاتفاق</option>
+                                            <option value="completed">مكتملة</option>
+                                            <option value="cancelled">ملغية</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="filter-group">
+                                        <input type="date" class="form-control" id="filter-date-from" onchange="filterRides()">
+                                    </div>
+                                    
+                                    <div class="filter-group">
+                                        <input type="date" class="form-control" id="filter-date-to" onchange="filterRides()">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="table-content">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>رقم الرحلة</th>
+                                        <th>الرحلة</th>
+                                        <th>الراكب</th>
+                                        <th>السائق</th>
+                                        <th>الفئة</th>
+                                        <th>المبلغ</th>
+                                        <th>الحالة</th>
+                                        <th>التاريخ</th>
+                                        <th>الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rides-table">
+                                    <!-- Will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="pagination" id="rides-pagination"></div>
+                    </div>
+                </section>
+
+                <!-- Prices Management Section -->
+                <section id="prices-section" class="section">
+                    <div class="tables-container">
+                        <div class="table-header">
+                            <h3 class="table-title">
+                                <i class="fas fa-tags"></i>
+                                أسعار الرحلات
+                            </h3>
+                            <div class="table-actions">
+                                <button class="btn btn-primary" onclick="showAddPriceModal()">
+                                    <i class="fas fa-plus"></i> إضافة سعر جديد
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="table-content">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>المدينة الأصل</th>
+                                        <th>المدينة الوجهة</th>
+                                        <th>السعر الأساسي (Eco)</th>
+                                        <th>حالة</th>
+                                        <th>تاريخ التحديث</th>
+                                        <th>الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="prices-table">
+                                    <!-- Will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Vehicle Categories -->
+                    <div class="tables-container" style="margin-top: 2rem;">
+                        <div class="table-header">
+                            <h3 class="table-title">
+                                <i class="fas fa-car"></i>
+                                فئات السيارات ومعاملات السعر
+                            </h3>
+                            <div class="table-actions">
+                                <button class="btn btn-primary" onclick="showEditCategoriesModal()">
+                                    <i class="fas fa-edit"></i> إدارة الفئات
+                                </button>
+                                <button class="btn btn-outline" onclick="loadVehicleCategoriesFromDB()">
+                                    <i class="fas fa-sync-alt"></i> تحديث
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="table-content">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>الفئة</th>
+                                        <th>معامل السعر</th>
+                                        <th>وصف</th>
+                                        <th>حالة</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="categories-table">
+                                    <!-- Will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Drivers Management Section -->
+                <section id="drivers-section" class="section">
+                    <div class="tables-container">
+                        <div class="table-header">
+                            <h3 class="table-title">
+                                <i class="fas fa-car"></i>
+                                إدارة السائقين
+                            </h3>
+                            <div class="table-actions">
+                                <div class="filters">
+                                    <div class="filter-group">
+                                        <select class="form-control form-select" id="filter-driver-status" onchange="filterDrivers()">
+                                            <option value="">جميع السائقين</option>
+                                            <option value="active">نشط</option>
+                                            <option value="inactive">غير نشط</option>
+                                            <option value="pending">قيد المراجعة</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="table-content">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>اسم السائق</th>
+                                        <th>رقم الواتساب</th>
+                                        <th>فئة السيارة</th>
+                                        <th>موديل السيارة</th>
+                                        <th>الحالة</th>
+                                        <th>عدد الرحلات</th>
+                                        <th>التقييم</th>
+                                        <th>الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="drivers-table">
+                                    <!-- Will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Passengers Management Section -->
+                <section id="passengers-section" class="section">
+                    <div class="tables-container">
+                        <div class="table-header">
+                            <h3 class="table-title">
+                                <i class="fas fa-users"></i>
+                                إدارة الركاب
+                            </h3>
+                            <div class="table-actions">
+                                <div class="filter-group">
+                                    <input type="text" class="form-control" id="search-passengers" 
+                                           placeholder="بحث باسم أو رقم..." onkeyup="searchPassengers(this.value)">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="table-content">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>اسم الراكب</th>
+                                        <th>رقم الواتساب</th>
+                                        <th>رقم الاتصال</th>
+                                        <th>عدد الرحلات</th>
+                                        <th>آخر رحلة</th>
+                                        <th>حالة الحساب</th>
+                                        <th>الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="passengers-table">
+                                    <!-- Will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Reports Section -->
+                <section id="reports-section" class="section">
+                    <div class="charts-grid">
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3 class="chart-title">إيرادات الشهر</h3>
+                                <select class="form-control form-select" id="month-select" style="width: 150px;">
+                                    <option value="1">يناير</option>
+                                    <option value="2">فبراير</option>
+                                    <option value="3">مارس</option>
+                                    <option value="4">أبريل</option>
+                                    <option value="5">مايو</option>
+                                    <option value="6">يونيو</option>
+                                    <option value="7">يوليو</option>
+                                    <option value="8">أغسطس</option>
+                                    <option value="9">سبتمبر</option>
+                                    <option value="10">أكتوبر</option>
+                                    <option value="11">نوفمبر</option>
+                                    <option value="12">ديسمبر</option>
+                                </select>
+                            </div>
+                            <canvas id="monthlyRevenueChart" height="250"></canvas>
+                        </div>
+                        
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3 class="chart-title">أكثر المدن طلباً</h3>
+                            </div>
+                            <canvas id="popularCitiesChart" height="250"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Detailed Reports -->
+                    <div class="tables-container" style="margin-top: 2rem;">
+                        <div class="table-header">
+                            <h3 class="table-title">
+                                <i class="fas fa-chart-bar"></i>
+                                تقرير مفصل
+                            </h3>
+                            <div class="table-actions">
+                                <button class="btn btn-secondary" onclick="exportReport()">
+                                    <i class="fas fa-download"></i> تصدير التقرير
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="tabs">
+                            <button class="tab active" onclick="showReportTab('daily')">اليومي</button>
+                            <button class="tab" onclick="showReportTab('weekly')">الأسبوعي</button>
+                            <button class="tab" onclick="showReportTab('monthly')">الشهري</button>
+                        </div>
+                        
+                        <div id="daily-report" class="tab-content">
+                            <div class="table-content">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>التاريخ</th>
+                                            <th>عدد الرحلات</th>
+                                            <th>إجمالي الإيرادات</th>
+                                            <th>متوسط السعر</th>
+                                            <th>أكثر فئة طلباً</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="daily-report-table">
+                                        <!-- Will be populated by JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Settings Section -->
+                <section id="settings-section" class="section">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem;">
+                        <!-- Platform Settings -->
+                        <div class="tables-container">
+                            <div class="table-header">
+                                <h3 class="table-title">
+                                    <i class="fas fa-cog"></i>
+                                    إعدادات المنصة
+                                </h3>
+                            </div>
+                            
+                            <div style="padding: 1.5rem;">
+                                <form id="platform-settings-form">
+                                    <div class="form-group">
+                                        <label class="form-label">اسم المنصة</label>
+                                        <input type="text" class="form-control" name="platform_name" value="ترحال زونا - سفيريات السفر">
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label class="form-label">رسوم الخدمة (%)</label>
+                                        <input type="number" class="form-control" name="service_fee" value="10" min="0" max="50" step="0.5">
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label class="form-label">أقصى وقت للانتظار (دقيقة)</label>
+                                        <input type="number" class="form-control" name="max_wait_time" value="40" min="10" max="120">
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                                            <label class="form-label">تمكين الدردشة الداخلية</label>
+                                            <label class="switch">
+                                                <input type="checkbox" name="enable_chat" checked>
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                                            <label class="form-label">تمكين واتساب</label>
+                                            <label class="switch">
+                                                <input type="checkbox" name="enable_whatsapp" checked>
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save"></i> حفظ الإعدادات
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        
+                        <!-- Vehicle Categories Settings -->
+                        <div class="tables-container">
+                            <div class="table-header">
+                                <h3 class="table-title">
+                                    <i class="fas fa-car"></i>
+                                    فئات السيارات
+                                </h3>
+                            </div>
+                            
+                            <div class="table-content">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>الفئة</th>
+                                            <th>معامل السعر</th>
+                                            <th>الحالة</th>
+                                            <th>الإجراءات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="settings-categories-table">
+                                        <!-- Will be populated by JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div style="padding: 1.5rem; border-top: 1px solid var(--gray-200);">
+                                <button class="btn btn-primary" onclick="showEditCategoriesModal()">
+                                    <i class="fas fa-car"></i> إدارة فئات السيارات
+                                </button>
+                                <button class="btn btn-outline" onclick="loadVehicleCategoriesFromDB()" style="margin-right: 1rem;">
+                                    <i class="fas fa-sync-alt"></i> تحديث
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <!-- Add/Edit Price Modal -->
+    <div id="price-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="price-modal-title">إضافة سعر جديد</h3>
+                <button class="modal-close" onclick="closePriceModal()">&times;</button>
+            </div>
+            
+            <form id="price-form">
+                <input type="hidden" id="price-id">
+                
+                <div class="form-group">
+                    <label class="form-label">المدينة الأصل</label>
+                    <select class="form-control form-select" id="price-from-city" required>
+                        <option value="">اختر المدينة</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">المدينة الوجهة</label>
+                    <select class="form-control form-select" id="price-to-city" required>
+                        <option value="">اختر المدينة</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">السعر الأساسي (Eco)</label>
+                    <input type="number" class="form-control" id="base-price" required min="0" step="1000">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">حالة الرحلة</label>
+                    <select class="form-control form-select" id="price-status" required>
+                        <option value="active">نشطة</option>
+                        <option value="inactive">غير نشطة</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> حفظ
+                    </button>
+                    <button type="button" class="btn btn-outline" onclick="closePriceModal()">
+                        <i class="fas fa-times"></i> إلغاء
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Categories Modal -->
+    <div id="categories-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">إدارة فئات السيارات</h3>
+                <button class="modal-close" id="close-categories-btn">&times;</button>
+            </div>
+            
+            <form id="categories-form">
+                <div id="categories-form-content" style="max-height: 400px; overflow-y: auto; padding: 0.5rem;"></div>
+                
+                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button type="button" class="btn btn-outline" onclick="closeCategoriesModal()">
+                        <i class="fas fa-times"></i> إغلاق
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div class="notification-container" id="notification-container"></div>
+
+    <script>
+        // ============================================
+        // GLOBAL VARIABLES AND CONFIGURATION
+        // ============================================
+        const SB_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
+        const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
+        const adminSupabase = supabase.createClient(SB_URL, SB_KEY);
+
+        // Application State
+        let currentAdmin = null;
+        let allRides = [];
+        let allPrices = [];
+        let allDrivers = [];
+        let allPassengers = [];
+        let vehicleCategories = [];
+        let cities = [];
+        let currentPage = 1;
+        const itemsPerPage = 10;
+
+        // Charts
+        let ridesChart = null;
+        let revenueChart = null;
+        let monthlyRevenueChart = null;
+        let popularCitiesChart = null;
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('🚀 ترحال زونا - لوحة تحكم المشرف');
+            
+            // Check admin authentication
+            await checkAdminAuth();
+            
+            // Add event listener for close categories modal button
+            document.getElementById('close-categories-btn')?.addEventListener('click', closeCategoriesModal);
+            
+            // Add logout button to header
+            setupLogoutButton();
+        });
+
+        // ============================================
+        // ADMIN AUTHENTICATION
+        // ============================================
+        async function checkAdminAuth() {
+            // Check if admin is already logged in
+            const adminSession = localStorage.getItem('tarhal_admin');
+            
+            if (!adminSession) {
+                showLoginSection();
+                return;
+            }
+            
+            try {
+                const adminData = JSON.parse(adminSession);
+                
+                // Verify passcode with database
+                const { data: settings, error } = await adminSupabase
+                    .from('system_settings')
+                    .select('value')
+                    .eq('key', 'staff_passcode')
+                    .single();
+                    
+                if (error) throw error;
+                
+                if (adminData.passcode === settings.value) {
+                    currentAdmin = {
+                        id: 1,
+                        name: adminData.name || 'مدير النظام',
+                        role: 'مسؤول',
+                        passcode: adminData.passcode
+                    };
+                    
+                    // Update UI
+                    document.getElementById('admin-avatar').textContent = currentAdmin.name.charAt(0);
+                    document.getElementById('admin-name').textContent = currentAdmin.name;
+                    document.getElementById('admin-role').textContent = currentAdmin.role;
+                    
+                    // Show dashboard
+                    showDashboard();
+                } else {
+                    localStorage.removeItem('tarhal_admin');
+                    showLoginSection();
+                }
+                
+            } catch (error) {
+                console.error('Error verifying admin:', error);
+                localStorage.removeItem('tarhal_admin');
+                showLoginSection();
+            }
+        }
+
+        function showLoginSection() {
+            // Hide all sections except login
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Show login section
+            document.getElementById('login-section').classList.add('active');
+            
+            // Hide sidebar
+            document.getElementById('sidebar').style.display = 'none';
+            document.querySelector('.main-content').style.marginRight = '0';
+            
+            // Hide header admin info
+            document.querySelector('.admin-info').style.display = 'none';
+        }
+
+        function showDashboard() {
+            // Show sidebar
+            document.getElementById('sidebar').style.display = 'flex';
+            document.querySelector('.main-content').style.marginRight = 'var(--sidebar-width)';
+            
+            // Show header admin info
+            document.querySelector('.admin-info').style.display = 'flex';
+            
+            // Hide login section
+            document.getElementById('login-section').classList.remove('active');
+            
+            // Show dashboard section
+            document.getElementById('dashboard-section').classList.add('active');
+            
+            // Load initial data
+            loadAllData();
+            
+            // Initialize charts
+            initializeCharts();
+            
+            // Update stats
+            updateStats();
+        }
+
+        function setupLogoutButton() {
+            const adminInfo = document.querySelector('.admin-info');
+            if (adminInfo && !document.querySelector('.logout-btn')) {
+                const logoutBtn = document.createElement('button');
+                logoutBtn.className = 'btn btn-danger btn-sm logout-btn';
+                logoutBtn.innerHTML = '<i class="fas fa-sign-out-alt"></i> تسجيل الخروج';
+                logoutBtn.style.marginRight = '1rem';
+                logoutBtn.onclick = logoutAdmin;
+                adminInfo.insertBefore(logoutBtn, adminInfo.firstChild);
+            }
+        }
+
+        function logoutAdmin() {
+            if (confirm('هل تريد تسجيل الخروج من لوحة التحكم؟')) {
+                localStorage.removeItem('tarhal_admin');
+                location.reload();
+            }
+        }
+
+        // Login form submission
+        document.getElementById('admin-login-form')?.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const adminName = document.getElementById('admin-name-input').value;
+            const passcode = document.getElementById('admin-passcode').value;
+            
+            try {
+                // Get passcode from database
+                const { data: settings, error } = await adminSupabase
+                    .from('system_settings')
+                    .select('value')
+                    .eq('key', 'staff_passcode')
+                    .single();
+                    
+                if (error) throw error;
+                
+                if (passcode === settings.value) {
+                    // Success - Save to localStorage
+                    localStorage.setItem('tarhal_admin', JSON.stringify({
+                        name: adminName,
+                        passcode: passcode,
+                        login_time: new Date().toISOString()
+                    }));
+                    
+                    // Reload page to show dashboard
+                    location.reload();
+                } else {
+                    document.getElementById('login-error').style.display = 'block';
+                }
+                
+            } catch (error) {
+                console.error('Login error:', error);
+                document.getElementById('login-error').style.display = 'block';
+                document.getElementById('error-message').textContent = 'خطأ في الاتصال بالخادم';
+            }
+        });
+
+        // ============================================
+        // UI FUNCTIONS
+        // ============================================
+        function showSection(sectionId) {
+            if (!currentAdmin) return;
+            
+            // Hide all sections
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Show selected section
+            document.getElementById(`${sectionId}-section`).classList.add('active');
+            
+            // Update active nav item
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+            
+            // Update page title
+            const titles = {
+                'dashboard': 'لوحة التحكم',
+                'rides': 'إدارة الرحلات',
+                'prices': 'أسعار الرحلات',
+                'drivers': 'السائقون',
+                'passengers': 'الركاب',
+                'reports': 'التقارير',
+                'settings': 'الإعدادات'
+            };
+            
+            const icons = {
+                'dashboard': 'fa-tachometer-alt',
+                'rides': 'fa-road',
+                'prices': 'fa-tags',
+                'drivers': 'fa-car',
+                'passengers': 'fa-users',
+                'reports': 'fa-chart-bar',
+                'settings': 'fa-cog'
+            };
+            
+            document.getElementById('page-title').innerHTML = `
+                <i class="fas ${icons[sectionId]}"></i>
+                ${titles[sectionId]}
+            `;
+            
+            // Load section data if needed
+            switch(sectionId) {
+                case 'rides':
+                    displayRidesTable();
+                    break;
+                case 'prices':
+                    displayPricesTable();
+                    break;
+                case 'drivers':
+                    displayDriversTable();
+                    break;
+                case 'passengers':
+                    displayPassengersTable();
+                    break;
+                case 'reports':
+                    loadReports();
+                    break;
+                case 'settings':
+                    loadSettings();
+                    break;
+            }
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+        }
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const icon = document.querySelector('.dark-mode-toggle i');
+            if (document.body.classList.contains('dark-mode')) {
+                icon.className = 'fas fa-sun';
+                showNotification('تم تفعيل الوضع الليلي', 'success');
+            } else {
+                icon.className = 'fas fa-moon';
+                showNotification('تم تفعيل الوضع النهاري', 'success');
+            }
+        }
+
+        // ============================================
+        // DATA LOADING
+        // ============================================
+        async function loadAllData() {
+            try {
+                console.log('📊 جاري تحميل البيانات من قاعدة البيانات...');
+                
+                // Load all data in parallel
+                const [
+                    ridesRes, 
+                    driversRes, 
+                    customersRes, 
+                    categoriesRes, 
+                    citiesRes,
+                    requestsRes
+                ] = await Promise.all([
+                    adminSupabase.from('rides').select('*').order('created_at', { ascending: false }),
+                    adminSupabase.from('drivers').select('*'),
+                    adminSupabase.from('customers').select('*'),
+                    adminSupabase.from('vehicle_categories').select('*').order('sort_order'),
+                    adminSupabase.from('cities').select('name_ar'),
+                    adminSupabase.from('ride_requests').select('*').order('created_at', { ascending: false })
+                ]);
+
+                // Handle results
+                if (!ridesRes.error) allRides = ridesRes.data || [];
+                if (!driversRes.error) allDrivers = driversRes.data || [];
+                if (!customersRes.error) allPassengers = customersRes.data || [];
+                if (!categoriesRes.error) vehicleCategories = categoriesRes.data || [];
+                if (!citiesRes.error) cities = citiesRes.data.map(c => c.name_ar) || [];
+                
+                // Combine rides and ride_requests
+                if (!requestsRes.error && requestsRes.data) {
+                    const formattedRequests = requestsRes.data.map(req => ({
+                        id: 'req_' + req.id,
+                        passenger_name: 'راكب',
+                        driver_name: req.driver_name || null,
+                        from_city: req.from_city,
+                        to_city: req.to_city,
+                        vehicle_category: req.vehicle_category,
+                        final_price: req.estimated_price,
+                        status: req.status || 'pending',
+                        created_at: req.created_at
+                    }));
+                    allRides = [...formattedRequests, ...allRides];
+                }
+
+                // Load travel routes (prices)
+                await loadTravelRoutes();
+                
+                // Update UI
+                displayRecentRides();
+                displayRidesTable();
+                displayPricesTable();
+                displayDriversTable();
+                displayPassengersTable();
+                displayCategoriesTables();
+                updateStats();
+                
+                console.log('✅ تم تحميل البيانات بنجاح');
+                showNotification('تم تحميل البيانات من قاعدة البيانات', 'success');
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                showNotification('خطأ في تحميل البيانات من قاعدة البيانات', 'error');
+            }
+        }
+
+        async function loadTravelRoutes() {
+            try {
+                // Since travel_routes table doesn't exist, create mock data or use existing data
+                const majorCities = ['الخرطوم', 'مدني', 'القضارف', 'كسلا', 'بورتسودان', 'عطبرة'];
+                
+                allPrices = [];
+                majorCities.forEach((fromCity, i) => {
+                    majorCities.forEach((toCity, j) => {
+                        if (i !== j) {
+                            const basePrice = calculateEstimatedPrice(fromCity, toCity);
+                            allPrices.push({
+                                id: i * 10 + j,
+                                from_city: fromCity,
+                                to_city: toCity,
+                                base_price_eco: basePrice,
+                                is_active: true,
+                                updated_at: new Date().toISOString()
+                            });
+                        }
+                    });
+                });
+                
+            } catch (error) {
+                console.error('Error loading travel routes:', error);
+            }
+        }
+
+        function calculateEstimatedPrice(fromCity, toCity) {
+            const distanceMap = {
+                'الخرطوم-مدني': 25000,
+                'الخرطوم-القضارف': 35000,
+                'الخرطوم-كسلا': 40000,
+                'الخرطوم-بورتسودان': 50000,
+                'الخرطوم-عطبرة': 18000,
+                'مدني-الخرطوم': 25000,
+                'القضارف-الخرطوم': 35000,
+                'كسلا-الخرطوم': 40000,
+                'بورتسودان-الخرطوم': 50000,
+                'عطبرة-الخرطوم': 18000
+            };
+            
+            const key = `${fromCity}-${toCity}`;
+            return distanceMap[key] || 30000;
+        }
+
+        // ============================================
+        // CHARTS INITIALIZATION
+        // ============================================
+        function initializeCharts() {
+            // Rides Chart
+            const ridesCtx = document.getElementById('ridesChart').getContext('2d');
+            ridesChart = new Chart(ridesCtx, {
+                type: 'line',
+                data: {
+                    labels: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30'],
+                    datasets: [{
+                        label: 'عدد الرحلات',
+                        data: [12, 19, 8, 15, 22, 18, 14, 25, 20, 17, 23, 19, 15, 21, 18, 24, 22, 19, 16, 23, 25, 21, 19, 22, 24, 20, 18, 23, 25, 22],
+                        borderColor: '#4f46e5',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#4f46e5',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            rtl: true,
+                            titleFont: {
+                                family: 'Tajawal'
+                            },
+                            bodyFont: {
+                                family: 'Tajawal'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                font: {
+                                    family: 'Tajawal'
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                font: {
+                                    family: 'Tajawal'
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Revenue Chart
+            const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+            revenueChart = new Chart(revenueCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['اقتصادي', 'مريح', 'عالي / SUV'],
+                    datasets: [{
+                        data: [45, 35, 20],
+                        backgroundColor: ['#4f46e5', '#10b981', '#f59e0b'],
+                        borderWidth: 1,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            rtl: true,
+                            labels: {
+                                font: {
+                                    family: 'Tajawal',
+                                    size: 14
+                                },
+                                padding: 20
+                            }
+                        },
+                        tooltip: {
+                            rtl: true,
+                            titleFont: {
+                                family: 'Tajawal'
+                            },
+                            bodyFont: {
+                                family: 'Tajawal'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function loadReports() {
+            // Monthly Revenue Chart
+            if (!monthlyRevenueChart) {
+                const monthlyCtx = document.getElementById('monthlyRevenueChart').getContext('2d');
+                monthlyRevenueChart = new Chart(monthlyCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'],
+                        datasets: [{
+                            label: 'الإيرادات (ألف جنيه)',
+                            data: [120, 190, 150, 220, 180, 240, 200, 260, 230, 280, 250, 300],
+                            backgroundColor: '#4f46e5',
+                            borderColor: '#3730a3',
+                            borderWidth: 1,
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                rtl: true,
+                                callbacks: {
+                                    label: function(context) {
+                                        return `الإيرادات: ${context.raw.toLocaleString()} ألف جنيه`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.05)'
+                                },
+                                ticks: {
+                                    font: {
+                                        family: 'Tajawal'
+                                    },
+                                    callback: function(value) {
+                                        return value + ' ألف';
+                                    }
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.05)'
+                                },
+                                ticks: {
+                                    font: {
+                                        family: 'Tajawal'
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Popular Cities Chart
+            if (!popularCitiesChart) {
+                const citiesCtx = document.getElementById('popularCitiesChart').getContext('2d');
+                popularCitiesChart = new Chart(citiesCtx, {
+                    type: 'polarArea',
+                    data: {
+                        labels: ['الخرطوم', 'مدني', 'القضارف', 'كسلا', 'بورتسودان'],
+                        datasets: [{
+                            data: [120, 80, 60, 45, 40],
+                            backgroundColor: [
+                                '#4f46e5',
+                                '#10b981',
+                                '#f59e0b',
+                                '#3b82f6',
+                                '#8b5cf6'
+                            ],
+                            borderWidth: 1,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                rtl: true,
+                                labels: {
+                                    font: {
+                                        family: 'Tajawal',
+                                        size: 14
+                                    },
+                                    padding: 20
+                                }
+                            },
+                            tooltip: {
+                                rtl: true,
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.label}: ${context.raw} رحلة`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Load daily report
+            loadDailyReport();
+        }
+
+        // ============================================
+        // DASHBOARD FUNCTIONS
+        // ============================================
+        function updateStats() {
+            // Total rides
+            document.getElementById('total-rides').textContent = allRides.length.toLocaleString();
+            
+            // Total revenue
+            const totalRevenue = allRides
+                .filter(ride => ride.status === 'completed')
+                .reduce((sum, ride) => sum + (ride.final_price || ride.amount || 0), 0);
+            document.getElementById('total-revenue').textContent = (totalRevenue / 1000).toFixed(1) + ' ألف ج';
+            
+            // Active drivers
+            const activeDrivers = allDrivers.filter(driver => driver.is_active).length;
+            document.getElementById('active-drivers').textContent = activeDrivers.toLocaleString();
+            
+            // Pending rides
+            const pendingRides = allRides.filter(ride => ride.status === 'pending' || ride.status === 'searching').length;
+            document.getElementById('pending-rides').textContent = pendingRides.toLocaleString();
+        }
+
+        function displayRecentRides() {
+            const container = document.getElementById('recent-rides-table');
+            if (!container) return;
+            
+            const recentRides = allRides.slice(0, 5);
+            
+            container.innerHTML = '';
+            
+            if (recentRides.length === 0) {
+                container.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 2rem;">
+                            <div class="empty-state" style="padding: 0;">
+                                <div class="empty-icon">🚗</div>
+                                <div class="empty-title">لا توجد رحلات</div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            recentRides.forEach(ride => {
+                const statusText = getStatusText(ride.status);
+                const statusBadge = getStatusBadge(ride.status);
+                const fromCity = ride.from_city_name || ride.from_city || 'غير محدد';
+                const toCity = ride.to_city_name || ride.to_city || 'غير محدد';
+                const price = ride.final_price || ride.amount || 0;
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <div style="font-weight: 600; color: var(--primary);">${fromCity} → ${toCity}</div>
+                        <div style="font-size: 0.875rem; color: var(--gray-500);">TR-${ride.id.toString().substring(0, 8)}</div>
+                    </td>
+                    <td>${ride.passenger_name || ride.customer_name || 'راكب'}</td>
+                    <td>${ride.driver_name || '-'}</td>
+                    <td style="font-weight: 700; color: var(--success);">${price.toLocaleString()} ج</td>
+                    <td>${statusBadge}</td>
+                    <td>${formatDateShort(ride.created_at)}</td>
+                    <td>
+                        <button class="btn btn-outline btn-sm" onclick="viewRideDetails('${ride.id}')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </td>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function refreshData() {
+            // Simulate data refresh
+            loadAllData();
+            showNotification('تم تحديث البيانات', 'success');
+        }
+
+        // ============================================
+        // RIDES MANAGEMENT
+        // ============================================
+        function displayRidesTable() {
+            const container = document.getElementById('rides-table');
+            const pagination = document.getElementById('rides-pagination');
+            
+            if (!container || !pagination) return;
+            
+            // Apply filters
+            let filteredRides = [...allRides];
+            const statusFilter = document.getElementById('filter-status')?.value;
+            const dateFrom = document.getElementById('filter-date-from')?.value;
+            const dateTo = document.getElementById('filter-date-to')?.value;
+            
+            if (statusFilter) {
+                filteredRides = filteredRides.filter(ride => ride.status === statusFilter);
+            }
+            
+            if (dateFrom) {
+                const fromDate = new Date(dateFrom);
+                filteredRides = filteredRides.filter(ride => new Date(ride.created_at) >= fromDate);
+            }
+            
+            if (dateTo) {
+                const toDate = new Date(dateTo);
+                toDate.setHours(23, 59, 59, 999);
+                filteredRides = filteredRides.filter(ride => new Date(ride.created_at) <= toDate);
+            }
+            
+            // Calculate pagination
+            const totalPages = Math.ceil(filteredRides.length / itemsPerPage);
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const pageRides = filteredRides.slice(startIndex, endIndex);
+            
+            // Display rides
+            container.innerHTML = '';
+            
+            if (pageRides.length === 0) {
+                container.innerHTML = `
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 2rem;">
+                            <div class="empty-state" style="padding: 0;">
+                                <div class="empty-icon">🔍</div>
+                                <div class="empty-title">لا توجد رحلات</div>
+                                <div class="empty-description">جرب تغيير معايير البحث</div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+            
+            pageRides.forEach(ride => {
+                const statusText = getStatusText(ride.status);
+                const statusBadge = getStatusBadge(ride.status);
+                const fromCity = ride.from_city_name || ride.from_city || 'غير محدد';
+                const toCity = ride.to_city_name || ride.to_city || 'غير محدد';
+                const vehicleCategory = ride.vehicle_category_name || ride.vehicle_category || ride.vehicle_type || 'غير محدد';
+                const price = ride.final_price || ride.amount || 0;
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td style="font-weight: 600; color: var(--primary);">TR-${ride.id.toString().substring(0, 8)}</td>
+                    <td>${fromCity} → ${toCity}</td>
+                    <td>${ride.passenger_name || ride.customer_name || 'راكب'}</td>
+                    <td>${ride.driver_name || '-'}</td>
+                    <td><span class="badge badge-primary">${vehicleCategory}</span></td>
+                    <td style="font-weight: 700; color: var(--success);">${price.toLocaleString()} ج</td>
+                    <td>${statusBadge}</td>
+                    <td>${formatDateShort(ride.created_at)}</td>
+                    <td>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-outline btn-sm" onclick="viewRideDetails('${ride.id}')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteRide('${ride.id}')" ${ride.status === 'completed' ? 'disabled' : ''}>
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                container.appendChild(row);
+            });
+            
+            // Display pagination
+            displayPagination(pagination, totalPages, 'rides');
+        }
+
+        function filterRides() {
+            currentPage = 1;
+            displayRidesTable();
+        }
+
+        function viewRideDetails(rideId) {
+            const ride = allRides.find(r => r.id === rideId);
+            if (!ride) return;
+            
+            // In a real app, show a modal with ride details
+            showNotification(`عرض تفاصيل الرحلة TR-${rideId.toString().padStart(5, '0')}`, 'info');
+        }
+
+        function deleteRide(rideId) {
+            if (!confirm('هل أنت متأكد من حذف هذه الرحلة؟ لا يمكن التراجع عن هذا الإجراء.')) {
+                return;
+            }
+            
+            // Remove from local array
+            allRides = allRides.filter(ride => ride.id !== rideId);
+            
+            // Update displays
+            displayRidesTable();
+            displayRecentRides();
+            updateStats();
+            
+            showNotification('تم حذف الرحلة بنساح', 'success');
+        }
+
+        // ============================================
+        // PRICES MANAGEMENT
+        // ============================================
+        function displayPricesTable() {
+            const container = document.getElementById('prices-table');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            if (allPrices.length === 0) {
+                container.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 2rem;">
+                            <div class="empty-state" style="padding: 0;">
+                                <div class="empty-icon">💰</div>
+                                <div class="empty-title">لا توجد أسعار</div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            allPrices.forEach(price => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${price.from_city}</td>
+                    <td>${price.to_city}</td>
+                    <td style="font-weight: 700; color: var(--success);">${(price.base_price_eco || 0).toLocaleString()} ج</td>
+                    <td><span class="badge ${price.is_active ? 'badge-success' : 'badge-danger'}">${price.is_active ? 'نشط' : 'غير نشط'}</span></td>
+                    <td>${formatDateShort(price.updated_at)}</td>
+                    <td>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-outline btn-sm" onclick="editPrice(${price.id})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="deletePrice(${price.id})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        // ============================================
+        // VEHICLE CATEGORIES MANAGEMENT
+        // ============================================
+        function displayCategoriesTables() {
+            // Display in categories table
+            const categoriesContainer = document.getElementById('categories-table');
+            const settingsContainer = document.getElementById('settings-categories-table');
+            
+            if (categoriesContainer) {
+                categoriesContainer.innerHTML = '';
+                vehicleCategories.forEach(category => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${category.name_ar}</td>
+                        <td style="font-weight: 700; color: var(--primary);">× ${category.price_multiplier}</td>
+                        <td>${category.description || '-'}</td>
+                        <td><span class="badge ${category.is_active ? 'badge-success' : 'badge-danger'}">
+                            ${category.is_active ? 'نشط' : 'غير نشط'}
+                        </span></td>
+                    `;
+                    categoriesContainer.appendChild(row);
+                });
+            }
+            
+            if (settingsContainer) {
+                settingsContainer.innerHTML = '';
+                vehicleCategories.forEach(category => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${category.name_ar}</td>
+                        <td style="font-weight: 700; color: var(--primary);">× ${category.price_multiplier}</td>
+                        <td><span class="badge ${category.is_active ? 'badge-success' : 'badge-danger'}">
+                            ${category.is_active ? 'نشط' : 'غير نشط'}
+                        </span></td>
+                        <td>
+                            <div style="display: flex; gap: 0.25rem;">
+                                <button class="btn btn-outline btn-sm" onclick="editSingleCategory(${category.id})">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-${category.is_active ? 'danger' : 'success'} btn-sm" 
+                                        onclick="toggleCategoryStatus(${category.id}, ${!category.is_active})">
+                                    <i class="fas fa-${category.is_active ? 'ban' : 'check'}"></i>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    settingsContainer.appendChild(row);
+                });
+            }
+        }
+
+        async function loadVehicleCategoriesFromDB() {
+            try {
+                const { data, error } = await adminSupabase
+                    .from('vehicle_categories')
+                    .select('*')
+                    .order('sort_order');
+
+                if (error) throw error;
+
+                vehicleCategories = data || [];
+                displayCategoriesTables();
+                showNotification('تم تحديث فئات السيارات', 'success');
+                
+            } catch (error) {
+                console.error('Error loading vehicle categories:', error);
+                showNotification('خطأ في تحميل فئات السيارات', 'error');
+            }
+        }
+
+        async function addVehicleCategory(categoryData) {
+            try {
+                const { data, error } = await adminSupabase
+                    .from('vehicle_categories')
+                    .insert([{
+                        name_ar: categoryData.name,
+                        price_multiplier: categoryData.multiplier,
+                        description: categoryData.description,
+                        icon_emoji: categoryData.icon || '🚗',
+                        is_active: true,
+                        sort_order: categoryData.sort_order || 0,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    }])
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                showNotification('تم إضافة فئة السيارات بنجاح', 'success');
+                await loadVehicleCategoriesFromDB();
+                return data;
+                
+            } catch (error) {
+                console.error('Error adding vehicle category:', error);
+                showNotification('خطأ في إضافة فئة السيارات', 'error');
+            }
+        }
+
+        async function updateVehicleCategory(categoryId, updates) {
+            try {
+                const { data, error } = await adminSupabase
+                    .from('vehicle_categories')
+                    .update({
+                        ...updates,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', categoryId)
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                showNotification('تم تحديث فئة السيارات بنجاح', 'success');
+                await loadVehicleCategoriesFromDB();
+                return data;
+                
+            } catch (error) {
+                console.error('Error updating vehicle category:', error);
+                showNotification('خطأ في تحديث فئة السيارات', 'error');
+            }
+        }
+
+        async function toggleCategoryStatus(categoryId, isActive) {
+            try {
+                const { error } = await adminSupabase
+                    .from('vehicle_categories')
+                    .update({ 
+                        is_active: isActive,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', categoryId);
+
+                if (error) throw error;
+
+                showNotification(`تم ${isActive ? 'تفعيل' : 'تعطيل'} فئة السيارات`, 'success');
+                await loadVehicleCategoriesFromDB();
+                
+            } catch (error) {
+                console.error('Error toggling category status:', error);
+                showNotification('خطأ في تغيير حالة فئة السيارات', 'error');
+            }
+        }
+
+        function showEditCategoriesModal() {
+            const container = document.getElementById('categories-form-content');
+            container.innerHTML = '';
+            
+            vehicleCategories.forEach(category => {
+                const div = document.createElement('div');
+                div.className = 'form-group';
+                div.innerHTML = `
+                    <div style="margin-bottom: 1rem; padding: 1rem; background: var(--gray-50); border-radius: var(--radius);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <label class="form-label" style="margin: 0;">${category.name_ar}</label>
+                            <span class="badge ${category.is_active ? 'badge-success' : 'badge-danger'}">
+                                ${category.is_active ? 'نشط' : 'غير نشط'}
+                            </span>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div>
+                                <label style="display: block; font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.25rem;">
+                                    معامل السعر
+                                </label>
+                                <input type="number" class="form-control" value="${category.price_multiplier}" 
+                                       min="1" step="0.1" id="multiplier-${category.id}">
+                            </div>
+                            
+                            <div>
+                                <label style="display: block; font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.25rem;">
+                                    ترتيب العرض
+                                </label>
+                                <input type="number" class="form-control" value="${category.sort_order || 0}" 
+                                       min="0" id="sort-${category.id}">
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 0.75rem;">
+                            <label style="display: block; font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.25rem;">
+                                الوصف
+                            </label>
+                            <textarea class="form-control" id="desc-${category.id}" 
+                                      style="min-height: 60px;">${category.description || ''}</textarea>
+                        </div>
+                        
+                        <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+                            <button type="button" class="btn btn-primary btn-sm" 
+                                    onclick="saveCategoryChanges(${category.id})">
+                                <i class="fas fa-save"></i> حفظ
+                            </button>
+                            <button type="button" class="btn btn-${category.is_active ? 'danger' : 'success'} btn-sm" 
+                                    onclick="toggleCategoryStatus(${category.id}, ${!category.is_active})">
+                                <i class="fas fa-${category.is_active ? 'ban' : 'check'}"></i>
+                                ${category.is_active ? 'تعطيل' : 'تفعيل'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+            
+            // Add form for new category
+            const newCategoryDiv = document.createElement('div');
+            newCategoryDiv.className = 'form-group';
+            newCategoryDiv.innerHTML = `
+                <div style="margin-top: 2rem; padding-top: 1rem; border-top: 2px solid var(--gray-200);">
+                    <h4 style="color: var(--primary); margin-bottom: 1rem;">
+                        <i class="fas fa-plus"></i> إضافة فئة جديدة
+                    </h4>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div>
+                            <label class="form-label">اسم الفئة (عربي)</label>
+                            <input type="text" class="form-control" id="new-category-name">
+                        </div>
+                        
+                        <div>
+                            <label class="form-label">معامل السعر</label>
+                            <input type="number" class="form-control" id="new-category-multiplier" 
+                                   min="1" step="0.1" value="1.0">
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 1rem;">
+                        <label class="form-label">الوصف</label>
+                        <textarea class="form-control" id="new-category-desc" 
+                                  style="min-height: 60px;"></textarea>
+                    </div>
+                    
+                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                        <button type="button" class="btn btn-primary" onclick="addNewCategory()">
+                            <i class="fas fa-plus"></i> إضافة فئة جديدة
+                        </button>
+                    </div>
+                </div>
+            `;
+            container.appendChild(newCategoryDiv);
+            
+            document.getElementById('categories-modal').classList.remove('hidden');
+        }
+
+        async function saveCategoryChanges(categoryId) {
+            const multiplier = parseFloat(document.getElementById(`multiplier-${categoryId}`).value);
+            const sortOrder = parseInt(document.getElementById(`sort-${categoryId}`).value);
+            const description = document.getElementById(`desc-${categoryId}`).value;
+            
+            await updateVehicleCategory(categoryId, {
+                price_multiplier: multiplier,
+                sort_order: sortOrder,
+                description: description
+            });
+        }
+
+        async function addNewCategory() {
+            const name = document.getElementById('new-category-name').value;
+            const multiplier = parseFloat(document.getElementById('new-category-multiplier').value);
+            const description = document.getElementById('new-category-desc').value;
+            
+            if (!name || !multiplier) {
+                showNotification('الرجاء ملء جميع الحقول المطلوبة', 'warning');
+                return;
+            }
+            
+            await addVehicleCategory({
+                name: name,
+                multiplier: multiplier,
+                description: description,
+                sort_order: vehicleCategories.length + 1
+            });
+            
+            // Clear form
+            document.getElementById('new-category-name').value = '';
+            document.getElementById('new-category-multiplier').value = '1.0';
+            document.getElementById('new-category-desc').value = '';
+        }
+
+        function editSingleCategory(categoryId) {
+            // Show modal with just this category
+            const category = vehicleCategories.find(c => c.id === categoryId);
+            if (!category) return;
+            
+            const modalContent = `
+                <div class="form-group">
+                    <label class="form-label">اسم الفئة</label>
+                    <input type="text" class="form-control" id="edit-name-${categoryId}" value="${category.name_ar}">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">معامل السعر</label>
+                    <input type="number" class="form-control" id="edit-multiplier-${categoryId}" 
+                           value="${category.price_multiplier}" min="1" step="0.1">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">الوصف</label>
+                    <textarea class="form-control" id="edit-desc-${categoryId}" 
+                              style="min-height: 80px;">${category.description || ''}</textarea>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-primary" onclick="saveSingleCategory(${categoryId})">
+                        <i class="fas fa-save"></i> حفظ
+                    </button>
+                    <button type="button" class="btn btn-outline" onclick="closeCategoriesModal()">
+                        <i class="fas fa-times"></i> إلغاء
+                    </button>
+                </div>
+            `;
+            
+            const container = document.getElementById('categories-form-content');
+            container.innerHTML = modalContent;
+            
+            document.getElementById('categories-modal').classList.remove('hidden');
+        }
+
+        async function saveSingleCategory(categoryId) {
+            const name = document.getElementById(`edit-name-${categoryId}`).value;
+            const multiplier = parseFloat(document.getElementById(`edit-multiplier-${categoryId}`).value);
+            const description = document.getElementById(`edit-desc-${categoryId}`).value;
+            
+            await updateVehicleCategory(categoryId, {
+                name_ar: name,
+                price_multiplier: multiplier,
+                description: description
+            });
+            
+            closeCategoriesModal();
+        }
+
+        function closeCategoriesModal() {
+            document.getElementById('categories-modal').classList.add('hidden');
+        }
+
+        // ============================================
+        // DRIVERS MANAGEMENT
+        // ============================================
+        function displayDriversTable() {
+            const container = document.getElementById('drivers-table');
+            if (!container) return;
+            
+            // Apply filter
+            let filteredDrivers = [...allDrivers];
+            const statusFilter = document.getElementById('filter-driver-status')?.value;
+            
+            if (statusFilter === 'active') {
+                filteredDrivers = filteredDrivers.filter(driver => driver.is_active);
+            } else if (statusFilter === 'inactive') {
+                filteredDrivers = filteredDrivers.filter(driver => !driver.is_active);
+            } else if (statusFilter === 'pending') {
+                filteredDrivers = filteredDrivers.filter(driver => driver.verification_status === 'pending');
+            }
+            
+            container.innerHTML = '';
+            
+            if (filteredDrivers.length === 0) {
+                container.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 2rem;">
+                            <div class="empty-state" style="padding: 0;">
+                                <div class="empty-icon">🚗</div>
+                                <div class="empty-title">لا توجد سائقين</div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            filteredDrivers.forEach(driver => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <div style="font-weight: 600;">${driver.full_name}</div>
+                        <div style="font-size: 0.875rem; color: var(--gray-500);">DR-${driver.id.toString().padStart(5, '0')}</div>
+                    </td>
+                    <td>${driver.whatsapp_number}</td>
+                    <td><span class="badge badge-primary">${driver.car_type}</span></td>
+                    <td>${driver.car_model}</td>
+                    <td>
+                        <span class="badge ${driver.is_active ? 'badge-success' : 'badge-danger'}">
+                            ${driver.is_active ? 'نشط' : 'غير نشط'}
+                        </span>
+                        ${driver.verification_status === 'pending' ? '<span class="badge badge-warning" style="margin-right: 0.25rem;">قيد المراجعة</span>' : ''}
+                    </td>
+                    <td>${driver.total_rides}</td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 0.25rem;">
+                            <span style="color: #f59e0b;">
+                                ${'★'.repeat(Math.floor(driver.rating || 0))}${'☆'.repeat(5 - Math.floor(driver.rating || 0))}
+                            </span>
+                            <span style="font-weight: 600; color: var(--gray-700);">${driver.rating?.toFixed(1) || '0.0'}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-outline btn-sm" onclick="viewDriverDetails(${driver.id})">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-primary btn-sm" onclick="toggleDriverStatus(${driver.id}, ${!driver.is_active})">
+                                <i class="fas ${driver.is_active ? 'fa-ban' : 'fa-check'}"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function filterDrivers() {
+            displayDriversTable();
+        }
+
+        async function toggleDriverStatus(driverId, newStatus) {
+            try {
+                const { error } = await adminSupabase
+                    .from('drivers')
+                    .update({ is_active: newStatus })
+                    .eq('id', driverId);
+
+                if (error) throw error;
+
+                const driver = allDrivers.find(d => d.id === driverId);
+                if (driver) driver.is_active = newStatus;
+
+                displayDriversTable();
+                updateStats();
+
+                showNotification(`تم ${newStatus ? 'تفعيل' : 'تعطيل'} السائق بنجاح`, 'success');
+            } catch (error) {
+                console.error('Error toggling driver status:', error);
+                showNotification('خطأ في تحديث حالة السائق', 'error');
+            }
+        }
+
+        function viewDriverDetails(driverId) {
+            // In a real app, show driver details modal
+            showNotification(`عرض تفاصيل السائق - ${driverId}`, 'info');
+        }
+
+        // ============================================
+        // PASSENGERS MANAGEMENT
+        // ============================================
+        function displayPassengersTable() {
+            const container = document.getElementById('passengers-table');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            if (allPassengers.length === 0) {
+                container.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 2rem;">
+                            <div class="empty-state" style="padding: 0;">
+                                <div class="empty-icon">👥</div>
+                                <div class="empty-title">لا توجد ركاب</div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            allPassengers.forEach(passenger => {
+                const lastRideDate = passenger.last_ride || passenger.updated_at;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <div style="font-weight: 600;">${passenger.full_name}</div>
+                        <div style="font-size: 0.875rem; color: var(--gray-500);">PA-${passenger.id.toString().substring(0, 8)}</div>
+                    </td>
+                    <td>${passenger.phone}</td>
+                    <td>${passenger.phone2 || '-'}</td>
+                    <td>${passenger.total_rides || 0}</td>
+                    <td>${lastRideDate ? formatDateShort(lastRideDate) : '-'}</td>
+                    <td>
+                        <span class="badge ${passenger.is_verified ? 'badge-success' : 'badge-warning'}">
+                            ${passenger.is_verified ? 'موثق' : 'غير موثق'}
+                        </span>
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-outline btn-sm" onclick="viewPassengerDetails('${passenger.id}')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-primary btn-sm" onclick="toggleVerification('${passenger.id}', ${!passenger.is_verified})">
+                                <i class="fas ${passenger.is_verified ? 'fa-times' : 'fa-check'}"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function searchPassengers(query) {
+            const container = document.getElementById('passengers-table');
+            if (!container) return;
+            
+            if (!query.trim()) {
+                displayPassengersTable();
+                return;
+            }
+            
+            const filteredPassengers = allPassengers.filter(passenger =>
+                passenger.full_name.includes(query) ||
+                passenger.phone.includes(query) ||
+                (passenger.phone2 && passenger.phone2.includes(query))
+            );
+            
+            container.innerHTML = '';
+            
+            if (filteredPassengers.length === 0) {
+                container.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 2rem;">
+                            <div class="empty-state" style="padding: 0;">
+                                <div class="empty-icon">🔍</div>
+                                <div class="empty-title">لا توجد نتائج</div>
+                                <div class="empty-description">جرب كلمة بحث أخرى</div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            filteredPassengers.forEach(passenger => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${passenger.full_name}</td>
+                    <td>${passenger.phone}</td>
+                    <td>${passenger.phone2 || '-'}</td>
+                    <td>${passenger.total_rides}</td>
+                    <td>${passenger.last_ride ? formatDateShort(passenger.last_ride) : '-'}</td>
+                    <td>
+                        <span class="badge ${passenger.is_verified ? 'badge-success' : 'badge-warning'}">
+                            ${passenger.is_verified ? 'موثق' : 'غير موثق'}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-outline btn-sm" onclick="viewPassengerDetails(${passenger.id})">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </td>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function toggleVerification(passengerId, newStatus) {
+            const passenger = allPassengers.find(p => p.id === passengerId);
+            if (!passenger) return;
+            
+            passenger.is_verified = newStatus;
+            displayPassengersTable();
+            
+            showNotification(`تم ${newStatus ? 'توثيق' : 'إلغاء توثيق'} الراكب بنساح`, 'success');
+        }
+
+        function viewPassengerDetails(passengerId) {
+            // In a real app, show passenger details modal
+            showNotification(`عرض تفاصيل الراكب - ${passengerId}`, 'info');
+        }
+
+        // ============================================
+        // REPORTS
+        // ============================================
+        function showReportTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(`${tabName}-report`).classList.add('active');
+            
+            // Update active tab button
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Load report data
+            if (tabName === 'daily') {
+                loadDailyReport();
+            }
+        }
+
+        function loadDailyReport() {
+            const container = document.getElementById('daily-report-table');
+            if (!container) return;
+            
+            // Mock daily report data
+            const dailyData = [
+                { date: '2024-01-01', rides: 12, revenue: 300000, avgPrice: 25000, popularCategory: 'اقتصادي' },
+                { date: '2024-01-02', rides: 15, revenue: 375000, avgPrice: 25000, popularCategory: 'مريح' },
+                { date: '2024-01-03', rides: 18, revenue: 450000, avgPrice: 25000, popularCategory: 'اقتصادي' },
+                { date: '2024-01-04', rides: 10, revenue: 250000, avgPrice: 25000, popularCategory: 'عالي / SUV' },
+                { date: '2024-01-05', rides: 22, revenue: 550000, avgPrice: 25000, popularCategory: 'اقتصادي' }
+            ];
+            
+            container.innerHTML = '';
+            
+            dailyData.forEach(day => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${formatDateShort(day.date)}</td>
+                    <td>${day.rides}</td>
+                    <td style="font-weight: 700; color: var(--success);">${day.revenue.toLocaleString()} ج</td>
+                    <td>${Math.round(day.avgPrice).toLocaleString()} ج</td>
+                    <td><span class="badge badge-primary">${day.popularCategory}</span></td>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function exportReport() {
+            // In a real app, generate and download report
+            showNotification('سيتم تصدير التقرير (في النسخة الكاملة)', 'info');
+        }
+
+        // ============================================
+        // SETTINGS MANAGEMENT
+        // ============================================
+        async function loadSettings() {
+            try {
+                const { data, error } = await adminSupabase
+                    .from('system_settings')
+                    .select('*');
+
+                if (error) throw error;
+
+                // Populate settings form
+                const settingsForm = document.getElementById('platform-settings-form');
+                if (settingsForm && data) {
+                    const settingsMap = {};
+                    data.forEach(setting => {
+                        settingsMap[setting.key] = setting.value;
+                    });
+
+                    // Update form values
+                    document.querySelector('[name="platform_name"]').value = settingsMap.platform_name || 'ترحال زونا';
+                    document.querySelector('[name="service_fee"]').value = settingsMap.service_fee_percentage || 10;
+                    document.querySelector('[name="max_wait_time"]').value = settingsMap.max_wait_time_minutes || 40;
+                    document.querySelector('[name="enable_chat"]').checked = settingsMap.enable_chat !== 'false';
+                    document.querySelector('[name="enable_whatsapp"]').checked = settingsMap.enable_whatsapp !== 'false';
+                }
+                
+            } catch (error) {
+                console.error('Error loading settings:', error);
+            }
+        }
+
+        document.getElementById('platform-settings-form')?.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const settings = {
+                platform_name: formData.get('platform_name'),
+                service_fee_percentage: formData.get('service_fee'),
+                max_wait_time_minutes: formData.get('max_wait_time'),
+                enable_chat: formData.get('enable_chat') ? 'true' : 'false',
+                enable_whatsapp: formData.get('enable_whatsapp') ? 'true' : 'false'
+            };
+            
+            try {
+                // Delete old settings
+                await adminSupabase
+                    .from('system_settings')
+                    .delete()
+                    .in('key', Object.keys(settings));
+                
+                // Insert new settings
+                const settingsArray = Object.entries(settings).map(([key, value]) => ({
+                    key: key,
+                    value: value,
+                    updated_at: new Date().toISOString()
+                }));
+                
+                const { error } = await adminSupabase
+                    .from('system_settings')
+                    .insert(settingsArray);
+                
+                if (error) throw error;
+                
+                showNotification('تم حفظ الإعدادات بنجاح', 'success');
+                
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                showNotification('خطأ في حفظ الإعدادات', 'error');
+            }
+        });
+
+        // ============================================
+        // PRICE MODAL FUNCTIONS
+        // ============================================
+        function showAddPriceModal() {
+            document.getElementById('price-modal-title').textContent = 'إضافة سعر جديد';
+            document.getElementById('price-form').reset();
+            document.getElementById('price-id').value = '';
+            
+            // Populate city dropdowns
+            populateModalCityDropdowns();
+            
+            document.getElementById('price-modal').classList.remove('hidden');
+        }
+
+        function editPrice(priceId) {
+            const price = allPrices.find(p => p.id === priceId);
+            if (!price) return;
+            
+            document.getElementById('price-modal-title').textContent = 'تعديل السعر';
+            document.getElementById('price-id').value = price.id;
+            
+            // Populate city dropdowns
+            populateModalCityDropdowns();
+            
+            // Set current values
+            document.getElementById('price-from-city').value = price.from_city;
+            document.getElementById('price-to-city').value = price.to_city;
+            document.getElementById('base-price').value = price.base_price_eco;
+            document.getElementById('price-status').value = price.is_active ? 'active' : 'inactive';
+            
+            document.getElementById('price-modal').classList.remove('hidden');
+        }
+
+        function populateModalCityDropdowns() {
+            const fromCitySelect = document.getElementById('price-from-city');
+            const toCitySelect = document.getElementById('price-to-city');
+            
+            if (fromCitySelect && toCitySelect) {
+                fromCitySelect.innerHTML = '<option value="">اختر المدينة</option>';
+                toCitySelect.innerHTML = '<option value="">اختر المدينة</option>';
+                
+                cities.forEach(city => {
+                    const option1 = document.createElement('option');
+                    option1.value = city;
+                    option1.textContent = city;
+                    
+                    const option2 = option1.cloneNode(true);
+                    
+                    fromCitySelect.appendChild(option1);
+                    toCitySelect.appendChild(option2);
+                });
+            }
+        }
+
+        document.getElementById('price-form')?.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const priceId = document.getElementById('price-id').value;
+            const fromCity = document.getElementById('price-from-city').value;
+            const toCity = document.getElementById('price-to-city').value;
+            const basePrice = document.getElementById('base-price').value;
+            const status = document.getElementById('price-status').value;
+            
+            if (priceId) {
+                // Update existing price
+                const price = allPrices.find(p => p.id == priceId);
+                if (price) {
+                    price.from_city = fromCity;
+                    price.to_city = toCity;
+                    price.base_price_eco = basePrice;
+                    price.is_active = status === 'active';
+                    price.updated_at = new Date().toISOString();
+                }
+            } else {
+                // Add new price
+                const newPrice = {
+                    id: allPrices.length + 1,
+                    from_city: fromCity,
+                    to_city: toCity,
+                    base_price_eco: basePrice,
+                    is_active: status === 'active',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+                allPrices.push(newPrice);
+            }
+            
+            closePriceModal();
+            displayPricesTable();
+            showNotification(priceId ? 'تم تحديث السعر بنساح' : 'تم إضافة السعر بنساح', 'success');
+        });
+
+        function deletePrice(priceId) {
+            if (!confirm('هل أنت متأكد من حذف هذا السعر؟')) return;
+            
+            allPrices = allPrices.filter(price => price.id !== priceId);
+            displayPricesTable();
+            showNotification('تم حذف السعر بنساح', 'success');
+        }
+
+        function closePriceModal() {
+            document.getElementById('price-modal').classList.add('hidden');
+        }
+
+        // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
+        function getStatusText(status) {
+            const statusMap = {
+                'pending': 'قيد النشر',
+                'accepted': 'قيد التواصل',
+                'confirmed': 'تم الاتفاق',
+                'completed': 'مكتملة',
+                'cancelled': 'ملغية',
+                'searching': 'قيد البحث'
+            };
+            return statusMap[status] || status;
+        }
+
+        function getStatusBadge(status) {
+            const badgeMap = {
+                'pending': '<span class="badge badge-warning">قيد النشر</span>',
+                'accepted': '<span class="badge badge-info">قيد التواصل</span>',
+                'confirmed': '<span class="badge badge-success">تم الاتفاق</span>',
+                'completed': '<span class="badge badge-success">مكتملة</span>',
+                'cancelled': '<span class="badge badge-danger">ملغية</span>',
+                'searching': '<span class="badge badge-warning">قيد البحث</span>'
+            };
+            return badgeMap[status] || '<span class="badge badge-warning">غير معروف</span>';
+        }
+
+        function formatDateShort(dateString) {
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('ar-SA', {
+                    month: 'short',
+                    day: 'numeric'
+                });
+            } catch (e) {
+                return 'تاريخ غير معروف';
+            }
+        }
+
+        function displayPagination(container, totalPages, type) {
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+            
+            let html = '';
+            
+            // Previous button
+            html += `
+                <button class="page-link ${currentPage === 1 ? 'disabled' : ''}" 
+                        onclick="${currentPage === 1 ? '' : `changePage('${type}', ${currentPage - 1})`}">
+                    السابق
+                </button>
+            `;
+            
+            // Page numbers
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                    html += `
+                        <button class="page-link ${i === currentPage ? 'active' : ''}" 
+                                onclick="changePage('${type}', ${i})">
+                            ${i}
+                        </button>
+                    `;
+                } else if (i === currentPage - 3 || i === currentPage + 3) {
+                    html += `<span style="padding: 0.5rem;">...</span>`;
+                }
+            }
+            
+            // Next button
+            html += `
+                <button class="page-link ${currentPage === totalPages ? 'disabled' : ''}" 
+                        onclick="${currentPage === totalPages ? '' : `changePage('${type}', ${currentPage + 1})`}">
+                    التالي
+                </button>
+            `;
+            
+            container.innerHTML = html;
+        }
+
+        function changePage(type, page) {
+            currentPage = page;
+            
+            if (type === 'rides') {
+                displayRidesTable();
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            const container = document.getElementById('notification-container');
+            
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            
+            let icon = 'ℹ️';
+            if (type === 'success') icon = '✅';
+            else if (type === 'error') icon = '❌';
+            else if (type === 'warning') icon = '⚠️';
+            
+            notification.innerHTML = `
+                <div class="notification-icon">${icon}</div>
+                <div class="notification-content">
+                    <div class="notification-title">${type === 'success' ? 'نجاح' : type === 'error' ? 'خطأ' : type === 'warning' ? 'تحذير' : 'معلومة'}</div>
+                    <div class="notification-message">${message}</div>
+                </div>
+                <button onclick="this.parentElement.remove()" style="background: none; border: none; cursor: pointer; color: var(--gray-500); font-size: 1.25rem;">
+                    &times;
+                </button>
+            `;
+            
+            container.appendChild(notification);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(e) {
+            const sidebar = document.getElementById('sidebar');
+            const toggle = document.querySelector('.mobile-menu-toggle');
+            
+            if (window.innerWidth <= 768 && 
+                sidebar.classList.contains('active') && 
+                !sidebar.contains(e.target) && 
+                !toggle.contains(e.target)) {
+                sidebar.classList.remove('active');
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Refresh data with Ctrl/Cmd + R
+            if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+                e.preventDefault();
+                refreshData();
+            }
+            
+            // Escape key closes modals
+            if (e.key === 'Escape') {
+                const modals = document.querySelectorAll('.modal-overlay:not(.hidden)');
+                modals.forEach(modal => modal.classList.add('hidden'));
+            }
+        });
+    </script>
+</body>
+</html>
