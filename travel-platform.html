@@ -1,0 +1,2506 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>ترحال زونا - سفيريات السفر</title>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Tajawal Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        /* ============================================
+           GLOBAL STYLES - FIXED VERSION
+           ============================================ */
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #3730a3;
+            --primary-light: #e0e7ff;
+            --secondary: #059669;
+            --secondary-light: #d1fae5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --danger-light: #fee2e2;
+            --light: #f9fafb;
+            --dark: #111827;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            
+            --radius-sm: 0.375rem;
+            --radius: 0.5rem;
+            --radius-md: 0.75rem;
+            --radius-lg: 1rem;
+            --radius-xl: 1.5rem;
+            
+            --transition: all 0.3s ease;
+            --transition-fast: all 0.15s ease;
+        }
+
+        /* Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            font-size: 16px;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+            color: var(--gray-900);
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* App Container */
+        .app-container {
+            max-width: 100%;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.08);
+        }
+
+        /* Header */
+        .app-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-lg);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            min-height: 70px;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-img {
+            height: 45px;
+            width: 45px;
+            object-fit: contain;
+            border-radius: var(--radius);
+            background: white;
+            padding: 4px;
+            box-shadow: var(--shadow);
+        }
+
+        .app-title {
+            font-size: 1.25rem;
+            font-weight: 800;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-subtitle {
+            font-size: 0.875rem;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .user-avatar {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, var(--success) 0%, var(--secondary) 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 1.125rem;
+            box-shadow: var(--shadow);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .user-role {
+            font-size: 0.75rem;
+            opacity: 0.8;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 0.125rem 0.5rem;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 2px;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 1.5rem;
+            min-height: calc(100vh - 70px);
+        }
+
+        /* Loading State */
+        .loading-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 400px;
+            gap: 1.5rem;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid var(--primary-light);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-text {
+            font-size: 1.125rem;
+            color: var(--gray-600);
+            font-weight: 500;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Hidden Utility */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Tabs Navigation */
+        .tabs-container {
+            margin-bottom: 2rem;
+            background: var(--gray-50);
+            border-radius: var(--radius-lg);
+            padding: 0.5rem;
+            display: flex;
+            overflow-x: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .tabs-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab {
+            flex: 1;
+            min-width: 120px;
+            padding: 0.875rem 1rem;
+            text-align: center;
+            font-weight: 600;
+            color: var(--gray-600);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            border-radius: var(--radius);
+            font-family: 'Tajawal', sans-serif;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+
+        .tab:hover {
+            color: var(--primary);
+            background: rgba(79, 70, 229, 0.05);
+        }
+
+        .tab.active {
+            color: var(--primary);
+            background: white;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--primary-light);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--gray-200);
+            margin-bottom: 1.5rem;
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-lg);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--gray-100);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin: 0;
+        }
+
+        .card-title i {
+            color: var(--primary);
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--gray-700);
+            font-size: 0.95rem;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius);
+            font-family: 'Tajawal', sans-serif;
+            font-size: 1rem;
+            transition: var(--transition);
+            background: white;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .form-select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: left 1rem center;
+            background-size: 1.25rem;
+            padding-left: 3rem;
+        }
+
+        textarea.form-control {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        /* Grid System */
+        .grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .grid-2 {
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        }
+
+        .grid-3 {
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.875rem 1.75rem;
+            border-radius: var(--radius);
+            border: none;
+            font-family: 'Tajawal', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: 1px solid var(--primary);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--secondary) 0%, #047857 100%);
+            color: white;
+            border: 1px solid var(--secondary);
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #047857 0%, var(--secondary) 100%);
+            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+
+        .btn-outline:hover {
+            background: var(--primary-light);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%);
+            color: white;
+            border: 1px solid var(--danger);
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #dc2626 0%, var(--danger) 100%);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+        }
+
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+
+        .btn-lg {
+            padding: 1rem 2rem;
+            font-size: 1.125rem;
+        }
+
+        .btn-block {
+            width: 100%;
+        }
+
+        /* Vehicle Categories */
+        .vehicle-categories {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .vehicle-category {
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .vehicle-category:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-light);
+        }
+
+        .vehicle-category.selected {
+            border-color: var(--primary);
+            background: var(--primary-light);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
+        }
+
+        .vehicle-icon {
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .vehicle-category.selected .vehicle-icon {
+            color: var(--primary-dark);
+        }
+
+        .vehicle-name {
+            font-weight: 700;
+            color: var(--gray-800);
+            font-size: 1.125rem;
+        }
+
+        .vehicle-multiplier {
+            font-size: 0.875rem;
+            color: var(--gray-600);
+            background: var(--gray-100);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        /* Ride Cards */
+        .ride-cards {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .ride-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            border: 1px solid var(--gray-200);
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .ride-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--primary-light);
+        }
+
+        .ride-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .ride-route {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .ride-price {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--success);
+            background: var(--secondary-light);
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+        }
+
+        .ride-details {
+            display: grid;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .ride-detail {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--gray-600);
+            font-size: 0.95rem;
+        }
+
+        .ride-detail i {
+            width: 20px;
+            color: var(--primary);
+        }
+
+        .ride-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-top: 0.75rem;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-accepted {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status-confirmed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-completed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-cancelled {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* Price Preview */
+        .price-preview {
+            background: linear-gradient(135deg, var(--gray-50) 0%, white 100%);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            border: 2px solid var(--gray-200);
+            margin: 1.5rem 0;
+        }
+
+        .price-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--gray-200);
+            font-size: 0.95rem;
+        }
+
+        .price-item:last-child {
+            border-bottom: none;
+        }
+
+        .price-total {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--success);
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 2px solid var(--gray-300);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1.5rem;
+            color: var(--gray-500);
+        }
+
+        .empty-icon {
+            font-size: 4rem;
+            color: var(--gray-300);
+            margin-bottom: 1rem;
+        }
+
+        .empty-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--gray-600);
+        }
+
+        .empty-description {
+            font-size: 1rem;
+            color: var(--gray-500);
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        /* Chat Interface */
+        .chat-interface {
+            display: flex;
+            flex-direction: column;
+            height: 500px;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            background: white;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 1.25rem;
+            font-weight: 600;
+            font-size: 1.125rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            background: var(--gray-50);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .message {
+            max-width: 80%;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .message-incoming {
+            align-self: flex-start;
+        }
+
+        .message-outgoing {
+            align-self: flex-end;
+        }
+
+        .message-content {
+            padding: 1rem 1.25rem;
+            border-radius: var(--radius-lg);
+            background: white;
+            border: 1px solid var(--gray-200);
+            box-shadow: var(--shadow-sm);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .message-outgoing .message-content {
+            background: var(--primary-light);
+            border-color: var(--primary);
+            color: var(--primary-dark);
+        }
+
+        .message-time {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+            margin-top: 0.25rem;
+            text-align: right;
+        }
+
+        .chat-input-container {
+            padding: 1rem;
+            border-top: 1px solid var(--gray-200);
+            background: white;
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 0.875rem 1rem;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius);
+            font-family: 'Tajawal', sans-serif;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 1rem;
+            backdrop-filter: blur(4px);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: var(--radius-xl);
+            padding: 2rem;
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-2xl);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--gray-100);
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--gray-500);
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: var(--radius-sm);
+            transition: var(--transition-fast);
+        }
+
+        .modal-close:hover {
+            color: var(--danger);
+            background: var(--danger-light);
+        }
+
+        /* Notification System */
+        .notification-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            max-width: 400px;
+        }
+
+        .notification {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            box-shadow: var(--shadow-xl);
+            border-right: 4px solid var(--primary);
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            animation: slideInRight 0.3s ease;
+            max-width: 100%;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .notification-success {
+            border-right-color: var(--success);
+        }
+
+        .notification-error {
+            border-right-color: var(--danger);
+        }
+
+        .notification-warning {
+            border-right-color: var(--warning);
+        }
+
+        .notification-icon {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .notification-content {
+            flex: 1;
+        }
+
+        .notification-title {
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            color: var(--gray-800);
+        }
+
+        .notification-message {
+            color: var(--gray-600);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            html {
+                font-size: 14px;
+            }
+            
+            .app-header {
+                padding: 0.75rem 1rem;
+            }
+            
+            .main-content {
+                padding: 1rem;
+            }
+            
+            .vehicle-categories {
+                grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            }
+            
+            .card {
+                padding: 1.25rem;
+            }
+            
+            .modal-content {
+                padding: 1.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .app-title {
+                font-size: 1.125rem;
+            }
+            
+            .user-details {
+                display: none;
+            }
+            
+            .grid-2,
+            .grid-3 {
+                grid-template-columns: 1fr;
+            }
+            
+            .vehicle-categories {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .chat-interface {
+                height: 400px;
+            }
+            
+            .notification-container {
+                left: 1rem;
+                right: 1rem;
+                max-width: none;
+            }
+        }
+
+        /* Animation for status changes */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .status-updated {
+            animation: pulse 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-container">
+                <div class="logo-img">🚗</div>
+                <div>
+                    <h1 class="app-title">ترحال زونا</h1>
+                    <div class="app-subtitle">منصة سفيريات السفر</div>
+                </div>
+            </div>
+            
+            <div class="user-info">
+                <div class="user-avatar" id="user-avatar">?</div>
+                <div class="user-details">
+                    <div class="user-name" id="user-name">جاري التحميل...</div>
+                    <div class="user-role" id="user-role"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Loading Screen -->
+            <div id="loading-screen" class="loading-screen">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">جاري تحميل المنصة...</div>
+            </div>
+
+            <!-- Passenger Interface -->
+            <div id="passenger-interface" class="hidden">
+                <div class="tabs-container">
+                    <button class="tab active" onclick="showTab('new-ride', this)">طلب رحلة جديدة</button>
+                    <button class="tab" onclick="showTab('my-rides', this)">رحلاتي</button>
+                    <button class="tab" onclick="showTab('active-chats', this)">محادثاتي</button>
+                </div>
+
+                <!-- New Ride Tab -->
+                <div id="new-ride" class="tab-content active">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title"><i class="fas fa-road"></i> طلب رحلة سفر جديدة</h2>
+                        </div>
+                        
+                        <form id="ride-request-form">
+                            <div class="grid grid-2">
+                                <div class="form-group">
+                                    <label class="form-label">المدينة الحالية</label>
+                                    <select class="form-control form-select" id="from-city" required>
+                                        <option value="">اختر المدينة الحالية</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">المدينة الوجهة</label>
+                                    <select class="form-control form-select" id="to-city" required>
+                                        <option value="">اختر المدينة الوجهة</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">فئة السيارة المطلوبة</label>
+                                <div class="vehicle-categories" id="vehicle-categories">
+                                    <!-- Vehicle categories will be populated here -->
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">ملاحظات إضافية</label>
+                                <textarea class="form-control" id="notes" placeholder="عدد الركاب، الأمتعة، وقت الانطلاق المفضل..." rows="3"></textarea>
+                            </div>
+                            
+                            <div id="price-preview" class="price-preview hidden">
+                                <h3 style="margin-bottom: 1rem; color: var(--gray-700);">تفاصيل الرحلة</h3>
+                                <div id="price-details">
+                                    <!-- Price details will be populated here -->
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary btn-lg btn-block">
+                                <i class="fas fa-paper-plane"></i> نشر طلب الرحلة
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- My Rides Tab -->
+                <div id="my-rides" class="tab-content">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title"><i class="fas fa-history"></i> رحلاتي</h2>
+                        </div>
+                        
+                        <div id="my-rides-list" class="ride-cards">
+                            <!-- Rides will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active Chats Tab -->
+                <div id="active-chats" class="tab-content">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title"><i class="fas fa-comments"></i> محادثاتي</h2>
+                        </div>
+                        
+                        <div id="chats-list" class="ride-cards">
+                            <!-- Chats will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Driver Interface -->
+            <div id="driver-interface" class="hidden">
+                <div class="tabs-container">
+                    <button class="tab active" onclick="showTab('available-rides', this)">الرحلات المتاحة</button>
+                    <button class="tab" onclick="showTab('driver-my-rides', this)">رحلاتي</button>
+                    <button class="tab" onclick="showTab('driver-chats', this)">المحادثات</button>
+                </div>
+
+                <!-- Available Rides Tab -->
+                <div id="available-rides" class="tab-content active">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title"><i class="fas fa-list"></i> الرحلات المتاحة</h2>
+                            <div class="filter-container">
+                                <select class="form-control form-select" id="filter-city" style="min-width: 180px;">
+                                    <option value="">جميع المدن</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div id="available-rides-list" class="ride-cards">
+                            <!-- Available rides will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Driver's Rides Tab -->
+                <div id="driver-my-rides" class="tab-content">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title"><i class="fas fa-car"></i> رحلاتي</h2>
+                        </div>
+                        
+                        <div id="driver-rides-list" class="ride-cards">
+                            <!-- Driver's rides will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Driver Chats Tab -->
+                <div id="driver-chats" class="tab-content">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title"><i class="fas fa-comment-dots"></i> محادثاتي</h2>
+                        </div>
+                        
+                        <div id="driver-chats-list" class="ride-cards">
+                            <!-- Driver's chats will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Chat Modal -->
+    <div id="chat-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="chat-title">محادثة</h3>
+                <button class="modal-close" onclick="closeChat()">&times;</button>
+            </div>
+            
+            <div class="chat-interface">
+                <div class="chat-header">
+                    <span id="chat-with-name"></span>
+                    <span id="chat-ride-info"></span>
+                </div>
+                
+                <div class="chat-messages" id="chat-messages">
+                    <!-- Messages will be populated here -->
+                </div>
+                
+                <div class="chat-input-container">
+                    <input type="text" class="chat-input" id="chat-input" placeholder="اكتب رسالتك هنا..." onkeypress="if(event.key === 'Enter') sendMessage()">
+                    <button class="btn btn-primary" onclick="sendMessage()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ride Details Modal -->
+    <div id="ride-details-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">تفاصيل الرحلة</h3>
+                <button class="modal-close" onclick="closeRideDetails()">&times;</button>
+            </div>
+            
+            <div id="ride-details-content">
+                <!-- Ride details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div class="notification-container" id="notification-container"></div>
+
+    <script>
+        // ============================================
+        // GLOBAL VARIABLES AND CONFIGURATION
+        // ============================================
+        const SB_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
+        const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
+        const travelSupabase = supabase.createClient(SB_URL, SB_KEY);
+
+        // Application State
+        let currentUser = null;
+        let userType = null; // 'passenger' or 'driver'
+        let selectedRide = null;
+        let currentChat = null;
+        let cities = [];
+        let routes = [];
+        let vehicleCategories = [];
+        let userRides = [];
+        let availableRides = [];
+        let chats = [];
+
+        // City pairs for travel
+        const CITY_PAIRS = [
+            ['الخرطوم', 'مدني'],
+            ['الخرطوم', 'القضارف'],
+            ['الخرطوم', 'كسلا'],
+            ['الخرطوم', 'شندي'],
+            ['الخرطوم', 'الدامر'],
+            ['الخرطوم', 'عطبرة'],
+            ['عطبرة', 'الدبة'],
+            ['عطبرة', 'دنقلا'],
+            ['بورتسودان', 'كسلا'],
+            ['بورتسودان', 'عطبرة'],
+            ['بورتسودان', 'الخرطوم'],
+            ['كسلا', 'القضارف'],
+            ['كسلا', 'مدني'],
+            ['مدني', 'القضارف'],
+            ['مدني', 'سنار'],
+            ['مدني', 'سنجة'],
+            ['مدني', 'الدمازين'],
+            ['الخرطوم', 'كوستي'],
+            ['الخرطوم', 'الدبة'],
+            ['الخرطوم', 'دنقلا'],
+            ['عطبرة', 'ابوحمد'],
+            ['بورتسودان', 'سنكات'],
+            ['الخرطوم', 'الحصاحيصا'],
+            ['كسلا', 'عطبرة'],
+            ['الخرطوم', 'الأبيض'],
+            ['بورتسودان', 'القضارف']
+        ];
+
+        // Default vehicle categories
+        const DEFAULT_CATEGORIES = [
+            { id: 1, name: 'اقتصادي', price_multiplier: 1.0, icon: '🚗' },
+            { id: 2, name: 'مريح', price_multiplier: 1.3, icon: '🚙' },
+            { id: 3, name: 'عالي / SUV', price_multiplier: 1.6, icon: '🚘' }
+        ];
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('🚀 ترحال زونا - سفيريات السفر');
+            await initializeUser();
+        });
+
+        // ============================================
+        // USER MANAGEMENT
+        // ============================================
+        async function initializeUser() {
+            const loadingScreen = document.getElementById('loading-screen');
+            const mainContent = document.querySelector('.main-content');
+
+            try {
+                const passengerData = localStorage.getItem('tarhal_customer');
+                const driverData = localStorage.getItem('tarhal_driver');
+
+                if (passengerData) {
+                    let potentialUser = JSON.parse(passengerData);
+                    const { data, error } = await travelSupabase
+                        .from('customers')
+                        .select('*')
+                        .eq('id', potentialUser.id)
+                        .single();
+
+                    if (!error && data) {
+                        currentUser = data;
+                        userType = 'passenger';
+                        console.log('✅ Passenger session verified');
+                    } else {
+                        console.log('Passenger session invalid or expired');
+                        localStorage.removeItem('tarhal_customer');
+                    }
+                }
+
+                if (!currentUser && driverData) {
+                    let potentialUser = JSON.parse(driverData);
+                    const { data, error } = await travelSupabase
+                        .from('drivers')
+                        .select('*')
+                        .eq('id', potentialUser.id)
+                        .single();
+
+                    if (!error && data) {
+                        currentUser = data;
+                        userType = 'driver';
+                        console.log('✅ Driver session verified');
+                    } else {
+                        console.log('Driver session invalid or expired');
+                        localStorage.removeItem('tarhal_driver');
+                    }
+                }
+
+                if (currentUser) {
+                    showNotification(`مرحباً ${currentUser.full_name}`, 'success', 'أهلاً بك في منصة السفر');
+                    updateUserInterface();
+                    await loadInitialData();
+                } else {
+                    loadingScreen.classList.add('hidden');
+                    mainContent.innerHTML = `
+                        <div class="empty-state" style="padding-top: 4rem;">
+                            <div class="empty-icon" style="font-size: 5rem;">🚫</div>
+                            <h2 class="empty-title" style="color: var(--danger);">أنت غير مسجل للدخول</h2>
+                            <p class="empty-description" style="font-size: 1.1rem; line-height: 1.7;">
+                                يرجى تسجيل الدخول في تطبيق ترحال زونا أولاً، ثم العودة إلى هذه الصفحة.
+                            </p>
+                        </div>
+                    `;
+                    updateUserInterface();
+                }
+
+            } catch (error) {
+                console.error('Error initializing user:', error);
+                loadingScreen.classList.add('hidden');
+                mainContent.innerHTML = `
+                    <div class="empty-state" style="padding-top: 4rem;">
+                        <div class="empty-icon" style="font-size: 5rem;">🔌</div>
+                        <h2 class="empty-title" style="color: var(--warning);">حدث خطأ في الاتصال</h2>
+                        <p class="empty-description" style="font-size: 1.1rem; line-height: 1.7;">
+                           لا يمكن التحقق من بياناتك حالياً. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.
+                        </p>
+                    </div>
+                `;
+                 updateUserInterface();
+            }
+        }
+
+        function updateUserInterface() {
+            if (!currentUser) {
+                 document.querySelector('.user-info').classList.add('hidden');
+                 return;
+            }
+            document.getElementById('user-avatar').textContent = 
+                (currentUser.full_name || 'م')[0];
+            document.getElementById('user-name').textContent = 
+                currentUser.full_name || 'مستخدم';
+            document.getElementById('user-role').textContent = 
+                userType === 'passenger' ? 'راكب' : 'سائق';
+            
+            document.getElementById('loading-screen').classList.add('hidden');
+            
+            if (userType === 'passenger') {
+                document.getElementById('passenger-interface').classList.remove('hidden');
+                document.getElementById('driver-interface').classList.add('hidden');
+            } else {
+                document.getElementById('driver-interface').classList.remove('hidden');
+                document.getElementById('passenger-interface').classList.add('hidden');
+            }
+        }
+
+        // ============================================
+        // DATA LOADING
+        // ============================================
+        async function loadInitialData() {
+            try {
+                // Load cities
+                await loadCities();
+                
+                // Load vehicle categories
+                await loadVehicleCategories();
+                
+                // Load routes/prices
+                await loadRoutes();
+                
+                // Load user-specific data
+                if (userType === 'passenger') {
+                    await loadPassengerRides();
+                    await loadPassengerChats();
+                } else {
+                    await loadAvailableRides();
+                    await loadDriverRides();
+                    await loadDriverChats();
+                }
+                
+            } catch (error) {
+                console.error('Error loading initial data:', error);
+                showNotification('خطأ في تحميل البيانات', 'error');
+            }
+        }
+
+        async function loadCities() {
+            try {
+                const { data, error } = await travelSupabase
+                    .from('cities')
+                    .select('name_ar')
+                    .order('name_ar');
+
+                if (!error && data) {
+                    cities = data.map(c => c.name_ar);
+                } else {
+                    // Fallback to hardcoded list if table is empty or error
+                    const uniqueCities = new Set();
+                    CITY_PAIRS.forEach(pair => {
+                        uniqueCities.add(pair[0]);
+                        uniqueCities.add(pair[1]);
+                    });
+                    cities = Array.from(uniqueCities).sort();
+                }
+
+                populateCityDropdowns();
+            } catch (error) {
+                console.error('Error in loadCities:', error);
+                populateCityDropdowns();
+            }
+        }
+
+        function populateCityDropdowns() {
+            const fromCitySelect = document.getElementById('from-city');
+            const toCitySelect = document.getElementById('to-city');
+            const filterCitySelect = document.getElementById('filter-city');
+            
+            if (fromCitySelect && toCitySelect) {
+                fromCitySelect.innerHTML = '<option value="">اختر المدينة الحالية</option>';
+                toCitySelect.innerHTML = '<option value="">اختر المدينة الوجهة</option>';
+                
+                cities.forEach(city => {
+                    const option1 = document.createElement('option');
+                    option1.value = city;
+                    option1.textContent = city;
+                    
+                    const option2 = option1.cloneNode(true);
+                    const option3 = option1.cloneNode(true);
+                    
+                    fromCitySelect.appendChild(option1);
+                    toCitySelect.appendChild(option2);
+                    
+                    if (filterCitySelect) {
+                        filterCitySelect.appendChild(option3);
+                    }
+                });
+            }
+        }
+
+        async function loadVehicleCategories() {
+            try {
+                // Try to load from Supabase
+                const { data, error } = await travelSupabase
+                    .from('vehicle_categories')
+                    .select('*')
+                    .eq('is_active', true)
+                    .order('price_multiplier');
+                
+                if (!error && data && data.length > 0) {
+                    vehicleCategories = data;
+                } else {
+                    // Use default categories
+                    vehicleCategories = DEFAULT_CATEGORIES;
+                }
+                
+                renderVehicleCategories();
+                
+            } catch (error) {
+                console.error('Error loading vehicle categories:', error);
+                vehicleCategories = DEFAULT_CATEGORIES;
+                renderVehicleCategories();
+            }
+        }
+
+        function renderVehicleCategories() {
+            const container = document.getElementById('vehicle-categories');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            vehicleCategories.forEach(category => {
+                const categoryElement = document.createElement('div');
+                categoryElement.className = 'vehicle-category';
+                categoryElement.dataset.id = category.id;
+                categoryElement.dataset.multiplier = category.price_multiplier;
+                categoryElement.onclick = () => selectVehicleCategory(categoryElement, category);
+                
+                const categoryName = category.name_ar || category.name;
+                const categoryIcon = category.icon_emoji || category.icon || '🚗';
+
+                categoryElement.innerHTML = `
+                    <div class="vehicle-icon">${categoryIcon}</div>
+                    <div class="vehicle-name">${categoryName}</div>
+                    <div class="vehicle-multiplier">× ${category.price_multiplier}</div>
+                `;
+                
+                container.appendChild(categoryElement);
+            });
+        }
+
+        async function loadRoutes() {
+            try {
+                // Try to load from Supabase
+                const { data, error } = await travelSupabase
+                    .from('travel_routes')
+                    .select('*');
+                
+                if (!error && data) {
+                    routes = data;
+                } else {
+                    // Create default routes
+                    await createDefaultRoutes();
+                }
+                
+            } catch (error) {
+                console.error('Error loading routes:', error);
+                await createDefaultRoutes();
+            }
+        }
+
+        async function createDefaultRoutes() {
+            const defaultPrices = {
+                'الخرطوم-مدني': 25000,
+                'مدني-الخرطوم': 25000,
+                'الخرطوم-القضارف': 35000,
+                'القضارف-الخرطوم': 35000,
+                'الخرطوم-كسلا': 40000,
+                'كسلا-الخرطوم': 40000,
+                'الخرطوم-شندي': 15000,
+                'شندي-الخرطوم': 15000,
+                'الخرطوم-الدامر': 20000,
+                'الدامر-الخرطوم': 20000,
+                'الخرطوم-عطبرة': 18000,
+                'عطبرة-الخرطوم': 18000,
+                'عطبرة-الدبة': 10000,
+                'الدبة-عطبرة': 10000,
+                'عطبرة-دنقلا': 25000,
+                'دنقلا-عطبرة': 25000,
+                'بورتسودان-كسلا': 45000,
+                'كسلا-بورتسودان': 45000,
+                'بورتسودان-عطبرة': 35000,
+                'عطبرة-بورتسودان': 35000,
+                'بورتسودان-الخرطوم': 50000,
+                'الخرطوم-بورتسودان': 50000,
+                'كسلا-القضارف': 20000,
+                'القضارف-كسلا': 20000,
+                'كسلا-مدني': 30000,
+                'مدني-كسلا': 30000,
+                'مدني-القضارف': 15000,
+                'القضارف-مدني': 15000,
+                'مدني-سنار': 12000,
+                'سنار-مدني': 12000,
+                'مدني-سنجة': 10000,
+                'سنجة-مدني': 10000,
+                'مدني-الدمازين': 25000,
+                'الدمازين-مدني': 25000,
+                'الخرطوم-كوستي': 22000,
+                'كوستي-الخرطوم': 22000,
+                'الخرطوم-الدبة': 30000,
+                'الدبة-الخرطوم': 30000,
+                'الخرطوم-دنقلا': 40000,
+                'دنقلا-الخرطوم': 40000,
+                'عطبرة-ابوحمد': 8000,
+                'ابوحمد-عطبرة': 8000,
+                'بورتسودان-سنكات': 15000,
+                'سنكات-بورتسودان': 15000,
+                'الخرطوم-الحصاحيصا': 12000,
+                'الحصاحيصا-الخرطوم': 12000,
+                'كسلا-عطبرة': 28000,
+                'عطبرة-كسلا': 28000,
+                'الخرطوم-الأبيض': 30000,
+                'الأبيض-الخرطوم': 30000,
+                'بورتسودان-القضارف': 40000,
+                'القضارف-بورتسودان': 40000
+            };
+            
+            routes = [];
+            CITY_PAIRS.forEach(([fromCity, toCity]) => {
+                const key = `${fromCity}-${toCity}`;
+                const reverseKey = `${toCity}-${fromCity}`;
+                
+                routes.push({
+                    from_city: fromCity,
+                    to_city: toCity,
+                    base_price_eco: defaultPrices[key] || 30000,
+                    is_active: true
+                });
+                
+                routes.push({
+                    from_city: toCity,
+                    to_city: fromCity,
+                    base_price_eco: defaultPrices[reverseKey] || defaultPrices[key] || 30000,
+                    is_active: true
+                });
+            });
+        }
+
+        // ============================================
+        // UI FUNCTIONS
+        // ============================================
+        function showTab(tabId, button) {
+            // Hide all tab contents
+            const currentInterface = userType === 'passenger' ? 'passenger-interface' : 'driver-interface';
+            const tabContents = document.querySelectorAll(`#${currentInterface} .tab-content`);
+            tabContents.forEach(tab => tab.classList.remove('active'));
+            
+            // Show selected tab
+            document.getElementById(tabId).classList.add('active');
+            
+            // Update active tab button
+            const tabs = document.querySelectorAll(`#${currentInterface} .tab`);
+            tabs.forEach(tab => tab.classList.remove('active'));
+            button.classList.add('active');
+            
+            // Load tab data
+            switch(tabId) {
+                case 'my-rides':
+                    loadPassengerRides();
+                    break;
+                case 'active-chats':
+                    loadPassengerChats();
+                    break;
+                case 'available-rides':
+                    loadAvailableRides();
+                    break;
+                case 'driver-my-rides':
+                    loadDriverRides();
+                    break;
+                case 'driver-chats':
+                    loadDriverChats();
+                    break;
+            }
+        }
+
+        function selectVehicleCategory(element, category) {
+            // Deselect all categories
+            document.querySelectorAll('.vehicle-category').forEach(cat => {
+                cat.classList.remove('selected');
+            });
+            
+            // Select clicked category
+            element.classList.add('selected');
+            
+            // Calculate and display price
+            calculateRidePrice(category);
+        }
+
+        function calculateRidePrice(category) {
+            const fromCity = document.getElementById('from-city').value;
+            const toCity = document.getElementById('to-city').value;
+            
+            if (!fromCity || !toCity) {
+                document.getElementById('price-preview').classList.add('hidden');
+                return;
+            }
+            
+            // Check if route exists
+            const route = routes.find(r => 
+                r.from_city === fromCity && r.to_city === toCity && r.is_active
+            );
+            
+            const pricePreview = document.getElementById('price-preview');
+            const priceDetails = document.getElementById('price-details');
+            
+            if (!route) {
+                pricePreview.classList.remove('hidden');
+                priceDetails.innerHTML = `
+                    <div style="background: var(--danger-light); padding: 1rem; border-radius: var(--radius); border: 1px solid var(--danger);">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                            <i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i>
+                            <span style="font-weight: 600; color: var(--danger);">رحلة غير متوفرة</span>
+                        </div>
+                        <p style="color: var(--gray-600); margin: 0; font-size: 0.95rem;">
+                            عذراً، لا توجد رحلة بين ${fromCity} و ${toCity} حالياً.
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Calculate price
+            const basePrice = route.base_price_eco || 30000;
+            const multiplier = category.price_multiplier || 1;
+            const finalPrice = Math.round(basePrice * multiplier);
+            
+            // Display price
+            pricePreview.classList.remove('hidden');
+            priceDetails.innerHTML = `
+                <div class="price-item">
+                    <span>السعر الأساسي (Eco):</span>
+                    <span>${basePrice.toLocaleString()} ج</span>
+                </div>
+                <div class="price-item">
+                    <span>معامل الفئة (${category.name}):</span>
+                    <span>× ${multiplier}</span>
+                </div>
+                <div class="price-item">
+                    <span>المسافة:</span>
+                    <span>تقريبية</span>
+                </div>
+                <div class="price-total">
+                    <span>السعر النهائي:</span>
+                    <span>${finalPrice.toLocaleString()} ج</span>
+                </div>
+            `;
+        }
+
+        // Event listeners for city selection
+        document.getElementById('from-city')?.addEventListener('change', updatePricePreview);
+        document.getElementById('to-city')?.addEventListener('change', updatePricePreview);
+
+        function updatePricePreview() {
+            const selectedCategory = document.querySelector('.vehicle-category.selected');
+            if (selectedCategory) {
+                const categoryId = selectedCategory.dataset.id;
+                const category = vehicleCategories.find(c => c.id == categoryId);
+                if (category) {
+                    calculateRidePrice(category);
+                }
+            }
+        }
+
+        // Ride request form submission
+        document.getElementById('ride-request-form')?.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const fromCity = document.getElementById('from-city').value;
+            const toCity = document.getElementById('to-city').value;
+            const notes = document.getElementById('notes').value;
+            
+            const selectedCategory = document.querySelector('.vehicle-category.selected');
+            if (!selectedCategory) {
+                showNotification('الرجاء اختيار فئة السيارة', 'warning');
+                return;
+            }
+            
+            const categoryId = selectedCategory.dataset.id;
+            const category = vehicleCategories.find(c => c.id == categoryId);
+            
+            // Check if route exists
+            const route = routes.find(r => 
+                r.from_city === fromCity && r.to_city === toCity
+            );
+            
+            if (!route) {
+                showNotification('لا توجد رحلة بين هاتين المدينتين', 'error');
+                return;
+            }
+            
+            // Calculate final price
+            const basePrice = route.base_price_eco || 30000;
+            const finalPrice = Math.round(basePrice * category.price_multiplier);
+            
+            try {
+                // Create ride request
+                const rideData = {
+                    passenger_id: currentUser.id,
+                    passenger_name: currentUser.full_name || 'راكب',
+                    passenger_phone: currentUser.phone || '0912345678',
+                    from_city_name: fromCity,
+                    to_city_name: toCity,
+                    vehicle_category_name: category.name_ar || category.name,
+                    vehicle_category_id: category.id,
+                    base_price: basePrice,
+                    price_multiplier: category.price_multiplier,
+                    final_price: finalPrice,
+                    notes: notes,
+                    status: 'pending',
+                    created_at: new Date().toISOString()
+                };
+                
+                // Save to Supabase
+                const { data, error } = await travelSupabase
+                    .from('rides')
+                    .insert([rideData])
+                    .select()
+                    .single();
+
+                if (error) throw error;
+                
+                showNotification('تم نشر طلب الرحلة بنجاح!', 'success');
+                
+                // Reset form
+                this.reset();
+                document.querySelectorAll('.vehicle-category').forEach(cat => {
+                    cat.classList.remove('selected');
+                });
+                document.getElementById('price-preview').classList.add('hidden');
+                
+                // Switch to my rides tab
+                const myRidesTab = document.querySelector('#passenger-interface .tab:nth-child(2)');
+                if (myRidesTab) {
+                    myRidesTab.click();
+                }
+                
+            } catch (error) {
+                console.error('Error creating ride request:', error);
+                showNotification('خطأ في نشر طلب الرحلة', 'error');
+            }
+        });
+
+        // ============================================
+        // PASSENGER FUNCTIONS
+        // ============================================
+        async function loadPassengerRides() {
+            try {
+                const { data, error } = await travelSupabase
+                    .from('rides')
+                    .select('*')
+                    .eq('passenger_id', currentUser.id)
+                    .order('created_at', { ascending: false });
+
+                if (!error && data) {
+                    userRides = data;
+                }
+                
+                displayPassengerRides();
+                
+            } catch (error) {
+                console.error('Error loading passenger rides:', error);
+            }
+        }
+
+        function displayPassengerRides() {
+            const container = document.getElementById('my-rides-list');
+            if (!container) return;
+            
+            if (userRides.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🚗</div>
+                        <div class="empty-title">لا توجد رحلات</div>
+                        <div class="empty-description">لم تقم بطلب أي رحلات حتى الآن</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            userRides.forEach(ride => {
+                const rideElement = document.createElement('div');
+                rideElement.className = 'ride-card';
+                rideElement.onclick = () => showRideDetails(ride);
+                
+                const statusText = getStatusText(ride.status);
+                const statusClass = getStatusClass(ride.status);
+                
+                const fromCity = ride.from_city_name || ride.from_city || 'غير محدد';
+                const toCity = ride.to_city_name || ride.to_city || 'غير محدد';
+                const vehicleCategory = ride.vehicle_category_name || ride.vehicle_category || 'غير محدد';
+
+                rideElement.innerHTML = `
+                    <div class="ride-header">
+                        <div class="ride-route">
+                            <i class="fas fa-route"></i>
+                            ${fromCity} → ${toCity}
+                        </div>
+                        <div class="ride-price">${ride.final_price?.toLocaleString() || '0'} ج</div>
+                    </div>
+                    <div class="ride-details">
+                        <div class="ride-detail">
+                            <i class="fas fa-car"></i>
+                            <span>${vehicleCategory}</span>
+                        </div>
+                        <div class="ride-detail">
+                            <i class="fas fa-calendar"></i>
+                            <span>${formatDate(ride.created_at)}</span>
+                        </div>
+                        ${ride.driver_name ? `
+                            <div class="ride-detail">
+                                <i class="fas fa-user-tie"></i>
+                                <span>السائق: ${ride.driver_name}</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div class="ride-status ${statusClass}">
+                        <i class="fas fa-circle"></i>
+                        ${statusText}
+                    </div>
+                `;
+                
+                container.appendChild(rideElement);
+            });
+        }
+
+        async function loadPassengerChats() {
+            try {
+                const { data, error } = await travelSupabase
+                    .from('ride_chats')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (!error && data) {
+                    const relevantMessages = data.filter(m => m.sender_id === currentUser.id || m.sender_type !== userType);
+                    const uniqueRides = [...new Set(relevantMessages.map(m => m.ride_id))];
+
+                    chats = uniqueRides.map(rideId => {
+                        const rideMessages = relevantMessages.filter(m => m.ride_id === rideId);
+                        const lastMsg = rideMessages[0];
+                        return {
+                            id: rideId,
+                            ride_id: rideId,
+                            other_user_name: lastMsg.sender_type !== userType ? lastMsg.sender_name : 'الطرف الآخر',
+                            last_message: lastMsg.message,
+                            last_message_time: lastMsg.created_at
+                        };
+                    });
+                }
+                
+                displayPassengerChats();
+                
+            } catch (error) {
+                console.error('Error loading passenger chats:', error);
+            }
+        }
+
+        function displayPassengerChats() {
+            const container = document.getElementById('chats-list');
+            if (!container) return;
+            
+            if (chats.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">💬</div>
+                        <div class="empty-title">لا توجد محادثات</div>
+                        <div class="empty-description">ابدأ محادثة مع سائق لقبول رحلتك</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            chats.forEach(chat => {
+                const chatElement = document.createElement('div');
+                chatElement.className = 'ride-card';
+                chatElement.onclick = () => openChat(chat);
+                
+                chatElement.innerHTML = `
+                    <div class="ride-header">
+                        <div class="ride-route">
+                            <i class="fas fa-comment"></i>
+                            ${chat.other_user_name}
+                        </div>
+                        <div style="font-size: 0.875rem; color: var(--gray-500);">
+                            ${formatTime(chat.last_message_time)}
+                        </div>
+                    </div>
+                    <div class="ride-details">
+                        <div class="ride-detail">
+                            <i class="fas fa-message"></i>
+                            <span>${chat.last_message}</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openChat(${JSON.stringify(chat).replace(/"/g, '&quot;')})">
+                        <i class="fas fa-reply"></i> رد
+                    </button>
+                `;
+                
+                container.appendChild(chatElement);
+            });
+        }
+
+        // ============================================
+        // DRIVER FUNCTIONS
+        // ============================================
+        async function loadAvailableRides() {
+            try {
+                const { data, error } = await travelSupabase
+                    .from('rides')
+                    .select('*')
+                    .eq('status', 'pending')
+                    .order('created_at', { ascending: false });
+
+                if (!error && data) {
+                    availableRides = data;
+                }
+                
+                displayAvailableRides();
+                
+            } catch (error) {
+                console.error('Error loading available rides:', error);
+            }
+        }
+
+        function displayAvailableRides() {
+            const container = document.getElementById('available-rides-list');
+            if (!container) return;
+            
+            const filterCity = document.getElementById('filter-city')?.value;
+            let filteredRides = availableRides;
+            
+            if (filterCity) {
+                filteredRides = availableRides.filter(ride => 
+                    ride.from_city_name === filterCity || ride.to_city_name === filterCity
+                );
+            }
+            
+            if (filteredRides.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🚗</div>
+                        <div class="empty-title">لا توجد رحلات متاحة</div>
+                        <div class="empty-description">${filterCity ? `في ${filterCity}` : 'حالياً'}</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            filteredRides.forEach(ride => {
+                const rideElement = document.createElement('div');
+                rideElement.className = 'ride-card';
+                rideElement.onclick = () => showRideDetails(ride);
+                
+                const fromCity = ride.from_city_name || ride.from_city || 'غير محدد';
+                const toCity = ride.to_city_name || ride.to_city || 'غير محدد';
+                const vehicleCategory = ride.vehicle_category_name || ride.vehicle_category || 'غير محدد';
+
+                rideElement.innerHTML = `
+                    <div class="ride-header">
+                        <div class="ride-route">
+                            <i class="fas fa-route"></i>
+                            ${fromCity} → ${toCity}
+                        </div>
+                        <div class="ride-price">${ride.final_price?.toLocaleString() || '0'} ج</div>
+                    </div>
+                    <div class="ride-details">
+                        <div class="ride-detail">
+                            <i class="fas fa-user"></i>
+                            <span>${ride.passenger_name}</span>
+                        </div>
+                        <div class="ride-detail">
+                            <i class="fas fa-car"></i>
+                            <span>${vehicleCategory}</span>
+                        </div>
+                        <div class="ride-detail">
+                            <i class="fas fa-clock"></i>
+                            <span>${formatTime(ride.created_at)}</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); acceptRide(${ride.id})">
+                            <i class="fas fa-check"></i> قبول الرحلة
+                        </button>
+                        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); startChatWithPassenger(${ride.id}, '${ride.passenger_name}')">
+                            <i class="fas fa-comment"></i> محادثة
+                        </button>
+                    </div>
+                `;
+                
+                container.appendChild(rideElement);
+            });
+        }
+
+        async function loadDriverRides() {
+            try {
+                const { data, error } = await travelSupabase
+                    .from('rides')
+                    .select('*')
+                    .eq('driver_id', currentUser.id)
+                    .order('created_at', { ascending: false });
+                
+                if (!error && data) {
+                    displayDriverRides(data);
+                } else {
+                    displayDriverRides([]);
+                }
+                
+            } catch (error) {
+                console.error('Error loading driver rides:', error);
+            }
+        }
+
+        function displayDriverRides(rides) {
+            const container = document.getElementById('driver-rides-list');
+            if (!container) return;
+            
+            if (rides.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🚕</div>
+                        <div class="empty-title">لا توجد رحلات</div>
+                        <div class="empty-description">لم تقبل أي رحلات حتى الآن</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            rides.forEach(ride => {
+                const rideElement = document.createElement('div');
+                rideElement.className = 'ride-card';
+                rideElement.onclick = () => showRideDetails(ride);
+                
+                const statusText = getStatusText(ride.status);
+                const statusClass = getStatusClass(ride.status);
+                
+                const fromCity = ride.from_city_name || ride.from_city || 'غير محدد';
+                const toCity = ride.to_city_name || ride.to_city || 'غير محدد';
+                const vehicleCategory = ride.vehicle_category_name || ride.vehicle_category || 'غير محدد';
+
+                rideElement.innerHTML = `
+                    <div class="ride-header">
+                        <div class="ride-route">
+                            <i class="fas fa-route"></i>
+                            ${fromCity} → ${toCity}
+                        </div>
+                        <div class="ride-price">${ride.final_price?.toLocaleString() || '0'} ج</div>
+                    </div>
+                    <div class="ride-details">
+                        <div class="ride-detail">
+                            <i class="fas fa-user"></i>
+                            <span>${ride.passenger_name}</span>
+                        </div>
+                        <div class="ride-detail">
+                            <i class="fas fa-car"></i>
+                            <span>${vehicleCategory}</span>
+                        </div>
+                        <div class="ride-detail">
+                            <i class="fas fa-calendar"></i>
+                            <span>${formatDate(ride.created_at)}</span>
+                        </div>
+                    </div>
+                    <div class="ride-status ${statusClass}">
+                        <i class="fas fa-circle"></i>
+                        ${statusText}
+                    </div>
+                `;
+                
+                container.appendChild(rideElement);
+            });
+        }
+
+        async function loadDriverChats() {
+            // Similar to passenger chats
+            displayDriverChats([]);
+        }
+
+        function displayDriverChats(chats) {
+            const container = document.getElementById('driver-chats-list');
+            if (!container) return;
+            
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">💬</div>
+                    <div class="empty-title">لا توجد محادثات</div>
+                    <div class="empty-description">ابدأ محادثة مع راكب لقبول رحلته</div>
+                </div>
+            `;
+        }
+
+        // ============================================
+        // RIDE ACTIONS
+        // ============================================
+        function showRideDetails(ride) {
+            selectedRide = ride;
+            
+            const content = document.getElementById('ride-details-content');
+            const statusText = getStatusText(ride.status);
+            const statusClass = getStatusClass(ride.status);
+            
+            let actions = '';
+            if (userType === 'passenger') {
+                if (ride.status === 'accepted' && ride.driver_name) {
+                    actions = `
+                        <button class="btn btn-primary" onclick="startChatWithDriver(${ride.id}, '${ride.driver_name}')">
+                            <i class="fas fa-comment"></i> محادثة مع السائق
+                        </button>
+                        <button class="btn btn-success" onclick="confirmAgreement(${ride.id})">
+                            <i class="fas fa-handshake"></i> تأكيد الاتفاق
+                        </button>
+                    `;
+                }
+            } else {
+                if (ride.status === 'pending') {
+                    actions = `
+                        <button class="btn btn-primary" onclick="acceptRide(${ride.id})">
+                            <i class="fas fa-check"></i> قبول الرحلة
+                        </button>
+                        <button class="btn btn-outline" onclick="startChatWithPassenger(${ride.id}, '${ride.passenger_name}')">
+                            <i class="fas fa-comment"></i> محادثة مع الراكب
+                        </button>
+                    `;
+                }
+            }
+            
+            content.innerHTML = `
+                <div class="card">
+                    <div class="ride-header">
+                        <div class="ride-route" style="font-size: 1.5rem;">
+                            <i class="fas fa-route"></i>
+                            ${ride.from_city} → ${ride.to_city}
+                        </div>
+                        <div class="ride-price" style="font-size: 1.5rem;">
+                            ${ride.final_price?.toLocaleString() || '0'} ج
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; gap: 1.5rem; margin: 1.5rem 0;">
+                        <div>
+                            <h4 style="color: var(--gray-600); margin-bottom: 0.5rem; font-size: 0.95rem;">الراكب</h4>
+                            <p style="font-size: 1.125rem; font-weight: 600;">${ride.passenger_name}</p>
+                            <p style="color: var(--gray-500);">${ride.passenger_phone || '0912345678'}</p>
+                        </div>
+                        
+                        ${ride.driver_name ? `
+                            <div>
+                                <h4 style="color: var(--gray-600); margin-bottom: 0.5rem; font-size: 0.95rem;">السائق</h4>
+                                <p style="font-size: 1.125rem; font-weight: 600;">${ride.driver_name}</p>
+                                <p style="color: var(--gray-500);">${ride.driver_phone || '0912345679'}</p>
+                            </div>
+                        ` : ''}
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+                            <div>
+                                <h4 style="color: var(--gray-600); margin-bottom: 0.5rem; font-size: 0.95rem;">فئة السيارة</h4>
+                                <div style="background: var(--primary-light); padding: 0.75rem; border-radius: var(--radius); text-align: center;">
+                                    <span style="font-weight: 700; color: var(--primary);">${ride.vehicle_category}</span>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h4 style="color: var(--gray-600); margin-bottom: 0.5rem; font-size: 0.95rem;">الحالة</h4>
+                                <div class="ride-status ${statusClass}">
+                                    ${statusText}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        ${ride.notes ? `
+                            <div>
+                                <h4 style="color: var(--gray-600); margin-bottom: 0.5rem; font-size: 0.95rem;">ملاحظات</h4>
+                                <div style="background: var(--gray-50); padding: 1rem; border-radius: var(--radius); border: 1px solid var(--gray-200);">
+                                    <p style="margin: 0; color: var(--gray-700); line-height: 1.6;">${ride.notes}</p>
+                                </div>
+                            </div>
+                        ` : ''}
+                        
+                        <div>
+                            <h4 style="color: var(--gray-600); margin-bottom: 0.5rem; font-size: 0.95rem;">التاريخ</h4>
+                            <p style="color: var(--gray-700);">${formatDate(ride.created_at)} - ${formatTime(ride.created_at)}</p>
+                        </div>
+                    </div>
+                    
+                    ${actions ? `
+                        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                            ${actions}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            document.getElementById('ride-details-modal').classList.remove('hidden');
+        }
+
+        function closeRideDetails() {
+            document.getElementById('ride-details-modal').classList.add('hidden');
+            selectedRide = null;
+        }
+
+        function acceptRide(rideId) {
+            if (!confirm('هل تريد قبول هذه الرحلة؟')) return;
+            
+            const ride = availableRides.find(r => r.id === rideId) || userRides.find(r => r.id === rideId);
+            if (!ride) return;
+            
+            ride.status = 'accepted';
+            ride.driver_name = currentUser.full_name || 'سائق';
+            ride.driver_id = currentUser.id;
+            
+            showNotification('تم قبول الرحلة بنساح!', 'success');
+            
+            // Update displays
+            if (userType === 'driver') {
+                loadAvailableRides();
+                loadDriverRides();
+            } else {
+                loadPassengerRides();
+            }
+            
+            closeRideDetails();
+            
+            // Start chat automatically
+            startChatWithPassenger(rideId, ride.passenger_name);
+        }
+
+        function confirmAgreement(rideId) {
+            if (!confirm('هل أنت متأكد من تأكيد الاتفاق مع السائق؟')) return;
+            
+            const ride = userRides.find(r => r.id === rideId);
+            if (!ride) return;
+            
+            ride.status = 'confirmed';
+            showNotification('تم تأكيد الاتفاق بنساح!', 'success');
+            
+            loadPassengerRides();
+            closeRideDetails();
+        }
+
+        // ============================================
+        // CHAT FUNCTIONS
+        // ============================================
+        function openChat(chat) {
+            currentChat = chat;
+            
+            document.getElementById('chat-with-name').textContent = chat.other_user_name;
+            document.getElementById('chat-ride-info').textContent = '';
+            document.getElementById('chat-modal').classList.remove('hidden');
+            
+            // Load chat messages
+            loadChatMessages(chat.id);
+        }
+
+        function startChatWithPassenger(rideId, passengerName) {
+            currentChat = {
+                id: rideId,
+                other_user_name: passengerName,
+                ride_id: rideId
+            };
+            
+            document.getElementById('chat-with-name').textContent = passengerName;
+            document.getElementById('chat-ride-info').textContent = '(مرتبط برحلة)';
+            document.getElementById('chat-modal').classList.remove('hidden');
+            
+            // Load or create chat
+            loadChatMessages(rideId);
+        }
+
+        function startChatWithDriver(rideId, driverName) {
+            startChatWithPassenger(rideId, driverName);
+        }
+
+        async function loadChatMessages(chatId) {
+            try {
+                const { data, error } = await travelSupabase
+                    .from('ride_chats')
+                    .select('*')
+                    .eq('ride_id', chatId)
+                    .order('created_at', { ascending: true });
+
+                if (!error && data) {
+                    const messages = data.map(m => ({
+                        id: m.id,
+                        sender: m.sender_id === currentUser.id ? 'me' : 'other',
+                        message: m.message,
+                        time: m.created_at
+                    }));
+                    displayMessages(messages);
+                }
+            } catch (error) {
+                console.error('Error loading chat messages:', error);
+            }
+        }
+
+        function displayMessages(messages) {
+            const container = document.getElementById('chat-messages');
+            container.innerHTML = '';
+            
+            if (messages.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="padding: 2rem;">
+                        <div class="empty-icon">💬</div>
+                        <div class="empty-description">ابدأ المحادثة الآن</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            messages.forEach(msg => {
+                const messageElement = document.createElement('div');
+                messageElement.className = `message ${msg.sender === 'me' ? 'message-outgoing' : 'message-incoming'}`;
+                
+                messageElement.innerHTML = `
+                    <div class="message-content">
+                        ${msg.message}
+                    </div>
+                    <div class="message-time">
+                        ${formatTime(msg.time)}
+                    </div>
+                `;
+                
+                container.appendChild(messageElement);
+            });
+            
+            // Scroll to bottom
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            
+            if (!message || !currentChat) return;
+            
+            try {
+                const { error } = await travelSupabase
+                    .from('ride_chats')
+                    .insert([{
+                        ride_id: currentChat.ride_id || currentChat.id,
+                        sender_id: currentUser.id,
+                        sender_name: currentUser.full_name,
+                        sender_type: userType,
+                        message: message,
+                        created_at: new Date().toISOString()
+                    }]);
+
+                if (error) throw error;
+
+                input.value = '';
+                await loadChatMessages(currentChat.ride_id || currentChat.id);
+                
+            } catch (error) {
+                console.error('Error sending message:', error);
+                showNotification('خطأ في إرسال الرسالة', 'error');
+            }
+        }
+
+        function closeChat() {
+            document.getElementById('chat-modal').classList.add('hidden');
+            currentChat = null;
+        }
+
+        // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
+        function getStatusText(status) {
+            const statusMap = {
+                'pending': 'قيد النشر',
+                'accepted': 'قيد التواصل',
+                'confirmed': 'تم الاتفاق',
+                'completed': 'مكتملة',
+                'cancelled': 'ملغية'
+            };
+            return statusMap[status] || status;
+        }
+
+        function getStatusClass(status) {
+            const classMap = {
+                'pending': 'status-pending',
+                'accepted': 'status-accepted',
+                'confirmed': 'status-confirmed',
+                'completed': 'status-completed',
+                'cancelled': 'status-cancelled'
+            };
+            return classMap[status] || 'status-pending';
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('ar-SA', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+
+        function formatTime(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleTimeString('ar-SA', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function showNotification(message, type = 'info') {
+            const container = document.getElementById('notification-container');
+            
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            
+            let icon = 'ℹ️';
+            if (type === 'success') icon = '✅';
+            else if (type === 'error') icon = '❌';
+            else if (type === 'warning') icon = '⚠️';
+            
+            notification.innerHTML = `
+                <div class="notification-icon">${icon}</div>
+                <div class="notification-content">
+                    <div class="notification-title">${type === 'success' ? 'نجاح' : type === 'error' ? 'خطأ' : type === 'warning' ? 'تحذير' : 'معلومة'}</div>
+                    <div class="notification-message">${message}</div>
+                </div>
+                <button onclick="this.parentElement.remove()" style="background: none; border: none; cursor: pointer; color: var(--gray-500); font-size: 1.25rem;">
+                    &times;
+                </button>
+            `;
+            
+            container.appendChild(notification);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+
+        // Filter available rides by city
+        document.getElementById('filter-city')?.addEventListener('change', displayAvailableRides);
+
+        // Initialize price preview when cities are selected
+        document.addEventListener('change', function(e) {
+            if (e.target.id === 'from-city' || e.target.id === 'to-city') {
+                updatePricePreview();
+            }
+        });
+
+        // WhatsApp integration function
+        function contactViaWhatsApp(phoneNumber, message) {
+            const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+            window.open(whatsappUrl, '_blank');
+        }
+    </script>
+</body>
+</html>
