@@ -1156,7 +1156,7 @@
                 </div>
                 
                 <div class="chat-input-container">
-                    <input type="text" class="chat-input" id="chat-input" placeholder="اكتب رسالتك هنا..." onkeypress="if(event.key === 'Enter') sendMessage()">
+                    <input type="text" class="chat-input" id="chat-input" placeholder="اكتب رسالتك هنا...">
                     <button class="btn btn-primary" onclick="sendMessage()">
                         <i class="fas fa-paper-plane"></i>
                     </button>
@@ -1288,6 +1288,7 @@
                         currentUser = data;
                         userType = 'driver';
                         console.log('✅ Driver session verified');
+                        await checkPermissions(); // فحص الصلاحيات بعد تسجيل الدخول
                     } else {
                         console.log('Driver session invalid or expired');
                         localStorage.removeItem('tarhal_driver');
@@ -1324,7 +1325,42 @@
                         </p>
                     </div>
                 `;
-                 updateUserInterface();
+                updateUserInterface();
+            }
+        }
+
+        // فحص الصلاحيات
+        async function checkPermissions() {
+            try {
+                console.log('🔍 فحص الصلاحيات...');
+                
+                // فحص قراءة الرحلات
+                const { data: ridesData, error: ridesError } = await travelSupabase
+                    .from('rides')
+                    .select('count')
+                    .eq('status', 'pending')
+                    .limit(1);
+                
+                console.log('قراءة الرحلات:', ridesError ? '✗ خطأ: ' + ridesError.message : '✓ ناجح');
+                
+                // فحص قراءة ride_requests
+                const { data: requestsData, error: requestsError } = await travelSupabase
+                    .from('ride_requests')
+                    .select('count')
+                    .limit(1);
+                
+                console.log('قراءة طلبات الرحلات:', requestsError ? '✗ خطأ: ' + requestsError.message : '✓ ناجح');
+                
+                // فحص قراءة المحادثات
+                const { data: chatsData, error: chatsError } = await travelSupabase
+                    .from('ride_chats')
+                    .select('count')
+                    .limit(1);
+                
+                console.log('قراءة المحادثات:', chatsError ? '✗ خطأ: ' + chatsError.message : '✓ ناجح');
+                
+            } catch (error) {
+                console.error('خطأ في فحص الصلاحيات:', error);
             }
         }
 
@@ -1487,15 +1523,10 @@
 
         async function loadRoutes() {
             try {
-                // Try to load from Supabase
-                const { data, error } = await travelSupabase
-                    .from('travel_routes')
-                    .select('*');
-                
-                if (!error && data) {
-                    routes = data;
+                // إنشاء مسارات افتراضية من المدن المتاحة
+                if (cities.length > 0) {
+                    createDefaultRoutesFromCities();
                 } else {
-                    // Create default routes
                     await createDefaultRoutes();
                 }
                 
@@ -1503,6 +1534,44 @@
                 console.error('Error loading routes:', error);
                 await createDefaultRoutes();
             }
+        }
+
+        function createDefaultRoutesFromCities() {
+            routes = [];
+            const majorCities = ['الخرطوم', 'مدني', 'القضارف', 'كسلا', 'بورتسودان', 'عطبرة'];
+            
+            majorCities.forEach((fromCity, i) => {
+                majorCities.forEach((toCity, j) => {
+                    if (i !== j && cities.includes(fromCity) && cities.includes(toCity)) {
+                        const basePrice = calculateEstimatedPrice(fromCity, toCity);
+                        routes.push({
+                            from_city: fromCity,
+                            to_city: toCity,
+                            base_price_eco: basePrice,
+                            is_active: true
+                        });
+                    }
+                });
+            });
+        }
+
+        function calculateEstimatedPrice(fromCity, toCity) {
+            // أسعار تقديرية بناءً على المسافة
+            const distanceMap = {
+                'الخرطوم-مدني': 25000,
+                'الخرطوم-القضارف': 35000,
+                'الخرطوم-كسلا': 40000,
+                'الخرطوم-بورتسودان': 50000,
+                'الخرطوم-عطبرة': 18000,
+                'مدني-الخرطوم': 25000,
+                'القضارف-الخرطوم': 35000,
+                'كسلا-الخرطوم': 40000,
+                'بورتسودان-الخرطوم': 50000,
+                'عطبرة-الخرطوم': 18000
+            };
+            
+            const key = `${fromCity}-${toCity}`;
+            return distanceMap[key] || 30000;
         }
 
         async function createDefaultRoutes() {
@@ -1550,7 +1619,7 @@
                 'عطبرة-ابوحمد': 8000,
                 'ابوحمد-عطبرة': 8000,
                 'بورتسودان-سنكات': 15000,
-                'سنكات-بورتسودان': 15000,
+                'سنكات  -بورتسودان': 15000,
                 'الخرطوم-الحصاحيصا': 12000,
                 'الحصاحيصا-الخرطوم': 12000,
                 'كسلا-عطبرة': 28000,
@@ -1566,19 +1635,23 @@
                 const key = `${fromCity}-${toCity}`;
                 const reverseKey = `${toCity}-${fromCity}`;
                 
-                routes.push({
-                    from_city: fromCity,
-                    to_city: toCity,
-                    base_price_eco: defaultPrices[key] || 30000,
-                    is_active: true
-                });
+                if (defaultPrices[key]) {
+                    routes.push({
+                        from_city: fromCity,
+                        to_city: toCity,
+                        base_price_eco: defaultPrices[key],
+                        is_active: true
+                    });
+                }
                 
-                routes.push({
-                    from_city: toCity,
-                    to_city: fromCity,
-                    base_price_eco: defaultPrices[reverseKey] || defaultPrices[key] || 30000,
-                    is_active: true
-                });
+                if (defaultPrices[reverseKey]) {
+                    routes.push({
+                        from_city: toCity,
+                        to_city: fromCity,
+                        base_price_eco: defaultPrices[reverseKey],
+                        is_active: true
+                    });
+                }
             });
         }
 
@@ -1643,7 +1716,7 @@
             
             // Check if route exists
             const route = routes.find(r => 
-                r.from_city === fromCity && r.to_city === toCity && r.is_active
+                r.from_city === fromCity && r.to_city === toCity
             );
             
             const pricePreview = document.getElementById('price-preview');
@@ -1678,7 +1751,7 @@
                     <span>${basePrice.toLocaleString()} ج</span>
                 </div>
                 <div class="price-item">
-                    <span>معامل الفئة (${category.name}):</span>
+                    <span>معامل الفئة (${category.name_ar || category.name}):</span>
                     <span>× ${multiplier}</span>
                 </div>
                 <div class="price-item">
@@ -1739,26 +1812,21 @@
             const finalPrice = Math.round(basePrice * category.price_multiplier);
             
             try {
-                // Create ride request
+                // Create ride request in ride_requests table
                 const rideData = {
-                    passenger_id: currentUser.id,
-                    passenger_name: currentUser.full_name || 'راكب',
-                    passenger_phone: currentUser.phone || '0912345678',
-                    from_city_name: fromCity,
-                    to_city_name: toCity,
-                    vehicle_category_name: category.name_ar || category.name,
-                    vehicle_category_id: category.id,
-                    base_price: basePrice,
-                    price_multiplier: category.price_multiplier,
-                    final_price: finalPrice,
+                    customer_id: currentUser.id,
+                    from_city: fromCity,
+                    to_city: toCity,
+                    vehicle_category: category.name_ar || category.name,
+                    estimated_price: finalPrice,
                     notes: notes,
                     status: 'pending',
                     created_at: new Date().toISOString()
                 };
                 
-                // Save to Supabase
+                // Save to ride_requests table
                 const { data, error } = await travelSupabase
-                    .from('rides')
+                    .from('ride_requests')
                     .insert([rideData])
                     .select()
                     .single();
@@ -1782,7 +1850,7 @@
                 
             } catch (error) {
                 console.error('Error creating ride request:', error);
-                showNotification('خطأ في نشر طلب الرحلة', 'error');
+                showNotification('خطأ في نشر طلب الرحلة: ' + error.message, 'error');
             }
         });
 
@@ -1791,20 +1859,49 @@
         // ============================================
         async function loadPassengerRides() {
             try {
-                const { data, error } = await travelSupabase
+                // جلب الرحلات من جدول rides أولاً
+                const { data: ridesData, error: ridesError } = await travelSupabase
                     .from('rides')
                     .select('*')
                     .eq('passenger_id', currentUser.id)
                     .order('created_at', { ascending: false });
 
-                if (!error && data) {
-                    userRides = data;
+                if (!ridesError && ridesData) {
+                    userRides = ridesData;
+                } else {
+                    // جلب من ride_requests إذا لم توجد في rides
+                    const { data: requestsData, error: requestsError } = await travelSupabase
+                        .from('ride_requests')
+                        .select('*')
+                        .eq('customer_id', currentUser.id)
+                        .order('created_at', { ascending: false });
+
+                    if (!requestsError && requestsData) {
+                        userRides = requestsData.map(req => ({
+                            id: req.id,
+                            passenger_id: req.customer_id,
+                            passenger_name: currentUser.full_name,
+                            passenger_phone: currentUser.phone,
+                            from_city: req.from_city,
+                            to_city: req.to_city,
+                            vehicle_category: req.vehicle_category,
+                            base_price: req.estimated_price,
+                            final_price: req.estimated_price,
+                            notes: req.notes,
+                            status: req.status,
+                            driver_id: req.driver_id,
+                            driver_name: req.driver_name,
+                            driver_phone: req.driver_phone,
+                            created_at: req.created_at
+                        }));
+                    }
                 }
                 
                 displayPassengerRides();
                 
             } catch (error) {
                 console.error('Error loading passenger rides:', error);
+                displayPassengerRides();
             }
         }
 
@@ -1833,9 +1930,9 @@
                 const statusText = getStatusText(ride.status);
                 const statusClass = getStatusClass(ride.status);
                 
-                const fromCity = ride.from_city_name || ride.from_city || 'غير محدد';
-                const toCity = ride.to_city_name || ride.to_city || 'غير محدد';
-                const vehicleCategory = ride.vehicle_category_name || ride.vehicle_category || 'غير محدد';
+                const fromCity = ride.from_city || 'غير محدد';
+                const toCity = ride.to_city || 'غير محدد';
+                const vehicleCategory = ride.vehicle_category || 'غير محدد';
 
                 rideElement.innerHTML = `
                     <div class="ride-header">
@@ -1843,7 +1940,7 @@
                             <i class="fas fa-route"></i>
                             ${fromCity} → ${toCity}
                         </div>
-                        <div class="ride-price">${ride.final_price?.toLocaleString() || '0'} ج</div>
+                        <div class="ride-price">${ride.final_price ? ride.final_price.toLocaleString() : ride.estimated_price ? ride.estimated_price.toLocaleString() : '0'} ج</div>
                     </div>
                     <div class="ride-details">
                         <div class="ride-detail">
@@ -1873,40 +1970,64 @@
 
         async function loadPassengerChats() {
             try {
-                const { data, error } = await travelSupabase
-                    .from('ride_chats')
-                    .select('*')
-                    .order('created_at', { ascending: false });
+                // جلب جميع الرحلات التي شارك فيها الراكب
+                const { data: rides, error: ridesError } = await travelSupabase
+                    .from('rides')
+                    .select('id, driver_name')
+                    .eq('passenger_id', currentUser.id)
+                    .in('status', ['accepted', 'confirmed']);
 
-                if (!error && data) {
-                    const relevantMessages = data.filter(m => m.sender_id === currentUser.id || m.sender_type !== userType);
-                    const uniqueRides = [...new Set(relevantMessages.map(m => m.ride_id))];
+                if (ridesError) {
+                    const { data: requests, error: requestsError } = await travelSupabase
+                        .from('ride_requests')
+                        .select('id, driver_name')
+                        .eq('customer_id', currentUser.id)
+                        .eq('status', 'accepted');
 
-                    chats = uniqueRides.map(rideId => {
-                        const rideMessages = relevantMessages.filter(m => m.ride_id === rideId);
-                        const lastMsg = rideMessages[0];
-                        return {
-                            id: rideId,
-                            ride_id: rideId,
-                            other_user_name: lastMsg.sender_type !== userType ? lastMsg.sender_name : 'الطرف الآخر',
-                            last_message: lastMsg.message,
-                            last_message_time: lastMsg.created_at
-                        };
-                    });
+                    if (!requestsError && requests) {
+                        rides = requests;
+                    }
                 }
-                
-                displayPassengerChats();
+
+                if (!rides || rides.length === 0) {
+                    displayPassengerChats([]);
+                    return;
+                }
+
+                // جلب آخر رسالة لكل رحلة
+                const chats = [];
+                for (const ride of rides) {
+                    const { data: messages, error: messagesError } = await travelSupabase
+                        .from('ride_chats')
+                        .select('*')
+                        .eq('ride_id', ride.id)
+                        .order('created_at', { ascending: false })
+                        .limit(1);
+
+                    if (!messagesError && messages.length > 0) {
+                        chats.push({
+                            id: ride.id,
+                            ride_id: ride.id,
+                            other_user_name: ride.driver_name || 'السائق',
+                            last_message: messages[0].message,
+                            last_message_time: messages[0].created_at
+                        });
+                    }
+                }
+
+                displayPassengerChats(chats);
                 
             } catch (error) {
                 console.error('Error loading passenger chats:', error);
+                displayPassengerChats([]);
             }
         }
 
-        function displayPassengerChats() {
+        function displayPassengerChats(chats) {
             const container = document.getElementById('chats-list');
             if (!container) return;
             
-            if (chats.length === 0) {
+            if (!chats || chats.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-icon">💬</div>
@@ -1950,24 +2071,58 @@
         }
 
         // ============================================
-        // DRIVER FUNCTIONS
+        // DRIVER FUNCTIONS - FIXED VERSION
         // ============================================
         async function loadAvailableRides() {
             try {
-                const { data, error } = await travelSupabase
-                    .from('rides')
-                    .select('*')
+                // محاولة جلب من ride_requests أولاً
+                const { data: requestsData, error: requestsError } = await travelSupabase
+                    .from('ride_requests')
+                    .select(`
+                        *,
+                        customer:customers(full_name, phone)
+                    `)
                     .eq('status', 'pending')
                     .order('created_at', { ascending: false });
 
-                if (!error && data) {
-                    availableRides = data;
+                if (!requestsError && requestsData) {
+                    availableRides = requestsData.map(request => ({
+                        id: request.id,
+                        passenger_id: request.customer_id,
+                        passenger_name: request.customer?.full_name || 'راكب',
+                        passenger_phone: request.customer?.phone || '',
+                        from_city: request.from_city,
+                        to_city: request.to_city,
+                        vehicle_category: request.vehicle_category,
+                        base_price: request.estimated_price,
+                        final_price: request.estimated_price,
+                        notes: request.notes,
+                        status: 'pending',
+                        created_at: request.created_at
+                    }));
+                } else {
+                    // جرب جدول rides بدلاً من ذلك
+                    const { data: ridesData, error: ridesError } = await travelSupabase
+                        .from('rides')
+                        .select('*')
+                        .eq('status', 'pending')
+                        .order('created_at', { ascending: false });
+
+                    if (!ridesError && ridesData) {
+                        availableRides = ridesData;
+                    } else {
+                        console.error('Error loading available rides:', ridesError);
+                        availableRides = [];
+                    }
                 }
                 
                 displayAvailableRides();
                 
             } catch (error) {
                 console.error('Error loading available rides:', error);
+                showNotification('خطأ في تحميل الرحلات المتاحة', 'error');
+                availableRides = [];
+                displayAvailableRides();
             }
         }
 
@@ -1980,11 +2135,11 @@
             
             if (filterCity) {
                 filteredRides = availableRides.filter(ride => 
-                    ride.from_city_name === filterCity || ride.to_city_name === filterCity
+                    ride.from_city === filterCity || ride.to_city === filterCity
                 );
             }
             
-            if (filteredRides.length === 0) {
+            if (!filteredRides || filteredRides.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-icon">🚗</div>
@@ -2002,9 +2157,9 @@
                 rideElement.className = 'ride-card';
                 rideElement.onclick = () => showRideDetails(ride);
                 
-                const fromCity = ride.from_city_name || ride.from_city || 'غير محدد';
-                const toCity = ride.to_city_name || ride.to_city || 'غير محدد';
-                const vehicleCategory = ride.vehicle_category_name || ride.vehicle_category || 'غير محدد';
+                const fromCity = ride.from_city || 'غير محدد';
+                const toCity = ride.to_city || 'غير محدد';
+                const vehicleCategory = ride.vehicle_category || 'غير محدد';
 
                 rideElement.innerHTML = `
                     <div class="ride-header">
@@ -2012,12 +2167,12 @@
                             <i class="fas fa-route"></i>
                             ${fromCity} → ${toCity}
                         </div>
-                        <div class="ride-price">${ride.final_price?.toLocaleString() || '0'} ج</div>
+                        <div class="ride-price">${ride.final_price ? ride.final_price.toLocaleString() : ride.base_price ? ride.base_price.toLocaleString() : '0'} ج</div>
                     </div>
                     <div class="ride-details">
                         <div class="ride-detail">
                             <i class="fas fa-user"></i>
-                            <span>${ride.passenger_name}</span>
+                            <span>${ride.passenger_name || 'راكب'}</span>
                         </div>
                         <div class="ride-detail">
                             <i class="fas fa-car"></i>
@@ -2032,7 +2187,7 @@
                         <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); acceptRide(${ride.id})">
                             <i class="fas fa-check"></i> قبول الرحلة
                         </button>
-                        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); startChatWithPassenger(${ride.id}, '${ride.passenger_name}')">
+                        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); startChatWithPassenger(${ride.id}, '${ride.passenger_name || 'راكب'}')">
                             <i class="fas fa-comment"></i> محادثة
                         </button>
                     </div>
@@ -2042,22 +2197,153 @@
             });
         }
 
+        async function acceptRide(rideId) {
+            if (!confirm('هل تريد قبول هذه الرحلة؟')) return;
+            
+            try {
+                const ride = availableRides.find(r => r.id === rideId);
+                if (!ride) {
+                    showNotification('الرحلة غير موجودة', 'error');
+                    return;
+                }
+                
+                // الخطوة 1: إنشاء رحلة جديدة في جدول rides أو تحديثها
+                const rideData = {
+                    passenger_id: ride.passenger_id,
+                    passenger_name: ride.passenger_name,
+                    passenger_phone: ride.passenger_phone,
+                    driver_id: currentUser.id,
+                    driver_name: currentUser.full_name,
+                    driver_phone: currentUser.phone,
+                    from_city: ride.from_city,
+                    to_city: ride.to_city,
+                    vehicle_category: ride.vehicle_category,
+                    base_price: ride.base_price || ride.estimated_price,
+                    final_price: ride.final_price || ride.estimated_price,
+                    notes: ride.notes,
+                    status: 'accepted',
+                    accepted_at: new Date().toISOString(),
+                    created_at: new Date().toISOString()
+                };
+
+                // محاولة إدراج في جدول rides
+                const { data: newRide, error: insertError } = await travelSupabase
+                    .from('rides')
+                    .insert([rideData])
+                    .select()
+                    .single();
+
+                if (insertError) {
+                    // إذا فشل الإدراج، حاول التحديث في ride_requests
+                    const { error: updateError } = await travelSupabase
+                        .from('ride_requests')
+                        .update({
+                            driver_id: currentUser.id,
+                            driver_name: currentUser.full_name,
+                            driver_phone: currentUser.phone,
+                            status: 'accepted',
+                            accepted_at: new Date().toISOString()
+                        })
+                        .eq('id', rideId);
+
+                    if (updateError) throw updateError;
+                } else {
+                    // إذا نجح الإدراج في rides، قم بتحديث ride_requests أيضاً
+                    await travelSupabase
+                        .from('ride_requests')
+                        .update({ 
+                            status: 'accepted',
+                            driver_id: currentUser.id,
+                            driver_name: currentUser.full_name
+                        })
+                        .eq('id', rideId);
+                }
+
+                // الخطوة 2: إضافة سجل في activity_logs
+                await travelSupabase
+                    .from('activity_logs')
+                    .insert([{
+                        user_id: currentUser.id,
+                        user_type: 'driver',
+                        action: 'accept_ride',
+                        description: `قبول رحلة من ${ride.from_city} إلى ${ride.to_city}`,
+                        related_id: rideId,
+                        created_at: new Date().toISOString()
+                    }]);
+
+                // الخطوة 3: إنشاء إشعار للسائق
+                await travelSupabase
+                    .from('driver_notifications')
+                    .insert([{
+                        driver_id: currentUser.id,
+                        title: 'رحلة مقبولة',
+                        message: `لقد قبلت رحلة إلى ${ride.to_city}`,
+                        type: 'ride_accepted',
+                        is_read: false,
+                        created_at: new Date().toISOString()
+                    }]);
+
+                showNotification('تم قبول الرحلة بنجاح!', 'success');
+                
+                // تحديث البيانات المحلية
+                await loadAvailableRides();
+                await loadDriverRides();
+                
+                // بدء محادثة
+                startChatWithPassenger(rideId, ride.passenger_name || 'راكب');
+                
+            } catch (error) {
+                console.error('Error accepting ride:', error);
+                showNotification('خطأ في قبول الرحلة: ' + error.message, 'error');
+            }
+        }
+
         async function loadDriverRides() {
             try {
-                const { data, error } = await travelSupabase
+                // محاولة جلب من جدول rides أولاً
+                const { data: ridesData, error: ridesError } = await travelSupabase
                     .from('rides')
                     .select('*')
                     .eq('driver_id', currentUser.id)
                     .order('created_at', { ascending: false });
                 
-                if (!error && data) {
-                    displayDriverRides(data);
+                if (!ridesError && ridesData) {
+                    displayDriverRides(ridesData);
+                    return;
+                }
+                
+                // إذا لم توجد في rides، جلب من ride_requests
+                const { data: requestsData, error: requestsError } = await travelSupabase
+                    .from('ride_requests')
+                    .select('*')
+                    .eq('driver_id', currentUser.id)
+                    .order('created_at', { ascending: false });
+                
+                if (!requestsError && requestsData) {
+                    displayDriverRides(requestsData.map(req => ({
+                        id: req.id,
+                        passenger_id: req.customer_id,
+                        passenger_name: 'راكب',
+                        passenger_phone: '',
+                        from_city: req.from_city,
+                        to_city: req.to_city,
+                        vehicle_category: req.vehicle_category,
+                        base_price: req.estimated_price,
+                        final_price: req.estimated_price,
+                        notes: req.notes,
+                        status: req.status,
+                        driver_id: req.driver_id,
+                        driver_name: req.driver_name,
+                        driver_phone: req.driver_phone,
+                        created_at: req.created_at
+                    })));
                 } else {
                     displayDriverRides([]);
                 }
                 
             } catch (error) {
                 console.error('Error loading driver rides:', error);
+                displayDriverRides([]);
             }
         }
 
@@ -2065,7 +2351,7 @@
             const container = document.getElementById('driver-rides-list');
             if (!container) return;
             
-            if (rides.length === 0) {
+            if (!rides || rides.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-icon">🚕</div>
@@ -2086,9 +2372,9 @@
                 const statusText = getStatusText(ride.status);
                 const statusClass = getStatusClass(ride.status);
                 
-                const fromCity = ride.from_city_name || ride.from_city || 'غير محدد';
-                const toCity = ride.to_city_name || ride.to_city || 'غير محدد';
-                const vehicleCategory = ride.vehicle_category_name || ride.vehicle_category || 'غير محدد';
+                const fromCity = ride.from_city || 'غير محدد';
+                const toCity = ride.to_city || 'غير محدد';
+                const vehicleCategory = ride.vehicle_category || 'غير محدد';
 
                 rideElement.innerHTML = `
                     <div class="ride-header">
@@ -2096,12 +2382,12 @@
                             <i class="fas fa-route"></i>
                             ${fromCity} → ${toCity}
                         </div>
-                        <div class="ride-price">${ride.final_price?.toLocaleString() || '0'} ج</div>
+                        <div class="ride-price">${ride.final_price ? ride.final_price.toLocaleString() : ride.base_price ? ride.base_price.toLocaleString() : '0'} ج</div>
                     </div>
                     <div class="ride-details">
                         <div class="ride-detail">
                             <i class="fas fa-user"></i>
-                            <span>${ride.passenger_name}</span>
+                            <span>${ride.passenger_name || 'راكب'}</span>
                         </div>
                         <div class="ride-detail">
                             <i class="fas fa-car"></i>
@@ -2123,21 +2409,108 @@
         }
 
         async function loadDriverChats() {
-            // Similar to passenger chats
-            displayDriverChats([]);
+            try {
+                // جلب جميع الرحلات التي قبلها السائق
+                const { data: rides, error: ridesError } = await travelSupabase
+                    .from('rides')
+                    .select('id, passenger_name')
+                    .eq('driver_id', currentUser.id)
+                    .in('status', ['accepted', 'confirmed']);
+
+                if (ridesError) {
+                    // جرب جدول ride_requests
+                    const { data: requests, error: requestsError } = await travelSupabase
+                        .from('ride_requests')
+                        .select('id, customer_id')
+                        .eq('driver_id', currentUser.id)
+                        .in('status', ['accepted', 'confirmed']);
+
+                    if (!requestsError && requests) {
+                        rides = requests;
+                    }
+                }
+
+                if (!rides || rides.length === 0) {
+                    displayDriverChats([]);
+                    return;
+                }
+
+                // جلب آخر رسالة لكل رحلة
+                const chats = [];
+                for (const ride of rides) {
+                    const { data: messages, error: messagesError } = await travelSupabase
+                        .from('ride_chats')
+                        .select('*')
+                        .eq('ride_id', ride.id)
+                        .order('created_at', { ascending: false })
+                        .limit(1);
+
+                    if (!messagesError && messages.length > 0) {
+                        chats.push({
+                            id: ride.id,
+                            ride_id: ride.id,
+                            other_user_name: ride.passenger_name || 'الراكب',
+                            last_message: messages[0].message,
+                            last_message_time: messages[0].created_at
+                        });
+                    }
+                }
+
+                displayDriverChats(chats);
+                
+            } catch (error) {
+                console.error('Error loading driver chats:', error);
+                displayDriverChats([]);
+            }
         }
 
         function displayDriverChats(chats) {
             const container = document.getElementById('driver-chats-list');
             if (!container) return;
             
-            container.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-icon">💬</div>
-                    <div class="empty-title">لا توجد محادثات</div>
-                    <div class="empty-description">ابدأ محادثة مع راكب لقبول رحلته</div>
-                </div>
-            `;
+            if (!chats || chats.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">💬</div>
+                        <div class="empty-title">لا توجد محادثات</div>
+                        <div class="empty-description">ابدأ محادثة مع راكب لقبول رحلته</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            chats.forEach(chat => {
+                const chatElement = document.createElement('div');
+                chatElement.className = 'ride-card';
+                chatElement.onclick = () => openChat(chat);
+                
+                chatElement.innerHTML = `
+                    <div class="ride-header">
+                        <div class="ride-route">
+                            <i class="fas fa-comment"></i>
+                            ${chat.other_user_name}
+                        </div>
+                        <div style="font-size: 0.875rem; color: var(--gray-500);">
+                            ${formatTime(chat.last_message_time)}
+                        </div>
+                    </div>
+                    <div class="ride-details">
+                        <div class="ride-detail">
+                            <i class="fas fa-message"></i>
+                            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                ${chat.last_message}
+                            </span>
+                        </div>
+                    </div>
+                    <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openChat(${JSON.stringify(chat).replace(/"/g, '&quot;')})">
+                        <i class="fas fa-reply"></i> رد
+                    </button>
+                `;
+                
+                container.appendChild(chatElement);
+            });
         }
 
         // ============================================
@@ -2183,22 +2556,22 @@
                             ${ride.from_city} → ${ride.to_city}
                         </div>
                         <div class="ride-price" style="font-size: 1.5rem;">
-                            ${ride.final_price?.toLocaleString() || '0'} ج
+                            ${ride.final_price ? ride.final_price.toLocaleString() : ride.base_price ? ride.base_price.toLocaleString() : '0'} ج
                         </div>
                     </div>
                     
                     <div style="display: grid; gap: 1.5rem; margin: 1.5rem 0;">
                         <div>
                             <h4 style="color: var(--gray-600); margin-bottom: 0.5rem; font-size: 0.95rem;">الراكب</h4>
-                            <p style="font-size: 1.125rem; font-weight: 600;">${ride.passenger_name}</p>
-                            <p style="color: var(--gray-500);">${ride.passenger_phone || '0912345678'}</p>
+                            <p style="font-size: 1.125rem; font-weight: 600;">${ride.passenger_name || 'راكب'}</p>
+                            <p style="color: var(--gray-500);">${ride.passenger_phone || 'رقم غير متوفر'}</p>
                         </div>
                         
                         ${ride.driver_name ? `
                             <div>
                                 <h4 style="color: var(--gray-600); margin-bottom: 0.5rem; font-size: 0.95rem;">السائق</h4>
                                 <p style="font-size: 1.125rem; font-weight: 600;">${ride.driver_name}</p>
-                                <p style="color: var(--gray-500);">${ride.driver_phone || '0912345679'}</p>
+                                <p style="color: var(--gray-500);">${ride.driver_phone || 'رقم غير متوفر'}</p>
                             </div>
                         ` : ''}
                         
@@ -2206,7 +2579,7 @@
                             <div>
                                 <h4 style="color: var(--gray-600); margin-bottom: 0.5rem; font-size: 0.95rem;">فئة السيارة</h4>
                                 <div style="background: var(--primary-light); padding: 0.75rem; border-radius: var(--radius); text-align: center;">
-                                    <span style="font-weight: 700; color: var(--primary);">${ride.vehicle_category}</span>
+                                    <span style="font-weight: 700; color: var(--primary);">${ride.vehicle_category || 'غير محدد'}</span>
                                 </div>
                             </div>
                             
@@ -2249,32 +2622,6 @@
             selectedRide = null;
         }
 
-        function acceptRide(rideId) {
-            if (!confirm('هل تريد قبول هذه الرحلة؟')) return;
-            
-            const ride = availableRides.find(r => r.id === rideId) || userRides.find(r => r.id === rideId);
-            if (!ride) return;
-            
-            ride.status = 'accepted';
-            ride.driver_name = currentUser.full_name || 'سائق';
-            ride.driver_id = currentUser.id;
-            
-            showNotification('تم قبول الرحلة بنساح!', 'success');
-            
-            // Update displays
-            if (userType === 'driver') {
-                loadAvailableRides();
-                loadDriverRides();
-            } else {
-                loadPassengerRides();
-            }
-            
-            closeRideDetails();
-            
-            // Start chat automatically
-            startChatWithPassenger(rideId, ride.passenger_name);
-        }
-
         function confirmAgreement(rideId) {
             if (!confirm('هل أنت متأكد من تأكيد الاتفاق مع السائق؟')) return;
             
@@ -2289,7 +2636,7 @@
         }
 
         // ============================================
-        // CHAT FUNCTIONS
+        // CHAT FUNCTIONS - FIXED VERSION
         // ============================================
         function openChat(chat) {
             currentChat = chat;
@@ -2299,7 +2646,7 @@
             document.getElementById('chat-modal').classList.remove('hidden');
             
             // Load chat messages
-            loadChatMessages(chat.id);
+            loadChatMessages(chat.ride_id || chat.id);
         }
 
         function startChatWithPassenger(rideId, passengerName) {
@@ -2333,13 +2680,18 @@
                     const messages = data.map(m => ({
                         id: m.id,
                         sender: m.sender_id === currentUser.id ? 'me' : 'other',
+                        sender_name: m.sender_name,
                         message: m.message,
                         time: m.created_at
                     }));
                     displayMessages(messages);
+                } else {
+                    console.error('Error loading chat messages:', error);
+                    displayMessages([]);
                 }
             } catch (error) {
                 console.error('Error loading chat messages:', error);
+                displayMessages([]);
             }
         }
 
@@ -2347,7 +2699,7 @@
             const container = document.getElementById('chat-messages');
             container.innerHTML = '';
             
-            if (messages.length === 0) {
+            if (!messages || messages.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state" style="padding: 2rem;">
                         <div class="empty-icon">💬</div>
@@ -2381,28 +2733,58 @@
             const input = document.getElementById('chat-input');
             const message = input.value.trim();
             
-            if (!message || !currentChat) return;
+            if (!message || !currentChat) {
+                showNotification('الرجاء إدخال رسالة', 'warning');
+                return;
+            }
             
             try {
+                const messageData = {
+                    ride_id: currentChat.ride_id || currentChat.id,
+                    sender_id: currentUser.id,
+                    sender_name: currentUser.full_name || (userType === 'passenger' ? 'راكب' : 'سائق'),
+                    sender_type: userType,
+                    message: message,
+                    created_at: new Date().toISOString()
+                };
+
                 const { error } = await travelSupabase
                     .from('ride_chats')
-                    .insert([{
-                        ride_id: currentChat.ride_id || currentChat.id,
-                        sender_id: currentUser.id,
-                        sender_name: currentUser.full_name,
-                        sender_type: userType,
-                        message: message,
-                        created_at: new Date().toISOString()
-                    }]);
+                    .insert([messageData]);
 
                 if (error) throw error;
 
+                // إضافة الرسالة مباشرة إلى العرض بدون إعادة تحميل
+                const messagesContainer = document.getElementById('chat-messages');
+                const messageElement = document.createElement('div');
+                messageElement.className = 'message message-outgoing';
+                messageElement.innerHTML = `
+                    <div class="message-content">
+                        ${message}
+                    </div>
+                    <div class="message-time">
+                        ${new Date().toLocaleTimeString('ar-SA', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                        })}
+                    </div>
+                `;
+                messagesContainer.appendChild(messageElement);
+                
+                // مسح الحقل والتمرير للأسفل
                 input.value = '';
-                await loadChatMessages(currentChat.ride_id || currentChat.id);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                
+                // تحديث قائمة المحادثات
+                if (userType === 'driver') {
+                    await loadDriverChats();
+                } else {
+                    await loadPassengerChats();
+                }
                 
             } catch (error) {
                 console.error('Error sending message:', error);
-                showNotification('خطأ في إرسال الرسالة', 'error');
+                showNotification('خطأ في إرسال الرسالة: ' + error.message, 'error');
             }
         }
 
@@ -2422,7 +2804,7 @@
                 'completed': 'مكتملة',
                 'cancelled': 'ملغية'
             };
-            return statusMap[status] || status;
+            return statusMap[status] || status || 'غير معروف';
         }
 
         function getStatusClass(status) {
@@ -2437,41 +2819,70 @@
         }
 
         function formatDate(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('ar-SA', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('ar-SA', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            } catch (e) {
+                return 'تاريخ غير معروف';
+            }
         }
 
         function formatTime(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleTimeString('ar-SA', {
-                hour: '2-digit',
-                minute: '2-digit'
-            });
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleTimeString('ar-SA', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (e) {
+                return '--:--';
+            }
         }
 
-        function showNotification(message, type = 'info') {
+        function showNotification(message, type = 'info', title = null) {
             const container = document.getElementById('notification-container');
             
             const notification = document.createElement('div');
             notification.className = `notification notification-${type}`;
             
             let icon = 'ℹ️';
-            if (type === 'success') icon = '✅';
-            else if (type === 'error') icon = '❌';
-            else if (type === 'warning') icon = '⚠️';
+            let notificationTitle = 'معلومة';
+            
+            if (type === 'success') {
+                icon = '✅';
+                notificationTitle = 'نجاح';
+            } else if (type === 'error') {
+                icon = '❌';
+                notificationTitle = 'خطأ';
+            } else if (type === 'warning') {
+                icon = '⚠️';
+                notificationTitle = 'تحذير';
+            }
+            
+            if (title) {
+                notificationTitle = title;
+            }
             
             notification.innerHTML = `
                 <div class="notification-icon">${icon}</div>
                 <div class="notification-content">
-                    <div class="notification-title">${type === 'success' ? 'نجاح' : type === 'error' ? 'خطأ' : type === 'warning' ? 'تحذير' : 'معلومة'}</div>
+                    <div class="notification-title">${notificationTitle}</div>
                     <div class="notification-message">${message}</div>
                 </div>
-                <button onclick="this.parentElement.remove()" style="background: none; border: none; cursor: pointer; color: var(--gray-500); font-size: 1.25rem;">
+                <button onclick="this.parentElement.remove()" style="
+                    background: none; 
+                    border: none; 
+                    cursor: pointer; 
+                    color: var(--gray-500); 
+                    font-size: 1.25rem;
+                    padding: 0.25rem;
+                    border-radius: var(--radius-sm);
+                ">
                     &times;
                 </button>
             `;
@@ -2485,6 +2896,14 @@
                 }
             }, 5000);
         }
+
+        // إضافة استماع لزر الإدخال في المحادثة
+        document.getElementById('chat-input')?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
 
         // Filter available rides by city
         document.getElementById('filter-city')?.addEventListener('change', displayAvailableRides);
