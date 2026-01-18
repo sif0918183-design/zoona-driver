@@ -1861,25 +1861,31 @@
         // ============================================
         async function loadPassengerRides() {
             try {
-                // جلب الرحلات من جدول rides أولاً
+                // جلب الرحلات من جدول rides
                 const { data: ridesData, error: ridesError } = await travelSupabase
                     .from('rides')
                     .select('*')
                     .eq('passenger_id', currentUser.id)
                     .order('created_at', { ascending: false });
 
-                if (!ridesError && ridesData && ridesData.length > 0) {
-                    userRides = ridesData;
-                } else {
-                    // جلب من ride_requests إذا لم توجد في rides
-                    const { data: requestsData, error: requestsError } = await travelSupabase
-                        .from('ride_requests')
-                        .select('*')
-                        .eq('customer_id', currentUser.id)
-                        .order('created_at', { ascending: false });
+                // جلب من ride_requests
+                const { data: requestsData, error: requestsError } = await travelSupabase
+                    .from('ride_requests')
+                    .select('*')
+                    .eq('customer_id', currentUser.id)
+                    .order('created_at', { ascending: false });
 
-                    if (!requestsError && requestsData) {
-                        userRides = requestsData.map(req => ({
+                let combinedRides = [];
+
+                if (!ridesError && ridesData) {
+                    combinedRides = [...ridesData];
+                }
+
+                if (!requestsError && requestsData) {
+                    // تجنب التكرار إذا كانت الرحلة موجودة في الجدولين
+                    const formattedRequests = requestsData
+                        .filter(req => !combinedRides.some(r => r.id === req.id))
+                        .map(req => ({
                             id: req.id,
                             passenger_id: req.customer_id,
                             passenger_name: currentUser.full_name,
@@ -1896,9 +1902,13 @@
                             driver_phone: req.driver_phone,
                             created_at: req.created_at
                         }));
-                    }
+                    combinedRides = [...combinedRides, ...formattedRequests];
                 }
                 
+                // ترتيب حسب التاريخ
+                combinedRides.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+                userRides = combinedRides;
                 displayPassengerRides();
                 
             } catch (error) {
@@ -2187,10 +2197,10 @@
                         </div>
                     </div>
                     <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); acceptRide(${ride.id})">
+                        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); acceptRide('${ride.id}')">
                             <i class="fas fa-check"></i> قبول الرحلة
                         </button>
-                        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); startChatWithPassenger(${ride.id}, '${escapeHtml(ride.passenger_name || 'راكب').replace(/'/g, "\\'")}')">
+                        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); startChatWithPassenger('${ride.id}', '${escapeHtml(ride.passenger_name || 'راكب').replace(/'/g, "\\'")}')">
                             <i class="fas fa-comment"></i> محادثة
                         </button>
                     </div>
@@ -2534,10 +2544,10 @@
             if (userType === 'passenger') {
                 if (ride.status === 'accepted' && ride.driver_name) {
                     actions = `
-                        <button class="btn btn-primary" onclick="startChatWithDriver(${ride.id}, '${escapeHtml(ride.driver_name).replace(/'/g, "\\'")}')">
+                        <button class="btn btn-primary" onclick="startChatWithDriver('${ride.id}', '${escapeHtml(ride.driver_name).replace(/'/g, "\\'")}')">
                             <i class="fas fa-comment"></i> محادثة مع السائق
                         </button>
-                        <button class="btn btn-success" onclick="confirmAgreement(${ride.id})">
+                        <button class="btn btn-success" onclick="confirmAgreement('${ride.id}')">
                             <i class="fas fa-handshake"></i> تأكيد الاتفاق
                         </button>
                     `;
@@ -2545,10 +2555,10 @@
             } else {
                 if (ride.status === 'pending') {
                     actions = `
-                        <button class="btn btn-primary" onclick="acceptRide(${ride.id})">
+                        <button class="btn btn-primary" onclick="acceptRide('${ride.id}')">
                             <i class="fas fa-check"></i> قبول الرحلة
                         </button>
-                        <button class="btn btn-outline" onclick="startChatWithPassenger(${ride.id}, '${escapeHtml(ride.passenger_name).replace(/'/g, "\\'")}')">
+                        <button class="btn btn-outline" onclick="startChatWithPassenger('${ride.id}', '${escapeHtml(ride.passenger_name).replace(/'/g, "\\'")}')">
                             <i class="fas fa-comment"></i> محادثة مع الراكب
                         </button>
                     `;
