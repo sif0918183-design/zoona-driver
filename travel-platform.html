@@ -1815,6 +1815,8 @@
                 // Create ride request in ride_requests table
                 const rideData = {
                     customer_id: currentUser.id,
+                    passenger_name: currentUser.full_name,
+                    passenger_phone: currentUser.phone,
                     from_city: fromCity,
                     to_city: toCity,
                     vehicle_category: category.name_ar || category.name,
@@ -1866,7 +1868,7 @@
                     .eq('passenger_id', currentUser.id)
                     .order('created_at', { ascending: false });
 
-                if (!ridesError && ridesData) {
+                if (!ridesError && ridesData && ridesData.length > 0) {
                     userRides = ridesData;
                 } else {
                     // جلب من ride_requests إذا لم توجد في rides
@@ -2078,10 +2080,7 @@
                 // محاولة جلب من ride_requests أولاً
                 const { data: requestsData, error: requestsError } = await travelSupabase
                     .from('ride_requests')
-                    .select(`
-                        *,
-                        customer:customers(full_name, phone)
-                    `)
+                    .select('*')
                     .eq('status', 'pending')
                     .order('created_at', { ascending: false });
 
@@ -2089,8 +2088,8 @@
                     availableRides = requestsData.map(request => ({
                         id: request.id,
                         passenger_id: request.customer_id,
-                        passenger_name: request.customer?.full_name || 'راكب',
-                        passenger_phone: request.customer?.phone || '',
+                        passenger_name: request.passenger_name || 'راكب',
+                        passenger_phone: request.passenger_phone || '',
                         from_city: request.from_city,
                         to_city: request.to_city,
                         vehicle_category: request.vehicle_category,
@@ -2307,7 +2306,7 @@
                     .eq('driver_id', currentUser.id)
                     .order('created_at', { ascending: false });
                 
-                if (!ridesError && ridesData) {
+                if (!ridesError && ridesData && ridesData.length > 0) {
                     displayDriverRides(ridesData);
                     return;
                 }
@@ -2323,8 +2322,8 @@
                     displayDriverRides(requestsData.map(req => ({
                         id: req.id,
                         passenger_id: req.customer_id,
-                        passenger_name: 'راكب',
-                        passenger_phone: '',
+                        passenger_name: req.passenger_name || 'راكب',
+                        passenger_phone: req.passenger_phone || '',
                         from_city: req.from_city,
                         to_city: req.to_city,
                         vehicle_category: req.vehicle_category,
