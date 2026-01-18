@@ -2092,7 +2092,7 @@
                 if (!requestsRes.error && requestsRes.data) {
                     const formattedRequests = requestsRes.data.map(req => ({
                         id: 'req_' + req.id,
-                        passenger_name: 'راكب',
+                        passenger_name: req.passenger_name || 'راكب',
                         driver_name: req.driver_name || null,
                         from_city: req.from_city,
                         to_city: req.to_city,
@@ -2127,16 +2127,19 @@
 
         async function loadTravelRoutes() {
             try {
-                // Since travel_routes table doesn't exist, create mock data or use existing data
-                const majorCities = ['الخرطوم', 'مدني', 'القضارف', 'كسلا', 'بورتسودان', 'عطبرة'];
+                // Try to load cities from database
+                let displayCities = cities;
+                if (displayCities.length === 0) {
+                    displayCities = ['الخرطوم', 'مدني', 'القضارف', 'كسلا', 'بورتسودان', 'عطبرة'];
+                }
                 
                 allPrices = [];
-                majorCities.forEach((fromCity, i) => {
-                    majorCities.forEach((toCity, j) => {
+                displayCities.forEach((fromCity, i) => {
+                    displayCities.forEach((toCity, j) => {
                         if (i !== j) {
                             const basePrice = calculateEstimatedPrice(fromCity, toCity);
                             allPrices.push({
-                                id: i * 10 + j,
+                                id: i * 100 + j,
                                 from_city: fromCity,
                                 to_city: toCity,
                                 base_price_eco: basePrice,
@@ -3359,43 +3362,28 @@
                     .from('system_settings')
                     .select('*');
 
-                if (error) {
-                    console.warn('Warning: system_settings table not properly configured');
-                    
-                    // Use default settings
-                    const defaultSettings = {
-                        platform_name: 'ترحال زونا',
-                        service_fee_percentage: '10',
-                        max_wait_time_minutes: '40',
-                        enable_chat: 'true',
-                        enable_whatsapp: 'true',
-                        staff_passcode: '1234'
-                    };
-                    
-                    // Update form values
-                    const settingsForm = document.getElementById('platform-settings-form');
-                    if (settingsForm) {
-                        document.querySelector('[name="platform_name"]').value = defaultSettings.platform_name;
-                        document.querySelector('[name="service_fee"]').value = defaultSettings.service_fee_percentage;
-                        document.querySelector('[name="max_wait_time"]').value = defaultSettings.max_wait_time_minutes;
-                        document.querySelector('[name="enable_chat"]').checked = defaultSettings.enable_chat === 'true';
-                        document.querySelector('[name="enable_whatsapp"]').checked = defaultSettings.enable_whatsapp === 'true';
-                    }
-                    return;
-                }
+                // Update form values with defaults if table is empty or error
+                const defaultSettings = {
+                    platform_name: 'ترحال زونا',
+                    service_fee_percentage: '10',
+                    max_wait_time_minutes: '40',
+                    enable_chat: 'true',
+                    enable_whatsapp: 'true',
+                    staff_passcode: '1234'
+                };
 
-                // Populate settings form
-                const settingsForm = document.getElementById('platform-settings-form');
-                if (settingsForm && data) {
-                    const settingsMap = {};
+                const settingsMap = { ...defaultSettings };
+                if (!error && data) {
                     data.forEach(setting => {
                         settingsMap[setting.key] = setting.value;
                     });
+                }
 
-                    // Update form values
-                    document.querySelector('[name="platform_name"]').value = settingsMap.platform_name || 'ترحال زونا';
-                    document.querySelector('[name="service_fee"]').value = settingsMap.service_fee_percentage || 10;
-                    document.querySelector('[name="max_wait_time"]').value = settingsMap.max_wait_time_minutes || 40;
+                const settingsForm = document.getElementById('platform-settings-form');
+                if (settingsForm) {
+                    document.querySelector('[name="platform_name"]').value = settingsMap.platform_name;
+                    document.querySelector('[name="service_fee"]').value = settingsMap.service_fee_percentage;
+                    document.querySelector('[name="max_wait_time"]').value = settingsMap.max_wait_time_minutes;
                     document.querySelector('[name="enable_chat"]').checked = settingsMap.enable_chat !== 'false';
                     document.querySelector('[name="enable_whatsapp"]').checked = settingsMap.enable_whatsapp !== 'false';
                 }
