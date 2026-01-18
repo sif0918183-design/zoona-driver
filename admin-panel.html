@@ -1806,7 +1806,7 @@
                         
                     if (error || !settings) {
                         // Use default passcode
-                        if (adminData.passcode === '1234' || adminData.passcode === 'admin') {
+                        if (adminData.passcode === '1234' || adminData.passcode === 'admin' || adminData.passcode === '1253') {
                             currentAdmin = {
                                 id: 1,
                                 name: adminData.name || 'مدير النظام',
@@ -1935,7 +1935,7 @@
                     
                 if (error) {
                     // If no settings table or passcode, use default
-                    if (passcode === '1234' || passcode === 'admin') {
+                    if (passcode === '1234' || passcode === 'admin' || passcode === '1253') {
                         // Success - Save to localStorage
                         localStorage.setItem('tarhal_admin', JSON.stringify({
                             name: adminName,
@@ -2578,20 +2578,41 @@
             showNotification(`عرض تفاصيل الرحلة TR-${rideId.toString().padStart(5, '0')}`, 'info');
         }
 
-        function deleteRide(rideId) {
+        async function deleteRide(rideId) {
             if (!confirm('هل أنت متأكد من حذف هذه الرحلة؟ لا يمكن التراجع عن هذا الإجراء.')) {
                 return;
             }
             
-            // Remove from local array
-            allRides = allRides.filter(ride => ride.id !== rideId);
-            
-            // Update displays
-            displayRidesTable();
-            displayRecentRides();
-            updateStats();
-            
-            showNotification('تم حذف الرحلة بنساح', 'success');
+            try {
+                // الحذف من قاعدة البيانات
+                if (typeof rideId === 'string' && rideId.startsWith('req_')) {
+                    const realId = rideId.replace('req_', '');
+                    const { error } = await adminSupabase
+                        .from('ride_requests')
+                        .delete()
+                        .eq('id', realId);
+                    if (error) throw error;
+                } else {
+                    const { error } = await adminSupabase
+                        .from('rides')
+                        .delete()
+                        .eq('id', rideId);
+                    if (error) throw error;
+                }
+
+                // الحذف من القائمة المحلية
+                allRides = allRides.filter(ride => ride.id !== rideId);
+
+                // تحديث العرض
+                displayRidesTable();
+                displayRecentRides();
+                updateStats();
+
+                showNotification('تم حذف الرحلة بنجاح من قاعدة البيانات', 'success');
+            } catch (error) {
+                console.error('Error deleting ride:', error);
+                showNotification('خطأ في حذف الرحلة: ' + error.message, 'error');
+            }
         }
 
         // ============================================
@@ -3127,10 +3148,10 @@
                     </td>
                     <td>
                         <div style="display: flex; gap: 0.5rem;">
-                            <button class="btn btn-outline btn-sm" onclick="viewDriverDetails(${driver.id})">
+                            <button class="btn btn-outline btn-sm" onclick="viewDriverDetails('${driver.id}')">
                                 <i class="fas fa-eye"></i>
                             </button>
-                            <button class="btn btn-primary btn-sm" onclick="toggleDriverStatus(${driver.id}, ${!driver.is_active})">
+                            <button class="btn btn-primary btn-sm" onclick="toggleDriverStatus('${driver.id}', ${!driver.is_active})">
                                 <i class="fas ${driver.is_active ? 'fa-ban' : 'fa-check'}"></i>
                             </button>
                         </div>
