@@ -1815,6 +1815,8 @@
                 // Create ride request in ride_requests table
                 const rideData = {
                     customer_id: currentUser.id,
+                    passenger_name: currentUser.full_name,
+                    passenger_phone: currentUser.phone,
                     from_city: fromCity,
                     to_city: toCity,
                     vehicle_category: category.name_ar || category.name,
@@ -1866,7 +1868,7 @@
                     .eq('passenger_id', currentUser.id)
                     .order('created_at', { ascending: false });
 
-                if (!ridesError && ridesData) {
+                if (!ridesError && ridesData && ridesData.length > 0) {
                     userRides = ridesData;
                 } else {
                     // جلب من ride_requests إذا لم توجد في rides
@@ -2043,13 +2045,17 @@
             chats.forEach(chat => {
                 const chatElement = document.createElement('div');
                 chatElement.className = 'ride-card';
-                chatElement.onclick = () => openChat(chat);
+                chatElement.onclick = () => openChatSimple(chat.id, chat.other_user_name, chat.ride_id || chat.id);
+                
+                // Escape special characters in chat data
+                const escapedUserName = escapeHtml(chat.other_user_name || '');
+                const escapedMessage = escapeHtml(chat.last_message || '');
                 
                 chatElement.innerHTML = `
                     <div class="ride-header">
                         <div class="ride-route">
                             <i class="fas fa-comment"></i>
-                            ${chat.other_user_name}
+                            ${escapedUserName}
                         </div>
                         <div style="font-size: 0.875rem; color: var(--gray-500);">
                             ${formatTime(chat.last_message_time)}
@@ -2058,10 +2064,10 @@
                     <div class="ride-details">
                         <div class="ride-detail">
                             <i class="fas fa-message"></i>
-                            <span>${chat.last_message}</span>
+                            <span>${escapedMessage}</span>
                         </div>
                     </div>
-                    <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openChat(${JSON.stringify(chat).replace(/"/g, '&quot;')})">
+                    <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openChatSimple('${chat.id}', '${escapedUserName.replace(/'/g, "\\'")}', '${chat.ride_id || chat.id}')">
                         <i class="fas fa-reply"></i> رد
                     </button>
                 `;
@@ -2078,10 +2084,7 @@
                 // محاولة جلب من ride_requests أولاً
                 const { data: requestsData, error: requestsError } = await travelSupabase
                     .from('ride_requests')
-                    .select(`
-                        *,
-                        customer:customers(full_name, phone)
-                    `)
+                    .select('*')
                     .eq('status', 'pending')
                     .order('created_at', { ascending: false });
 
@@ -2089,8 +2092,8 @@
                     availableRides = requestsData.map(request => ({
                         id: request.id,
                         passenger_id: request.customer_id,
-                        passenger_name: request.customer?.full_name || 'راكب',
-                        passenger_phone: request.customer?.phone || '',
+                        passenger_name: request.passenger_name || 'راكب',
+                        passenger_phone: request.passenger_phone || '',
                         from_city: request.from_city,
                         to_city: request.to_city,
                         vehicle_category: request.vehicle_category,
@@ -2187,7 +2190,7 @@
                         <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); acceptRide(${ride.id})">
                             <i class="fas fa-check"></i> قبول الرحلة
                         </button>
-                        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); startChatWithPassenger(${ride.id}, '${ride.passenger_name || 'راكب'}')">
+                        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); startChatWithPassenger(${ride.id}, '${escapeHtml(ride.passenger_name || 'راكب').replace(/'/g, "\\'")}')">
                             <i class="fas fa-comment"></i> محادثة
                         </button>
                     </div>
@@ -2307,7 +2310,7 @@
                     .eq('driver_id', currentUser.id)
                     .order('created_at', { ascending: false });
                 
-                if (!ridesError && ridesData) {
+                if (!ridesError && ridesData && ridesData.length > 0) {
                     displayDriverRides(ridesData);
                     return;
                 }
@@ -2323,8 +2326,8 @@
                     displayDriverRides(requestsData.map(req => ({
                         id: req.id,
                         passenger_id: req.customer_id,
-                        passenger_name: 'راكب',
-                        passenger_phone: '',
+                        passenger_name: req.passenger_name || 'راكب',
+                        passenger_phone: req.passenger_phone || '',
                         from_city: req.from_city,
                         to_city: req.to_city,
                         vehicle_category: req.vehicle_category,
@@ -2484,13 +2487,17 @@
             chats.forEach(chat => {
                 const chatElement = document.createElement('div');
                 chatElement.className = 'ride-card';
-                chatElement.onclick = () => openChat(chat);
+                chatElement.onclick = () => openChatSimple(chat.id, chat.other_user_name, chat.ride_id || chat.id);
+                
+                // Escape special characters in chat data
+                const escapedUserName = escapeHtml(chat.other_user_name || '');
+                const escapedMessage = escapeHtml(chat.last_message || '');
                 
                 chatElement.innerHTML = `
                     <div class="ride-header">
                         <div class="ride-route">
                             <i class="fas fa-comment"></i>
-                            ${chat.other_user_name}
+                            ${escapedUserName}
                         </div>
                         <div style="font-size: 0.875rem; color: var(--gray-500);">
                             ${formatTime(chat.last_message_time)}
@@ -2500,11 +2507,11 @@
                         <div class="ride-detail">
                             <i class="fas fa-message"></i>
                             <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                ${chat.last_message}
+                                ${escapedMessage}
                             </span>
                         </div>
                     </div>
-                    <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openChat(${JSON.stringify(chat).replace(/"/g, '&quot;')})">
+                    <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openChatSimple('${chat.id}', '${escapedUserName.replace(/'/g, "\\'")}', '${chat.ride_id || chat.id}')">
                         <i class="fas fa-reply"></i> رد
                     </button>
                 `;
@@ -2527,7 +2534,7 @@
             if (userType === 'passenger') {
                 if (ride.status === 'accepted' && ride.driver_name) {
                     actions = `
-                        <button class="btn btn-primary" onclick="startChatWithDriver(${ride.id}, '${ride.driver_name}')">
+                        <button class="btn btn-primary" onclick="startChatWithDriver(${ride.id}, '${escapeHtml(ride.driver_name).replace(/'/g, "\\'")}')">
                             <i class="fas fa-comment"></i> محادثة مع السائق
                         </button>
                         <button class="btn btn-success" onclick="confirmAgreement(${ride.id})">
@@ -2541,7 +2548,7 @@
                         <button class="btn btn-primary" onclick="acceptRide(${ride.id})">
                             <i class="fas fa-check"></i> قبول الرحلة
                         </button>
-                        <button class="btn btn-outline" onclick="startChatWithPassenger(${ride.id}, '${ride.passenger_name}')">
+                        <button class="btn btn-outline" onclick="startChatWithPassenger(${ride.id}, '${escapeHtml(ride.passenger_name).replace(/'/g, "\\'")}')">
                             <i class="fas fa-comment"></i> محادثة مع الراكب
                         </button>
                     `;
@@ -2639,14 +2646,7 @@
         // CHAT FUNCTIONS - FIXED VERSION
         // ============================================
         function openChat(chat) {
-            currentChat = chat;
-            
-            document.getElementById('chat-with-name').textContent = chat.other_user_name;
-            document.getElementById('chat-ride-info').textContent = '';
-            document.getElementById('chat-modal').classList.remove('hidden');
-            
-            // Load chat messages
-            loadChatMessages(chat.ride_id || chat.id);
+            openChatSimple(chat.id, chat.other_user_name, chat.ride_id || chat.id);
         }
 
         function startChatWithPassenger(rideId, passengerName) {
@@ -2715,7 +2715,7 @@
                 
                 messageElement.innerHTML = `
                     <div class="message-content">
-                        ${msg.message}
+                        ${escapeHtml(msg.message)}
                     </div>
                     <div class="message-time">
                         ${formatTime(msg.time)}
@@ -2760,7 +2760,7 @@
                 messageElement.className = 'message message-outgoing';
                 messageElement.innerHTML = `
                     <div class="message-content">
-                        ${message}
+                        ${escapeHtml(message)}
                     </div>
                     <div class="message-time">
                         ${new Date().toLocaleTimeString('ar-SA', { 
@@ -2844,6 +2844,34 @@
             }
         }
 
+        // ============================================
+        // CHAT UTILITY FUNCTIONS - ADDED FIXES
+        // ============================================
+        function openChatSimple(chatId, userName, rideId) {
+            currentChat = {
+                id: chatId,
+                other_user_name: userName,
+                ride_id: rideId
+            };
+            
+            document.getElementById('chat-with-name').textContent = userName;
+            document.getElementById('chat-ride-info').textContent = '';
+            document.getElementById('chat-modal').classList.remove('hidden');
+            
+            loadChatMessages(rideId || chatId);
+        }
+        
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
         function showNotification(message, type = 'info', title = null) {
             const container = document.getElementById('notification-container');
             
@@ -2872,7 +2900,7 @@
                 <div class="notification-icon">${icon}</div>
                 <div class="notification-content">
                     <div class="notification-title">${notificationTitle}</div>
-                    <div class="notification-message">${message}</div>
+                    <div class="notification-message">${escapeHtml(message)}</div>
                 </div>
                 <button onclick="this.parentElement.remove()" style="
                     background: none; 
