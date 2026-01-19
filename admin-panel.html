@@ -1180,7 +1180,26 @@
                 <!-- Dashboard Section -->
                 <section id="dashboard-section" class="section">
                     <!-- Stats Cards -->
-                    <div class="stats-grid">
+                    <div class="stats-grid" id="main-stats-grid">
+                        <div class="stat-card" id="total-commission-card">
+                            <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white;">
+                                <i class="fas fa-hand-holding-usd"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value" id="total-commission">0 ج</div>
+                                <div class="stat-label">إجمالي العمولات</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card" id="low-balance-card">
+                            <div class="stat-icon" style="background: linear-gradient(135deg, #f97316, #ea580c); color: white;">
+                                <i class="fas fa-exclamation-circle"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value" id="low-balance-drivers">0</div>
+                                <div class="stat-label">سائقون برصيد منخفض</div>
+                            </div>
+                        </div>
                         <div class="stat-card">
                             <div class="stat-icon" style="background: linear-gradient(135deg, #4f46e5, #3730a3); color: white;">
                                 <i class="fas fa-road"></i>
@@ -1292,6 +1311,39 @@
 
                 <!-- Rides Management Section -->
                 <section id="rides-section" class="section">
+                    <div class="tabs" style="margin-bottom: 1.5rem;">
+                        <button class="tab active" onclick="showRidesTab('all')">جميع الرحلات</button>
+                        <button class="tab" onclick="showRidesTab('multi-driver')">نظام القبول المتعدد</button>
+                    </div>
+
+                    <div id="multi-driver-rides-content" class="hidden">
+                        <div class="tables-container">
+                            <div class="table-header">
+                                <h3 class="table-title">
+                                    <i class="fas fa-users"></i>
+                                    نظام القبول المتعدد للسائقين
+                                </h3>
+                            </div>
+                            <div class="table-content">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>رقم الرحلة</th>
+                                            <th>الراكب</th>
+                                            <th>الرحلة</th>
+                                            <th>عدد المقبولين</th>
+                                            <th>الحالة</th>
+                                            <th>التاريخ</th>
+                                            <th>الإجراءات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="multi-driver-rides-table">
+                                        <!-- سيتم تعبئته بـ JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                     <div class="tables-container">
                         <div class="table-header">
                             <h3 class="table-title">
@@ -1571,6 +1623,153 @@
                 </section>
 
                 <!-- Settings Section -->
+                <section id="balance-section" class="section">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem;">
+
+                        <!-- تقرير العمولات -->
+                        <div class="tables-container">
+                            <div class="table-header">
+                                <h3 class="table-title">
+                                    <i class="fas fa-money-bill-wave"></i>
+                                    تقرير العمولات (5%)
+                                </h3>
+                                <div class="table-actions">
+                                    <button class="btn btn-outline btn-sm" onclick="loadCommissionReports()">
+                                        <i class="fas fa-sync-alt"></i> تحديث
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="table-content">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>السائق</th>
+                                            <th>مبلغ الرحلة</th>
+                                            <th>العمولة (5%)</th>
+                                            <th>التاريخ</th>
+                                            <th>الإجراءات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="commission-reports-table">
+                                        <!-- سيتم تعبئته بـ JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- السائقون ذوو الرصيد المنخفض -->
+                        <div class="tables-container">
+                            <div class="table-header">
+                                <h3 class="table-title">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    تحذيرات الرصيد
+                                </h3>
+                                <div class="table-actions">
+                                    <button class="btn btn-outline btn-sm" onclick="loadLowBalanceDrivers()">
+                                        <i class="fas fa-sync-alt"></i> تحديث
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="table-content">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>السائق</th>
+                                            <th>الرصيد الحالي</th>
+                                            <th>حالة الحساب</th>
+                                            <th>آخر تنبيه</th>
+                                            <th>الإجراءات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="low-balance-table">
+                                        <!-- سيتم تعبئته بـ JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- إدارة رصيد السائق -->
+                    <div class="tables-container" style="margin-top: 2rem;">
+                        <div class="table-header">
+                            <h3 class="table-title">
+                                <i class="fas fa-edit"></i>
+                                إدارة رصيد السائق
+                            </h3>
+                        </div>
+                        <div style="padding: 1.5rem;">
+                            <form id="balance-management-form">
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+                                    <div class="form-group">
+                                        <label class="form-label">اختر السائق</label>
+                                        <select class="form-control form-select" id="balance-driver-select" required>
+                                            <option value="">اختر السائق</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label">الإجراء</label>
+                                        <select class="form-control form-select" id="balance-action" required>
+                                            <option value="add">إضافة رصيد</option>
+                                            <option value="subtract">خصم رصيد</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label">المبلغ (جنيـه)</label>
+                                        <input type="number" class="form-control" id="balance-amount"
+                                               required min="0" step="1000" placeholder="أدخل المبلغ">
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">ملاحظات (اختياري)</label>
+                                    <textarea class="form-control" id="balance-notes"
+                                              placeholder="سبب الإضافة أو الخصم..." rows="2"></textarea>
+                                </div>
+
+                                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save"></i> تنفيذ العملية
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- الإلغاءات المشبوهة -->
+                    <div class="tables-container" style="margin-top: 2rem;">
+                        <div class="table-header">
+                            <h3 class="table-title">
+                                <i class="fas fa-user-slash"></i>
+                                الإلغاءات المشبوهة
+                            </h3>
+                            <div class="table-actions">
+                                <button class="btn btn-outline btn-sm" onclick="loadSuspiciousCancellations()">
+                                    <i class="fas fa-sync-alt"></i> تحديث
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-content">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>السائق</th>
+                                        <th>رقم الرحلة</th>
+                                        <th>نوع الإلغاء</th>
+                                        <th>تم تطبيق العقوبة</th>
+                                        <th>التاريخ</th>
+                                        <th>الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="suspicious-cancellations-table">
+                                    <!-- سيتم تعبئته بـ JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
                 <section id="settings-section" class="section">
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem;">
                         <!-- Platform Settings -->
@@ -1740,6 +1939,41 @@
     <!-- Notification Container -->
     <div class="notification-container" id="notification-container"></div>
 
+    <!-- Ride Acceptances Modal -->
+    <div id="ride-acceptances-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="ride-acceptances-title">قائمة السائقين المقبولين</h3>
+                <button class="modal-close" onclick="closeRideAcceptancesModal()">&times;</button>
+            </div>
+
+            <div class="table-content" style="max-height: 400px; overflow-y: auto;">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>السائق</th>
+                            <th>رقم الهاتف</th>
+                            <th>حالة القبول</th>
+                            <th>وقت القبول</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ride-acceptances-table">
+                        <!-- سيتم تعبئته بـ JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="padding: 1.5rem; border-top: 1px solid var(--gray-200);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span id="acceptances-count">0 سائق</span>
+                    <button class="btn btn-outline" onclick="closeRideAcceptancesModal()">
+                        <i class="fas fa-times"></i> إغلاق
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
     <script>
         // ============================================
         // GLOBAL VARIABLES AND CONFIGURATION
@@ -1751,6 +1985,7 @@
         // Application State
         let currentAdmin = null;
         let allRides = [];
+        const STOP_BALANCE_THRESHOLD = 1000;
         let allPrices = [];
         let allDrivers = [];
         let allPassengers = [];
@@ -2000,6 +2235,7 @@
                 'drivers': 'السائقون',
                 'passengers': 'الركاب',
                 'reports': 'التقارير',
+                'balance': 'الرصيد والعمولات',
                 'settings': 'الإعدادات'
             };
             
@@ -2010,6 +2246,7 @@
                 'drivers': 'fa-car',
                 'passengers': 'fa-users',
                 'reports': 'fa-chart-bar',
+                'balance': 'fa-wallet',
                 'settings': 'fa-cog'
             };
             
@@ -2035,11 +2272,407 @@
                 case 'reports':
                     loadReports();
                     break;
+                case 'rides':
+                    showRidesTab('all');
+                    break;
+                case 'balance':
+                    loadCommissionReports();
+                    loadLowBalanceDrivers();
+                    loadSuspiciousCancellations();
+                    populateDriverSelect();
+                    break;
                 case 'settings':
                     loadSettings();
                     break;
             }
         }
+
+        async function loadCommissionReports() {
+            try {
+                const { data: rides, error } = await adminSupabase
+                    .from('rides')
+                    .select(`
+                        id,
+                        driver_id,
+                        driver_name,
+                        final_price,
+                        commission_amount,
+                        created_at
+                    `)
+                    .not('commission_amount', 'is', null)
+                    .order('created_at', { ascending: false })
+                    .limit(100);
+
+                if (!error && rides) {
+                    displayCommissionReports(rides);
+                }
+            } catch (error) {
+                console.error('Error loading commission reports:', error);
+            }
+        }
+
+        function displayCommissionReports(rides) {
+            const container = document.getElementById('commission-reports-table');
+            if (!container) return;
+            container.innerHTML = '';
+            rides.forEach(ride => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${ride.driver_name}</td>
+                    <td>${ride.final_price.toLocaleString()} ج</td>
+                    <td style="font-weight: 700; color: var(--danger);">${ride.commission_amount.toLocaleString()} ج</td>
+                    <td>${formatDateShort(ride.created_at)}</td>
+                    <td>
+                        <button class="btn btn-outline btn-sm" onclick="viewRideDetails('${ride.id}')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </td>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        async function manageDriverBalance(driverId, action, amount, notes) {
+            try {
+                const { data: driver, error: fetchError } = await adminSupabase
+                    .from('drivers')
+                    .select('balance')
+                    .eq('id', driverId)
+                    .single();
+
+                if (fetchError) throw fetchError;
+
+                let newBalance = driver.balance || 0;
+
+                if (action === 'add') {
+                    newBalance += amount;
+                } else if (action === 'subtract') {
+                    newBalance -= amount;
+                }
+
+                const { error: updateError } = await adminSupabase
+                    .from('drivers')
+                    .update({
+                        balance: newBalance,
+                        last_balance_update: new Date().toISOString()
+                    })
+                    .eq('id', driverId);
+
+                if (updateError) throw updateError;
+
+                // تسجيل العملية
+                await adminSupabase
+                    .from('balance_transactions')
+                    .insert([{
+                        driver_id: driverId,
+                        amount: action === 'add' ? amount : -amount,
+                        type: action === 'add' ? 'admin_add' : 'admin_subtract',
+                        previous_balance: driver.balance || 0,
+                        new_balance: newBalance,
+                        admin_id: currentAdmin.id,
+                        notes: notes || `عملية إدارية: ${action === 'add' ? 'إضافة' : 'خصم'} ${amount} جنيـه`,
+                        created_at: new Date().toISOString()
+                    }]);
+
+                return true;
+            } catch (error) {
+                console.error('Error managing balance:', error);
+                throw error;
+            }
+        }
+
+        async function loadLowBalanceDrivers() {
+            try {
+                const { data: drivers, error } = await adminSupabase
+                    .from('drivers')
+                    .select(`
+                        id,
+                        full_name,
+                        phone,
+                        balance,
+                        is_active,
+                        last_balance_alert
+                    `)
+                    .lte('balance', 10000)
+                    .order('balance', { ascending: true })
+                    .limit(50);
+
+                if (!error && drivers) {
+                    displayLowBalanceDrivers(drivers);
+                    const lowBalanceCounter = document.getElementById('low-balance-drivers');
+                    if (lowBalanceCounter) lowBalanceCounter.textContent = drivers.length;
+                }
+            } catch (error) {
+                console.error('Error loading low balance drivers:', error);
+            }
+        }
+
+        function displayLowBalanceDrivers(drivers) {
+            const container = document.getElementById('low-balance-table');
+            if (!container) return;
+            container.innerHTML = '';
+            drivers.forEach(driver => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${driver.full_name}</td>
+                    <td style="font-weight: 700; color: ${driver.balance < STOP_BALANCE_THRESHOLD ? 'var(--danger)' : 'var(--warning)'};">
+                        ${(driver.balance || 0).toLocaleString()} ج
+                    </td>
+                    <td><span class="badge ${driver.is_active ? 'badge-success' : 'badge-danger'}">${driver.is_active ? 'نشط' : 'موقف'}</span></td>
+                    <td>${driver.last_balance_alert ? formatDateShort(driver.last_balance_alert) : 'لا يوجد'}</td>
+                    <td>
+                        <button class="btn btn-primary btn-sm" onclick="prepareBalanceAction('${driver.id}')">
+                            <i class="fas fa-plus"></i> شحن
+                        </button>
+                    </td>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        async function loadSuspiciousCancellations() {
+            try {
+                const { data: cancellations, error } = await adminSupabase
+                    .from('suspicious_cancellations')
+                    .select(`
+                        id,
+                        driver_id,
+                        driver_name,
+                        ride_id,
+                        cancellation_type,
+                        created_at,
+                        penalty_applied
+                    `)
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+
+                if (!error && cancellations) {
+                    displaySuspiciousCancellations(cancellations);
+                }
+            } catch (error) {
+                console.error('Error loading suspicious cancellations:', error);
+            }
+        }
+
+        function displaySuspiciousCancellations(cancellations) {
+            const container = document.getElementById('suspicious-cancellations-table');
+            if (!container) return;
+            container.innerHTML = '';
+            cancellations.forEach(can => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${can.driver_name}</td>
+                    <td>TR-${can.ride_id.toString().substring(0, 8)}</td>
+                    <td><span class="badge badge-warning">${can.cancellation_type}</span></td>
+                    <td><span class="badge ${can.penalty_applied ? 'badge-danger' : 'badge-info'}">${can.penalty_applied ? 'نعم' : 'لا'}</span></td>
+                    <td>${formatDateShort(can.created_at)}</td>
+                    <td>
+                        <button class="btn btn-outline btn-sm" onclick="viewRideDetails('${can.ride_id}')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </td>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        async function loadMultiDriverRides() {
+            try {
+                const { data: rides, error } = await adminSupabase
+                    .from('ride_requests')
+                    .select(`
+                        id,
+                        passenger_name,
+                        from_city,
+                        to_city,
+                        estimated_price,
+                        status,
+                        created_at
+                    `)
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+
+                if (!error && rides) {
+                    // Fetch counts for each
+                    for (let ride of rides) {
+                        const { count } = await adminSupabase
+                            .from('ride_driver_acceptances')
+                            .select('*', { count: 'exact', head: true })
+                            .eq('ride_id', ride.id);
+                        ride.accepted_count = count || 0;
+                    }
+                    displayMultiDriverRides(rides);
+                }
+            } catch (error) {
+                console.error('Error loading multi-driver rides:', error);
+            }
+        }
+
+        function displayMultiDriverRides(rides) {
+            const container = document.getElementById('multi-driver-rides-table');
+            if (!container) return;
+            container.innerHTML = '';
+            rides.forEach(ride => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>TR-${ride.id.toString().substring(0, 8)}</td>
+                    <td>${ride.passenger_name}</td>
+                    <td>${ride.from_city} → ${ride.to_city}</td>
+                    <td><span class="badge badge-primary">${ride.accepted_count} سائق</span></td>
+                    <td>${getStatusBadge(ride.status)}</td>
+                    <td>${formatDateShort(ride.created_at)}</td>
+                    <td>
+                        <button class="btn btn-outline btn-sm" onclick="viewRideAcceptances('${ride.id}')">
+                            <i class="fas fa-users"></i>
+                        </button>
+                    </td>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        async function viewRideAcceptances(rideId) {
+            try {
+                const { data: acceptances, error } = await adminSupabase
+                    .from('ride_driver_acceptances')
+                    .select(`
+                        id,
+                        driver_id,
+                        status,
+                        accepted_at,
+                        drivers (
+                            full_name,
+                            phone
+                        )
+                    `)
+                    .eq('ride_id', rideId);
+
+                if (!error && acceptances) {
+                    const container = document.getElementById('ride-acceptances-table');
+                    container.innerHTML = '';
+                    acceptances.forEach(acc => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${acc.drivers.full_name}</td>
+                            <td>${acc.drivers.phone}</td>
+                            <td><span class="badge badge-info">${acc.status}</span></td>
+                            <td>${formatDateShort(acc.accepted_at)}</td>
+                            <td>
+                                <button class="btn btn-outline btn-sm" onclick="viewDriverDetails('${acc.driver_id}')">
+                                    <i class="fas fa-user"></i>
+                                </button>
+                            </td>
+                        `;
+                        container.appendChild(row);
+                    });
+                    document.getElementById('acceptances-count').textContent = `${acceptances.length} سائق`;
+                    document.getElementById('ride-acceptances-modal').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Error loading acceptances:', error);
+            }
+        }
+
+        function closeRideAcceptancesModal() {
+            document.getElementById('ride-acceptances-modal').classList.add('hidden');
+        }
+
+        function showRidesTab(tabName) {
+            // Update active tab button
+            const tabsContainer = document.querySelector('#rides-section .tabs');
+            if (tabsContainer) {
+                tabsContainer.querySelectorAll('.tab').forEach(tab => {
+                    tab.classList.remove('active');
+                    if (tab.getAttribute('onclick').includes(tabName)) {
+                        tab.classList.add('active');
+                    }
+                });
+            }
+
+            if (tabName === 'multi-driver') {
+                const tablesContainer = document.querySelector('#rides-section .tables-container');
+                if (tablesContainer) tablesContainer.classList.add('hidden');
+                const pagination = document.getElementById('rides-pagination');
+                if (pagination) pagination.classList.add('hidden');
+                const multiDriverContent = document.getElementById('multi-driver-rides-content');
+                if (multiDriverContent) multiDriverContent.classList.remove('hidden');
+                loadMultiDriverRides();
+            } else {
+                const tablesContainer = document.querySelector('#rides-section .tables-container');
+                if (tablesContainer) tablesContainer.classList.remove('hidden');
+                const pagination = document.getElementById('rides-pagination');
+                if (pagination) pagination.classList.remove('hidden');
+                const multiDriverContent = document.getElementById('multi-driver-rides-content');
+                if (multiDriverContent) multiDriverContent.classList.add('hidden');
+                displayRidesTable();
+            }
+        }
+
+        async function populateDriverSelect() {
+            const select = document.getElementById('balance-driver-select');
+            if (!select) return;
+
+            try {
+                const { data: drivers, error } = await adminSupabase
+                    .from('drivers')
+                    .select('id, full_name, phone, balance')
+                    .order('full_name');
+
+                if (!error && drivers) {
+                    select.innerHTML = '<option value="">اختر السائق</option>';
+                    drivers.forEach(driver => {
+                        const option = document.createElement('option');
+                        option.value = driver.id;
+                        option.textContent = `${driver.full_name} (${driver.phone}) - ${(driver.balance || 0).toLocaleString()} ج`;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error populating driver select:', error);
+            }
+        }
+
+        function prepareBalanceAction(driverId) {
+            showSection('balance');
+            setTimeout(() => {
+                const select = document.getElementById('balance-driver-select');
+                if (select) {
+                    select.value = driverId;
+                }
+            }, 100);
+        }
+
+        document.getElementById('balance-management-form')?.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const driverId = document.getElementById('balance-driver-select').value;
+            const action = document.getElementById('balance-action').value;
+            const amount = parseFloat(document.getElementById('balance-amount').value);
+            const notes = document.getElementById('balance-notes').value;
+
+            if (!driverId || !amount || amount <= 0) {
+                showNotification('الرجاء ملء جميع الحقول المطلوبة', 'warning');
+                return;
+            }
+
+            try {
+                await manageDriverBalance(driverId, action, amount, notes);
+
+                showNotification(`تم ${action === 'add' ? 'إضافة' : 'خصم'} ${amount.toLocaleString()} جنيـه بنجاح`, 'success');
+
+                // تحديث البيانات
+                await populateDriverSelect();
+                await loadLowBalanceDrivers();
+                await loadCommissionReports();
+
+                // إعادة تعيين النموذج
+                this.reset();
+
+            } catch (error) {
+                console.error('Error in balance management:', error);
+                showNotification('خطأ في إدارة الرصيد: ' + error.message, 'error');
+            }
+        });
 
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('active');
@@ -2179,6 +2812,7 @@
         function initializeCharts() {
             // Rides Chart
             const ridesCtx = document.getElementById('ridesChart').getContext('2d');
+            if (ridesChart) ridesChart.destroy();
             ridesChart = new Chart(ridesCtx, {
                 type: 'line',
                 data: {
@@ -2243,6 +2877,7 @@
             
             // Revenue Chart
             const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+            if (revenueChart) revenueChart.destroy();
             revenueChart = new Chart(revenueCtx, {
                 type: 'doughnut',
                 data: {
@@ -2285,8 +2920,9 @@
 
         function loadReports() {
             // Monthly Revenue Chart
-            if (!monthlyRevenueChart) {
+            if (true) {
                 const monthlyCtx = document.getElementById('monthlyRevenueChart').getContext('2d');
+                if (monthlyRevenueChart) monthlyRevenueChart.destroy();
                 monthlyRevenueChart = new Chart(monthlyCtx, {
                     type: 'bar',
                     data: {
@@ -2295,9 +2931,7 @@
                             label: 'الإيرادات (ألف جنيه)',
                             data: [120, 190, 150, 220, 180, 240, 200, 260, 230, 280, 250, 300],
                             backgroundColor: '#4f46e5',
-                            borderColor: '#3730a3',
-                            borderWidth: 1,
-                            borderRadius: 6
+                            borderRadius: 5
                         }]
                     },
                     options: {
@@ -2347,8 +2981,9 @@
             }
             
             // Popular Cities Chart
-            if (!popularCitiesChart) {
+            if (true) {
                 const citiesCtx = document.getElementById('popularCitiesChart').getContext('2d');
+                if (popularCitiesChart) popularCitiesChart.destroy();
                 popularCitiesChart = new Chart(citiesCtx, {
                     type: 'polarArea',
                     data: {
@@ -2359,11 +2994,8 @@
                                 '#4f46e5',
                                 '#10b981',
                                 '#f59e0b',
-                                '#3b82f6',
-                                '#8b5cf6'
-                            ],
-                            borderWidth: 1,
-                            borderColor: '#ffffff'
+                                '#ef4444',
+                                '#8b5cf6']
                         }]
                     },
                     options: {
@@ -2418,6 +3050,14 @@
             // Pending rides
             const pendingRides = allRides.filter(ride => ride.status === 'pending' || ride.status === 'searching').length;
             document.getElementById('pending-rides').textContent = pendingRides.toLocaleString();
+
+            // Update new stats
+            const totalCommission = allRides
+                .filter(ride => ride.status === 'completed')
+                .reduce((sum, ride) => sum + ((ride.final_price || 0) * 0.05), 0);
+
+            const totalCommElem = document.getElementById('total-commission');
+            if (totalCommElem) totalCommElem.textContent = (totalCommission / 1000).toFixed(1) + ' ألف ج';
         }
 
         function displayRecentRides() {
