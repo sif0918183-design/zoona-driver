@@ -1767,7 +1767,10 @@
             // Load tab data
             switch(tabId) {
                 case 'my-rides':
-                    loadPassengerRides();
+                    // إضافة تأخير بسيط لضمان تهيئة الواجهة
+                    setTimeout(() => {
+                        loadPassengerRides();
+                    }, 100);
                     break;
                 case 'active-chats':
                     loadPassengerChats();
@@ -1914,7 +1917,7 @@
                     passenger_phone: currentUser.phone,
                     from_city: fromCity,
                     to_city: toCity,
-                    vehicle_category: category.name_ar || category.name,
+                    vehicle_categories: category.name_ar || category.name,
                     estimated_price: finalPrice,
                     notes: notes,
                     status: 'pending',
@@ -1956,6 +1959,7 @@
         // ============================================
         async function loadPassengerRides() {
             try {
+                console.log('🔄 جلب رحلات الراكب...');
                 // جلب الرحلات من جدول rides
                 const { data: ridesData, error: ridesError } = await travelSupabase
                     .from('rides')
@@ -1973,47 +1977,51 @@
                 let combinedRides = [];
 
                 if (!ridesError && ridesData) {
+                    console.log(`✅ تم جلب ${ridesData.length} رحلة من جدول rides`);
                     combinedRides = [...ridesData];
+                } else if (ridesError) {
+                    console.error('❌ خطأ في جلب رحلات جدول rides:', ridesError);
                 }
 
                 if (!requestsError && requestsData) {
+                    console.log(`✅ تم جلب ${requestsData.length} طلب رحلة من جدول ride_requests`);
                     // تجنب التكرار إذا كانت الرحلة موجودة في الجدولين
-                    const formattedRequests = [];
-                    for (const req of requestsData) {
-                        if (!combinedRides.some(r => r.id === req.id)) {
-                            // جلب عدد السائقين الذين قبلوا
-                            let count = 0;
-                            try {
-                                const { count: accCount, error: countError } = await travelSupabase
-                                    .from('ride_driver_acceptances')
-                                    .select('*', { count: 'exact', head: true })
-                                    .eq('ride_id', req.id)
-                                    .eq('status', 'accepted');
-                                if (!countError) count = accCount;
-                            } catch (e) {
-                                console.error('Error fetching acceptance count:', e);
-                            }
+                    const requestsToProcess = requestsData.filter(req => !combinedRides.some(r => r.id === req.id));
 
-                            formattedRequests.push({
-                                id: req.id,
-                                passenger_id: req.customer_id,
-                                passenger_name: req.passenger_name || currentUser.full_name,
-                                passenger_phone: req.passenger_phone || currentUser.phone,
-                                from_city: req.from_city,
-                                to_city: req.to_city,
-                                vehicle_category: req.vehicle_category,
-                                base_price: req.estimated_price,
-                                final_price: req.estimated_price,
-                                notes: req.notes,
-                                status: req.status,
-                                driver_id: req.driver_id,
-                                driver_name: req.driver_name,
-                                driver_phone: req.driver_phone,
-                                created_at: req.created_at,
-                                accepted_count: count || 0
-                            });
+                    const formattedRequests = await Promise.all(requestsToProcess.map(async (req) => {
+                        // جلب عدد السائقين الذين قبلوا بالتوازي
+                        let count = 0;
+                        try {
+                            const { count: accCount, error: countError } = await travelSupabase
+                                .from('ride_driver_acceptances')
+                                .select('*', { count: 'exact', head: true })
+                                .eq('ride_id', req.id)
+                                .eq('status', 'accepted');
+                            if (!countError) count = accCount;
+                        } catch (e) {
+                            console.error('Error fetching acceptance count for ride:', req.id, e);
                         }
-                    }
+
+                        return {
+                            id: req.id,
+                            passenger_id: req.customer_id,
+                            passenger_name: req.passenger_name || currentUser.full_name,
+                            passenger_phone: req.passenger_phone || currentUser.phone,
+                            from_city: req.from_city,
+                            to_city: req.to_city,
+                            vehicle_category: req.vehicle_categories || req.vehicle_category,
+                            base_price: req.estimated_price,
+                            final_price: req.estimated_price,
+                            notes: req.notes,
+                            status: req.status,
+                            driver_id: req.driver_id,
+                            driver_name: req.driver_name,
+                            driver_phone: req.driver_phone,
+                            created_at: req.created_at,
+                            accepted_count: count || 0
+                        };
+                    }));
+
                     combinedRides = [...combinedRides, ...formattedRequests];
                 }
                 
@@ -2322,7 +2330,8 @@
 
                     for (const request of requests) {
                         // التحقق من فئة السيارة
-                        const rideRank = getCategoryRank(request.vehicle_category);
+                        const vehicleCategory = request.vehicle_categories || request.vehicle_category;
+                        const rideRank = getCategoryRank(vehicleCategory);
                         if (rideRank > driverRank) continue;
 
                         const { data: acceptances, error: accError } = await travelSupabase
@@ -2340,7 +2349,7 @@
                                 passenger_name: request.passenger_name || 'راكب',
                                 from_city: request.from_city,
                                 to_city: request.to_city,
-                                vehicle_category: request.vehicle_category,
+                                vehicle_category: request.vehicle_categories || request.vehicle_category,
                                 estimated_price: request.estimated_price,
                                 accepted_count: acceptances?.length || 0
                             });
@@ -2636,7 +2645,7 @@
                         passenger_phone: req.passenger_phone || '',
                         from_city: req.from_city,
                         to_city: req.to_city,
-                        vehicle_category: req.vehicle_category,
+                        vehicle_category: req.vehicle_categories || req.vehicle_category,
                         base_price: req.estimated_price,
                         final_price: req.estimated_price,
                         notes: req.notes,
