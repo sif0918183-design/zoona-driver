@@ -1082,6 +1082,31 @@
                         <div id="my-rides-list" class="ride-cards">
                             <!-- Rides will be populated here -->
                         </div>
+
+                        <div class="card" style="margin-top: 1rem; background: linear-gradient(135deg, var(--primary-light) 0%, #e0e7ff 100%); border: 2px dashed var(--primary);">
+                            <div style="text-align: center; padding: 1rem;">
+                                <h4 style="color: var(--primary); margin-bottom: 1rem;">
+                                    <i class="fas fa-tools"></i> أدوات التشخيص
+                                </h4>
+                                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center;">
+                                    <button class="btn btn-outline btn-sm" onclick="loadPassengerRides()">
+                                        <i class="fas fa-sync"></i> تحديث الرحلات
+                                    </button>
+                                    <button class="btn btn-outline btn-sm" onclick="debugPassengerRides()">
+                                        <i class="fas fa-bug"></i> تصحيح متقدم
+                                    </button>
+                                    <button class="btn btn-outline btn-sm" onclick="checkDatabaseStructure()">
+                                        <i class="fas fa-database"></i> فحص قاعدة البيانات
+                                    </button>
+                                    <button class="btn btn-outline btn-sm" onclick="testAllRidesQuery()">
+                                        <i class="fas fa-search"></i> بحث شامل
+                                    </button>
+                                </div>
+                                <div id="debug-info" style="margin-top: 1rem; padding: 0.75rem; background: white; border-radius: var(--radius); border: 1px solid var(--gray-200); font-size: 0.8rem; text-align: right; display: none;">
+                                    <div id="debug-content"></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -1277,6 +1302,37 @@
         let suspiciousCancellations = [];
         let chatViolations = [];
 
+async function checkDatabaseStructure() {
+    console.log('🔍 فحص بنية قاعدة البيانات...');
+    try {
+        // فحص جداول البيانات المتاحة
+        const tablesToCheck = ['ride_requests', 'rides', 'customers', 'ride_driver_acceptances'];
+
+        for (const table of tablesToCheck) {
+            try {
+                const { data, error } = await travelSupabase
+                    .from(table)
+                    .select('*', { count: 'exact', head: true })
+                    .limit(1);
+
+                console.log(`✅ جدول ${table}: ${error ? 'خطأ: ' + error.message : 'موجود'}`);
+            } catch (e) {
+                console.log(`❌ جدول ${table}: غير موجود أو خطأ في الوصول`);
+            }
+        }
+
+        // فحص حقول المستخدم الحالي
+        console.log('🔍 معلومات المستخدم الحالي:', {
+            id: currentUser.id,
+            type: userType,
+            name: currentUser.full_name
+        });
+
+    } catch (error) {
+        console.error('خطأ في فحص قاعدة البيانات:', error);
+    }
+}
+
         const MAX_DRIVERS_PER_RIDE = 10;
         const COMMISSION_RATE = 5; // 5%
         const STOP_BALANCE_THRESHOLD = 1000;
@@ -1385,6 +1441,13 @@
                 }
 
                 if (currentUser) {
+                    console.log('👤 بيانات المستخدم التي تم تحميلها:', {
+                        id: currentUser.id,
+                        name: currentUser.full_name,
+                        phone: currentUser.phone,
+                        type: userType,
+                        rawData: currentUser
+                    });
                     showNotification(`مرحباً ${currentUser.full_name}`, 'success', 'أهلاً بك في منصة السفر');
                     updateUserInterface();
                     await loadInitialData();
@@ -1767,7 +1830,10 @@
             // Load tab data
             switch(tabId) {
                 case 'my-rides':
-                    loadPassengerRides();
+                    // إضافة تأخير قصير لضمان تحميل الواجهة أولاً
+                    setTimeout(() => {
+                        loadPassengerRides();
+                    }, 100);
                     break;
                 case 'active-chats':
                     loadPassengerChats();
@@ -1954,80 +2020,276 @@
         // ============================================
         // PASSENGER FUNCTIONS
         // ============================================
-        async function loadPassengerRides() {
-            try {
-                // جلب الرحلات من جدول rides
-                const { data: ridesData, error: ridesError } = await travelSupabase
-                    .from('rides')
-                    .select('*')
-                    .eq('passenger_id', currentUser.id)
-                    .order('created_at', { ascending: false });
+async function loadPassengerRides() {
+    try {
+        console.log('🚀 بدء تحميل رحلات الراكب...');
+        console.log('👤 ID المستخدم:', currentUser.id);
+        console.log('🔑 نوع المستخدم:', userType);
 
-                // جلب من ride_requests
-                const { data: requestsData, error: requestsError } = await travelSupabase
-                    .from('ride_requests')
-                    .select('*')
-                    .eq('customer_id', currentUser.id)
-                    .order('created_at', { ascending: false });
+        const container = document.getElementById('my-rides-list');
+        if (container) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 3rem; color: var(--gray-500);">
+                    <div class="loading-spinner" style="margin: 0 auto 1rem;"></div>
+                    <div>جاري تحميل الرحلات...</div>
+                    <div style="font-size: 0.875rem; margin-top: 0.5rem; color: var(--gray-400);">
+                        قد يستغرق هذا بضع ثوانٍ
+                    </div>
+                </div>
+            `;
+        }
 
-                let combinedRides = [];
+        let combinedRides = [];
 
-                if (!ridesError && ridesData) {
-                    combinedRides = [...ridesData];
+        // المحاولة 1: البحث في ride_requests
+        console.log('🔎 البحث في ride_requests...');
+        try {
+            const { data: rideRequestsData, error: rideRequestsError } = await travelSupabase
+                .from('ride_requests')
+                .select('*')
+                .or(`customer_id.eq.${currentUser.id},passenger_id.eq.${currentUser.id}`)
+                .order('created_at', { ascending: false });
+
+            if (rideRequestsError) {
+                console.error('خطأ في ride_requests:', rideRequestsError);
+            } else {
+                console.log(`✅ تم العثور على ${rideRequestsData?.length || 0} طلب رحلة`);
+
+                if (rideRequestsData && rideRequestsData.length > 0) {
+                    for (const request of rideRequestsData) {
+                        console.log('طلب رحلة:', {
+                            id: request.id,
+                            customer_id: request.customer_id,
+                            passenger_id: request.passenger_id,
+                            status: request.status
+                        });
+
+                        // جلب عدد السائقين الذين قبلوا
+                        let acceptedCount = 0;
+                        try {
+                            const { count, error } = await travelSupabase
+                                .from('ride_driver_acceptances')
+                                .select('id', { count: 'exact', head: true })
+                                .eq('ride_id', request.id);
+
+                            if (!error) acceptedCount = count || 0;
+                        } catch (e) {
+                            console.error('خطأ في عد القبولات:', e);
+                        }
+
+                        combinedRides.push({
+                            id: request.id,
+                            source: 'ride_requests',
+                            passenger_id: request.customer_id || request.passenger_id,
+                            passenger_name: request.passenger_name || currentUser.full_name || 'راكب',
+                            passenger_phone: request.passenger_phone || currentUser.phone || '',
+                            from_city: request.from_city || 'غير محدد',
+                            to_city: request.to_city || 'غير محدد',
+                            vehicle_category: request.vehicle_category || 'غير محدد',
+                            base_price: request.estimated_price || request.base_price,
+                            final_price: request.estimated_price || request.final_price,
+                            estimated_price: request.estimated_price || 0,
+                            notes: request.notes || '',
+                            status: request.status || 'pending',
+                            driver_id: request.driver_id || null,
+                            driver_name: request.driver_name || null,
+                            driver_phone: request.driver_phone || null,
+                            created_at: request.created_at || new Date().toISOString(),
+                            accepted_count: acceptedCount
+                        });
+                    }
                 }
+            }
+        } catch (e) {
+            console.error('استثناء في ride_requests:', e);
+        }
 
-                if (!requestsError && requestsData) {
-                    // تجنب التكرار إذا كانت الرحلة موجودة في الجدولين
-                    const formattedRequests = [];
-                    for (const req of requestsData) {
-                        if (!combinedRides.some(r => r.id === req.id)) {
-                            // جلب عدد السائقين الذين قبلوا
-                            let count = 0;
-                            try {
-                                const { count: accCount, error: countError } = await travelSupabase
-                                    .from('ride_driver_acceptances')
-                                    .select('*', { count: 'exact', head: true })
-                                    .eq('ride_id', req.id)
-                                    .eq('status', 'accepted');
-                                if (!countError) count = accCount;
-                            } catch (e) {
-                                console.error('Error fetching acceptance count:', e);
-                            }
+        // المحاولة 2: البحث في rides
+        console.log('🔎 البحث في rides...');
+        try {
+            const { data: ridesData, error: ridesError } = await travelSupabase
+                .from('rides')
+                .select('*')
+                .or(`passenger_id.eq.${currentUser.id},customer_id.eq.${currentUser.id}`)
+                .order('created_at', { ascending: false });
 
-                            formattedRequests.push({
-                                id: req.id,
-                                passenger_id: req.customer_id,
-                                passenger_name: req.passenger_name || currentUser.full_name,
-                                passenger_phone: req.passenger_phone || currentUser.phone,
-                                from_city: req.from_city,
-                                to_city: req.to_city,
-                                vehicle_category: req.vehicle_category,
-                                base_price: req.estimated_price,
-                                final_price: req.estimated_price,
-                                notes: req.notes,
-                                status: req.status,
-                                driver_id: req.driver_id,
-                                driver_name: req.driver_name,
-                                driver_phone: req.driver_phone,
-                                created_at: req.created_at,
-                                accepted_count: count || 0
+            if (ridesError) {
+                console.error('خطأ في rides:', ridesError);
+            } else {
+                console.log(`✅ تم العثور على ${ridesData?.length || 0} رحلة`);
+
+                if (ridesData && ridesData.length > 0) {
+                    for (const ride of ridesData) {
+                        // تجنب التكرار
+                        const exists = combinedRides.some(r => r.id === ride.id);
+
+                        if (!exists) {
+                            combinedRides.push({
+                                id: ride.id,
+                                source: 'rides',
+                                passenger_id: ride.passenger_id || ride.customer_id,
+                                passenger_name: ride.passenger_name || currentUser.full_name || 'راكب',
+                                passenger_phone: ride.passenger_phone || currentUser.phone || '',
+                                from_city: ride.from_city || 'غير محدد',
+                                to_city: ride.to_city || 'غير محدد',
+                                vehicle_category: ride.vehicle_category || 'غير محدد',
+                                base_price: ride.base_price || ride.final_price,
+                                final_price: ride.final_price || ride.base_price,
+                                estimated_price: ride.final_price || ride.base_price,
+                                notes: ride.notes || '',
+                                status: ride.status || 'pending',
+                                driver_id: ride.driver_id || null,
+                                driver_name: ride.driver_name || null,
+                                driver_phone: ride.driver_phone || null,
+                                created_at: ride.created_at || new Date().toISOString(),
+                                accepted_count: 0
                             });
                         }
                     }
-                    combinedRides = [...combinedRides, ...formattedRequests];
                 }
-                
-                // ترتيب حسب التاريخ
-                combinedRides.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            }
+        } catch (e) {
+            console.error('استثناء في rides:', e);
+        }
 
-                userRides = combinedRides;
-                displayPassengerRides();
+        // إذا لم نجد أي رحلات، جرب البحث في جميع الجداول
+        if (combinedRides.length === 0) {
+            console.log('⚠️ لم يتم العثور على رحلات، جرب البحث في جميع الجداول...');
+
+            // محاولة البحث بأي طريقة ممكنة
+            try {
+                const { data: allRides, error } = await travelSupabase
+                    .from('ride_requests')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(20);
                 
-            } catch (error) {
-                console.error('Error loading passenger rides:', error);
-                displayPassengerRides();
+                if (!error && allRides) {
+                    console.log('جميع الرحلات في النظام:', allRides.length);
+                    console.log('عينة من الرحلات:', allRides.slice(0, 3).map(r => ({
+                        id: r.id,
+                        customer_id: r.customer_id,
+                        passenger_name: r.passenger_name
+                    })));
+                }
+            } catch (e) {
+                console.error('خطأ في البحث العام:', e);
             }
         }
+
+        // ترتيب النتائج
+        combinedRides.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        userRides = combinedRides;
+
+        console.log(`🎉 تم تحميل ${userRides.length} رحلة`);
+        console.log('تفاصيل الرحلات:', userRides.map(r => ({
+            id: r.id,
+            from: r.from_city,
+            to: r.to_city,
+            status: r.status,
+            source: r.source
+        })));
+
+        // عرض النتائج
+        displayPassengerRides();
+
+        // إظهار إشعار بعدد الرحلات
+        if (userRides.length > 0) {
+            showNotification(`تم تحميل ${userRides.length} رحلة`, 'success');
+        }
+
+    } catch (error) {
+        console.error('❌ خطأ جسيم في تحميل رحلات الراكب:', error);
+
+        const container = document.getElementById('my-rides-list');
+        if (container) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">🔴</div>
+                    <div class="empty-title">خطأ في التحميل</div>
+                    <div class="empty-description">
+                        حدث خطأ أثناء تحميل الرحلات.<br>
+                        <div style="margin-top: 1rem; background: var(--danger-light); padding: 0.75rem; border-radius: var(--radius);">
+                            <small>${error.message || 'خطأ غير معروف'}</small>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                        <button class="btn btn-primary" onclick="loadPassengerRides()">
+                            <i class="fas fa-redo"></i> إعادة المحاولة
+                        </button>
+                        <button class="btn btn-outline" onclick="checkDatabaseStructure()">
+                            <i class="fas fa-database"></i> فحص قاعدة البيانات
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+}
+
+async function debugPassengerRides() {
+    console.log('🐞 بدء تصحيح رحلات الراكب...');
+    try {
+        const { data: userData, error: userError } = await travelSupabase
+            .from('customers')
+            .select('*')
+            .eq('id', currentUser.id)
+            .single();
+
+        console.log('بيانات المستخدم من قاعدة البيانات:', userData || userError);
+
+        const { data: rides, error: ridesError } = await travelSupabase
+            .from('ride_requests')
+            .select('*')
+            .eq('customer_id', currentUser.id);
+
+        console.log('طلبات الرحلات المباشرة:', rides || ridesError);
+
+        showNotification('تم فحص البيانات في الكونسول', 'info');
+    } catch (e) {
+        console.error('خطأ في التصحيح:', e);
+    }
+}
+
+async function testAllRidesQuery() {
+    try {
+        showNotification('جاري البحث في جميع الرحلات...', 'info');
+
+        const { data, error } = await travelSupabase
+            .from('ride_requests')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(10);
+
+        if (error) {
+            console.error('خطأ في البحث العام:', error);
+            showNotification('خطأ في البحث: ' + error.message, 'error');
+        } else {
+            console.log('نتائج البحث العام:', data);
+
+            // عرض النتائج في واجهة المستخدم
+            const debugDiv = document.getElementById('debug-info');
+            const debugContent = document.getElementById('debug-content');
+
+            if (debugDiv && debugContent) {
+                debugDiv.style.display = 'block';
+                debugContent.innerHTML = `
+                    <strong>نتائج البحث (${data.length}):</strong><br>
+                    ${data.map((ride, i) => `
+                        ${i+1}. ID: ${ride.id}, الراكب: ${ride.passenger_name || 'غير معروف'},
+                        من: ${ride.from_city}, إلى: ${ride.to_city}<br>
+                    `).join('')}
+                    <small style="color: var(--gray-500);">آخر 10 رحلات في النظام</small>
+                `;
+            }
+
+            showNotification(`تم العثور على ${data.length} رحلة في النظام`, 'success');
+        }
+    } catch (error) {
+        console.error('استثناء في البحث العام:', error);
+        showNotification('خطأ: ' + error.message, 'error');
+    }
+}
 
         function displayPassengerRides() {
             const container = document.getElementById('my-rides-list');
@@ -3290,6 +3552,20 @@
             const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
             window.open(whatsappUrl, '_blank');
         }
+
+        // تحسين عرض الـ logs في console
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+
+        console.log = function(...args) {
+            const timestamp = new Date().toLocaleTimeString('ar-SA');
+            originalConsoleLog(`[${timestamp}]`, ...args);
+        };
+
+        console.error = function(...args) {
+            const timestamp = new Date().toLocaleTimeString('ar-SA');
+            originalConsoleError(`[${timestamp}] ⚠️`, ...args);
+        };
     </script>
 </body>
 </html>
