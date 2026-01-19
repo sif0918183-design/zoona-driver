@@ -1083,6 +1083,16 @@
                             <!-- Rides will be populated here -->
                         </div>
                     </div>
+                    <div class="card" style="margin-top: 1rem; background: var(--gray-50);">
+                        <div style="text-align: center; padding: 0.5rem;">
+                            <button class="btn btn-outline btn-sm" onclick="debugPassengerRides()">
+                                <i class="fas fa-bug"></i> تصحيح رحلاتي
+                            </button>
+                            <button class="btn btn-outline btn-sm" onclick="loadPassengerRides()" style="margin-right: 0.5rem;">
+                                <i class="fas fa-redo"></i> تحديث
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Active Chats Tab -->
@@ -1334,6 +1344,7 @@
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('🚀 ترحال زونا - سفيريات السفر');
             await initializeUser();
+            setupRealTimeUpdates();
         });
 
         // ============================================
@@ -1956,89 +1967,182 @@
         // ============================================
         async function loadPassengerRides() {
             try {
-                // جلب الرحلات من جدول rides
+                const container = document.getElementById('my-rides-list');
+                if (container) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 2rem; color: var(--gray-500);">
+                            <i class="fas fa-spinner fa-spin fa-2x" style="margin-bottom: 1rem;"></i>
+                            <div>جاري تحميل الرحلات...</div>
+                        </div>
+                    `;
+                }
+
+                // 1. أولاً: البحث في ride_requests (الجدول الرئيسي لطلبات الرحلات)
+                const { data: rideRequestsData, error: rideRequestsError } = await travelSupabase
+                    .from('ride_requests')
+                    .select('*')
+                    .eq('customer_id', currentUser.id)
+                    .order('created_at', { ascending: false });
+
+                console.log('📦 ride_requests loaded:', rideRequestsData?.length || 0);
+
+                let combinedRides = [];
+
+                if (rideRequestsData && rideRequestsData.length > 0) {
+                    // تحويل بيانات ride_requests إلى تنسيق موحد
+                    for (const request of rideRequestsData) {
+                        // جلب عدد السائقين الذين قبلوا هذا الطلب
+                        const { count: acceptanceCount, error: countError } = await travelSupabase
+                            .from('ride_driver_acceptances')
+                            .select('id', { count: 'exact', head: true })
+                            .eq('ride_id', request.id)
+                            .eq('status', 'accepted');
+
+                        const acceptedCount = countError ? 0 : (acceptanceCount || 0);
+
+                        combinedRides.push({
+                            id: request.id,
+                            source: 'ride_requests',
+                            passenger_id: request.customer_id,
+                            passenger_name: request.passenger_name || currentUser.full_name || 'راكب',
+                            passenger_phone: request.passenger_phone || currentUser.phone || '',
+                            from_city: request.from_city || 'غير محدد',
+                            to_city: request.to_city || 'غير محدد',
+                            vehicle_category: request.vehicle_category || 'غير محدد',
+                            base_price: request.estimated_price,
+                            final_price: request.estimated_price,
+                            estimated_price: request.estimated_price,
+                            notes: request.notes,
+                            status: request.status || 'pending',
+                            driver_id: request.driver_id || null,
+                            driver_name: request.driver_name || null,
+                            driver_phone: request.driver_phone || null,
+                            created_at: request.created_at,
+                            accepted_count: acceptedCount
+                        });
+                    }
+                }
+
+                // 2. ثانياً: البحث في rides (إذا كانت الرحلات تم تحويلها)
                 const { data: ridesData, error: ridesError } = await travelSupabase
                     .from('rides')
                     .select('*')
                     .eq('passenger_id', currentUser.id)
                     .order('created_at', { ascending: false });
 
-                // جلب من ride_requests
-                const { data: requestsData, error: requestsError } = await travelSupabase
-                    .from('ride_requests')
-                    .select('*')
-                    .eq('customer_id', currentUser.id)
-                    .order('created_at', { ascending: false });
+                console.log('📦 rides loaded:', ridesData?.length || 0);
 
-                let combinedRides = [];
+                if (ridesData && ridesData.length > 0) {
+                    for (const ride of ridesData) {
+                        // تجنب التكرار مع ride_requests
+                        const existsInRequests = combinedRides.some(r => r.id === ride.id);
 
-                if (!ridesError && ridesData) {
-                    combinedRides = [...ridesData];
-                }
-
-                if (!requestsError && requestsData) {
-                    // تجنب التكرار إذا كانت الرحلة موجودة في الجدولين
-                    const formattedRequests = [];
-                    for (const req of requestsData) {
-                        if (!combinedRides.some(r => r.id === req.id)) {
-                            // جلب عدد السائقين الذين قبلوا
-                            let count = 0;
-                            try {
-                                const { count: accCount, error: countError } = await travelSupabase
-                                    .from('ride_driver_acceptances')
-                                    .select('*', { count: 'exact', head: true })
-                                    .eq('ride_id', req.id)
-                                    .eq('status', 'accepted');
-                                if (!countError) count = accCount;
-                            } catch (e) {
-                                console.error('Error fetching acceptance count:', e);
-                            }
-
-                            formattedRequests.push({
-                                id: req.id,
-                                passenger_id: req.customer_id,
-                                passenger_name: req.passenger_name || currentUser.full_name,
-                                passenger_phone: req.passenger_phone || currentUser.phone,
-                                from_city: req.from_city,
-                                to_city: req.to_city,
-                                vehicle_category: req.vehicle_category,
-                                base_price: req.estimated_price,
-                                final_price: req.estimated_price,
-                                notes: req.notes,
-                                status: req.status,
-                                driver_id: req.driver_id,
-                                driver_name: req.driver_name,
-                                driver_phone: req.driver_phone,
-                                created_at: req.created_at,
-                                accepted_count: count || 0
+                        if (!existsInRequests) {
+                            combinedRides.push({
+                                id: ride.id,
+                                source: 'rides',
+                                passenger_id: ride.passenger_id,
+                                passenger_name: ride.passenger_name || currentUser.full_name || 'راكب',
+                                passenger_phone: ride.passenger_phone || currentUser.phone || '',
+                                from_city: ride.from_city || 'غير محدد',
+                                to_city: ride.to_city || 'غير محدد',
+                                vehicle_category: ride.vehicle_category || 'غير محدد',
+                                base_price: ride.base_price || ride.final_price,
+                                final_price: ride.final_price || ride.base_price,
+                                estimated_price: ride.final_price || ride.base_price,
+                                notes: ride.notes,
+                                status: ride.status || 'pending',
+                                driver_id: ride.driver_id || null,
+                                driver_name: ride.driver_name || null,
+                                driver_phone: ride.driver_phone || null,
+                                created_at: ride.created_at,
+                                accepted_count: 0
                             });
                         }
                     }
-                    combinedRides = [...combinedRides, ...formattedRequests];
                 }
-                
-                // ترتيب حسب التاريخ
+
+                // 3. ترتيب الرحلات حسب التاريخ
                 combinedRides.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
                 userRides = combinedRides;
+
+                console.log('✅ Total rides loaded:', userRides.length);
+
                 displayPassengerRides();
                 
             } catch (error) {
-                console.error('Error loading passenger rides:', error);
-                displayPassengerRides();
+                console.error('❌ Error loading passenger rides:', error);
+
+                const container = document.getElementById('my-rides-list');
+                if (container) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">⚠️</div>
+                            <div class="empty-title">حدث خطأ</div>
+                            <div class="empty-description">تعذر تحميل الرحلات</div>
+                            <button class="btn btn-primary" onclick="loadPassengerRides()" style="margin-top: 1rem;">
+                                <i class="fas fa-redo"></i> إعادة المحاولة
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        async function debugPassengerRides() {
+            console.log('🔍 Starting passenger rides debug...');
+            console.log('Current User ID:', currentUser.id);
+            console.log('User Type:', userType);
+
+            try {
+                // Test query to ride_requests
+                const { data: requests, error: reqError } = await travelSupabase
+                    .from('ride_requests')
+                    .select('count')
+                    .eq('customer_id', currentUser.id);
+
+                console.log('ride_requests count:', requests?.[0]?.count || 0, 'Error:', reqError);
+
+                // Test query to rides
+                const { data: rides, error: ridesError } = await travelSupabase
+                    .from('rides')
+                    .select('count')
+                    .eq('passenger_id', currentUser.id);
+
+                console.log('rides count:', rides?.[0]?.count || 0, 'Error:', ridesError);
+
+                showNotification(`تم فحص قاعدة البيانات: ${requests?.[0]?.count || 0} طلب رحلة، ${rides?.[0]?.count || 0} رحلة منجزة`, 'info');
+
+                // إعادة تحميل
+                await loadPassengerRides();
+
+            } catch (error) {
+                console.error('Debug error:', error);
+                showNotification('خطأ في التصحيح', 'error');
             }
         }
 
         function displayPassengerRides() {
             const container = document.getElementById('my-rides-list');
-            if (!container) return;
+            if (!container) {
+                console.error('❌ Container not found: my-rides-list');
+                return;
+            }
             
-            if (userRides.length === 0) {
+            if (!userRides || userRides.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-icon">🚗</div>
                         <div class="empty-title">لا توجد رحلات</div>
-                        <div class="empty-description">لم تقم بطلب أي رحلات حتى الآن</div>
+                        <div class="empty-description">
+                            لم تقم بطلب أي رحلات حتى الآن.<br>
+                            انتقل إلى "طلب رحلة جديدة" لإنشاء أول رحلة لك.
+                        </div>
+                        <button class="btn btn-primary" onclick="showTab('new-ride', document.querySelector('#passenger-interface .tab:first-child'))"
+                                style="margin-top: 1rem;">
+                            <i class="fas fa-plus"></i> طلب رحلة جديدة
+                        </button>
                     </div>
                 `;
                 return;
@@ -2046,34 +2150,37 @@
             
             container.innerHTML = '';
             
-            userRides.forEach(ride => {
+            userRides.forEach((ride, index) => {
                 const rideElement = document.createElement('div');
                 rideElement.className = 'ride-card';
-                rideElement.onclick = () => showRideDetails(ride);
+                rideElement.dataset.rideId = ride.id;
+                rideElement.dataset.source = ride.source;
                 
                 const statusText = getStatusText(ride.status);
                 const statusClass = getStatusClass(ride.status);
                 
-                const fromCity = ride.from_city || 'غير محدد';
-                const toCity = ride.to_city || 'غير محدد';
-                const vehicleCategory = ride.vehicle_category || 'غير محدد';
+                const price = ride.final_price || ride.estimated_price || ride.base_price || 0;
 
                 rideElement.innerHTML = `
                     <div class="ride-header">
                         <div class="ride-route">
                             <i class="fas fa-route"></i>
-                            ${fromCity} → ${toCity}
+                            ${ride.from_city || 'غير محدد'} → ${ride.to_city || 'غير محدد'}
                         </div>
-                        <div class="ride-price">${ride.final_price ? ride.final_price.toLocaleString() : ride.estimated_price ? ride.estimated_price.toLocaleString() : '0'} ج</div>
+                        <div class="ride-price">${price.toLocaleString()} ج</div>
                     </div>
                     <div class="ride-details">
                         <div class="ride-detail">
                             <i class="fas fa-car"></i>
-                            <span>${vehicleCategory}</span>
+                            <span>${ride.vehicle_category || 'غير محدد'}</span>
                         </div>
                         <div class="ride-detail">
                             <i class="fas fa-calendar"></i>
                             <span>${formatDate(ride.created_at)}</span>
+                        </div>
+                        <div class="ride-detail">
+                            <i class="fas fa-info-circle"></i>
+                            <span>الحالة: ${statusText}</span>
                         </div>
                         ${ride.driver_name ? `
                             <div class="ride-detail">
@@ -2081,26 +2188,41 @@
                                 <span>السائق: ${ride.driver_name}</span>
                             </div>
                         ` : ''}
+                        ${ride.accepted_count > 0 ? `
+                            <div class="ride-detail">
+                                <i class="fas fa-users"></i>
+                                <span>${ride.accepted_count} سائق قبل الرحلة</span>
+                            </div>
+                        ` : ''}
                     </div>
-                    <div class="ride-status ${statusClass}">
+                    <div class="ride-status ${statusClass}" style="margin-top: 0.75rem;">
                         <i class="fas fa-circle"></i>
                         ${statusText}
                     </div>
                     ${ride.status === 'pending' && ride.accepted_count > 0 ? `
                         <button class="btn btn-primary btn-block btn-sm" style="margin-top: 1rem;"
                                 onclick="event.stopPropagation(); showDriverOffers('${ride.id}')">
-                            <i class="fas fa-users"></i> عرض السائقين (${ride.accepted_count})
+                            <i class="fas fa-users"></i> عرض عروض السائقين (${ride.accepted_count})
+                        </button>
+                    ` : ''}
+                    ${ride.driver_name && ['accepted', 'driver_selected', 'confirmed'].includes(ride.status) ? `
+                        <button class="btn btn-outline btn-block btn-sm" style="margin-top: 0.5rem;"
+                                onclick="event.stopPropagation(); startChatWithDriver('${ride.id}', '${escapeHtml(ride.driver_name).replace(/'/g, "\\'")}')">
+                            <i class="fas fa-comment"></i> محادثة مع السائق
                         </button>
                     ` : ''}
                 `;
                 
+                rideElement.onclick = () => showRideDetails(ride);
                 container.appendChild(rideElement);
             });
+
+            console.log(`✅ Displayed ${userRides.length} rides`);
         }
 
-        async function showDriverOffers(rideId) {
-            try {
-                const { data: acceptances, error } = await travelSupabase
+                async function showDriverOffers(rideId) {
+                    try {
+                        const { data: acceptances, error } = await travelSupabase
                     .from('ride_driver_acceptances')
                     .select(`
                         id,
@@ -3289,6 +3411,17 @@
         function contactViaWhatsApp(phoneNumber, message) {
             const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
             window.open(whatsappUrl, '_blank');
+        }
+
+        // تحديث تلقائي للبيانات
+        function setupRealTimeUpdates() {
+            // تحديث تلقائي كل 30 ثانية
+            setInterval(() => {
+                if (userType === 'passenger') {
+                    loadPassengerRides();
+                    loadPassengerChats();
+                }
+            }, 30000);
         }
     </script>
 </body>
