@@ -117,7 +117,7 @@
             font-size: 3.5rem;
             border-radius: 50%;
             background: var(--primary);
-            border: 4px solid #ef4444;
+            border: 4px solid #ffffff;
             padding: 4px;
             box-shadow: var(--shadow-lg);
             margin: 0 auto;
@@ -1319,6 +1319,15 @@
             { id: 3, name: 'عالي / SUV', price_multiplier: 1.6, icon: '🚘' }
         ];
 
+        function getCategoryRank(categoryName) {
+            if (!categoryName) return 1;
+            const name = categoryName.toLowerCase();
+            if (name.includes('اقتصادي') || name.includes('economy') || name.includes('tuktuk')) return 1;
+            if (name.includes('مريح') || name.includes('comfort')) return 2;
+            if (name.includes('عالي') || name.includes('suv') || name.includes('vip')) return 3;
+            return 1;
+        }
+
         // ============================================
         // INITIALIZATION
         // ============================================
@@ -1973,17 +1982,23 @@
                     for (const req of requestsData) {
                         if (!combinedRides.some(r => r.id === req.id)) {
                             // جلب عدد السائقين الذين قبلوا
-                            const { count, error: countError } = await travelSupabase
-                                .from('ride_driver_acceptances')
-                                .select('*', { count: 'exact', head: true })
-                                .eq('ride_id', req.id)
-                                .eq('status', 'accepted');
+                            let count = 0;
+                            try {
+                                const { count: accCount, error: countError } = await travelSupabase
+                                    .from('ride_driver_acceptances')
+                                    .select('*', { count: 'exact', head: true })
+                                    .eq('ride_id', req.id)
+                                    .eq('status', 'accepted');
+                                if (!countError) count = accCount;
+                            } catch (e) {
+                                console.error('Error fetching acceptance count:', e);
+                            }
 
                             formattedRequests.push({
                                 id: req.id,
                                 passenger_id: req.customer_id,
-                                passenger_name: currentUser.full_name,
-                                passenger_phone: currentUser.phone,
+                                passenger_name: req.passenger_name || currentUser.full_name,
+                                passenger_phone: req.passenger_phone || currentUser.phone,
                                 from_city: req.from_city,
                                 to_city: req.to_city,
                                 vehicle_category: req.vehicle_category,
@@ -2303,15 +2318,23 @@
 
                 if (!error && requests) {
                     const availableRidesFiltered = [];
+                    const driverRank = getCategoryRank(currentUser.car_type);
 
                     for (const request of requests) {
+                        // التحقق من فئة السيارة
+                        const rideRank = getCategoryRank(request.vehicle_category);
+                        if (rideRank > driverRank) continue;
+
                         const { data: acceptances, error: accError } = await travelSupabase
                             .from('ride_driver_acceptances')
-                            .select('id')
+                            .select('id, driver_id')
                             .eq('ride_id', request.id)
                             .eq('status', 'accepted');
 
-                        if (!accError && acceptances && acceptances.length < MAX_DRIVERS_PER_RIDE) {
+                        // تخطي الرحلة إذا كان السائق قد قبلها مسبقاً أو إذا اكتمل عدد السائقين
+                        const alreadyAccepted = acceptances?.some(acc => acc.driver_id === currentUser.id);
+
+                        if (!accError && !alreadyAccepted && acceptances && acceptances.length < MAX_DRIVERS_PER_RIDE) {
                             availableRidesFiltered.push({
                                 id: request.id,
                                 passenger_name: request.passenger_name || 'راكب',
