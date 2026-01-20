@@ -1879,6 +1879,11 @@
         document.getElementById('ride-request-form')?.addEventListener('submit', async function(e) {
             e.preventDefault();
             
+            if (!currentUser || !currentUser.id) {
+                showNotification('يجب تسجيل الدخول أولاً لنشر طلب رحلة', 'warning');
+                return;
+            }
+
             const fromCity = document.getElementById('from-city').value;
             const toCity = document.getElementById('to-city').value;
             const notes = document.getElementById('notes').value;
@@ -1907,7 +1912,7 @@
             const finalPrice = Math.round(basePrice * category.price_multiplier);
             
             try {
-                // Create ride request in ride_requests table
+                // Create ride request in ride_requests table with customer_id from currentUser
                 const rideData = {
                     customer_id: currentUser.id,
                     passenger_name: currentUser.full_name,
@@ -1921,7 +1926,7 @@
                     created_at: new Date().toISOString()
                 };
                 
-                // Save to ride_requests table
+                // Save to ride_requests table using travelSupabase insert
                 const { data, error } = await travelSupabase
                     .from('ride_requests')
                     .insert([rideData])
