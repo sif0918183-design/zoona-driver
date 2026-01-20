@@ -1879,6 +1879,41 @@
         document.getElementById('ride-request-form')?.addEventListener('submit', async function(e) {
             e.preventDefault();
             
+            // جلب بيانات المستخدم بشكل مضمون
+            let userId = null;
+            let userName = 'عميل';
+            let userPhone = '';
+
+            if (currentUser) {
+                userId = currentUser.id || currentUser.customer_id;
+                userName = currentUser.full_name || currentUser.name || 'عميل';
+                userPhone = currentUser.phone || currentUser.whatsapp_number || '';
+            }
+
+            if (!userId) {
+                const passengerData = localStorage.getItem('tarhal_customer') || localStorage.getItem('currentUser');
+                if (passengerData) {
+                    try {
+                        const parsed = JSON.parse(passengerData);
+                        userId = parsed.id || parsed.customer_id || (typeof parsed === 'string' ? parsed : null);
+                        userName = parsed.full_name || parsed.name || userName;
+                        userPhone = parsed.phone || parsed.whatsapp_number || userPhone;
+                    } catch (err) {
+                        userId = passengerData; // ربما مخزن كمعرف نصي مباشر
+                    }
+                }
+            }
+
+            // تنظيف المعرف من أي علامات اقتباس زائدة أو مسافات (Data Type Alignment)
+            if (userId && typeof userId === 'string') {
+                userId = userId.replace(/['"]+/g, '').trim();
+            }
+
+            if (!userId) {
+                showNotification('عذراً، لم نتمكن من التحقق من هويتك. يرجى تسجيل الدخول مجدداً.', 'error');
+                return;
+            }
+
             const fromCity = document.getElementById('from-city').value;
             const toCity = document.getElementById('to-city').value;
             const notes = document.getElementById('notes').value;
@@ -1909,9 +1944,9 @@
             try {
                 // Create ride request in ride_requests table
                 const rideData = {
-                    customer_id: currentUser.id,
-                    passenger_name: currentUser.full_name,
-                    passenger_phone: currentUser.phone,
+                    customer_id: userId,
+                    passenger_name: userName,
+                    passenger_phone: userPhone,
                     from_city: fromCity,
                     to_city: toCity,
                     vehicle_category: category.name_ar || category.name,
@@ -1956,18 +1991,45 @@
         // ============================================
         async function loadPassengerRides() {
             try {
+                // جلب معرف المستخدم بشكل مضمون وتطهيره
+                let userId = null;
+                if (currentUser) {
+                    userId = currentUser.id || currentUser.customer_id;
+                }
+
+                if (!userId) {
+                    const passengerData = localStorage.getItem('tarhal_customer') || localStorage.getItem('currentUser');
+                    if (passengerData) {
+                        try {
+                            const parsed = JSON.parse(passengerData);
+                            userId = parsed.id || parsed.customer_id || (typeof parsed === 'string' ? parsed : null);
+                        } catch (err) {
+                            userId = passengerData;
+                        }
+                    }
+                }
+
+                if (userId && typeof userId === 'string') {
+                    userId = userId.replace(/['"]+/g, '').trim();
+                }
+
+                if (!userId) {
+                    console.log('No user ID found for loading rides');
+                    return;
+                }
+
                 // جلب الرحلات من جدول rides
                 const { data: ridesData, error: ridesError } = await travelSupabase
                     .from('rides')
                     .select('*')
-                    .eq('passenger_id', currentUser.id)
+                    .eq('passenger_id', userId)
                     .order('created_at', { ascending: false });
 
                 // جلب من ride_requests
                 const { data: requestsData, error: requestsError } = await travelSupabase
                     .from('ride_requests')
                     .select('*')
-                    .eq('customer_id', currentUser.id)
+                    .eq('customer_id', userId)
                     .order('created_at', { ascending: false });
 
                 let combinedRides = [];
