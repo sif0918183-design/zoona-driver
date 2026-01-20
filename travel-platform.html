@@ -1348,17 +1348,24 @@
                 const driverData = localStorage.getItem('tarhal_driver');
 
                 if (passengerData) {
-                    let potentialUser = JSON.parse(passengerData);
+                    let userId;
+                    try {
+                        const parsed = JSON.parse(passengerData);
+                        userId = typeof parsed === 'object' ? parsed.id : parsed;
+                    } catch (e) {
+                        userId = passengerData;
+                    }
+
                     const { data, error } = await travelSupabase
                         .from('customers')
                         .select('*')
-                        .eq('id', potentialUser.id)
+                        .eq('id', userId)
                         .single();
 
                     if (!error && data) {
                         currentUser = data;
                         userType = 'passenger';
-                        console.log('✅ Passenger session verified');
+                        console.log('✅ Passenger session verified. ID:', userId);
                     } else {
                         console.log('Passenger session invalid or expired');
                         localStorage.removeItem('tarhal_customer');
@@ -1366,17 +1373,24 @@
                 }
 
                 if (!currentUser && driverData) {
-                    let potentialUser = JSON.parse(driverData);
+                    let userId;
+                    try {
+                        const parsed = JSON.parse(driverData);
+                        userId = typeof parsed === 'object' ? parsed.id : parsed;
+                    } catch (e) {
+                        userId = driverData;
+                    }
+
                     const { data, error } = await travelSupabase
                         .from('drivers')
                         .select('*')
-                        .eq('id', potentialUser.id)
+                        .eq('id', userId)
                         .single();
 
                     if (!error && data) {
                         currentUser = data;
                         userType = 'driver';
-                        console.log('✅ Driver session verified');
+                        console.log('✅ Driver session verified. ID:', userId);
                         await checkPermissions(); // فحص الصلاحيات بعد تسجيل الدخول
                     } else {
                         console.log('Driver session invalid or expired');
@@ -1907,6 +1921,13 @@
             const finalPrice = Math.round(basePrice * category.price_multiplier);
             
             try {
+                if (!currentUser || !currentUser.id) {
+                    showNotification('يجب تسجيل الدخول كراكب أولاً لنشر طلب', 'error');
+                    return;
+                }
+
+                console.log('📝 Creating ride request for customer ID:', currentUser.id);
+
                 // Create ride request in ride_requests table
                 const rideData = {
                     customer_id: currentUser.id,
