@@ -1257,6 +1257,44 @@
         // ============================================
         // GLOBAL VARIABLES AND CONFIGURATION
         // ============================================
+
+        // Robust helper function to extract and sanitize user ID
+        function getLoggedUserId() {
+            let id = null;
+
+            // 1. Try currentUser global object
+            if (window.currentUser) {
+                id = window.currentUser.id || window.currentUser.customer_id || window.currentUser.user_id;
+            }
+
+            // 2. Try localStorage items if currentUser is missing or has no ID
+            if (!id) {
+                const keys = ['tarhal_customer', 'currentUser', 'tarhal_driver', 'user'];
+                for (const key of keys) {
+                    const data = localStorage.getItem(key);
+                    if (data) {
+                        try {
+                            const parsed = JSON.parse(data);
+                            id = parsed.id || parsed.customer_id || parsed.user_id || (typeof parsed === 'string' ? parsed : null);
+                            if (id) break;
+                        } catch (e) {
+                            // If not JSON, it might be the ID string itself
+                            id = data;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Sanitization: remove quotes, trim, and handle stringified null/undefined
+            if (id && typeof id === 'string') {
+                id = id.replace(/['"]+/g, '').trim();
+                if (id.toLowerCase() === 'null' || id.toLowerCase() === 'undefined' || id === '') id = null;
+            }
+
+            return id;
+        }
+
         const SB_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
         const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
         const travelSupabase = supabase.createClient(SB_URL, SB_KEY);
@@ -1348,39 +1386,59 @@
                 const driverData = localStorage.getItem('tarhal_driver');
 
                 if (passengerData) {
-                    let potentialUser = JSON.parse(passengerData);
-                    const { data, error } = await travelSupabase
-                        .from('customers')
-                        .select('*')
-                        .eq('id', potentialUser.id)
-                        .single();
+                    let potentialUser;
+                    try {
+                        potentialUser = JSON.parse(passengerData);
+                    } catch (e) {
+                        potentialUser = { id: passengerData };
+                    }
 
-                    if (!error && data) {
-                        currentUser = data;
-                        userType = 'passenger';
-                        console.log('✅ Passenger session verified');
-                    } else {
-                        console.log('Passenger session invalid or expired');
-                        localStorage.removeItem('tarhal_customer');
+                    const passengerId = potentialUser.id || potentialUser.customer_id || (typeof potentialUser === 'string' ? potentialUser : null);
+
+                    if (passengerId) {
+                        const { data, error } = await travelSupabase
+                            .from('customers')
+                            .select('*')
+                            .eq('id', passengerId.toString().replace(/['"]+/g, ''))
+                            .single();
+
+                        if (!error && data) {
+                            currentUser = data;
+                            userType = 'passenger';
+                            console.log('✅ Passenger session verified:', currentUser.id);
+                        } else {
+                            console.log('Passenger session invalid or expired', error);
+                            localStorage.removeItem('tarhal_customer');
+                        }
                     }
                 }
 
                 if (!currentUser && driverData) {
-                    let potentialUser = JSON.parse(driverData);
-                    const { data, error } = await travelSupabase
-                        .from('drivers')
-                        .select('*')
-                        .eq('id', potentialUser.id)
-                        .single();
+                    let potentialUser;
+                    try {
+                        potentialUser = JSON.parse(driverData);
+                    } catch (e) {
+                        potentialUser = { id: driverData };
+                    }
 
-                    if (!error && data) {
-                        currentUser = data;
-                        userType = 'driver';
-                        console.log('✅ Driver session verified');
-                        await checkPermissions(); // فحص الصلاحيات بعد تسجيل الدخول
-                    } else {
-                        console.log('Driver session invalid or expired');
-                        localStorage.removeItem('tarhal_driver');
+                    const driverId = potentialUser.id || potentialUser.driver_id || (typeof potentialUser === 'string' ? potentialUser : null);
+
+                    if (driverId) {
+                        const { data, error } = await travelSupabase
+                            .from('drivers')
+                            .select('*')
+                            .eq('id', driverId.toString().replace(/['"]+/g, ''))
+                            .single();
+
+                        if (!error && data) {
+                            currentUser = data;
+                            userType = 'driver';
+                            console.log('✅ Driver session verified:', currentUser.id);
+                            await checkPermissions(); // فحص الصلاحيات بعد تسجيل الدخول
+                        } else {
+                            console.log('Driver session invalid or expired', error);
+                            localStorage.removeItem('tarhal_driver');
+                        }
                     }
                 }
 
@@ -1879,35 +1937,18 @@
         document.getElementById('ride-request-form')?.addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            // جلب بيانات المستخدم بشكل مضمون
-            let userId = null;
+            // جلب بيانات المستخدم بشكل مضمون باستخدام الدالة المساعدة
+            const userId = getLoggedUserId();
+
             let userName = 'عميل';
             let userPhone = '';
 
             if (currentUser) {
-                userId = currentUser.id || currentUser.customer_id;
                 userName = currentUser.full_name || currentUser.name || 'عميل';
                 userPhone = currentUser.phone || currentUser.whatsapp_number || '';
             }
 
-            if (!userId) {
-                const passengerData = localStorage.getItem('tarhal_customer') || localStorage.getItem('currentUser');
-                if (passengerData) {
-                    try {
-                        const parsed = JSON.parse(passengerData);
-                        userId = parsed.id || parsed.customer_id || (typeof parsed === 'string' ? parsed : null);
-                        userName = parsed.full_name || parsed.name || userName;
-                        userPhone = parsed.phone || parsed.whatsapp_number || userPhone;
-                    } catch (err) {
-                        userId = passengerData; // ربما مخزن كمعرف نصي مباشر
-                    }
-                }
-            }
-
-            // تنظيف المعرف من أي علامات اقتباس زائدة أو مسافات (Data Type Alignment)
-            if (userId && typeof userId === 'string') {
-                userId = userId.replace(/['"]+/g, '').trim();
-            }
+            console.log('📝 Attempting to create ride request:', { userId, userName, userPhone });
 
             if (!userId) {
                 showNotification('عذراً، لم نتمكن من التحقق من هويتك. يرجى تسجيل الدخول مجدداً.', 'error');
@@ -1991,32 +2032,16 @@
         // ============================================
         async function loadPassengerRides() {
             try {
-                // جلب معرف المستخدم بشكل مضمون وتطهيره
-                let userId = null;
-                if (currentUser) {
-                    userId = currentUser.id || currentUser.customer_id;
-                }
+                // جلب معرف المستخدم بشكل مضمون وتطهيره باستخدام الدالة المساعدة
+                const userId = getLoggedUserId();
 
                 if (!userId) {
-                    const passengerData = localStorage.getItem('tarhal_customer') || localStorage.getItem('currentUser');
-                    if (passengerData) {
-                        try {
-                            const parsed = JSON.parse(passengerData);
-                            userId = parsed.id || parsed.customer_id || (typeof parsed === 'string' ? parsed : null);
-                        } catch (err) {
-                            userId = passengerData;
-                        }
-                    }
-                }
-
-                if (userId && typeof userId === 'string') {
-                    userId = userId.replace(/['"]+/g, '').trim();
-                }
-
-                if (!userId) {
-                    console.log('No user ID found for loading rides');
+                    console.log('⚠️ No user ID identified for loading rides');
+                    displayPassengerRides();
                     return;
                 }
+
+                console.log('🔄 Loading rides for user:', userId);
 
                 // جلب الرحلات من جدول rides
                 const { data: ridesData, error: ridesError } = await travelSupabase
@@ -2025,12 +2050,16 @@
                     .eq('passenger_id', userId)
                     .order('created_at', { ascending: false });
 
+                if (ridesError) console.error('❌ Error fetching rides:', ridesError);
+
                 // جلب من ride_requests
                 const { data: requestsData, error: requestsError } = await travelSupabase
                     .from('ride_requests')
                     .select('*')
                     .eq('customer_id', userId)
                     .order('created_at', { ascending: false });
+
+                if (requestsError) console.error('❌ Error fetching ride_requests:', requestsError);
 
                 let combinedRides = [];
 
