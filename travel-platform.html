@@ -1907,9 +1907,14 @@
             const finalPrice = Math.round(basePrice * category.price_multiplier);
             
             try {
+                if (!currentUser) {
+                    showNotification('يجب تسجيل الدخول أولاً للقيام بهذا الإجراء', 'error');
+                    return;
+                }
+
                 // Create ride request in ride_requests table
                 const rideData = {
-                    customer_id: currentUser.id,
+                    customer_id: currentUser.id || currentUser.customer_id,
                     passenger_name: currentUser.full_name,
                     passenger_phone: currentUser.phone,
                     from_city: fromCity,
