@@ -1077,6 +1077,9 @@
                     <div class="card">
                         <div class="card-header">
                             <h2 class="card-title"><i class="fas fa-history"></i> رحلاتي</h2>
+                            <button class="btn btn-sm btn-outline" onclick="loadPassengerRides()">
+                                <i class="fas fa-sync-alt"></i> تحديث
+                            </button>
                         </div>
                         
                         <div id="my-rides-list" class="ride-cards">
@@ -1390,6 +1393,8 @@
                     await loadInitialData();
                     if (userType === 'driver') {
                         updateDriverBalanceDisplay();
+                    } else if (userType === 'passenger') {
+                        startPassengerAutoRefresh();
                     }
                 } else {
                     loadingScreen.classList.add('hidden');
@@ -1748,9 +1753,32 @@
         }
 
         // ============================================
+        // REAL-TIME UPDATES FOR PASSENGER
+        // ============================================
+        let passengerRefreshInterval = null;
+
+        function startPassengerAutoRefresh() {
+            if (userType === 'passenger' && !passengerRefreshInterval) {
+                passengerRefreshInterval = setInterval(async () => {
+                    const activeTabElement = document.querySelector('#passenger-interface .tab-content.active');
+                    if (activeTabElement && activeTabElement.id === 'my-rides') {
+                        await loadPassengerRides();
+                    }
+                }, 10000); // تحديث كل 10 ثواني
+            }
+        }
+
+        function stopPassengerAutoRefresh() {
+            if (passengerRefreshInterval) {
+                clearInterval(passengerRefreshInterval);
+                passengerRefreshInterval = null;
+            }
+        }
+
+        // ============================================
         // UI FUNCTIONS
         // ============================================
-        function showTab(tabId, button) {
+        async function showTab(tabId, button) {
             // Hide all tab contents
             const currentInterface = userType === 'passenger' ? 'passenger-interface' : 'driver-interface';
             const tabContents = document.querySelectorAll(`#${currentInterface} .tab-content`);
@@ -1764,25 +1792,34 @@
             tabs.forEach(tab => tab.classList.remove('active'));
             button.classList.add('active');
             
+            // التحكم في التحديث التلقائي
+            if (userType === 'passenger') {
+                if (tabId === 'my-rides') {
+                    startPassengerAutoRefresh();
+                } else {
+                    stopPassengerAutoRefresh();
+                }
+            }
+
             // Load tab data
             switch(tabId) {
                 case 'my-rides':
-                    loadPassengerRides();
+                    await loadPassengerRides();
                     break;
                 case 'active-chats':
-                    loadPassengerChats();
+                    await loadPassengerChats();
                     break;
                 case 'available-rides':
-                    loadAvailableRides();
+                    await loadAvailableRides();
                     break;
                 case 'accepted-rides':
-                    loadDriverAcceptedRides();
+                    await loadDriverAcceptedRides();
                     break;
                 case 'driver-my-rides':
-                    loadDriverRides();
+                    await loadDriverRides();
                     break;
                 case 'driver-chats':
-                    loadDriverChats();
+                    await loadDriverChats();
                     break;
             }
         }
@@ -1876,18 +1913,31 @@
         }
 
         // ============================================
-        // PASSENGER FUNCTIONS - FIXED VERSION
+        // UPDATED PASSENGER FUNCTIONS - FIX FOR DRIVER ACCEPTANCE DISPLAY
         // ============================================
         async function loadPassengerRides() {
             try {
-                // جلب الرحلات من جدول ride_requests حيث customer_id هو الراكب الحالي
+                // جلب الرحلات من جدول ride_requests مع السائقين المقبولين
                 const { data: requestsData, error: requestsError } = await travelSupabase
                     .from('ride_requests')
-                    .select('*')
+                    .select(`
+                        *,
+                        ride_driver_acceptances (
+                            id,
+                            driver_id,
+                            status,
+                            drivers (
+                                full_name,
+                                car_type,
+                                car_model,
+                                rating
+                            )
+                        )
+                    `)
                     .eq('customer_id', currentUser.id)
                     .order('created_at', { ascending: false });
 
-                // جلب الرحلات من جدول rides حيث passenger_id هو الراكب الحالي
+                // جلب الرحلات من جدول rides
                 const { data: ridesData, error: ridesError } = await travelSupabase
                     .from('rides')
                     .select('*')
@@ -1898,26 +1948,38 @@
 
                 // معالجة طلبات الرحلات من ride_requests
                 if (!requestsError && requestsData) {
-                    const formattedRequests = requestsData.map(req => ({
-                        id: req.id,
-                        passenger_id: req.customer_id,
-                        passenger_name: req.passenger_name || currentUser.full_name,
-                        passenger_phone: req.passenger_phone || currentUser.phone,
-                        from_city: req.from_city,
-                        to_city: req.to_city,
-                        vehicle_category: req.vehicle_category,
-                        base_price: req.estimated_price,
-                        final_price: req.estimated_price,
-                        notes: req.notes,
-                        status: req.status,
-                        driver_id: req.driver_id,
-                        driver_name: req.driver_name,
-                        driver_phone: req.driver_phone,
-                        created_at: req.created_at,
-                        customer_id: req.customer_id // للحفاظ على التوافق
-                    }));
-                    
-                    combinedRides = [...formattedRequests];
+                    for (const request of requestsData) {
+                        const acceptances = (request.ride_driver_acceptances || [])
+                            .filter(acc => acc.status === 'accepted');
+
+                        const driversInfo = acceptances.map(acc => ({
+                            driver_id: acc.driver_id,
+                            ...(acc.drivers || {})
+                        }));
+
+                        const formattedRequest = {
+                            id: request.id,
+                            passenger_id: request.customer_id,
+                            passenger_name: request.passenger_name || currentUser.full_name,
+                            passenger_phone: request.passenger_phone || currentUser.phone,
+                            from_city: request.from_city,
+                            to_city: request.to_city,
+                            vehicle_category: request.vehicle_category,
+                            base_price: request.estimated_price,
+                            final_price: request.estimated_price,
+                            notes: request.notes,
+                            status: request.status,
+                            driver_id: request.driver_id,
+                            driver_name: request.driver_name,
+                            driver_phone: request.driver_phone,
+                            created_at: request.created_at,
+                            customer_id: request.customer_id,
+                            accepted_drivers: driversInfo,
+                            accepted_count: acceptances.length
+                        };
+
+                        combinedRides.push(formattedRequest);
+                    }
                 }
 
                 // إضافة الرحلات من جدول rides
@@ -1932,7 +1994,7 @@
                 displayPassengerRides();
                 
             } catch (error) {
-                console.error('Error loading passenger rides:', error);
+                console.error('Error loading passenger rides with offers:', error);
                 displayPassengerRides();
             }
         }
@@ -1960,7 +2022,6 @@
             userRides.forEach(ride => {
                 const rideElement = document.createElement('div');
                 rideElement.className = 'ride-card';
-                rideElement.onclick = () => showRideDetails(ride);
                 
                 const statusText = getStatusText(ride.status);
                 const statusClass = getStatusClass(ride.status);
@@ -1969,9 +2030,40 @@
                 const toCity = ride.to_city || 'غير محدد';
                 const vehicleCategory = ride.vehicle_category || 'غير محدد';
 
-                // التحقق من ملكية الرحلة
                 const isMyRide = ride.passenger_id === currentUser.id || ride.customer_id === currentUser.id;
                 
+                let driversSection = '';
+                if (ride.status === 'pending' && ride.accepted_count > 0) {
+                    driversSection = `
+                        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--gray-300);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                <div style="font-weight: 600; color: var(--primary);">
+                                    <i class="fas fa-user-check"></i>
+                                    ${ride.accepted_count} سائق/ين قبلوا العرض
+                                </div>
+                                <button class="btn btn-outline btn-sm"
+                                        onclick="showDriverOffers('${ride.id}')">
+                                    <i class="fas fa-eye"></i> عرض التفاصيل
+                                </button>
+                            </div>
+                            <div style="background: var(--gray-50); padding: 0.75rem; border-radius: var(--radius);">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                    ${ride.accepted_drivers.map((driver, index) => `
+                                        <div style="display: flex; align-items: center; gap: 0.5rem; background: white; padding: 0.5rem 0.75rem; border-radius: var(--radius); border: 1px solid var(--gray-200);">
+                                            <i class="fas fa-user-tie" style="color: var(--primary);"></i>
+                                            <span style="font-weight: 600;">سائق رقم ${index + 1}</span>
+                                            <button class="btn btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;"
+                                                    onclick="startChatWithDriverFromCard('${ride.id}', 'سائق رقم ${index + 1}', '${driver.driver_id}')">
+                                                <i class="fas fa-comment"></i>
+                                            </button>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
                 rideElement.innerHTML = `
                     <div class="ride-header">
                         <div class="ride-route">
@@ -1992,7 +2084,7 @@
                         ${ride.driver_name ? `
                             <div class="ride-detail">
                                 <i class="fas fa-user-tie"></i>
-                                <span>السائق: ${ride.driver_name}</span>
+                                <span>السائق المختار: ${ride.driver_name}</span>
                             </div>
                         ` : ''}
                     </div>
@@ -2000,26 +2092,41 @@
                         <i class="fas fa-circle"></i>
                         ${statusText}
                     </div>
-                    ${ride.status === 'pending' ? `
-                        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
-                            <div style="display: flex; gap: 0.5rem;">
-                                <button class="btn btn-outline" style="flex: 1;"
-                                        onclick="event.stopPropagation(); showRideDetails(${JSON.stringify(ride).replace(/"/g, '&quot;')})">
-                                    <i class="fas fa-eye"></i> التفاصيل
-                                </button>
-                                ${isMyRide ? `
-                                    <button class="btn btn-danger" style="flex: 1;"
-                                            onclick="event.stopPropagation(); cancelRide('${ride.id}')">
-                                        <i class="fas fa-times"></i> إلغاء
-                                    </button>
-                                ` : ''}
-                            </div>
-                        </div>
-                    ` : ''}
+
+                    ${driversSection}
+
+                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--gray-200); display: flex; gap: 0.5rem;">
+                        <button class="btn btn-outline" style="flex: 1;"
+                                onclick="showRideDetails(${JSON.stringify(ride).replace(/"/g, '&quot;')})">
+                            <i class="fas fa-eye"></i> التفاصيل
+                        </button>
+                        ${isMyRide && ride.status === 'pending' ? `
+                            <button class="btn btn-danger" style="flex: 1;"
+                                    onclick="cancelRide('${ride.id}')">
+                                <i class="fas fa-times"></i> إلغاء
+                            </button>
+                        ` : ''}
+                    </div>
                 `;
                 
                 container.appendChild(rideElement);
             });
+        }
+
+        // دالة للمحادثة المباشرة من البطاقة
+        function startChatWithDriverFromCard(rideId, driverLabel, driverId) {
+            currentChat = {
+                id: rideId,
+                other_user_name: driverLabel,
+                ride_id: rideId,
+                other_user_id: driverId
+            };
+
+            document.getElementById('chat-with-name').textContent = driverLabel;
+            document.getElementById('chat-ride-info').textContent = '';
+            document.getElementById('chat-modal').classList.remove('hidden');
+
+            loadChatMessages(rideId);
         }
 
         /**
@@ -2156,6 +2263,7 @@
             }
         });
 
+        // تحديث دالة showDriverOffers لتعرض معلومات أفضل
         async function showDriverOffers(rideId) {
             try {
                 const { data: acceptances, error } = await travelSupabase
@@ -2169,11 +2277,13 @@
                             full_name,
                             car_type,
                             car_model,
-                            rating
+                            rating,
+                            license_plate
                         )
                     `)
                     .eq('ride_id', rideId)
-                    .eq('status', 'accepted');
+                    .eq('status', 'accepted')
+                    .order('accepted_at', { ascending: true });
 
                 if (error) throw error;
 
@@ -2181,7 +2291,13 @@
                 container.innerHTML = '';
 
                 if (acceptances.length === 0) {
-                    container.innerHTML = '<p class="empty-state">لا يوجد عروض حالياً</p>';
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">👥</div>
+                            <div class="empty-title">لا يوجد عروض حالياً</div>
+                            <div class="empty-description">لم تقبل أي سائق على رحلتك بعد</div>
+                        </div>
+                    `;
                 } else {
                     let driverIndex = 1;
                     acceptances.forEach(acc => {
@@ -2190,18 +2306,37 @@
                         card.className = 'ride-card';
                         card.innerHTML = `
                             <div class="ride-header">
-                                <div class="ride-route">سائق عرض رقم ${driverIndex++}</div>
-                                <div class="ride-price">${driver.rating ? driver.rating.toFixed(1) : 'جديد'} ⭐</div>
+                                <div class="ride-route" style="font-size: 1.1rem;">
+                                    <i class="fas fa-user-tie"></i>
+                                    سائق رقم ${driverIndex++}
+                                </div>
+                                <div class="ride-price" style="font-size: 1.1rem;">
+                                    ${driver.rating ? driver.rating.toFixed(1) + ' ⭐' : 'جديد'}
+                                </div>
                             </div>
                             <div class="ride-details">
-                                <div class="ride-detail"><i class="fas fa-car"></i> ${driver.car_type} - ${driver.car_model}</div>
+                                <div class="ride-detail">
+                                    <i class="fas fa-car"></i>
+                                    <span>${driver.car_type || 'غير محدد'} - ${driver.car_model || 'غير محدد'}</span>
+                                </div>
+                                <div class="ride-detail">
+                                    <i class="fas fa-id-card"></i>
+                                    <span>لوحة المركبة: ${driver.license_plate || 'غير متوفر'}</span>
+                                </div>
+                                <div class="ride-detail">
+                                    <i class="fas fa-clock"></i>
+                                    <span>قبل في: ${formatTime(acc.accepted_at)}</span>
+                                </div>
                             </div>
                             <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                                <button class="btn btn-outline" style="flex: 1;" onclick="startChatWithDriver('${rideId}', 'سائق عرض رقم ${driverIndex-1}')">
+                                <button class="btn btn-outline" style="flex: 1;"
+                                        onclick="startChatWithDriverFromCard('${rideId}', 'سائق رقم ${driverIndex-1}', '${acc.driver_id}')">
                                     <i class="fas fa-comment"></i> محادثة
                                 </button>
-                                <button class="btn btn-primary" style="flex: 2;" onclick="passengerSelectsDriver('${rideId}', '${acc.driver_id}')">
-                                <i class="fas fa-check"></i> اختيار هذا السائق </button>
+                                <button class="btn btn-primary" style="flex: 2;"
+                                        onclick="passengerSelectsDriver('${rideId}', '${acc.driver_id}')">
+                                    <i class="fas fa-check-circle"></i> اختيار هذا السائق
+                                </button>
                             </div>
                         `;
                         container.appendChild(card);
@@ -2211,7 +2346,7 @@
                 document.getElementById('driver-offers-modal').classList.remove('hidden');
             } catch (error) {
                 console.error('Error loading driver offers:', error);
-                showNotification('خطأ في تحميل العروض', 'error');
+                showNotification('خطأ في تحميل عروض السائقين', 'error');
             }
         }
 
@@ -2483,12 +2618,42 @@
                 // التحقق من رصيد السائق
                 const { data: driver, error: driverError } = await travelSupabase
                     .from('drivers')
-                    .select('balance')
+                    .select('balance, full_name, car_type, car_model, rating')
                     .eq('id', currentUser.id)
                     .single();
                 
                 if (driverError || !driver || driver.balance < STOP_BALANCE_THRESHOLD) {
                     showNotification('رصيدك غير كافي، يرجى الشحن', 'error');
+                    return;
+                }
+
+                // التحقق من عدد السائقين الذين قبلوا بالفعل
+                const { data: existingAcceptances, error: countError } = await travelSupabase
+                    .from('ride_driver_acceptances')
+                    .select('id')
+                    .eq('ride_id', rideId)
+                    .eq('status', 'accepted');
+
+                if (countError) throw countError;
+
+                if (existingAcceptances && existingAcceptances.length >= MAX_DRIVERS_PER_RIDE) {
+                    showNotification(`عفواً، لقد وصل الحد الأقصى (${MAX_DRIVERS_PER_RIDE}) من السائقين الذين قبلوا هذه الرحلة`, 'warning');
+                    return;
+                }
+
+                // التحقق إذا كان السائق قد قبل هذه الرحلة مسبقاً
+                const { data: alreadyAccepted, error: checkError } = await travelSupabase
+                    .from('ride_driver_acceptances')
+                    .select('id')
+                    .eq('ride_id', rideId)
+                    .eq('driver_id', currentUser.id)
+                    .eq('status', 'accepted')
+                    .single();
+
+                if (checkError && checkError.code !== 'PGRST116') throw checkError; // PGRST116 = not found
+
+                if (alreadyAccepted) {
+                    showNotification('لقد قبلت هذه الرحلة مسبقاً', 'info');
                     return;
                 }
 
@@ -2506,12 +2671,15 @@
 
                 if (acceptError) throw acceptError;
 
-                showNotification('تم قبول الرحلة بنجاح، بانتظار اختيار الراكب', 'success');
+                // إرسال إشعار للسائق
+                showNotification('تم قبول الرحلة بنجاح! سيتم عرضك للمسافر كسائق رقم ' + (existingAcceptances.length + 1), 'success');
+
+                // تحديث قائمة الرحلات المتاحة
                 loadAvailableRides();
 
             } catch (error) {
                 console.error('Error accepting ride:', error);
-                showNotification('خطأ في قبول الرحلة', 'error');
+                showNotification('خطأ في قبول الرحلة: ' + error.message, 'error');
             }
         }
 
