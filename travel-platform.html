@@ -1147,6 +1147,9 @@
                     <div class="card">
                         <div class="card-header">
                             <h2 class="card-title"><i class="fas fa-comment-dots"></i> محادثاتي</h2>
+                            <button class="btn btn-sm btn-outline" onclick="refreshDriverChats()">
+                                <i class="fas fa-sync-alt"></i> تحديث
+                            </button>
                         </div>
                         
                         <div id="driver-chats-list" class="ride-cards">
@@ -3004,52 +3007,94 @@
 
         async function loadDriverChats() {
             try {
-                // جلب جميع الرحلات التي قبلها السائق
-                const { data: rides, error: ridesError } = await travelSupabase
-                    .from('rides')
-                    .select('id, passenger_name')
+                console.log('🔄 جلب محادثات السائق...');
+
+                // جلب جميع قبولات السائق أولاً
+                const { data: acceptances, error: accError } = await travelSupabase
+                    .from('ride_driver_acceptances')
+                    .select(`
+                        id,
+                        ride_id,
+                        status,
+                        ride_requests!inner (
+                            id,
+                            passenger_name,
+                            customer_id,
+                            status as ride_status
+                        )
+                    `)
                     .eq('driver_id', currentUser.id)
-                    .in('status', ['accepted', 'confirmed']);
+                    .eq('status', 'accepted')
+                    .order('accepted_at', { ascending: false });
 
-                if (ridesError) {
-                    // جرب جدول ride_requests
-                    const { data: requests, error: requestsError } = await travelSupabase
-                        .from('ride_requests')
-                        .select('id, customer_id')
-                        .eq('driver_id', currentUser.id)
-                        .in('status', ['accepted', 'confirmed']);
-
-                    if (!requestsError && requests) {
-                        rides = requests;
-                    }
-                }
-
-                if (!rides || rides.length === 0) {
+                if (accError) {
+                    console.error('Error loading acceptances:', accError);
                     displayDriverChats([]);
                     return;
                 }
 
-                // جلب آخر رسالة لكل رحلة
+                if (!acceptances || acceptances.length === 0) {
+                    console.log('لا توجد قبولات للسائق');
+                    displayDriverChats([]);
+                    return;
+                }
+
+                // جلب المحادثات لكل رحلة مقبولة
                 const chats = [];
-                for (const ride of rides) {
-                    const { data: messages, error: messagesError } = await travelSupabase
+                for (const acc of acceptances) {
+                    const ride = acc.ride_requests;
+
+                    if (!ride) continue;
+
+                    // جلب آخر رسالة في المحادثة
+                    const { data: messages, error: msgError } = await travelSupabase
                         .from('ride_chats')
                         .select('*')
                         .eq('ride_id', ride.id)
                         .order('created_at', { ascending: false })
                         .limit(1);
 
-                    if (!messagesError && messages.length > 0) {
+                    if (msgError) {
+                        console.error('Error loading messages:', msgError);
+                        continue;
+                    }
+
+                    // إذا كانت هناك رسائل، أضفها للقائمة
+                    if (messages && messages.length > 0) {
+                        const lastMessage = messages[0];
+
                         chats.push({
                             id: ride.id,
                             ride_id: ride.id,
+                            chat_id: lastMessage.id,
                             other_user_name: ride.passenger_name || 'الراكب',
-                            last_message: messages[0].message,
-                            last_message_time: messages[0].created_at
+                            other_user_id: ride.customer_id,
+                            last_message: lastMessage.message,
+                            last_message_time: lastMessage.created_at,
+                            last_sender_type: lastMessage.sender_type,
+                            last_sender_name: lastMessage.sender_name,
+                            acceptance_status: acc.status,
+                            ride_status: ride.ride_status
+                        });
+                    } else {
+                        // حتى لو لم تكن هناك رسائل، أضف الرحلة كمحادثة جديدة
+                        chats.push({
+                            id: ride.id,
+                            ride_id: ride.id,
+                            chat_id: null,
+                            other_user_name: ride.passenger_name || 'الراكب',
+                            other_user_id: ride.customer_id,
+                            last_message: 'ابدأ المحادثة الآن',
+                            last_message_time: null,
+                            last_sender_type: null,
+                            last_sender_name: null,
+                            acceptance_status: acc.status,
+                            ride_status: ride.ride_status
                         });
                     }
                 }
 
+                console.log('المحادثات المحملة:', chats.length);
                 displayDriverChats(chats);
                 
             } catch (error) {
@@ -3066,8 +3111,10 @@
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-icon">💬</div>
-                        <div class="empty-title">لا توجد محادثات</div>
-                        <div class="empty-description">ابدأ محادثة مع راكب لقبول رحلته</div>
+                        <div class="empty-title">لا توجد محادثات حالياً</div>
+                        <div class="empty-description">
+                            قم بقبول رحلة أولاً، أو انتظر حتى يبدأ الراكب محادثة معك
+                        </div>
                     </div>
                 `;
                 return;
@@ -3075,40 +3122,64 @@
             
             container.innerHTML = '';
             
+            // ترتيب المحادثات حسب وقت آخر رسالة
+            chats.sort((a, b) => {
+                if (!a.last_message_time) return 1;
+                if (!b.last_message_time) return -1;
+                return new Date(b.last_message_time) - new Date(a.last_message_time);
+            });
+
             chats.forEach(chat => {
                 const chatElement = document.createElement('div');
                 chatElement.className = 'ride-card';
-                chatElement.onclick = () => openChatSimple(chat.id, chat.other_user_name, chat.ride_id || chat.id);
                 
-                // Escape special characters in chat data
-                const escapedUserName = escapeHtml(chat.other_user_name || '');
-                const escapedMessage = escapeHtml(chat.last_message || '');
+                const otherUserName = escapeHtml(chat.other_user_name || 'الراكب');
+                const lastMessage = escapeHtml(chat.last_message || '');
+                const lastMessageTime = chat.last_message_time ? formatTime(chat.last_message_time) : 'جديد';
+                const messagePrefix = chat.last_sender_type === 'driver' ? 'أنت: ' : '';
                 
                 chatElement.innerHTML = `
                     <div class="ride-header">
                         <div class="ride-route">
                             <i class="fas fa-comment"></i>
-                            ${escapedUserName}
+                            ${otherUserName}
                         </div>
                         <div style="font-size: 0.875rem; color: var(--gray-500);">
-                            ${formatTime(chat.last_message_time)}
+                            ${lastMessageTime}
                         </div>
                     </div>
                     <div class="ride-details">
                         <div class="ride-detail">
                             <i class="fas fa-message"></i>
-                            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                ${escapedMessage}
-                            </span>
+                            <span>${messagePrefix}${lastMessage}</span>
                         </div>
                     </div>
-                    <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openChatSimple('${chat.id}', '${escapedUserName.replace(/'/g, "\\'")}', '${chat.ride_id || chat.id}')">
-                        <i class="fas fa-reply"></i> رد
+                    <button class="btn btn-primary btn-sm"
+                            onclick="openDriverChat('${chat.ride_id}', '${otherUserName.replace(/'/g, "\\'")}', '${chat.other_user_id || ''}')">
+                        <i class="fas fa-reply"></i> ${chat.last_message_time ? 'فتح' : 'بدء'}
                     </button>
                 `;
                 
                 container.appendChild(chatElement);
             });
+        }
+
+        function openDriverChat(rideId, passengerName, passengerId) {
+            currentChat = {
+                id: rideId,
+                other_user_name: passengerName,
+                other_user_id: passengerId,
+                ride_id: rideId
+            };
+
+            document.getElementById('chat-with-name').textContent = passengerName;
+            document.getElementById('chat-modal').classList.remove('hidden');
+            loadChatMessages(rideId);
+        }
+
+        async function refreshDriverChats() {
+            showNotification('جاري تحديث المحادثات...', 'info');
+            await loadDriverChats();
         }
 
         // ============================================
