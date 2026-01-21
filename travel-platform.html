@@ -2022,6 +2022,50 @@
             });
         }
 
+        /**
+         * دالة لمزامنة معرف الراكب بناءً على رقم الواتساب
+         * تُنفذ مباشرة بعد إنشاء طلب رحلة جديد للراكب
+         */
+        async function syncPassengerIdFromWhatsApp(rideId, whatsappNumber) {
+            try {
+                console.log(`بدء مزامنة معرف العميل للرحلة ${rideId} باستخدام رقم الواتساب ${whatsappNumber}`);
+
+                // 1. القراءة من جدول customers باستخدام رقم الواتساب
+                const { data: customerData, error: fetchError } = await travelSupabase
+                    .from('customers')
+                    .select('id')
+                    .eq('phone', whatsappNumber)
+                    .single();
+
+                if (fetchError) {
+                    console.error('خطأ في جلب بيانات العميل برقم الواتساب:', fetchError);
+                    return;
+                }
+
+                if (customerData && customerData.id) {
+                    // 2. حفظ نسخة في الذاكرة الداخلية
+                    const internalMemoryId = customerData.id;
+                    console.log(`تم العثور على المعرف: ${internalMemoryId}`);
+
+                    // 3. التحديث في جدول ride_requests عمود customer_id
+                    const { error: updateError } = await travelSupabase
+                        .from('ride_requests')
+                        .update({ customer_id: internalMemoryId })
+                        .eq('id', rideId);
+
+                    if (updateError) {
+                        console.error('خطأ في تحديث customer_id في جدول ride_requests:', updateError);
+                    } else {
+                        console.log('✅ تم تحديث معرف العميل بنجاح في طلب الرحلة');
+                    }
+                } else {
+                    console.warn('لم يتم العثور على عميل بهذا الرقم');
+                }
+            } catch (error) {
+                console.error('خطأ غير متوقع في syncPassengerIdFromWhatsApp:', error);
+            }
+        }
+
         // Ride request form submission - FIXED VERSION
         document.getElementById('ride-request-form')?.addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -2081,6 +2125,11 @@
                 if (error) {
                     console.error('Supabase error details:', error);
                     throw error;
+                }
+
+                // تنفيذ دالة المزامنة مباشرة بعد إنشاء الطلب
+                if (data && data.id) {
+                    await syncPassengerIdFromWhatsApp(data.id, currentUser.phone);
                 }
                 
                 showNotification('تم نشر طلب الرحلة بنجاح!', 'success');
