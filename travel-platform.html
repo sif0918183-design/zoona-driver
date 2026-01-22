@@ -1390,6 +1390,9 @@
                         console.log('✅ Driver session verified');
                         await checkPermissions(); // فحص الصلاحيات بعد تسجيل الدخول
 
+                        // تفعيل مستمع الخصوصية للسائق
+                        setupRideStatusListener();
+
                         setTimeout(() => {
                             console.log('🔍 بدء تشخيص المحادثات...');
                             diagnoseChatProblem();
@@ -1525,6 +1528,70 @@
                 console.error('Error loading initial data:', error);
                 showNotification('خطأ في تحميل البيانات', 'error');
             }
+        }
+
+        // --- وظائف خصوصية المحادثات للسائق ---
+
+        async function checkAndUpdateChatPrivacy(rideId) {
+            try {
+                const { data: ride, error } = await travelSupabase
+                    .from('ride_requests')
+                    .select('status, driver_id, passenger_name')
+                    .eq('id', rideId)
+                    .single();
+
+                if (error || !ride) return;
+
+                const isFinalDriver = (ride.status === 'driver_selected' || ride.status === 'confirmed') && ride.driver_id === currentUser.id;
+
+                if (isFinalDriver && currentChat && currentChat.ride_id === rideId && !currentChat.show_full_name) {
+                    console.log('🔓 كشف هوية الراكب: تم اختيارك لهذه الرحلة!');
+                    currentChat.show_full_name = true;
+                    currentChat.other_user_name = ride.passenger_name;
+
+                    const chatTitle = document.getElementById('chat-with-name');
+                    if (chatTitle) {
+                        chatTitle.innerHTML = `${ride.passenger_name} <i class="fas fa-user-check text-green-500"></i>`;
+                    }
+
+                    showNotification('تم كشف هوية الراكب الآن بعد اختيارك للرحلة', 'success');
+                }
+            } catch (err) {
+                console.error('Error checking chat privacy:', err);
+            }
+        }
+
+        let rideStatusSubscription = null;
+
+        function setupRideStatusListener() {
+            if (rideStatusSubscription) return;
+
+            console.log('📡 تفعيل مستمع تحديثات الرحلات للخصوصية...');
+
+            rideStatusSubscription = travelSupabase
+                .channel('ride-privacy-updates')
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'ride_requests'
+                }, (payload) => {
+                    const updatedRide = payload.new;
+                    // إذا تغيرت الحالة إلى اختيار سائق وكان السائق الحالي هو المختار
+                    if ((updatedRide.status === 'driver_selected' || updatedRide.status === 'confirmed') &&
+                        updatedRide.driver_id === currentUser.id) {
+
+                        // إذا كانت المحادثة مفتوحة حالياً، نحدث الخصوصية فوراً
+                        if (currentChat && currentChat.ride_id === updatedRide.id) {
+                            checkAndUpdateChatPrivacy(updatedRide.id);
+                        }
+
+                        // تحديث القائمة العامة للمحادثات في الخلفية
+                        if (currentTab === 'driver-chats') {
+                            loadDriverChats();
+                        }
+                    }
+                })
+                .subscribe();
         }
 
         async function loadCities() {
@@ -3018,7 +3085,6 @@
             try {
                 console.log('🔍 استخدام الطريقة البسيطة...');
 
-                // الطريقة الأولى: استعلام مباشر للرحلات التي قبلها السائق
                 const { data: acceptances, error: accError } = await travelSupabase
                     .from('ride_driver_acceptances')
                     .select('ride_id, status, accepted_at')
@@ -3026,63 +3092,63 @@
                     .eq('status', 'accepted')
                     .order('accepted_at', { ascending: false });
 
-                if (accError) {
-                    console.error('Error loading acceptances:', accError);
-                    return [];
-                }
+                if (accError || !acceptances) return [];
 
-                if (!acceptances || acceptances.length === 0) {
-                    console.log('لا توجد قبولات للسائق');
-                    return [];
-                }
-
-                // استخراج معرفات الرحلات المقبولة
                 const rideIds = acceptances.map(acc => acc.ride_id);
-                console.log('معرفات الرحلات المقبولة:', rideIds);
 
-                // جلب معلومات الرحلات
                 const { data: rideRequests, error: requestsError } = await travelSupabase
                     .from('ride_requests')
-                    .select('id, passenger_name, customer_id, status')
+                    .select('id, passenger_name, customer_id, status, driver_id')
                     .in('id', rideIds);
 
-                if (requestsError) {
-                    console.error('Error loading ride requests:', requestsError);
-                    return [];
-                }
+                if (requestsError) return [];
 
-                // إنشاء خريطة للربط بين الـ IDs والمعلومات
                 const rideInfoMap = {};
                 rideRequests.forEach(ride => {
                     rideInfoMap[ride.id] = {
                         passenger_name: ride.passenger_name || 'الراكب',
                         customer_id: ride.customer_id,
-                        ride_status: ride.status
+                        ride_status: ride.status,
+                        driver_id: ride.driver_id,
+                        // تحديد إذا كان السائق قد اختير نهائياً
+                        is_driver_selected: ride.driver_id === currentUser.id
                     };
                 });
 
-                // جلب المحادثات لكل رحلة
                 const chats = [];
                 for (const acc of acceptances) {
                     const rideId = acc.ride_id;
                     const rideInfo = rideInfoMap[rideId] || {
                         passenger_name: 'الراكب',
                         customer_id: null,
-                        ride_status: 'unknown'
+                        ride_status: 'unknown',
+                        is_driver_selected: false
                     };
 
-                    // جلب آخر رسالة في المحادثة
-                    const { data: messages, error: msgError } = await travelSupabase
+                    // 🔒 التحكم في إظهار الاسم بناءً على الحالة
+                    let displayName;
+                    let showFullName = false;
+
+                    if (rideInfo.ride_status === 'driver_selected' && rideInfo.is_driver_selected) {
+                        // إذا تم اختيار السائق النهائي
+                        displayName = rideInfo.passenger_name;
+                        showFullName = true;
+                    } else if (rideInfo.ride_status === 'confirmed') {
+                        // إذا تم تأكيد الرحلة
+                        displayName = rideInfo.passenger_name;
+                        showFullName = true;
+                    } else {
+                        // قبل القبول النهائي - إخفاء الاسم
+                        displayName = 'راكب ترحال';
+                        showFullName = false;
+                    }
+
+                    const { data: messages } = await travelSupabase
                         .from('ride_chats')
                         .select('*')
                         .eq('ride_id', rideId)
                         .order('created_at', { ascending: false })
                         .limit(1);
-
-                    if (msgError) {
-                        console.error('Error loading messages for ride', rideId, ':', msgError);
-                        continue;
-                    }
 
                     if (messages && messages.length > 0) {
                         const lastMessage = messages[0];
@@ -3091,34 +3157,45 @@
                             id: rideId,
                             ride_id: rideId,
                             chat_id: lastMessage.id,
-                            other_user_name: rideInfo.passenger_name,
+                            other_user_name: displayName,
+                            actual_passenger_name: rideInfo.passenger_name, // حفظ الاسم الحقيقي داخلياً
+                            show_full_name: showFullName, // علم للإظهار
                             other_user_id: rideInfo.customer_id,
                             last_message: lastMessage.message,
                             last_message_time: lastMessage.created_at,
                             last_sender_type: lastMessage.sender_type,
                             last_sender_name: lastMessage.sender_name,
                             acceptance_status: acc.status,
-                            ride_status: rideInfo.ride_status
+                            ride_status: rideInfo.ride_status,
+                            is_driver_selected: rideInfo.is_driver_selected,
+                            privacy_level: showFullName ? 'full' : 'hidden' // مستوى الخصوصية
                         });
                     } else {
-                        // حتى لو لم تكن هناك رسائل، أضف الرحلة كمحادثة جديدة
                         chats.push({
                             id: rideId,
                             ride_id: rideId,
                             chat_id: null,
-                            other_user_name: rideInfo.passenger_name,
+                            other_user_name: displayName,
+                            actual_passenger_name: rideInfo.passenger_name,
+                            show_full_name: showFullName,
                             other_user_id: rideInfo.customer_id,
                             last_message: 'ابدأ المحادثة الآن',
                             last_message_time: null,
                             last_sender_type: null,
                             last_sender_name: null,
                             acceptance_status: acc.status,
-                            ride_status: rideInfo.ride_status
+                            ride_status: rideInfo.ride_status,
+                            is_driver_selected: rideInfo.is_driver_selected,
+                            privacy_level: showFullName ? 'full' : 'hidden'
                         });
                     }
                 }
 
-                console.log('المحادثات (البسيطة):', chats.length);
+                console.log('المحادثات مع الخصوصية:', chats.map(c => ({
+                    name: c.other_user_name,
+                    privacy: c.privacy_level,
+                    status: c.ride_status
+                })));
                 return chats;
 
             } catch (error) {
@@ -3189,18 +3266,26 @@
                             .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
 
                         if (rideInfo && lastMessage) {
+                            // 🔒 الخصوصية في الطوارئ
+                            const isFinal = (rideInfo.status === 'driver_selected' || rideInfo.status === 'confirmed') &&
+                                           rideInfo.driver_id === currentUser.id;
+                            const showFull = isFinal;
+
                             chats.push({
                                 id: rideId,
                                 ride_id: rideId,
                                 chat_id: lastMessage.id,
-                                other_user_name: rideInfo.passenger_name || 'الراكب',
+                                other_user_name: showFull ? (rideInfo.passenger_name || 'الراكب') : 'راكب ترحال',
+                                actual_passenger_name: rideInfo.passenger_name,
+                                show_full_name: showFull,
                                 other_user_id: rideInfo.customer_id,
                                 last_message: lastMessage.message,
                                 last_message_time: lastMessage.created_at,
                                 last_sender_type: lastMessage.sender_type,
                                 last_sender_name: lastMessage.sender_name,
                                 acceptance_status: acceptance.status || 'accepted',
-                                ride_status: rideInfo.status
+                                ride_status: rideInfo.status,
+                                privacy_level: showFull ? 'full' : 'hidden'
                             });
                         }
                     }
@@ -3250,7 +3335,7 @@
                     // جلب معلومات الرحلة
                     const { data: rideInfo, error: rideError } = await travelSupabase
                         .from('ride_requests')
-                        .select('passenger_name, customer_id, status')
+                        .select('passenger_name, customer_id, status, driver_id')
                         .eq('id', rideId)
                         .single();
 
@@ -3260,18 +3345,26 @@
                         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
 
                     if (rideInfo && lastMessage) {
+                        // 🔒 الخصوصية في البديلة
+                        const isFinal = (rideInfo.status === 'driver_selected' || rideInfo.status === 'confirmed') &&
+                                       rideInfo.driver_id === currentUser.id;
+                        const showFull = isFinal;
+
                         chats.push({
                             id: rideId,
                             ride_id: rideId,
                             chat_id: null,
-                            other_user_name: rideInfo.passenger_name || 'الراكب',
+                            other_user_name: showFull ? (rideInfo.passenger_name || 'الراكب') : 'راكب ترحال',
+                            actual_passenger_name: rideInfo.passenger_name,
+                            show_full_name: showFull,
                             other_user_id: rideInfo.customer_id,
                             last_message: lastMessage.message,
                             last_message_time: lastMessage.created_at,
                             last_sender_type: lastMessage.sender_type,
                             last_sender_name: lastMessage.sender_name,
                             acceptance_status: 'accepted',
-                            ride_status: rideInfo.status
+                            ride_status: rideInfo.status,
+                            privacy_level: showFull ? 'full' : 'hidden'
                         });
                     }
                 }
@@ -3419,7 +3512,6 @@
             
             container.innerHTML = '';
             
-            // ترتيب المحادثات حسب وقت آخر رسالة
             chats.sort((a, b) => {
                 if (!a.last_message_time) return 1;
                 if (!b.last_message_time) return -1;
@@ -3430,7 +3522,11 @@
                 const chatElement = document.createElement('div');
                 chatElement.className = 'ride-card';
                 
-                const otherUserName = escapeHtml(chat.other_user_name || 'الراكب');
+                // تحديد الاسم والأيقونة بناءً على حالة الخصوصية
+                const displayName = escapeHtml(chat.other_user_name);
+                const privacyIcon = chat.show_full_name ? 'fa-user-check' : 'fa-user-secret';
+                const privacyClass = chat.show_full_name ? 'text-green-500' : 'text-gray-400';
+
                 const lastMessage = escapeHtml(chat.last_message || '');
                 const lastMessageTime = chat.last_message_time ? formatTime(chat.last_message_time) : 'جديد';
                 const messagePrefix = chat.last_sender_type === 'driver' ? 'أنت: ' : '';
@@ -3438,8 +3534,9 @@
                 chatElement.innerHTML = `
                     <div class="ride-header">
                         <div class="ride-route">
-                            <i class="fas fa-comment"></i>
-                            ${otherUserName}
+                            <i class="fas ${privacyIcon} ${privacyClass}"></i>
+                            ${displayName}
+                            ${!chat.show_full_name ? '<span class="badge badge-gray" style="font-size: 0.7rem; margin-right: 5px;">هوية مخفية</span>' : ''}
                         </div>
                         <div style="font-size: 0.875rem; color: var(--gray-500);">
                             ${lastMessageTime}
@@ -3448,11 +3545,11 @@
                     <div class="ride-details">
                         <div class="ride-detail">
                             <i class="fas fa-message"></i>
-                            <span>${messagePrefix}${lastMessage}</span>
+                            <span class="${!chat.show_full_name ? 'italic text-gray-500' : ''}">${messagePrefix}${lastMessage}</span>
                         </div>
                     </div>
                     <button class="btn btn-primary btn-sm"
-                            onclick="openDriverChat('${chat.ride_id}', '${otherUserName.replace(/'/g, "\\'")}', '${chat.other_user_id || ''}')">
+                            onclick="openDriverChat('${chat.ride_id}', '${displayName.replace(/'/g, "\\'")}', '${chat.other_user_id || ''}', ${chat.show_full_name})">
                         <i class="fas fa-reply"></i> ${chat.last_message_time ? 'فتح' : 'بدء'}
                     </button>
                 `;
@@ -3461,17 +3558,31 @@
             });
         }
 
-        function openDriverChat(rideId, passengerName, passengerId) {
+        function openDriverChat(rideId, passengerName, passengerId, showFullName = false) {
             currentChat = {
                 id: rideId,
                 other_user_name: passengerName,
                 other_user_id: passengerId,
-                ride_id: rideId
+                ride_id: rideId,
+                show_full_name: showFullName
             };
 
-            document.getElementById('chat-with-name').textContent = passengerName;
+            const chatTitle = document.getElementById('chat-with-name');
+            chatTitle.innerHTML = `
+                ${passengerName}
+                ${!showFullName ? '<i class="fas fa-user-secret text-gray-400" title="هوية الراكب مخفية حتى يتم اختيارك"></i>' : '<i class="fas fa-user-check text-green-500"></i>'}
+            `;
+
+            // إضافة تنبيه الخصوصية في بداية المحادثة
+            if (!showFullName) {
+                console.log('🔒 محادثة بهوية مخفية - سيتم كشف الاسم عند اختيارك للرحلة');
+            }
+
             document.getElementById('chat-modal').classList.remove('hidden');
             loadChatMessages(rideId);
+
+            // التحقق من الخصوصية وتحديثها إذا لزم الأمر
+            checkAndUpdateChatPrivacy(rideId);
         }
 
         async function refreshDriverChats() {
@@ -3727,6 +3838,12 @@
             if (!message || !currentChat) {
                 showNotification('الرجاء إدخال رسالة', 'warning');
                 return;
+            }
+
+            // 🔒 تنبيه الخصوصية للسائق
+            if (userType === 'driver' && currentChat && !currentChat.show_full_name) {
+                const confirmSend = confirm('تنبيه: أنت تتحدث مع راكب لم يقم باختيارك بعد. هل تريد إرسال هذه الرسالة؟');
+                if (!confirmSend) return;
             }
             
             // فلترة الرسالة
