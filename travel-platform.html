@@ -980,7 +980,6 @@
             font-size: 0.75rem;
             font-weight: 700;
             border-radius: 50%;
-            animation: pulse 2s infinite;
             box-shadow: var(--shadow-md);
             z-index: 10;
         }
@@ -990,7 +989,7 @@
         }
 
         .status-updated {
-            animation: pulse 0.5s ease;
+            /* Animation removed by request */
         }
         .unread-chat {
             background-color: rgba(67, 97, 238, 0.05) !important;
@@ -2736,12 +2735,16 @@
 
                         // الخصوصية: إخفاء اسم السائق إذا لم يتم الاختيار النهائي
                         let displayName = 'سائق ترحال';
-                        if (req.status !== 'pending') {
-                            displayName = req.driver_name || 'سائق ترحال';
+                        if (req.status !== 'pending' && req.status !== 'driver_selected' && req.status !== 'confirmed') {
+                            displayName = 'سائق ترحال';
                         } else {
-                            // محاولة استنتاج اسم السائق من الرسالة الأخيرة إذا كان السائق هو المرسل
-                            if (lastMessage.sender_type === 'driver') {
-                                displayName = `سائق ترحال (${lastMessage.sender_name.split(' ')[0]})`;
+                            // يتم كشف الاسم فقط بعد اختيار السائق نهائياً
+                            const isFinal = (req.status === 'driver_selected' || req.status === 'confirmed');
+                            if (isFinal) {
+                                displayName = req.driver_name || 'سائق ترحال';
+                            } else {
+                                // قبل الاختيار النهائي، نستخدم تسمية عامة
+                                displayName = 'سائق ترحال';
                             }
                         }
 
@@ -4273,7 +4276,7 @@
             
             // إضافة تأثير بصري عند ظهور الإشعار
             if (type === 'success' || type === 'warning') {
-                notification.style.animation = 'slideInRight 0.3s ease, pulse 2s infinite';
+                notification.style.animation = 'slideInRight 0.3s ease';
             }
 
             // Auto remove after 5 seconds
@@ -4288,7 +4291,7 @@
         function showEnhancedNotification(message, type = 'info') {
             const container = document.getElementById('notification-container');
             const toast = document.createElement('div');
-            toast.className = `notification notification-${type} status-updated`;
+            toast.className = `notification notification-${type}`; // Removed status-updated to stop pulse
 
             const icons = {
                 'success': '🎉',
@@ -4304,6 +4307,9 @@
                     <div class="notification-message" style="font-weight:700;">${escapeHtml(message)}</div>
                 </div>
             `;
+
+            // Simple slide in for all notifications
+            toast.style.animation = 'slideInRight 0.3s ease';
 
             container.appendChild(toast);
 
