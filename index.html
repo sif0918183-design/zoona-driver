@@ -506,6 +506,90 @@
     direction: rtl;
     text-align: right;
 }
+
+/* Agreement Modal Styles */
+.agreement-modal {
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.agreement-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    max-height: 50vh;
+    margin: 20px 0;
+    background: #f8fafc;
+    border-radius: var(--radius);
+    border: 1px solid var(--gray-light);
+    line-height: 1.7;
+    text-align: right;
+}
+
+.agreement-content h3 {
+    color: var(--driver-dark);
+    margin: 24px 0 12px 0;
+    font-size: 18px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--driver-light);
+}
+
+.agreement-content p {
+    margin-bottom: 16px;
+    color: var(--dark);
+}
+
+.agreement-content ol {
+    padding-right: 24px;
+    margin-bottom: 20px;
+}
+
+.agreement-content li {
+    margin-bottom: 12px;
+    padding-right: 8px;
+    position: relative;
+}
+
+.agreement-content li:before {
+    content: "•";
+    color: var(--driver);
+    font-weight: bold;
+    position: absolute;
+    right: -20px;
+}
+
+.scroll-indicator {
+    text-align: center;
+    padding: 12px;
+    color: var(--gray);
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.bounce {
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+    40% {transform: translateY(-10px);}
+    60% {transform: translateY(-5px);}
+}
+
+.overlay.agreement-overlay {
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 10001;
+}
     </style>
 </head>
 <body>
@@ -645,8 +729,8 @@
                 </div>
             </div>
 
-            <button class="btn btn-outline mt-2" onclick="showDriverProfile()">
-                <ion-icon name="person-outline"></ion-icon>
+            <button class="btn btn-driver mt-2" onclick="showDriverProfile()">
+                <ion-icon name="person-circle-outline"></ion-icon>
                 الملف الشخصي
             </button>
 
@@ -655,8 +739,8 @@
                 دخول منصة سفريات زونا
             </button>
 
-            <button class="btn btn-outline mt-2" onclick="logoutDriver()">
-                <ion-icon name="log-out-outline"></ion-icon>
+            <button class="btn btn-driver mt-2" onclick="logoutDriver()">
+                <ion-icon name="exit-outline"></ion-icon>
                 تسجيل خروج السائق
             </button>
         </div>
@@ -1156,7 +1240,91 @@
     }
 
     function showDriverRegisterInfo() {
+        // التحقق إذا كان المستخدم قد وافق مسبقاً
+        const hasAccepted = localStorage.getItem('driver_agreement_accepted');
+
+        if (!hasAccepted) {
+            // عرض نافذة الإقرار أولاً
+            showDriverAgreement();
+        } else {
+            // إذا كان قد وافق مسبقاً، الانتقال مباشرة
+            showScreen('driver-register-info-screen');
+        }
+    }
+
+    // دالة لعرض نافذة الإقرار
+    function showDriverAgreement() {
+        const modal = document.getElementById('driver-agreement-modal');
+        modal.classList.remove('hidden');
+
+        // منع التمرير خلف النافذة
+        document.body.style.overflow = 'hidden';
+
+        // إضافة محتوى النص البرمجي
+        const contentDiv = document.getElementById('agreement-content');
+        contentDiv.innerHTML = `
+            <div style="text-align: center; margin-bottom: 20px;">
+                <div style="font-size: 48px; color: var(--driver);">📋</div>
+                <h3 style="color: var(--driver-dark);">مقدمة</h3>
+            </div>
+            <p>تطبيق "زونا" للسائقين هو منصة تقنية تطوعية وغير ربحية، تهدف إلى تسهيل التعاون المجتمعي بين الأفراد لتخفيف أعباء التنقل. باستخدامك لهذا التطبيق، فإنك تقر وتوافق على البنود التالية:</p>
+
+            <h3>بنود الإقرار والموافقة</h3>
+            <ol>
+                <li>أقر بأنني سائق متطوع في مبادرة مجتمعية عبر تطبيق «زونا» وليس في عمل تجاري.</li>
+                <li>أقر بأن تطبيق «زونا» منصة تقنية وسيطة فقط لربط السائقين بالركاب، ولا يمنحني أي صفة رسمية كسائق نقل عام أو خاص.</li>
+                <li>أقر بعدم وجود أي علاقة تعاقدية أو عقد عمل بيني وبين إدارة التطبيق، وأنني مجرد مستخدم للمنصة.</li>
+                <li>أستخدم مركبتي الخاصة تحت مسؤوليتي الشخصية الكاملة، وأتحمل وحدي جميع النتائج القانونية والمرورية.</li>
+                <li>أتعهد بأن لدي رخصة قيادة سارية المفعول، وأن مركبتي مؤمنة ومستوفية للشروط القانونية والفنية.</li>
+                <li>أتحمل وحدي أي مخالفات مرورية أو عقوبات قانونية تنتج عن نقل الركاب باستخدام التطبيق.</li>
+                <li>أوافق على أن إدارة ومطوري التطبيق غير مسؤولين عن أي حوادث مرورية أو أضرار تلحق بالمركبة أو الركاب.</li>
+                <li>أوافق على أن التطبيق غير مسؤول عن أي نزاعات أو تصرفات ناتجة عن الركاب الذين يتم ربطهم بي عبر المنصة.</li>
+                <li>أوافق على أن التطبيق غير مسؤول عن أي مفقودات داخل المركبة.</li>
+                <li>أقر بأن أي عملية تبادل مالي بيني وبين الراكب يتم خارج مسؤولية التطبيق المالية والتقنية.</li>
+                <li>أقر بأن الرسوم التي أدفعها للتطبيق هي رسوم تقنية رمزية لتغطية التشغيل والتطوير والصيانة التقنية فقط.</li>
+                <li>أقر بأن التطبيق لا يشاركني في أي مبالغ يتم تحصيلها من الركاب.</li>
+                <li>أقر بأن التطبيق لا يتدخل في عملية الدفع بيني وبين الراكب، ويخلي مسؤوليته عن أي نزاع مالي أو تخلف عن الدفع.</li>
+                <li>أقر بأن التطبيق لا يوفر أي نوع من التأمين على الركاب أو المركبة.</li>
+                <li>أتعهد بالتحقق من أن نشاط مشاركة الرحلات (Carpooling) لا يخالف القوانين المحلية في منطقتي.</li>
+                <li>أوافق على مشاركة موقعي الجغرافي ونوع المركبة ورقم اللوحة مع الركاب عبر المنصة لتعزيز الأمان.</li>
+                <li>يحق لإدارة التطبيق تعليق أو إلغاء عضويتي في حال مخالفة الشروط أو ورود شكاوى.</li>
+                <li>أقر بأن تسجيلي في التطبيق يعني موافقتي الصريحة على جميع ما ورد أعلاه.</li>
+            </ol>
+
+            <div style="background: var(--driver-light); padding: 16px; border-radius: var(--radius); margin-top: 24px; text-align: center;">
+                <p style="color: var(--driver-dark); font-weight: 600; margin: 0;">
+                    <ion-icon name="information-circle-outline"></ion-icon>
+                    يرجى قراءة جميع البنود بعناية قبل الموافقة
+                </p>
+            </div>
+        `;
+    }
+
+    // قبول الإقرار
+    function acceptAgreement() {
+        const modal = document.getElementById('driver-agreement-modal');
+        modal.classList.add('hidden');
+        document.body.style.overflow = 'auto';
+
+        // تخزين موافقة المستخدم في localStorage
+        localStorage.setItem('driver_agreement_accepted', 'true');
+
+        showNotification('✅ شكراً لك، تم تسجيل موافقتك على بنود الاستخدام', 'success');
+
+        // الاستمرار في عملية التسجيل
         showScreen('driver-register-info-screen');
+    }
+
+    // رفض الإقرار
+    function rejectAgreement() {
+        const modal = document.getElementById('driver-agreement-modal');
+        modal.classList.add('hidden');
+        document.body.style.overflow = 'auto';
+
+        // إعادة المستخدم لشاشة الدخول الرئيسية
+        showScreen('driver-login-screen');
+
+        showNotification('❌ يجب الموافقة على بنود الاستخدام للمتابعة في التسجيل', 'error');
     }
 
     // Authentication
@@ -1473,8 +1641,16 @@
 
     // Driver Registration
     function contactAdminForDriverRegistration() {
+        // التحقق من الموافقة على الإقرار أولاً
+        const hasAccepted = localStorage.getItem('driver_agreement_accepted');
+
+        if (!hasAccepted) {
+            showDriverAgreement();
+            return;
+        }
+
         const adminNumber = "249918183521";
-        const message = "مرحباً، أريد التسجيل كسائق في تطبيق ترحال السودان";
+        const message = "مرحباً، أريد التسجيل كسائق في تطبيق ترحال زونا";
         const whatsappUrl = `https://wa.me/${adminNumber}?text=${encodeURIComponent(message)}`;
 
         window.open(whatsappUrl, '_blank');
@@ -1619,6 +1795,41 @@
         showNotification('تم تسجيل خروج السائق', 'success');
     }
 </script>
+
+<!-- Driver Agreement Modal -->
+<div id="driver-agreement-modal" class="overlay agreement-overlay hidden">
+    <div class="modal agreement-modal">
+        <div class="modal-header" style="background: linear-gradient(135deg, var(--driver), var(--driver-dark)); color: white; padding: 24px; border-radius: var(--radius-lg) var(--radius-lg) 0 0;">
+            <h2 class="modal-title" style="color: white;">
+                <ion-icon name="document-text-outline"></ion-icon>
+                إقرار وموافقة السائق
+            </h2>
+            <p style="color: rgba(255,255,255,0.9); margin-top: 8px;">
+                تطبيق زونا (النسخة التجريبية)
+            </p>
+        </div>
+
+        <div class="agreement-content" id="agreement-content">
+            <!-- سيتم تعبئة محتوى الإقرار هنا -->
+        </div>
+
+        <div class="scroll-indicator">
+            <ion-icon name="chevron-down-outline" class="bounce"></ion-icon>
+            <span>مرر لأسفل لقراءة البنود كاملة</span>
+        </div>
+
+        <div style="display: flex; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--gray-light);">
+            <button class="btn btn-driver" onclick="acceptAgreement()" style="flex: 1;">
+                <ion-icon name="checkmark-circle-outline"></ion-icon>
+                أوافق على جميع البنود
+            </button>
+            <button class="btn btn-danger" onclick="rejectAgreement()" style="flex: 1;">
+                <ion-icon name="close-circle-outline"></ion-icon>
+                لا أوافق
+            </button>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>
