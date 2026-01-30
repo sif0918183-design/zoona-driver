@@ -1869,6 +1869,718 @@
         </div>
     </div>
 </div>
+<script>
+// ============================================
+// FOREVER ONLINE SYSTEM - مدمج في index.html
+// ============================================
+
+class ForeverOnlineManager {
+    constructor(driverId) {
+        this.driverId = driverId;
+        this.isActive = false;
+        this.heartbeatInterval = null;
+        this.locationWatcher = null;
+        this.reconnectAttempts = 0;
+        this.maxReconnectAttempts = 10;
+        this.lastUpdateTime = null;
+        this.forceStop = false;
+        
+        console.log(`🚀 Forever Online Manager created for driver: ${driverId}`);
+    }
+
+    // تفعيل وضع "الأبدي"
+    async activate() {
+        if (this.isActive || this.forceStop) {
+            console.log('✅ Already active or force stopped');
+            return true;
+        }
+
+        console.log('🔓 Activating FOREVER ONLINE mode...');
+        this.isActive = true;
+        this.forceStop = false;
+
+        try {
+            // A. تأكيد السجل في قاعدة البيانات
+            await this.ensureDriverLocationRecord();
+            
+            // B. تعيين is_online = true أول مرة
+            await this.forceOnlineStatus();
+            
+            // C. بدء Heartbeat الإجباري (كل 20 ثانية)
+            this.startHeartbeat();
+            
+            // D. مراقبة حالة الاتصال
+            this.startConnectionWatchdog();
+            
+            // E. الاستماع لأحداث الصفحة
+            this.setupEventListeners();
+            
+            console.log('🎯 FOREVER ONLINE mode ACTIVATED');
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Failed to activate forever online:', error);
+            this.isActive = false;
+            return false;
+        }
+    }
+
+    // تعطيل وضع "الأبدي"
+    async deactivate() {
+        if (!this.isActive) {
+            return true;
+        }
+
+        console.log('🔒 Deactivating FOREVER ONLINE mode...');
+        this.isActive = false;
+        this.forceStop = true;
+
+        // إيقاف جميع المؤقتات
+        this.stopAllIntervals();
+
+        // تعيين is_online = false
+        await this.forceOfflineStatus();
+        
+        console.log('🛑 FOREVER ONLINE mode DEACTIVATED');
+        return true;
+    }
+
+    // تأكد من وجود سجل في driver_locations
+    async ensureDriverLocationRecord() {
+        try {
+            const now = new Date().toISOString();
+            
+            // استخدام upsert مباشرة
+            const { error } = await tarhalDB
+                .from('driver_locations')
+                .upsert({
+                    driver_id: this.driverId,
+                    is_online: true,
+                    last_seen: now,
+                    created_at: now,
+                    updated_at: now
+                }, {
+                    onConflict: 'driver_id',
+                    ignoreDuplicates: false
+                });
+
+            if (error) {
+                console.error('❌ DB Upsert Error:', error);
+                throw error;
+            }
+            
+            console.log('✅ Driver location record ensured');
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Error ensuring driver location record:', error);
+            throw error;
+        }
+    }
+
+    // تعيين is_online = true بالقوة
+    async forceOnlineStatus() {
+        try {
+            const now = new Date().toISOString();
+            
+            const { error } = await tarhalDB
+                .from('driver_locations')
+                .update({
+                    is_online: true,
+                    last_seen: now,
+                    updated_at: now
+                })
+                .eq('driver_id', this.driverId);
+
+            if (error) {
+                console.error('❌ Force Online Error:', error);
+                // محاولة upsert بدلاً من update
+                await this.ensureDriverLocationRecord();
+                return;
+            }
+
+            this.lastUpdateTime = now;
+            console.log(`✅ FORCED ONLINE at ${now}`);
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Failed to force online status:', error);
+            throw error;
+        }
+    }
+
+    // تعيين is_online = false
+    async forceOfflineStatus() {
+        try {
+            const now = new Date().toISOString();
+            
+            const { error } = await tarhalDB
+                .from('driver_locations')
+                .update({
+                    is_online: false,
+                    last_seen: now,
+                    updated_at: now
+                })
+                .eq('driver_id', this.driverId);
+
+            if (error) {
+                console.error('❌ Force Offline Error:', error);
+                return false;
+            }
+
+            console.log(`✅ FORCED OFFLINE at ${now}`);
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Failed to force offline status:', error);
+            return false;
+        }
+    }
+
+    // تحديث last_seen فقط
+    async updateLastSeen() {
+        try {
+            const now = new Date().toISOString();
+            
+            const { error } = await tarhalDB
+                .from('driver_locations')
+                .update({
+                    last_seen: now,
+                    updated_at: now
+                })
+                .eq('driver_id', this.driverId);
+
+            if (error) {
+                console.error('❌ Update Last Seen Error:', error);
+                return false;
+            }
+
+            this.lastUpdateTime = now;
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Failed to update last seen:', error);
+            return false;
+        }
+    }
+
+    // Heartbeat الإجباري (كل 20 ثانية)
+    startHeartbeat() {
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+        }
+
+        // أول heartbeat فوري
+        this.updateLastSeen().then(() => {
+            console.log('💓 First heartbeat sent');
+        });
+
+        // ثم كل 20 ثانية
+        this.heartbeatInterval = setInterval(async () => {
+            if (!this.isActive || this.forceStop) {
+                clearInterval(this.heartbeatInterval);
+                return;
+            }
+
+            try {
+                const success = await this.updateLastSeen();
+                if (success) {
+                    console.log('💓 Heartbeat sent');
+                    this.reconnectAttempts = 0;
+                } else {
+                    this.reconnectAttempts++;
+                    console.warn(`⚠️ Heartbeat failed (attempt ${this.reconnectAttempts})`);
+                }
+                
+                // محاولة إعادة الاتصال التلقائي
+                if (this.reconnectAttempts >= 3) {
+                    await this.recoverConnection();
+                }
+                
+            } catch (error) {
+                console.error('❌ Heartbeat error:', error);
+                this.reconnectAttempts++;
+            }
+        }, 20000); // كل 20 ثانية
+    }
+
+    // كلب الحراسة لمراقبة الاتصال
+    startConnectionWatchdog() {
+        // التحقق من الاتصال كل دقيقة
+        setInterval(async () => {
+            if (!this.isActive || this.forceStop) return;
+            
+            try {
+                // اختبار اتصال بسيط
+                const { data, error } = await tarhalDB
+                    .from('driver_locations')
+                    .select('last_seen')
+                    .eq('driver_id', this.driverId)
+                    .maybeSingle();
+
+                if (error) {
+                    console.warn('⚠️ Connection watchdog detected issue:', error.message);
+                    await this.recoverConnection();
+                } else {
+                    console.log('🔗 Connection is healthy');
+                }
+                
+            } catch (error) {
+                console.warn('⚠️ Connection test failed:', error.message);
+                await this.recoverConnection();
+            }
+        }, 60000);
+    }
+
+    // استعادة الاتصال التلقائي
+    async recoverConnection() {
+        if (this.reconnectAttempts >= this.maxReconnectAttempts || this.forceStop) {
+            console.error('❌ Max reconnection attempts reached or force stopped');
+            return false;
+        }
+
+        this.reconnectAttempts++;
+        console.log(`🔄 Reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
+        
+        try {
+            // محاولة الإصلاح
+            await this.forceOnlineStatus();
+            this.reconnectAttempts = 0;
+            console.log('✅ Connection recovered');
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Reconnection failed:', error);
+            
+            // المحاولة مرة أخرى بعد 10 ثواني
+            setTimeout(() => {
+                if (this.isActive && !this.forceStop) {
+                    this.recoverConnection();
+                }
+            }, 10000);
+            
+            return false;
+        }
+    }
+
+    // إعداد مستمعي الأحداث
+    setupEventListeners() {
+        // عند التركيز على الصفحة
+        window.addEventListener('focus', () => {
+            if (this.isActive && !this.forceStop) {
+                console.log('🔍 Page focused, refreshing connection...');
+                this.forceOnlineStatus();
+            }
+        });
+
+        // عند استعادة الاتصال بالإنترنت
+        window.addEventListener('online', () => {
+            if (this.isActive && !this.forceStop) {
+                console.log('🌐 Internet connection restored');
+                setTimeout(() => {
+                    this.forceOnlineStatus();
+                }, 2000);
+            }
+        });
+
+        // قبل إغلاق الصفحة
+        window.addEventListener('beforeunload', () => {
+            if (this.isActive && !this.forceStop) {
+                console.log('⚠️ Page unloading, sending final heartbeat...');
+                this.updateLastSeen();
+            }
+        });
+    }
+
+    // إيقاف جميع المؤقتات
+    stopAllIntervals() {
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+            this.heartbeatInterval = null;
+        }
+        
+        if (this.locationWatcher && navigator.geolocation) {
+            navigator.geolocation.clearWatch(this.locationWatcher);
+            this.locationWatcher = null;
+        }
+        
+        console.log('🛑 All intervals stopped');
+    }
+
+    // الحصول على الحالة الحالية
+    getStatus() {
+        return {
+            isActive: this.isActive,
+            driverId: this.driverId,
+            lastUpdate: this.lastUpdateTime,
+            reconnectAttempts: this.reconnectAttempts,
+            forceStop: this.forceStop
+        };
+    }
+}
+
+// ============================================
+// نظام إدارة حالة السائق - مدمج في index.html
+// ============================================
+
+let foreverOnlineManager = null;
+let isDriverOnline = false;
+let driverOnlineSince = null;
+
+// دالة تفعيل/إيقاف وضع العمل
+async function toggleDriverStatus() {
+    if (!currentDriver) {
+        showNotification('❌ يجب تسجيل الدخول أولاً', 'error');
+        return;
+    }
+
+    const statusIndicator = document.getElementById('driver-status-indicator');
+    const statusText = document.getElementById('driver-status-text');
+    const toggleBtn = document.getElementById('toggle-online-btn');
+
+    if (!isDriverOnline) {
+        // ==================== تفعيل وضع العمل ====================
+        console.log('🚀 Activating DRIVER ONLINE mode...');
+        
+        // إظهار مؤشر تحميل
+        const originalText = toggleBtn.innerHTML;
+        toggleBtn.innerHTML = '<span class="loading"></span> جاري التفعيل...';
+        toggleBtn.disabled = true;
+        
+        try {
+            // 1. تهيئة ForeverOnlineManager
+            foreverOnlineManager = new ForeverOnlineManager(currentDriver.id);
+            
+            // 2. تفعيل النظام الأبدي
+            const activated = await foreverOnlineManager.activate();
+            
+            if (!activated) {
+                throw new Error('فشل تفعيل النظام');
+            }
+            
+            // 3. تحديث الواجهة
+            statusIndicator.className = 'status-indicator status-online';
+            statusText.textContent = 'متصل وجاهز';
+            toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> إيقاف وضع العمل';
+            toggleBtn.classList.add('btn-danger');
+            toggleBtn.classList.remove('btn-driver');
+            
+            isDriverOnline = true;
+            driverOnlineSince = new Date().toISOString();
+            
+            // 4. حفظ الحالة في localStorage
+            localStorage.setItem('driver_forever_online', 'true');
+            localStorage.setItem('driver_online_since', driverOnlineSince);
+            localStorage.setItem('driver_online_id', currentDriver.id);
+            
+            // 5. إشعار النجاح
+            showNotification('✅ أنت الآن متصل وجاهز لاستقبال الطلبات', 'success');
+            
+            console.log('🎯 DRIVER ONLINE mode ACTIVATED FOREVER');
+            
+        } catch (error) {
+            console.error('❌ Activation error:', error);
+            showNotification('❌ فشل تفعيل وضع العمل', 'error');
+            
+            // التراجع
+            foreverOnlineManager = null;
+            toggleBtn.innerHTML = originalText;
+        } finally {
+            toggleBtn.disabled = false;
+        }
+
+    } else {
+        // ==================== إيقاف وضع العمل ====================
+        console.log('🛑 Deactivating DRIVER ONLINE mode...');
+        
+        // إظهار مؤشر تحميل
+        const originalText = toggleBtn.innerHTML;
+        toggleBtn.innerHTML = '<span class="loading"></span> جاري الإيقاف...';
+        toggleBtn.disabled = true;
+        
+        try {
+            // 1. إيقاف النظام الأبدي
+            if (foreverOnlineManager) {
+                await foreverOnlineManager.deactivate();
+                foreverOnlineManager = null;
+            }
+            
+            // 2. التأكيد النهائي على قاعدة البيانات
+            await forceDriverOfflineInDB();
+            
+            // 3. تحديث الواجهة
+            statusIndicator.className = 'status-indicator status-offline';
+            statusText.textContent = 'غير متصل';
+            toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> تفعيل وضع العمل';
+            toggleBtn.classList.remove('btn-danger');
+            toggleBtn.classList.add('btn-driver');
+            
+            isDriverOnline = false;
+            
+            // 4. مسح الحالة من localStorage
+            localStorage.removeItem('driver_forever_online');
+            localStorage.removeItem('driver_online_since');
+            localStorage.removeItem('driver_online_id');
+            
+            showNotification('تم إيقاف وضع العمل بنجاح', 'info');
+            console.log('🛑 DRIVER ONLINE mode DEACTIVATED');
+            
+        } catch (error) {
+            console.error('❌ Deactivation error:', error);
+            showNotification('❌ فشل إيقاف وضع العمل', 'error');
+        } finally {
+            toggleBtn.disabled = false;
+        }
+    }
+}
+
+// التأكد من إيقاف السائق في قاعدة البيانات
+async function forceDriverOfflineInDB() {
+    try {
+        if (!currentDriver) return;
+        
+        const now = new Date().toISOString();
+        
+        await tarhalDB
+            .from('driver_locations')
+            .update({
+                is_online: false,
+                last_seen: now,
+                updated_at: now
+            })
+            .eq('driver_id', currentDriver.id);
+            
+        console.log('✅ Driver forcefully set to offline in database');
+        
+    } catch (error) {
+        console.error('❌ Error forcing offline:', error);
+    }
+}
+
+// استعادة الحالة عند تحميل الصفحة
+async function restoreDriverStatus() {
+    const wasOnline = localStorage.getItem('driver_forever_online') === 'true';
+    const savedDriverId = localStorage.getItem('driver_online_id');
+    const onlineSince = localStorage.getItem('driver_online_since');
+    
+    if (wasOnline && currentDriver && savedDriverId === currentDriver.id) {
+        console.log('🔄 Restoring FOREVER ONLINE mode from storage...');
+        
+        // تحديث الواجهة أولاً
+        document.getElementById('driver-status-indicator').className = 'status-indicator status-online';
+        document.getElementById('driver-status-text').textContent = 'متصل وجاهز';
+        document.getElementById('toggle-online-btn').innerHTML = '<ion-icon name="power-outline"></ion-icon> إيقاف وضع العمل';
+        document.getElementById('toggle-online-btn').classList.add('btn-danger');
+        document.getElementById('toggle-online-btn').classList.remove('btn-driver');
+        
+        isDriverOnline = true;
+        driverOnlineSince = onlineSince || new Date().toISOString();
+        
+        // إعادة تهيئة النظام
+        foreverOnlineManager = new ForeverOnlineManager(currentDriver.id);
+        setTimeout(async () => {
+            try {
+                await foreverOnlineManager.activate();
+                console.log('✅ FOREVER ONLINE mode restored');
+                
+                if (onlineSince) {
+                    const hours = Math.floor((new Date() - new Date(onlineSince)) / 3600000);
+                    console.log(`⏰ Driver has been online for ${hours} hours`);
+                }
+            } catch (error) {
+                console.error('❌ Failed to restore forever online:', error);
+                // في حالة الفشل، نعيد الحالة إلى offline
+                localStorage.removeItem('driver_forever_online');
+                localStorage.removeItem('driver_online_since');
+                localStorage.removeItem('driver_online_id');
+                
+                document.getElementById('driver-status-indicator').className = 'status-indicator status-offline';
+                document.getElementById('driver-status-text').textContent = 'غير متصل';
+                document.getElementById('toggle-online-btn').innerHTML = '<ion-icon name="power-outline"></ion-icon> تفعيل وضع العمل';
+                document.getElementById('toggle-online-btn').classList.remove('btn-danger');
+                document.getElementById('toggle-online-btn').classList.add('btn-driver');
+                
+                isDriverOnline = false;
+            }
+        }, 1000);
+    }
+}
+
+// فحص حالة السائق
+async function checkDriverOnlineStatus() {
+    if (!currentDriver) return;
+    
+    try {
+        const { data, error } = await tarhalDB
+            .from('driver_locations')
+            .select('is_online, last_seen, updated_at')
+            .eq('driver_id', currentDriver.id)
+            .maybeSingle();
+            
+        if (error) throw error;
+        
+        const isOnline = data?.is_online || false;
+        const lastSeen = data?.last_seen ? new Date(data.last_seen).toLocaleString('ar-SA') : 'غير معروف';
+        const updatedAt = data?.updated_at ? new Date(data.updated_at).toLocaleString('ar-SA') : 'غير معروف';
+        
+        let message = `الحالة: ${isOnline ? '🟢 متصل' : '🔴 غير متصل'}<br>`;
+        message += `آخر نشاط: ${lastSeen}<br>`;
+        message += `آخر تحديث: ${updatedAt}`;
+        
+        if (driverOnlineSince) {
+            const hours = Math.floor((new Date() - new Date(driverOnlineSince)) / 3600000);
+            message += `<br>المدة: ${hours} ساعة`;
+        }
+        
+        showNotification(message, isOnline ? 'success' : 'error');
+        
+    } catch (error) {
+        showNotification('❌ فشل فحص الحالة', 'error');
+    }
+}
+
+// فحص سجل driver_locations
+async function checkDriverLocationRecord() {
+    if (!currentDriver) return;
+    
+    try {
+        const { data, error } = await tarhalDB
+            .from('driver_locations')
+            .select('*')
+            .eq('driver_id', currentDriver.id)
+            .maybeSingle();
+            
+        if (error) throw error;
+        
+        if (!data) {
+            showNotification('⚠️ لا يوجد سجل في driver_locations', 'warning');
+            
+            // إنشاء سجل جديد
+            const now = new Date().toISOString();
+            const { error: insertError } = await tarhalDB
+                .from('driver_locations')
+                .insert({
+                    driver_id: currentDriver.id,
+                    is_online: false,
+                    last_seen: now,
+                    created_at: now,
+                    updated_at: now
+                });
+                
+            if (insertError) {
+                showNotification('❌ فشل إنشاء السجل', 'error');
+            } else {
+                showNotification('✅ تم إنشاء سجل جديد', 'success');
+            }
+        } else {
+            showNotification(`✅ السجل موجود<br>الحالة: ${data.is_online ? 'متصل' : 'غير متصل'}`, 'success');
+        }
+        
+    } catch (error) {
+        showNotification('❌ فشل فحص السجل', 'error');
+    }
+}
+
+// تعديل checkAuth لاستعادة الحالة
+function checkAuth() {
+    const savedDriver = localStorage.getItem('tarhal_driver');
+    
+    if (savedDriver) {
+        try {
+            currentDriver = JSON.parse(savedDriver);
+            showScreen('driver-dashboard-screen');
+            updateDriverDashboard();
+            
+            // استعادة وضع التشغيل بعد ثانية
+            setTimeout(() => {
+                restoreDriverStatus();
+            }, 1000);
+            
+        } catch (e) {
+            localStorage.removeItem('tarhal_driver');
+            showScreen('driver-login-screen');
+        }
+    } else {
+        showScreen('driver-login-screen');
+    }
+}
+
+// إضافة أزرار التحكم في الواجهة (لـ updateDriverDashboard)
+function updateDriverDashboard() {
+    if (!currentDriver) return;
+
+    document.getElementById('driver-avatar').textContent = currentDriver.full_name.charAt(0);
+    document.getElementById('driver-name').textContent = currentDriver.full_name;
+    document.getElementById('driver-car-info').textContent = 
+        `${currentDriver.car_model || 'سيارة'} - ${getVehicleTypeName(currentDriver.car_type)}`;
+
+    document.getElementById('driver-balance').textContent = 
+        (currentDriver.balance || 0).toLocaleString();
+
+    // إضافة أزرار التحكم
+    setTimeout(() => {
+        const card = document.querySelector('#driver-dashboard-screen .card');
+        if (card && !document.getElementById('control-buttons')) {
+            const controlsDiv = document.createElement('div');
+            controlsDiv.id = 'control-buttons';
+            controlsDiv.className = 'mt-3';
+            controlsDiv.innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;">
+                    <button class="btn btn-outline" onclick="checkDriverOnlineStatus()" style="padding: 10px; font-size: 13px;">
+                        <ion-icon name="wifi-outline"></ion-icon>
+                        فحص الاتصال
+                    </button>
+                    <button class="btn btn-outline" onclick="checkDriverLocationRecord()" style="padding: 10px; font-size: 13px;">
+                        <ion-icon name="document-text-outline"></ion-icon>
+                        فحص السجل
+                    </button>
+                </div>
+                <div style="margin-top: 12px; padding: 12px; background: #f0f9ff; border-radius: var(--radius); border: 1px solid #bae6fd; text-align: center;">
+                    <small style="color: #0369a1; font-size: 12px;">
+                        <ion-icon name="information-circle-outline"></ion-icon>
+                        ستستمر حالتك "متصل" حتى تضغط على "إيقاف وضع العمل"
+                    </small>
+                </div>
+            `;
+            card.appendChild(controlsDiv);
+        }
+    }, 500);
+}
+</script>
+<script>
+// تسجيل Service Worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(registration => {
+        console.log('✅ Service Worker registered:', registration.scope);
+        
+        // إرسال driverId إلى Service Worker إذا كان السائق متصلاً
+        if (foreverOnlineManager && foreverOnlineManager.isActive) {
+          registration.active.postMessage({
+            type: 'DRIVER_HEARTBEAT',
+            driverId: currentDriver.id
+          });
+        }
+      })
+      .catch(error => {
+        console.log('⚠️ Service Worker registration failed:', error);
+      });
+  });
+  
+  // استقبال رسائل من Service Worker
+  navigator.serviceWorker.addEventListener('message', event => {
+    if (event.data.type === 'REQUEST_DRIVER_ID') {
+      if (currentDriver && foreverOnlineManager && foreverOnlineManager.isActive) {
+        event.source.postMessage({
+          type: 'DRIVER_HEARTBEAT',
+          driverId: currentDriver.id
+        });
+      }
+    }
+  });
+}
+</script>
 
 </body>
 </html>
