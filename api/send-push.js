@@ -97,7 +97,7 @@ export default async function handler(req, res) {
             notificationType: 'ride_request'
         },
         // URL to open when the notification is clicked
-        web_url: `/driver/accept-ride.html?rideId=${rideId}&requestId=${requestId}`,
+        web_url: `/accept-ride.html?rideId=${rideId}&requestId=${requestId}`,
 
         // --- High Priority & Sound Settings ---
         priority: 10, // Max priority
