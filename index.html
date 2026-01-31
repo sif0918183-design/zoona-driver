@@ -974,7 +974,7 @@
                 console.log('Notification data:', data);
                 
                 if (data && data.rideId) {
-                    window.location.href = `/driver/accept-ride.html?rideId=${data.rideId}&requestId=${data.requestId}`;
+                    window.location.href = `/accept-ride.html?rideId=${data.rideId}&requestId=${data.requestId}`;
                     
                     if (soundManager) {
                         soundManager.stopRideRequestSound();
@@ -1215,15 +1215,15 @@
     document.addEventListener('DOMContentLoaded', function() {
         console.log('🚗 تطبيق ترحال زونا للسائقين');
         
+        // Initialize sound manager
+        window.soundManager = new SoundManager();
+
         // Hide splash screen
         setTimeout(() => {
             document.getElementById('splash-screen').classList.add('hide');
         }, 900);
         
         checkAuth();
-        
-        // Initialize sound manager
-        window.soundManager = new SoundManager();
     });
 
     // تهيئة الأنظمة بعد تسجيل الدخول
@@ -1366,25 +1366,6 @@
         showNotification('❌ يجب الموافقة على بنود الاستخدام للمتابعة في التسجيل', 'error');
     }
 
-    // Authentication
-    function checkAuth() {
-        const savedDriver = localStorage.getItem('tarhal_driver');
-        
-        if (savedDriver) {
-            try {
-                currentDriver = JSON.parse(savedDriver);
-                showScreen('driver-dashboard-screen');
-                updateDriverDashboard();
-                initDriverSystems(); // تهيئة الأنظمة عند تحميل الصفحة
-            } catch (e) {
-                localStorage.removeItem('tarhal_driver');
-                showScreen('driver-login-screen');
-            }
-        } else {
-            showScreen('driver-login-screen');
-        }
-    }
-
     // Driver Login
     async function loginDriver() {
     const phone = document.getElementById('driver-phone').value.trim();
@@ -1428,6 +1409,7 @@
         
         // حفظ بيانات السائق محلياً في المتصفح
         localStorage.setItem('tarhal_driver', JSON.stringify(driver));
+        localStorage.setItem('driver_id', driver.id);
 
         // --- الجزء المضاف للربط مع تطبيق Flutter (مهم جداً للإشعارات) ---
         // نقوم بإضافة driver_id للرابط الحالي لكي يلتقطه WebView في Flutter عبر onLoadStop
@@ -2224,7 +2206,7 @@ class ForeverOnlineManager {
 // ============================================
 
 let foreverOnlineManager = null;
-let isDriverOnline = false;
+// isDriverOnline already declared above
 let driverOnlineSince = null;
 
 // دالة تفعيل/إيقاف وضع العمل
@@ -2488,9 +2470,11 @@ function checkAuth() {
     if (savedDriver) {
         try {
             currentDriver = JSON.parse(savedDriver);
+            localStorage.setItem('driver_id', currentDriver.id);
             showScreen('driver-dashboard-screen');
             updateDriverDashboard();
-            
+            initDriverSystems(); // تهيئة الأنظمة عند تحميل الصفحة
+
             // استعادة وضع التشغيل بعد ثانية
             setTimeout(() => {
                 restoreDriverStatus();
