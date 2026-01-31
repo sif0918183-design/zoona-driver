@@ -968,6 +968,47 @@
             }
         }
 
+        async syncDriverIdToFlutter() {
+            const driver = this.currentDriver || window.currentDriver;
+            const db = this.tarhalDB || window.tarhalDB;
+
+            if (!driver) return;
+
+            // 1. تحديث localStorage (للربط مع Flutter)
+            localStorage.setItem('driver_id', driver.id);
+            localStorage.setItem('tarhal_driver_id', driver.id);
+
+            // 2. تحديث OneSignal external_user_id
+            if (window.OneSignal && typeof OneSignal.setExternalUserId === 'function') {
+                try {
+                    await OneSignal.setExternalUserId(driver.id);
+                } catch (e) {
+                    console.error('Error setting external user ID:', e);
+                }
+            }
+
+            // 3. تحديث Supabase table 'driver_notifications'
+            try {
+                let playerId = null;
+                if (window.OneSignal && typeof OneSignal.getUserId === 'function') {
+                    playerId = await OneSignal.getUserId();
+                }
+                const { error } = await db
+                    .from('driver_notifications')
+                    .upsert({
+                        driver_id: driver.id,
+                        onesignal_player_id: playerId,
+                        notification_enabled: true,
+                        updated_at: new Date().toISOString()
+                    }, { onConflict: 'driver_id' });
+
+                if (error) throw error;
+                console.log('✅ Driver ID synced to Flutter/OneSignal:', driver.id);
+            } catch (error) {
+                console.error('❌ Error syncing to driver_notifications:', error);
+            }
+        }
+
         handleNotificationClick(event) {
             try {
                 const data = event.notification.data;
@@ -1410,6 +1451,7 @@
         // حفظ بيانات السائق محلياً في المتصفح
         localStorage.setItem('tarhal_driver', JSON.stringify(driver));
         localStorage.setItem('driver_id', driver.id);
+        localStorage.setItem('tarhal_driver_id', driver.id);
 
         // --- الجزء المضاف للربط مع تطبيق Flutter (مهم جداً للإشعارات) ---
         // نقوم بإضافة driver_id للرابط الحالي لكي يلتقطه WebView في Flutter عبر onLoadStop
@@ -1428,6 +1470,11 @@
         
         // تهيئة أنظمة OneSignal والصوت للسائق
         await initDriverSystems();
+
+        // مزامنة البيانات مع Flutter/OneSignal
+        if (oneSignalManager) {
+            await oneSignalManager.syncDriverIdToFlutter();
+        }
 
     } catch (error) {
         console.error('Driver login error:', error);
@@ -1554,6 +1601,11 @@
 
             if (isOnline) {
                 startLocationUpdates();
+            }
+
+            // إضافة هذا بعد تحديث الموقع:
+            if (isOnline && oneSignalManager) {
+                await oneSignalManager.syncDriverIdToFlutter();
             }
 
         } catch (error) {
@@ -2258,6 +2310,11 @@ async function toggleDriverStatus() {
             // 5. إشعار النجاح
             showNotification('✅ أنت الآن متصل وجاهز لاستقبال الطلبات', 'success');
             
+            // 6. مزامنة OneSignal
+            if (oneSignalManager) {
+                await oneSignalManager.syncDriverIdToFlutter();
+            }
+
             console.log('🎯 DRIVER ONLINE mode ACTIVATED FOREVER');
             
         } catch (error) {
@@ -2368,6 +2425,11 @@ async function restoreDriverStatus() {
                 if (onlineSince) {
                     const hours = Math.floor((new Date() - new Date(onlineSince)) / 3600000);
                     console.log(`⏰ Driver has been online for ${hours} hours`);
+                }
+
+                // مزامنة OneSignal عند استعادة الحالة
+                if (oneSignalManager) {
+                    await oneSignalManager.syncDriverIdToFlutter();
                 }
             } catch (error) {
                 console.error('❌ Failed to restore forever online:', error);
@@ -2519,6 +2581,10 @@ function updateDriverDashboard() {
                         فحص السجل
                     </button>
                 </div>
+                <button class="btn btn-outline mt-2" onclick="testOneSignalLink()" style="padding: 10px; font-size: 13px;">
+                    <ion-icon name="notifications-outline"></ion-icon>
+                    اختبار ربط الإشعارات
+                </button>
                 <div style="margin-top: 12px; padding: 12px; background: #f0f9ff; border-radius: var(--radius); border: 1px solid #bae6fd; text-align: center;">
                     <small style="color: #0369a1; font-size: 12px;">
                         <ion-icon name="information-circle-outline"></ion-icon>
@@ -2563,6 +2629,50 @@ if ('serviceWorker' in navigator) {
       }
     }
   });
+}
+</script>
+
+<script>
+async function testOneSignalLink() {
+    if (!currentDriver) {
+        showNotification('❌ يجب تسجيل الدخول أولاً', 'error');
+        return;
+    }
+
+    let playerId = 'غير متوفر';
+    let externalId = 'غير مرتبط';
+
+    if (window.OneSignal) {
+        try {
+            // استخدام try/catch وتجنب التعليق إذا لم يكن OneSignal جاهزاً
+            if (typeof OneSignal.getUserId === 'function') {
+                const getUserIdPromise = OneSignal.getUserId();
+                // إضافة timeout لتجنب التعليق
+                playerId = await Promise.race([
+                    getUserIdPromise,
+                    new Promise(resolve => setTimeout(() => resolve('جاري التحميل...'), 2000))
+                ]) || 'غير متصل';
+            }
+            if (typeof OneSignal.getExternalUserId === 'function') {
+                const getExternalIdPromise = OneSignal.getExternalUserId();
+                externalId = await Promise.race([
+                    getExternalIdPromise,
+                    new Promise(resolve => setTimeout(() => resolve('جاري التحميل...'), 2000))
+                ]) || 'غير مرتبط';
+            }
+        } catch (e) {
+            console.error('OneSignal test error:', e);
+        }
+    }
+
+    const message = `
+        📱 حالة الربط:
+        Driver ID: ${currentDriver.id}
+        OneSignal Player ID: ${playerId}
+        External User ID: ${externalId}
+    `;
+
+    showNotification(message, playerId !== 'غير متصل' ? 'success' : 'error');
 }
 </script>
 
