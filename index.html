@@ -1661,96 +1661,6 @@
 
 
     // Driver Dashboard
-    async function updateDriverDashboard() {
-        if (!currentDriver) return;
-
-        document.getElementById('driver-avatar').textContent = currentDriver.full_name.charAt(0);
-        document.getElementById('driver-name').textContent = currentDriver.full_name;
-        document.getElementById('driver-car-info').textContent = 
-            `${currentDriver.car_model || 'سيارة'} - ${getVehicleTypeName(currentDriver.car_type)}`;
-
-        document.getElementById('driver-balance').textContent = 
-            (currentDriver.balance || 0).toLocaleString();
-
-        try {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            // Today's trips
-            const { data: rides, error } = await tarhalDB
-                .from('rides')
-                .select('*')
-                .eq('driver_id', currentDriver.id)
-                .gte('created_at', today.toISOString())
-                .eq('status', 'completed');
-
-            if (!error && rides) {
-                const todayEarnings = rides.reduce((sum, ride) => sum + (ride.driver_earnings || 0), 0);
-                document.getElementById('today-trips').textContent = rides.length;
-                document.getElementById('today-earnings').textContent = todayEarnings.toLocaleString();
-            }
-
-            // Total trips
-            const { data: totalRides, error: totalError } = await tarhalDB
-                .from('rides')
-                .select('id')
-                .eq('driver_id', currentDriver.id)
-                .eq('status', 'completed');
-
-            if (!totalError && totalRides) {
-                document.getElementById('total-trips').textContent = totalRides.length;
-            }
-
-        } catch (error) {
-            console.error('Error fetching driver stats:', error);
-        }
-    }
-
-    // Toggle Driver Status
-    async function toggleDriverStatus() {
-        const wasOnline = isDriverOnline;
-        isDriverOnline = !isDriverOnline;
-
-        const statusIndicator = document.getElementById('driver-status-indicator');
-        const statusText = document.getElementById('driver-status-text');
-        const toggleBtn = document.getElementById('toggle-online-btn');
-
-        if (isDriverOnline) {
-            statusIndicator.className = 'status-indicator status-online';
-            statusText.textContent = 'متصل وجاهز';
-            toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> إيقاف وضع العمل';
-            toggleBtn.classList.add('btn-danger');
-            toggleBtn.classList.remove('btn-driver');
-
-            // Start location tracking
-            startDriverTracking();
-
-            // Update online status
-            await updateDriverOnlineStatus(true);
-
-            // Initialize notification systems
-            if (oneSignalManager && !oneSignalManager.isInitialized) {
-                await oneSignalManager.initialize();
-            }
-
-            showNotification('✅ أنت الآن متصل وجاهز لاستقبال الطلبات', 'success');
-
-        } else {
-            statusIndicator.className = 'status-indicator status-offline';
-            statusText.textContent = 'غير متصل';
-            toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> تفعيل وضع العمل';
-            toggleBtn.classList.remove('btn-danger');
-            toggleBtn.classList.add('btn-driver');
-
-            // Stop location tracking
-            stopDriverTracking();
-
-            // Update offline status
-            await updateDriverOnlineStatus(false);
-
-            showNotification('تم إيقاف وضع العمل', 'info');
-        }
-    }
 
     async function updateDriverOnlineStatus(isOnline) {
         if (!currentDriver) return;
@@ -1959,23 +1869,6 @@
     }
 
     // Test Notification
-    async function sendTestNotification() {
-        if (!currentDriver) {
-            showNotification('❌ يجب تسجيل الدخول أولاً', 'error');
-            return;
-        }
-        
-        if (oneSignalManager) {
-            const result = await oneSignalManager.sendTestNotification(currentDriver.id);
-            if (result.success) {
-                showNotification('✅ تم إرسال إشعار الاختبار', 'success');
-            } else {
-                showNotification('❌ فشل إرسال الإشعار: ' + result.error, 'error');
-            }
-        } else {
-            showNotification('❌ نظام الإشعارات غير جاهز', 'error');
-        }
-    }
 
     // Ride Handling
     function acceptRide() {
@@ -2725,7 +2618,7 @@ function checkAuth() {
 }
 
 // إضافة أزرار التحكم في الواجهة (لـ updateDriverDashboard)
-function updateDriverDashboard() {
+async function updateDriverDashboard() {
     if (!currentDriver) return;
 
     document.getElementById('driver-avatar').textContent = currentDriver.full_name.charAt(0);
@@ -2735,6 +2628,39 @@ function updateDriverDashboard() {
 
     document.getElementById('driver-balance').textContent = 
         (currentDriver.balance || 0).toLocaleString();
+
+    try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Today's trips
+        const { data: rides, error } = await tarhalDB
+            .from('rides')
+            .select('*')
+            .eq('driver_id', currentDriver.id)
+            .gte('created_at', today.toISOString())
+            .eq('status', 'completed');
+
+        if (!error && rides) {
+            const todayEarnings = rides.reduce((sum, ride) => sum + (ride.driver_earnings || 0), 0);
+            document.getElementById('today-trips').textContent = rides.length;
+            document.getElementById('today-earnings').textContent = todayEarnings.toLocaleString();
+        }
+
+        // Total trips
+        const { data: totalRides, error: totalError } = await tarhalDB
+            .from('rides')
+            .select('id')
+            .eq('driver_id', currentDriver.id)
+            .eq('status', 'completed');
+
+        if (!totalError && totalRides) {
+            document.getElementById('total-trips').textContent = totalRides.length;
+        }
+
+    } catch (error) {
+        console.error('Error fetching driver stats:', error);
+    }
 
     // إضافة أزرار التحكم
     setTimeout(() => {
