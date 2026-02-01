@@ -1448,21 +1448,14 @@
         // === نجاح تسجيل الدخول ===
         currentDriver = driver;
         
-        // 3. استدعاء الدالة بعد تسجيل الدخول
-        const linkingResult = await linkDriverToOneSignal(driver.id);
-        if (linkingResult.success) {
-            showNotification('✅ تم ربط حسابك بنظام الإشعارات', 'success');
-
-            // حفظ في localStorage للربط مع Flutter
-            localStorage.setItem('driver_id', driver.id);
-            localStorage.setItem('tarhal_driver_id', driver.id);
-            localStorage.setItem('onesignal_linked', 'true');
-            localStorage.setItem('onesignal_player_id', linkingResult.playerId || '');
-
-            console.log('📱 Driver ID saved to localStorage:', driver.id);
-        } else {
-            console.warn('⚠️ Could not link to OneSignal:', linkingResult.error);
-        }
+        // 3. استدعاء الدالة بعد تسجيل الدخول (غير متزامن لتجنب تعطيل الدخول)
+        linkDriverToOneSignal(driver.id).then(linkingResult => {
+            if (linkingResult && linkingResult.success) {
+                showNotification('✅ تم ربط حسابك بنظام الإشعارات', 'success');
+                localStorage.setItem('onesignal_linked', 'true');
+                localStorage.setItem('onesignal_player_id', linkingResult.playerId || '');
+            }
+        }).catch(err => console.warn('OneSignal linking error:', err));
 
         // حفظ بيانات السائق محلياً في المتصفح
         localStorage.setItem('tarhal_driver', JSON.stringify(driver));
@@ -1900,27 +1893,43 @@
     // 1. ربط driver.id مع OneSignal
     async function linkDriverToOneSignal(driverId) {
         try {
-            if (window.OneSignal) {
-                // الحصول على playerId الحالي
-                const playerId = await OneSignal.getUserId();
-
-                // تعيين external_user_id
-                await OneSignal.setExternalUserId(driverId);
-
-                console.log('✅ Driver linked to OneSignal:', {
-                    driverId,
-                    playerId,
-                    externalUserId: await OneSignal.getExternalUserId()
-                });
-
-                // حفظ في قاعدة البيانات
-                await saveDriverNotificationLink(driverId, playerId);
-
-                return { success: true, playerId };
-            } else {
+            if (!window.OneSignal) {
                 console.warn('⚠️ OneSignal not available');
                 return { success: false, error: 'OneSignal not available' };
             }
+
+            // الانتظار إذا كان OneSignal مصفوفة (لم يتم تحميله بالكامل)
+            if (Array.isArray(window.OneSignal)) {
+                await new Promise(resolve => {
+                    OneSignal.push(() => resolve());
+                    setTimeout(resolve, 3000); // مهلة 3 ثواني
+                });
+            }
+
+            // التأكد من وجود الدوال المطلوبة
+            if (typeof OneSignal.getUserId !== 'function') {
+                return { success: false, error: 'OneSignal.getUserId is not a function' };
+            }
+
+            // الحصول على playerId الحالي
+            const playerId = await OneSignal.getUserId();
+
+            // تعيين external_user_id
+            if (typeof OneSignal.setExternalUserId === 'function') {
+                await OneSignal.setExternalUserId(driverId);
+            } else if (typeof OneSignal.login === 'function') {
+                await OneSignal.login(driverId);
+            }
+
+            console.log('✅ Driver linked to OneSignal:', {
+                driverId,
+                playerId
+            });
+
+            // حفظ في قاعدة البيانات
+            await saveDriverNotificationLink(driverId, playerId);
+
+            return { success: true, playerId };
         } catch (error) {
             console.error('❌ Error linking driver to OneSignal:', error);
             return { success: false, error: error.message };
@@ -1975,15 +1984,26 @@
         // تجنب تكرار البطاقة
         if (document.getElementById('onesignal-status-card')) return;
 
-        const playerId = await OneSignal.getUserId();
-        const externalUserId = await OneSignal.getExternalUserId();
+        let playerId = 'جاري التحميل...';
+        let externalUserId = 'جاري التحميل...';
+
+        try {
+            if (typeof OneSignal.getUserId === 'function') {
+                playerId = await OneSignal.getUserId() || 'غير متصل';
+            }
+            if (typeof OneSignal.getExternalUserId === 'function') {
+                externalUserId = await OneSignal.getExternalUserId() || 'غير مرتبط';
+            }
+        } catch (e) {
+            console.warn('Error checking status:', e);
+        }
 
         const statusMessage = `
             🔍 حالة الربط:
             السائق: ${currentDriver.full_name}
             Driver ID: ${currentDriver.id}
-            OneSignal Player ID: ${playerId || 'غير متصل'}
-            External User ID: ${externalUserId || 'غير مرتبط'}
+            OneSignal Player ID: ${playerId}
+            External User ID: ${externalUserId}
             متصل بـ localStorage: ${localStorage.getItem('driver_id') ? 'نعم' : 'لا'}
         `;
 
