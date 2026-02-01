@@ -1,182 +1,218 @@
-// ==================================================================
-// Vercel Serverless Function: /api/send-push.js
-// Refactored to use OneSignal REST API instead of Firebase Cloud Messaging
-// ==================================================================
+// /api/send-push.js - النسخة المعدلة والصحيحة
+const ONESIGNAL_APP_ID = "c05c5d16-4e72-4d4a-b1a2-6e7e06232d98";
+const ONESIGNAL_REST_KEY = "os_v2_app_ybof2fsoojguvmncnz7amizntdepv6wooi3uqkvflqjitcramig6h757icims4fdyxand4d6aquovcvesbammphw5d3rfjtpz736s2q";
+const SUPABASE_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
 
-// Helper function for structured logging
-const log = (level, message, data = {}) => {
-    console.log(JSON.stringify({
-        level,
-        message,
-        ...data,
-        timestamp: new Date().toISOString()
-    }));
-};
-
-/**
- * Handles incoming requests to send a push notification via OneSignal.
- * @param {VercelRequest} req The request object.
- * @param {VercelResponse} res The response object.
- */
 export default async function handler(req, res) {
-    // Set CORS headers for preflight requests and cross-origin responses
+    // تمكين CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS, GET');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-    // Handle OPTIONS preflight request
+    
+    // التعامل مع طلبات OPTIONS
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
     }
-
-    // Ensure the request method is POST
+    
+    // التحقق من أن الطريقة POST
     if (req.method !== 'POST') {
-        log('warn', 'Method not allowed', { method: req.method });
-        return res.status(405).json({ success: false, error: 'method_not_allowed' });
+        return res.status(405).json({ 
+            success: false, 
+            error: 'Method not allowed. Use POST.' 
+        });
     }
-
-    // Destructure and validate required parameters from the request body
-    const {
-        playerId, // Changed from 'token' to 'playerId' for OneSignal
-        rideId,
-        driverId,
-        requestId,
-        customerName,
-        vehicleType,
-        amount,
-        distance
-    } = req.body;
-
-    // Validate the OneSignal Player ID
-    if (!playerId || !playerId.includes('-')) {
-        log('warn', 'Invalid OneSignal Player ID format', { playerId });
-        return res.status(400).json({ success: false, error: 'invalid_player_id_format' });
-    }
-
-    // Validate essential ride information
-    if (!rideId || !requestId) {
-        log('warn', 'Missing rideId or requestId', { rideId, requestId });
-        return res.status(400).json({ success: false, error: 'missing_parameters' });
-    }
-
-    log('info', 'Received send-push request for OneSignal', {
-        driverId,
-        rideId,
-        playerIdPreview: playerId.substring(0, 20)
-    });
-
-    // Retrieve OneSignal credentials from environment variables
-    const ONE_SIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID;
-    const ONE_SIGNAL_REST_API_KEY = process.env.ONESIGNAL_REST_API_KEY;
-
-    if (!ONE_SIGNAL_APP_ID || !ONE_SIGNAL_REST_API_KEY) {
-        log('error', 'OneSignal environment variables are not set');
-        return res.status(500).json({ success: false, error: 'server_configuration_error' });
-    }
-
-    // Construct the notification payload for the OneSignal API
-    const notificationPayload = {
-        app_id: ONE_SIGNAL_APP_ID,
-        include_player_ids: [playerId],
-        headings: {
-            en: '🚖 New Ride Request!',
-            ar: '🚖 طلب رحلة جديد!'
-        },
-        contents: {
-            en: `Customer ${customerName || 'is'} requesting a ${vehicleType || 'ride'}.`,
-            ar: `العميل ${customerName || ''} يطلب رحلة ${vehicleType ? `- ${vehicleType}` : ''}`
-        },
-        data: {
-            rideId: String(rideId),
-            requestId: String(requestId),
-            driverId: String(driverId || ''),
-            customerName: String(customerName || ''),
-            vehicleType: String(vehicleType || ''),
-            amount: String(amount || '0'),
-            distance: String(distance || '0'),
-            notificationType: 'ride_request'
-        },
-        // URL to open when the notification is clicked
-        web_url: `/accept-ride.html?rideId=${rideId}&requestId=${requestId}`,
-
-        // --- High Priority & Sound Settings ---
-        priority: 10, // Max priority
-        ttl: 60, // Time to live in seconds
-
-        // For Android: Ensure sound plays by specifying a channel ID
-        // This channel must be created in your OneSignal dashboard with a custom sound
-        android_channel_id: process.env.ONESIGNAL_ANDROID_CHANNEL_ID_WITH_SOUND,
-
-        // For iOS:
-        ios_badgeType: 'Increase',
-        ios_badgeCount: 1,
-        sound: 'ride_request_sound.wav', // Custom sound file in your app bundle
-
-        // --- Action Buttons ---
-        web_buttons: [
-            { id: 'accept-ride', text: 'Accept' },
-            { id: 'decline-ride', text: 'Decline' }
-        ]
-    };
 
     try {
-        log('info', 'Sending notification to OneSignal API', { driverId, rideId });
+        // التحقق من وجود body
+        if (!req.body) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Missing request body' 
+            });
+        }
 
-        // Make the API call to OneSignal
-        const response = await fetch('https://onesignal.com/api/v1/notifications', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json; charset=utf-8',
-                'Authorization': `Basic ${ONE_SIGNAL_REST_API_KEY}`
+        const { 
+            driverId, 
+            playerId, 
+            rideId, 
+            requestId, 
+            customerName, 
+            vehicleType, 
+            amount, 
+            distance 
+        } = req.body;
+
+        console.log('🔔 استقبال طلب إرسال إشعار:', {
+            driverId,
+            playerId,
+            rideId,
+            requestId,
+            customerName
+        });
+
+        // التحقق من البيانات المطلوبة
+        if (!driverId) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'يجب تحديد driverId' 
+            });
+        }
+
+        if (!playerId && !driverId) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'يجب تحديد playerId أو driverId' 
+            });
+        }
+
+        // تحديد المستلم: استخدام external_user_id (driverId) إذا متاح
+        const targetId = driverId || playerId;
+        const targetType = driverId ? 'external_user_id' : 'player_id';
+
+        console.log(`🎯 إرسال إشعار إلى ${targetType}:`, targetId);
+
+        // إعداد بيانات الإشعار
+        const notification = {
+            app_id: ONESIGNAL_APP_ID,
+            android_channel_id: "ride_requests",
+            priority: 10,
+            headings: { 
+                "ar": "🚖 طلب رحلة جديدة - زونا",
+                "en": "🚖 New Ride Request - Zoona"
             },
-            body: JSON.stringify(notificationPayload)
+            contents: {
+                "ar": `عميل: ${customerName || 'عميل'}\nالنوع: ${getVehicleTypeArabic(vehicleType) || 'سيارة'}\nالمسافة: ${distance || '0'} كم\nالمبلغ: ${amount || '0'} جنيه`,
+                "en": `Customer: ${customerName || 'Customer'}\nType: ${vehicleType || 'car'}\nDistance: ${distance || '0'} km\nAmount: ${amount || '0'} SDG`
+            },
+            data: {
+                rideId: rideId || 'test-' + Date.now(),
+                requestId: requestId || 'test-' + Date.now(),
+                customerName: customerName || 'عميل',
+                vehicleType: vehicleType || 'economy',
+                amount: amount || '0',
+                distance: distance || '0',
+                type: "ride_request",
+                timestamp: new Date().toISOString(),
+                test: rideId && rideId.startsWith('test-')
+            },
+            buttons: [
+                { 
+                    id: "accept", 
+                    text: { 
+                        "ar": "✅ قبول الرحلة", 
+                        "en": "✅ Accept Ride" 
+                    },
+                    icon: "ic_accept"
+                },
+                { 
+                    id: "decline", 
+                    text: { 
+                        "ar": "❌ رفض", 
+                        "en": "❌ Decline" 
+                    },
+                    icon: "ic_decline"
+                }
+            ],
+            ttl: 40, // 40 ثانية كما في التطبيق
+            url: rideId ? `https://driver.zoonasd.com/accept-ride.html?rideId=${rideId}&requestId=${requestId}` : null
+        };
+
+        // تحديد طريقة الإرسال بناءً على targetType
+        if (targetType === 'external_user_id') {
+            notification.include_external_user_ids = [String(targetId)];
+        } else {
+            notification.include_player_ids = [String(targetId)];
+        }
+
+        console.log('📤 إرسال إلى OneSignal:', JSON.stringify(notification, null, 2));
+
+        // إرسال الإشعار إلى OneSignal
+        const response = await fetch("https://onesignal.com/api/v1/notifications", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Basic ${ONESIGNAL_REST_KEY}`,
+                "Accept": "application/json"
+            },
+            body: JSON.stringify(notification)
         });
 
         const result = await response.json();
-
-        // Check if the request was successful
-        if (response.ok && !result.errors) {
-            log('info', 'OneSignal notification sent successfully', {
-                notificationId: result.id,
-                driverId,
-                rideId
-            });
-            return res.status(200).json({ success: true, messageId: result.id });
-        }
-
-        // Handle errors from OneSignal
-        log('error', 'OneSignal API error', {
-            driverId,
-            rideId,
-            statusCode: response.status,
-            errors: result.errors,
-            warnings: result.warnings
+        
+        console.log('📥 استجابة OneSignal:', {
+            status: response.status,
+            ok: response.ok,
+            result: result
         });
 
-        // If the player ID is invalid, inform the client to take action
-        const isPlayerIdInvalid = result.errors?.some(e => e.includes('does not exist'));
-        if (isPlayerIdInvalid) {
-            return res.status(410).json({
+        // تسجيل النتيجة في Supabase
+        try {
+            const logResponse = await fetch(`${SUPABASE_URL}/rest/v1/push_notification_logs`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify({
+                    driver_id: driverId,
+                    player_id: playerId,
+                    success: response.ok,
+                    notification_type: rideId && rideId.startsWith('test-') ? 'test' : 'ride_request',
+                    error_message: response.ok ? null : (result.errors ? JSON.stringify(result.errors) : 'Unknown error'),
+                    details: result,
+                    sent_at: new Date().toISOString(),
+                    created_at: new Date().toISOString()
+                })
+            });
+            
+            if (!logResponse.ok) {
+                console.error('❌ فشل التسجيل في Supabase:', await logResponse.text());
+            }
+        } catch (logError) {
+            console.error('❌ خطأ في التسجيل:', logError);
+        }
+
+        if (response.ok) {
+            console.log('✅ تم إرسال الإشعار بنجاح:', result.id);
+            return res.status(200).json({
+                success: true,
+                notification_id: result.id,
+                recipient_count: result.recipients,
+                target_id: targetId,
+                target_type: targetType,
+                message: 'تم إرسال الإشعار بنجاح'
+            });
+        } else {
+            console.error('❌ فشل إرسال الإشعار:', result.errors || result);
+            return res.status(500).json({
                 success: false,
-                error: 'player_id_unregistered',
-                shouldInvalidate: true,
-                details: result.errors
+                error: 'push_failed',
+                details: result.errors || result,
+                message: 'فشل إرسال الإشعار'
             });
         }
-
-        return res.status(response.status).json({
-            success: false,
-            error: 'onesignal_api_error',
-            details: result.errors || result.warnings || 'Unknown OneSignal error'
-        });
 
     } catch (error) {
-        log('error', 'Internal server error while sending notification', {
+        console.error('❌ خطأ في الخادم:', error);
+        return res.status(500).json({
+            success: false,
             error: error.message,
-            stack: error.stack,
-            driverId,
-            rideId
+            message: 'حدث خطأ في الخادم'
         });
-        return res.status(500).json({ success: false, error: 'internal_server_error' });
     }
+}
+
+// دالة مساعدة لتحويل نوع المركبة للعربية
+function getVehicleTypeArabic(type) {
+    const types = {
+        'tuktuk': 'توك توك',
+        'economy': 'اقتصادية',
+        'comfort': 'متوسطة',
+        'vip': 'VIP',
+        'motorcycle': 'دراجة نارية'
+    };
+    return types[type] || type;
 }
