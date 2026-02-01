@@ -876,8 +876,14 @@
                 if (!response.ok) {
                     throw new Error(`Failed to fetch OneSignal App ID: ${response.statusText}`);
                 }
-                const data = await response.json();
-                return data.appId;
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.includes("application/json")) {
+                    const data = await response.json();
+                    return data.appId;
+                } else {
+                    console.warn("OneSignal API response was not JSON. OneSignal might be unavailable in this environment.");
+                    return null;
+                }
             } catch (error) {
                 console.error('Error fetching OneSignal App ID:', error);
                 return null;
