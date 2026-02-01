@@ -1607,26 +1607,6 @@
         // === نجاح تسجيل الدخول ===
         currentDriver = driver;
         
-        // 1. ربط driver.id مع OneSignal تلقائياً
-        const linkingResult = await linkDriverToOneSignal(driver.id);
-        if (linkingResult.success) {
-            showNotification('✅ تم ربط حسابك بنظام الإشعارات', 'success');
-
-            // حفظ في localStorage للربط مع Flutter
-            localStorage.setItem('driver_id', driver.id);
-            localStorage.setItem('tarhal_driver_id', driver.id);
-            localStorage.setItem('onesignal_linked', 'true');
-            localStorage.setItem('onesignal_player_id', linkingResult.playerId || '');
-
-            console.log('📱 Driver ID saved to localStorage:', driver.id);
-        } else {
-            console.warn('⚠️ Could not link to OneSignal:', linkingResult.error);
-        }
-
-        // استدعاء فحص الحالة وزر الاختبار
-        setTimeout(checkOneSignalStatus, 2000);
-        setTimeout(addTestNotificationButton, 1500);
-
         // حفظ بيانات السائق محلياً في المتصفح
         localStorage.setItem('tarhal_driver', JSON.stringify(driver));
         localStorage.setItem('driver_id', driver.id);
