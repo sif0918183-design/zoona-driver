@@ -1,7 +1,14 @@
-// api/send-test-push.js
-// Vercel Serverless Function to send test push notifications via OneSignal
+const { createClient } = require('@supabase/supabase-js');
 
-export default async function handler(req, res) {
+const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID || "c05c5d16-4e72-4d4a-b1a2-6e7e06232d98";
+const ONESIGNAL_REST_KEY = process.env.ONESIGNAL_REST_KEY || "os_v2_app_ybof2fsoojguvmncnz7amizntdepv6wooi3uqkvflqjitcramig6h757icims4fdyxand4d6aquovcvesbammphw5d3rfjtpz736s2q";
+
+const supabase = createClient(
+    'https://zsmlyiygjagmhnglrhoa.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps'
+);
+
+async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -14,14 +21,6 @@ export default async function handler(req, res) {
     if (!driverId) {
         return res.status(400).json({ success: false, error: 'missing_driver_id' });
     }
-
-    // Retrieve credentials from environment variables (recommended)
-    // Fallback to provided values only if environment variables are missing
-    const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID || "c05c5d16-4e72-4d4a-b1a2-6e7e06232d98";
-    const ONESIGNAL_REST_KEY = process.env.ONESIGNAL_REST_API_KEY || "os_v2_app_ybof2fsoojguvmncnz7amizntdepv6wooi3uqkvflqjitcramig6h757icims4fdyxand4d6aquovcvesbammphw5d3rfjtpz736s2q";
-
-    const SUPABASE_URL = process.env.SUPABASE_URL || 'https://zsmlyiygjagmhnglrhoa.supabase.co';
-    const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
 
     try {
         console.log('🔔 Sending test notification to driver:', driverId);
@@ -59,27 +58,16 @@ export default async function handler(req, res) {
 
         const result = await response.json();
 
-        // Log the attempt to Supabase using fetch (to avoid @supabase/supabase-js dependency)
-        try {
-            await fetch(`${SUPABASE_URL}/rest/v1/push_notification_logs`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': SUPABASE_SERVICE_ROLE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-                    'Prefer': 'return=minimal'
-                },
-                body: JSON.stringify({
-                    driver_id: driverId,
-                    success: response.ok,
-                    error_message: response.ok ? null : JSON.stringify(result.errors),
-                    details: result,
-                    sent_at: new Date().toISOString()
-                })
+        // تسجيل المحاولة
+        await supabase
+            .from('push_notification_logs')
+            .insert({
+                driver_id: driverId,
+                success: response.ok,
+                error_message: response.ok ? null : JSON.stringify(result.errors),
+                details: result,
+                sent_at: new Date().toISOString()
             });
-        } catch (logError) {
-            console.error('❌ Failed to log notification to Supabase:', logError);
-        }
 
         if (response.ok) {
             console.log('✅ Test notification sent successfully:', result.id);
@@ -105,3 +93,5 @@ export default async function handler(req, res) {
         });
     }
 }
+
+module.exports = handler;
