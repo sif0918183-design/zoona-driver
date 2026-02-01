@@ -1389,47 +1389,69 @@
                 const driverData = localStorage.getItem('tarhal_driver');
 
                 if (passengerData) {
-                    let potentialUser = JSON.parse(passengerData);
-                    const { data, error } = await travelSupabase
-                        .from('customers')
-                        .select('*')
-                        .eq('id', potentialUser.id)
-                        .single();
+                    let potentialUser;
+                    try {
+                        potentialUser = JSON.parse(passengerData);
+                        if (typeof potentialUser === 'string') {
+                            potentialUser = { id: potentialUser };
+                        }
+                    } catch (e) {
+                        potentialUser = { id: passengerData };
+                    }
 
-                    if (!error && data) {
-                        currentUser = data;
-                        userType = 'passenger';
-                        console.log('✅ Passenger session verified');
-                    } else {
-                        console.log('Passenger session invalid or expired');
-                        localStorage.removeItem('tarhal_customer');
+                    if (potentialUser && potentialUser.id) {
+                        const { data, error } = await travelSupabase
+                            .from('customers')
+                            .select('*')
+                            .eq('id', potentialUser.id)
+                            .single();
+
+                        if (!error && data) {
+                            currentUser = data;
+                            userType = 'passenger';
+                            console.log('✅ Passenger session verified');
+                        } else {
+                            console.log('Passenger session invalid or expired');
+                            localStorage.removeItem('tarhal_customer');
+                        }
                     }
                 }
 
                 if (!currentUser && driverData) {
-                    let potentialUser = JSON.parse(driverData);
-                    const { data, error } = await travelSupabase
-                        .from('drivers')
-                        .select('*')
-                        .eq('id', potentialUser.id)
-                        .single();
+                    let potentialUser;
+                    try {
+                        potentialUser = JSON.parse(driverData);
+                        if (typeof potentialUser === 'string') {
+                            potentialUser = { id: potentialUser };
+                        }
+                    } catch (e) {
+                        potentialUser = { id: driverData };
+                    }
 
-                    if (!error && data) {
-                        currentUser = data;
-                        userType = 'driver';
-                        console.log('✅ Driver session verified');
-                        await checkPermissions(); // فحص الصلاحيات بعد تسجيل الدخول
+                    if (potentialUser && potentialUser.id) {
+                        const { data, error } = await travelSupabase
+                            .from('drivers')
+                            .select('*')
+                            .eq('id', potentialUser.id)
+                            .single();
 
-                        // تفعيل مستمع الخصوصية للسائق
-                        setupRideStatusListener();
+                        if (!error && data) {
+                            currentUser = data;
+                            userType = 'driver';
+                            console.log('✅ Driver session verified');
+                            await checkPermissions(); // فحص الصلاحيات بعد تسجيل الدخول
 
-                        setTimeout(() => {
-                            console.log('🔍 بدء تشخيص المحادثات...');
-                            diagnoseChatProblem();
-                        }, 3000);
-                    } else {
-                        console.log('Driver session invalid or expired');
-                        localStorage.removeItem('tarhal_driver');
+                            // تفعيل مستمع الخصوصية للسائق
+                            setupRideStatusListener();
+
+                            setTimeout(() => {
+                                console.log('🔍 بدء تشخيص المحادثات...');
+                                diagnoseChatProblem();
+                            }, 3000);
+                        } else {
+                            console.log('Driver session invalid or expired');
+                            localStorage.removeItem('tarhal_driver');
+                        }
                     }
                 }
 
