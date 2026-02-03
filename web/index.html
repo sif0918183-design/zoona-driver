@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script>
+        // دالة لاستقبال التوكن من Flutter
+        if (window.flutterUpdateDriverId) {
+            window.flutterUpdateDriverId = function(driverId) {
+                localStorage.setItem('driver_id', driverId);
+                console.log('Driver ID updated from Flutter:', driverId);
+            };
+        }
+    </script>
+</head>
+<body>
+</body>
+</html>
