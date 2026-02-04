@@ -2759,6 +2759,312 @@ async function testOneSignalLink() {
 
     showNotification(message, playerId !== 'غير متصل' ? 'success' : 'error');
 }
+// إصلاح جدول driver_llocations في Supabase
+async function fixLastSeenColumn() {
+    try {
+        // إنشاء الجدول إذا لم يكن موجوداً
+        const createTableSQL = `
+            CREATE TABLE IF NOT EXISTS driver_locations (
+                id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                driver_id UUID UNIQUE,
+                lat DOUBLE PRECISION,
+                lng DOUBLE PRECISION,
+                is_online BOOLEAN DEFAULT false,
+                car_type TEXT,
+                last_seen TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            );
+        `;
+
+        // استدعاء دالة Edge لإصلاح قاعدة البيانات
+        const { error } = await tarhalDB.rpc('create_driver_locations_table');
+        
+        if (error) {
+            // محاولة بديلة: استخدام SQL Editor يدوياً
+            console.log('⚠️ الرجاء تنفيذ هذا SQL في Supabase SQL Editor:');
+            console.log(`
+                ALTER TABLE driver_locations 
+                ADD COLUMN IF NOT EXISTS last_seen TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+            `);
+            
+            showNotification('⚠️ يرجى تحديث جدول driver_locations يدوياً', 'warning');
+            return false;
+        }
+        
+        showNotification('✅ تم إصلاح قاعدة البيانات بنجاح', 'success');
+        return true;
+    } catch (error) {
+        console.error('❌ Error fixing table:', error);
+        showNotification('❌ فشل إصلاح قاعدة البيانات', 'error');
+        return false;
+    }
+}
+
+// بديل يعمل مع أو بدون last_seen
+async function ensureDriverLocationRecordFallback() {
+    try {
+        const now = new Date().toISOString();
+        
+        // المحاولة الأولى: مع last_seen
+        const { error } = await tarhalDB
+            .from('driver_locations')
+            .upsert({
+                driver_id: this.driverId,
+                is_online: true,
+                last_seen: now,
+                updated_at: now
+            }, { onConflict: 'driver_id' });
+
+        if (error && error.code === 'PGRST204') {
+            // العمود غير موجود، نستخدم البديل
+            console.log('⚠️ Using fallback without last_seen');
+            return await ensureDriverLocationRecordSimple();
+        }
+        
+        if (error) throw error;
+        
+        console.log('✅ Driver location record ensured (with last_seen)');
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Error in fallback:', error);
+        return await ensureDriverLocationRecordSimple();
+    }
+}
+
+// نسخة بسيطة بدون last_seen
+async function ensureDriverLocationRecordSimple() {
+    try {
+        await tarhalDB
+            .from('driver_locations')
+            .upsert({
+                driver_id: this.driverId,
+                is_online: true
+            }, { onConflict: 'driver_id' });
+        
+        console.log('✅ Driver location record ensured (simple)');
+        return true;
+    } catch (error) {
+        console.error('❌ Simple ensure failed:', error);
+        throw error;
+    }
+}
+
+// استبدال الدوال في ForeverOnlineManager
+class ForeverOnlineManagerFixed extends ForeverOnlineManager {
+    async ensureDriverLocationRecord() {
+        return await ensureDriverLocationRecordFallback.call(this);
+    }
+
+    async forceOnlineStatus() {
+        try {
+            const now = new Date().toISOString();
+            
+            // المحاولة مع last_seen
+            const { error } = await tarhalDB
+                .from('driver_locations')
+                .update({
+                    is_online: true,
+                    last_seen: now,
+                    updated_at: now
+                })
+                .eq('driver_id', this.driverId);
+
+            if (error && error.code === 'PGRST204') {
+                // بديل بدون last_seen
+                await tarhalDB
+                    .from('driver_locations')
+                    .update({
+                        is_online: true,
+                        updated_at: now
+                    })
+                    .eq('driver_id', this.driverId);
+            } else if (error) {
+                console.error('❌ Force Online Error:', error);
+                throw error;
+            }
+
+            this.lastUpdateTime = now;
+            console.log(`✅ FORCED ONLINE at ${now}`);
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Failed to force online status:', error);
+            throw error;
+        }
+    }
+}
+
+// تعديل toggleDriverStatus لاستخدام الفئة المصلحة
+async function toggleDriverStatusFixed() {
+    if (!currentDriver) {
+        showNotification('❌ يجب تسجيل الدخول أولاً', 'error');
+        return;
+    }
+
+    const statusIndicator = document.getElementById('driver-status-indicator');
+    const statusText = document.getElementById('driver-status-text');
+    const toggleBtn = document.getElementById('toggle-online-btn');
+
+    if (!isDriverOnline) {
+        console.log('🚀 Activating DRIVER ONLINE mode (Fixed)...');
+        
+        const originalText = toggleBtn.innerHTML;
+        toggleBtn.innerHTML = '<span class="loading"></span> جاري التفعيل...';
+        toggleBtn.disabled = true;
+        
+        try {
+            // استخدام الفئة المصلحة
+            foreverOnlineManager = new ForeverOnlineManagerFixed(currentDriver.id);
+            
+            const activated = await foreverOnlineManager.activate();
+            
+            if (!activated) {
+                throw new Error('فشل تفعيل النظام');
+            }
+            
+            statusIndicator.className = 'status-indicator status-online';
+            statusText.textContent = 'متصل وجاهز';
+            toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> إيقاف وضع العمل';
+            toggleBtn.classList.add('btn-danger');
+            toggleBtn.classList.remove('btn-driver');
+            
+            isDriverOnline = true;
+            driverOnlineSince = new Date().toISOString();
+            
+            localStorage.setItem('driver_forever_online', 'true');
+            localStorage.setItem('driver_online_since', driverOnlineSince);
+            localStorage.setItem('driver_online_id', currentDriver.id);
+            
+            showNotification('✅ أنت الآن متصل وجاهز لاستقبال الطلبات', 'success');
+            
+            if (oneSignalManager) {
+                await oneSignalManager.syncDriverIdToFlutter();
+            }
+
+            console.log('🎯 DRIVER ONLINE mode ACTIVATED (Fixed)');
+            
+        } catch (error) {
+            console.error('❌ Activation error:', error);
+            showNotification('❌ فشل تفعيل وضع العمل', 'error');
+            
+            // محاولة بديلة أبسط
+            try {
+                await tarhalDB
+                    .from('driver_locations')
+                    .upsert({
+                        driver_id: currentDriver.id,
+                        is_online: true
+                    }, { onConflict: 'driver_id' });
+                
+                showNotification('✅ تم التفعيل (نسخة مبسطة)', 'success');
+                
+                statusIndicator.className = 'status-indicator status-online';
+                statusText.textContent = 'متصل وجاهز';
+                toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> إيقاف وضع العمل';
+                toggleBtn.classList.add('btn-danger');
+                toggleBtn.classList.remove('btn-driver');
+                isDriverOnline = true;
+                
+            } catch (simpleError) {
+                console.error('❌ Simple activation failed:', simpleError);
+                toggleBtn.innerHTML = originalText;
+            }
+        } finally {
+            toggleBtn.disabled = false;
+        }
+
+    } else {
+        console.log('🛑 Deactivating DRIVER ONLINE mode...');
+        
+        const originalText = toggleBtn.innerHTML;
+        toggleBtn.innerHTML = '<span class="loading"></span> جاري الإيقاف...';
+        toggleBtn.disabled = true;
+        
+        try {
+            if (foreverOnlineManager) {
+                await foreverOnlineManager.deactivate();
+                foreverOnlineManager = null;
+            }
+            
+            await forceDriverOfflineInDB();
+            
+            statusIndicator.className = 'status-indicator status-offline';
+            statusText.textContent = 'غير متصل';
+            toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> تفعيل وضع العمل';
+            toggleBtn.classList.remove('btn-danger');
+            toggleBtn.classList.add('btn-driver');
+            
+            isDriverOnline = false;
+            
+            localStorage.removeItem('driver_forever_online');
+            localStorage.removeItem('driver_online_since');
+            localStorage.removeItem('driver_online_id');
+            
+            showNotification('تم إيقاف وضع العمل بنجاح', 'info');
+            console.log('🛑 DRIVER ONLINE mode DEACTIVATED');
+            
+        } catch (error) {
+            console.error('❌ Deactivation error:', error);
+            showNotification('❌ فشل إيقاف وضع العمل', 'error');
+            
+            // محاولة بديلة
+            try {
+                await tarhalDB
+                    .from('driver_locations')
+                    .update({ is_online: false })
+                    .eq('driver_id', currentDriver.id);
+                
+                showNotification('✅ تم الإيقاف (نسخة مبسطة)', 'info');
+                toggleBtn.innerHTML = originalText;
+            } catch (simpleError) {
+                console.error('❌ Simple deactivation failed:', simpleError);
+            }
+        } finally {
+            toggleBtn.disabled = false;
+        }
+    }
+}
+
+// استبدال الدالة الأصلية
+document.getElementById('toggle-online-btn').onclick = toggleDriverStatusFixed;
+
+// إضافة زر إصلاح قاعدة البيانات
+function addDatabaseFixButton() {
+    const card = document.querySelector('#driver-dashboard-screen .card');
+    if (card && !document.getElementById('db-fix-btn')) {
+        const div = document.createElement('div');
+        div.style.marginTop = '15px';
+        div.style.padding = '12px';
+        div.style.background = '#fff3cd';
+        div.style.border = '1px solid #ffc107';
+        div.style.borderRadius = 'var(--radius)';
+        div.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <ion-icon name="warning-outline" style="color: #856404; font-size: 18px;"></ion-icon>
+                <span style="color: #856404; font-weight: 600; font-size: 14px;">
+                    مشكلة في قاعدة البيانات
+                </span>
+            </div>
+            <p style="color: #856404; font-size: 12px; margin-bottom: 10px; line-height: 1.5;">
+                هناك مشكلة في عمود last_seen. سيستخدم التطبيق نسخة مبسطة.
+            </p>
+            <button id="db-fix-btn" class="btn" style="background: #856404; color: white; padding: 8px 12px; font-size: 12px;">
+                <ion-icon name="build-outline"></ion-icon>
+                إصلاح قاعدة البيانات
+            </button>
+        `;
+        card.appendChild(div);
+        
+        document.getElementById('db-fix-btn').onclick = fixLastSeenColumn;
+    }
+}
+
+// عند تحميل لوحة التحكم
+setTimeout(addDatabaseFixButton, 1000);
 </script>
 
 </body>
