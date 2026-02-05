@@ -818,6 +818,143 @@
     const SB_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
     const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
     const tarhalDB = supabase.createClient(SB_URL, SB_KEY);
+// في index.html - أضف هذا الكود في بداية <script>
+
+// ============================================
+// دالة اختبار استقبال الإشعارات من Flutter
+// ============================================
+
+window.testFlutterConnection = function() {
+  console.log('🔍 Testing Flutter connection...');
+  
+  if (window.flutter_inappwebview) {
+    console.log('✅ Flutter WebView is available');
+    
+    // إرسال رسالة اختبار لـ Flutter
+    window.flutter_inappwebview.callHandler('messageHandler', {
+      type: 'TEST',
+      message: 'Hello from PWA',
+      timestamp: new Date().toISOString()
+    }).then((response) => {
+      console.log('✅ Flutter responded:', response);
+    }).catch((error) => {
+      console.error('❌ Flutter handler error:', error);
+    });
+    
+    return true;
+  } else {
+    console.log('❌ Flutter WebView not found');
+    
+    // محاولة الاتصال عبر postMessage
+    window.postMessage({
+      type: 'CHECK_FLUTTER',
+      source: 'pwa'
+    }, '*');
+    
+    return false;
+  }
+};
+
+// ============================================
+// دالة استقبال معززة من Flutter
+// ============================================
+
+window.handleRideRequest = function(data) {
+  console.log('🎯 RIDE REQUEST RECEIVED from Flutter:', data);
+  
+  // 1. تشغيل الصوت والاهتزاز في PWA
+  if (window.soundManager) {
+    console.log('🔊 Playing sound in PWA');
+    window.soundManager.playRideRequestSound();
+  }
+  
+  if ('vibrate' in navigator) {
+    navigator.vibrate([200, 100, 200]);
+  }
+  
+  // 2. عرض النافذة
+  if (typeof showIncomingRideModal === 'function') {
+    console.log('📱 Showing ride modal');
+    showIncomingRideModal(data);
+  } else {
+    console.log('⚠️ showIncomingRideModal not found, showing notification');
+    showNotification(`🚖 ${data.customerName || 'عميل'} - ${data.amount || '0'} SDG`, 'success');
+  }
+  
+  // 3. حفظ في localStorage للتتبع
+  localStorage.setItem('last_received_ride', JSON.stringify(data));
+  localStorage.setItem('last_ride_time', new Date().toISOString());
+  
+  console.log('✅ Ride request processed successfully');
+};
+
+// ============================================
+// استقبال رسائل من Flutter عبر postMessage
+// ============================================
+
+window.addEventListener('message', function(event) {
+  // فقط معالجة الرسائل من Flutter
+  if (event.data && (event.data.source === 'flutter' || event.data.flutter)) {
+    console.log('📨 Message from Flutter via postMessage:', event.data);
+    
+    if (event.data.type === 'RIDE_REQUEST') {
+      window.handleRideRequest(event.data.payload || event.data);
+    }
+    
+    if (event.data.type === 'SET_DRIVER_ID') {
+      console.log('🆔 Driver ID from Flutter:', event.data.driverId);
+      localStorage.setItem('driver_id', event.data.driverId);
+      localStorage.setItem('tarhal_driver_id', event.data.driverId);
+    }
+  }
+});
+
+// ============================================
+// إضافة زر اختبار في الواجهة
+// ============================================
+
+function addTestButton() {
+  setTimeout(() => {
+    const card = document.querySelector('#driver-dashboard-screen .card');
+    if (card && !document.getElementById('flutter-test-btn')) {
+      const testBtn = document.createElement('button');
+      testBtn.id = 'flutter-test-btn';
+      testBtn.className = 'btn btn-outline mt-2';
+      testBtn.innerHTML = `
+        <ion-icon name="bug-outline"></ion-icon>
+        اختبار استقبال الإشعارات
+      `;
+      testBtn.onclick = function() {
+        // محاكاة استقبال إشعار تجريبي
+        const testData = {
+          rideId: 'test_' + Date.now(),
+          requestId: 'req_test',
+          customerName: 'عميل تجريبي',
+          customerPhone: '0912345678',
+          vehicleType: 'economy',
+          amount: '5000',
+          distance: '3.5 كم',
+          type: 'ride_request'
+        };
+        
+        window.handleRideRequest(testData);
+        showNotification('✅ تم اختبار استقبال الإشعار', 'success');
+      };
+      
+      // إضافة قبل زر تسجيل الخروج
+      const logoutBtn = card.querySelector('button[onclick="logoutDriver()"]');
+      if (logoutBtn) {
+        card.insertBefore(testBtn, logoutBtn);
+      } else {
+        card.appendChild(testBtn);
+      }
+    }
+  }, 2000);
+}
+
+// استدعاء addTestButton بعد تحميل Dashboard
+// أضف في updateDriverDashboard:
+setTimeout(addTestButton, 1500);
 
     // ============================================
     // Flutter-PWA Communication Bridge
