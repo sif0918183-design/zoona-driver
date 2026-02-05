@@ -75,7 +75,8 @@ export default async function handler(req, res) {
             customer_name: customerName || 'عميل تجريبي',
             amount: amount || '0',
             distance: distance || '0 كم',
-            type: 'TEST_NOTIFICATION'
+            vehicle_type: vehicleType || 'economy',
+            type: 'RIDE_REQUEST' // تحديث النوع ليطابق طلبات الرحلة الحقيقية
         });
 
         // 3. إرسال الإشعار

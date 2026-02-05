@@ -819,6 +819,78 @@
     const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
     const tarhalDB = supabase.createClient(SB_URL, SB_KEY);
 
+    // ============================================
+    // Flutter-PWA Communication Bridge
+    // ============================================
+    window.FlutterBridge = {
+        // Reception from Flutter
+        receiveFromFlutter: function(data) {
+            console.log('📱 Received from Flutter:', data);
+
+            if (data.type === 'DRIVER_STATUS') {
+                if (typeof updateDriverStatusFromFlutter === 'function') {
+                    updateDriverStatusFromFlutter(data.status);
+                }
+            }
+        },
+
+        // Sending to Flutter
+        sendToFlutter: function(type, payload) {
+            const message = {
+                type: type,
+                payload: payload,
+                timestamp: new Date().toISOString(),
+                source: 'driver_pwa'
+            };
+
+            console.log(`📤 Sending to Flutter [${type}]:`, payload);
+
+            // Method 1: flutter_inappwebview
+            if (window.flutter_inappwebview) {
+                window.flutter_inappwebview.callHandler('messageHandler', message);
+            }
+
+            // Method 2: postMessage for WebView
+            window.postMessage({
+                flutter: true,
+                ...message
+            }, '*');
+
+            // Method 3: localStorage for polling fallback
+            localStorage.setItem('flutter_message', JSON.stringify(message));
+            localStorage.removeItem('flutter_message'); // Immediate cleanup
+
+            return true;
+        }
+    };
+
+    // Listen for messages from Flutter
+    window.addEventListener('message', function(event) {
+        if (event.data && event.data.flutter) {
+            console.log('📦 Message from Flutter:', event.data);
+            window.FlutterBridge.receiveFromFlutter(event.data);
+        }
+    });
+
+    // Ride-specific Flutter sender
+    function sendToFlutter(rideData) {
+        console.log('🏎️ Dispatching ride to Flutter:', rideData);
+
+        if (window.flutter_inappwebview) {
+            window.flutter_inappwebview.callHandler('rideRequest', rideData);
+        }
+
+        localStorage.setItem('last_ride_request', JSON.stringify(rideData));
+
+        window.postMessage({
+            type: 'RIDE_REQUEST',
+            payload: rideData
+        }, '*');
+
+        // Also use the generic bridge
+        window.FlutterBridge.sendToFlutter('RIDE_REQUEST', rideData);
+    }
+
     // Application State
     let currentDriver = null;
     let isDriverOnline = false;
@@ -963,12 +1035,15 @@
     window.handleRideRequest = function(data) {
       console.log('🚗 Ride request received:', data);
 
-      // تشغيل صوت واهتزاز
+      // 1. إرسال إلى Flutter
+      sendToFlutter(data);
+
+      // 2. تشغيل صوت واهتزاز في PWA
       if (window.soundManager) {
         window.soundManager.playRideRequestSound();
       }
 
-      // عرض بيانات الرحلة في واجهة السائق
+      // 3. عرض بيانات الرحلة في واجهة السائق
       if (typeof showIncomingRideModal === 'function') {
         showIncomingRideModal(data);
       } else {
@@ -1202,6 +1277,28 @@
         // Initialize sound manager
         window.soundManager = new SoundManager();
 
+        // تهيئة الاتصال مع Flutter
+        setTimeout(() => {
+            if (window.flutter_inappwebview) {
+                console.log('✅ Flutter WebView detected');
+
+                // إعلام Flutter بأن PWA جاهز
+                window.FlutterBridge.sendToFlutter('PWA_READY', {
+                    url: window.location.href,
+                    timestamp: new Date().toISOString()
+                });
+
+                // إرسال بيانات السائق إذا كان مسجلاً
+                const savedDriver = localStorage.getItem('tarhal_driver');
+                if (savedDriver) {
+                    const driver = JSON.parse(savedDriver);
+                    window.FlutterBridge.sendToFlutter('DRIVER_RESTORED', driver);
+                }
+            } else {
+                console.log('⚠️ Running in browser, Flutter not detected');
+            }
+        }, 1000);
+
         // Hide splash screen
         setTimeout(() => {
             document.getElementById('splash-screen').classList.add('hide');
@@ -1232,6 +1329,9 @@
         if (window.soundManager) {
             console.log('✅ Sound Manager is ready');
         }
+
+        // 4. تشغيل Realtime listener
+        await setupRealtimeListener();
         
         showNotification('✅ الأنظمة جاهزة لاستقبال الطلبات', 'success');
     }
@@ -1347,6 +1447,85 @@
     }
 
 
+    // ============================================
+    // Flutter Synchronization Logic
+    // ============================================
+
+    // Update driver status from Flutter (Remote command)
+    async function updateDriverStatusFromFlutter(online) {
+        console.log(`📡 Flutter requested status change to: ${online ? 'Online' : 'Offline'}`);
+        if (online !== isDriverOnline) {
+            await toggleDriverStatusUniversal();
+        }
+    }
+
+    // Synchronize driver status with Flutter
+    async function syncDriverStatusWithFlutter() {
+        if (!currentDriver) return;
+
+        const status = {
+            driverId: currentDriver.id,
+            isOnline: isDriverOnline,
+            since: typeof driverOnlineSince !== 'undefined' ? driverOnlineSince : null,
+            timestamp: new Date().toISOString()
+        };
+
+        console.log('🔄 Syncing status with Flutter:', status);
+
+        // Send via bridge
+        window.FlutterBridge.sendToFlutter('DRIVER_STATUS', status);
+
+        // Persist in localStorage for Flutter capture
+        localStorage.setItem('driver_status', JSON.stringify(status));
+    }
+
+    // Start regular sync interval
+    function startFlutterSync() {
+        if (window.flutterSyncInterval) {
+            clearInterval(window.flutterSyncInterval);
+        }
+
+        window.flutterSyncInterval = setInterval(() => {
+            if (currentDriver && isDriverOnline) {
+                syncDriverStatusWithFlutter();
+            }
+        }, 15000); // Every 15 seconds
+
+        console.log('⏱️ Flutter sync interval started');
+    }
+
+    // Supabase Realtime Listener for PWA
+    async function setupRealtimeListener() {
+        if (!currentDriver) return;
+
+        console.log(`🔌 Setting up Realtime listener for driver: ${currentDriver.id}`);
+
+        const channel = tarhalDB.channel(`pwa_ride_requests_${currentDriver.id}`)
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'ride_requests',
+                filter: `driver_id=eq.${currentDriver.id}`
+            }, (payload) => {
+                console.log('🔔 Ride request from Realtime:', payload);
+
+                const rideData = payload.new?.payload || payload.new;
+
+                // Dispatch to Flutter
+                sendToFlutter(rideData);
+
+                // Show in PWA
+                if (typeof showIncomingRideModal === 'function') {
+                    showIncomingRideModal(rideData);
+                }
+            })
+            .subscribe((status) => {
+                console.log('📡 Realtime subscription status:', status);
+            });
+
+        return channel;
+    }
+
     // Driver Login
     async function loginDriver() {
     const phone = document.getElementById('driver-phone').value.trim();
@@ -1404,6 +1583,25 @@
         
         // الانتقال لشاشة لوحة التحكم
         showScreen('driver-dashboard-screen');
+
+        // === إرسال بيانات السائق إلى Flutter ===
+        window.FlutterBridge.sendToFlutter('DRIVER_LOGIN', {
+            driverId: driver.id,
+            name: driver.full_name,
+            phone: driver.whatsapp_number,
+            car: driver.car_model,
+            type: driver.car_type
+        });
+
+        // حفظ في localStorage للالتقاط من Flutter
+        localStorage.setItem('driver_id', driver.id);
+        localStorage.setItem('driver_data', JSON.stringify(driver));
+
+        // إعلام Flutter بالسائق الجديد عبر postMessage
+        window.postMessage({
+            type: 'SET_DRIVER_ID',
+            driverId: driver.id
+        }, '*');
         
         // تحديث إحصائيات لوحة التحكم
         updateDriverDashboard();
@@ -1629,6 +1827,14 @@
 
     // Ride Handling
     function showIncomingRideModal(data) {
+        // 1. إرسال البيانات إلى Flutter
+        sendToFlutter(data);
+
+        // 2. تشغيل الصوت والاهتزاز في PWA
+        if (window.soundManager) {
+            window.soundManager.playRideRequestSound();
+        }
+
         const modal = document.getElementById('incoming-ride-modal');
         const details = document.getElementById('ride-details');
 
@@ -2372,6 +2578,10 @@ async function restoreDriverStatus() {
 
                 // مزامنة الإشعارات عند استعادة الحالة
                 await updatePushSubscriptionOnLogin(currentDriver.id);
+
+                // مزامنة الحالة مع Flutter
+                await syncDriverStatusWithFlutter();
+                startFlutterSync();
             } catch (error) {
                 console.error('❌ Failed to restore forever online:', error);
                 // في حالة الفشل، نعيد الحالة إلى offline
@@ -2519,6 +2729,9 @@ async function updateDriverDashboard() {
         if (currentDriver.push_subscription) {
             addTestPushButton();
         }
+
+        // إضافة أزرار Flutter
+        addFlutterControlButtons();
 
         if (card && !document.getElementById('control-buttons')) {
             const controlsDiv = document.createElement('div');
@@ -2829,6 +3042,12 @@ async function toggleDriverStatusUniversal() {
                 
                 // مزامنة الإشعارات
                 await updatePushSubscriptionOnLogin(currentDriver.id);
+
+                // مزامنة الحالة مع Flutter
+                await syncDriverStatusWithFlutter();
+
+                // بدء المزامنة المنتظمة
+                startFlutterSync();
                 
                 console.log('🎯 UNIVERSAL mode ACTIVATED');
             } else {
@@ -2867,6 +3086,13 @@ async function toggleDriverStatusUniversal() {
             localStorage.removeItem('driver_forever_online');
             localStorage.removeItem('driver_online_since');
             localStorage.removeItem('driver_online_id');
+
+            // مزامنة الحالة مع Flutter (Offline)
+            await syncDriverStatusWithFlutter();
+            if (window.flutterSyncInterval) {
+                clearInterval(window.flutterSyncInterval);
+                window.flutterSyncInterval = null;
+            }
             
             showNotification('✅ تم إيقاف وضع العمل بنجاح', 'info');
             console.log('🛑 UNIVERSAL mode DEACTIVATED');
@@ -2954,6 +3180,77 @@ function checkAuth() {
     } else {
         showScreen('driver-login-screen');
     }
+}
+
+// ============================================
+// Flutter-PWA Bridge Diagnostics
+// ============================================
+function addFlutterControlButtons() {
+    const card = document.querySelector('#driver-dashboard-screen .card');
+    if (!card || document.getElementById('flutter-controls')) return;
+
+    const controls = document.createElement('div');
+    controls.id = 'flutter-controls';
+    controls.innerHTML = `
+      <div style="margin-top: 15px; padding: 12px; background: #f0f4ff; border-radius: var(--radius); border: 1px solid #3b82f6;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+          <ion-icon name="phone-portrait-outline" style="color: #3b82f6;"></ion-icon>
+          <span style="color: #3b82f6; font-weight: 600;">اتصال Flutter</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <button class="btn btn-outline" onclick="testFlutterConnection()" style="padding: 8px; font-size: 12px;">
+            اختبار الاتصال
+          </button>
+          <button class="btn btn-outline" onclick="sendTestRideToFlutter()" style="padding: 8px; font-size: 12px;">
+            رحلة تجريبية
+          </button>
+        </div>
+        <div id="flutter-status" style="margin-top: 8px; font-size: 11px; color: #4b5563;">
+          جاري التحقق...
+        </div>
+      </div>
+    `;
+
+    card.appendChild(controls);
+    checkFlutterConnection();
+}
+
+function checkFlutterConnection() {
+    const statusEl = document.getElementById('flutter-status');
+    if (!statusEl) return;
+
+    if (window.flutter_inappwebview) {
+        statusEl.innerHTML = '✅ متصل بتطبيق Flutter';
+        statusEl.style.color = '#16a34a';
+    } else {
+        statusEl.innerHTML = '⚠️ يعمل في المتصفح فقط';
+        statusEl.style.color = '#ef4444';
+    }
+}
+
+function testFlutterConnection() {
+    if (window.FlutterBridge) {
+        window.FlutterBridge.sendToFlutter('CONNECTION_TEST', {
+            ping: 'pong',
+            time: new Date().toISOString()
+        });
+        showNotification('📡 تم إرسال طلب اختبار الاتصال لـ Flutter', 'info');
+    }
+}
+
+function sendTestRideToFlutter() {
+    const testData = {
+        ride_id: 'test_' + Date.now(),
+        request_id: 'req_' + Date.now(),
+        customer_name: 'عميل تجريبي',
+        vehicle_type: 'economy',
+        amount: '5000',
+        distance: '3.5',
+        type: 'RIDE_REQUEST'
+    };
+
+    sendToFlutter(testData);
+    showNotification('🚗 تم إرسال رحلة تجريبية لـ Flutter', 'success');
 }
 
 // إضافة معلومات النظام إلى الواجهة
