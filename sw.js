@@ -64,11 +64,12 @@ self.addEventListener('message', (event) => {
 
 async function handleDriverHeartbeat(driverId) {
   try {
+    const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
     await fetch(`${HEARTBEAT_URL}?driver_id=eq.${driverId}`, {
       method: 'PATCH',
       headers: {
-        'apikey': 'YOUR_SUPABASE_KEY',
-        'Authorization': 'Bearer YOUR_SUPABASE_KEY',
+        'apikey': key,
+        'Authorization': `Bearer ${key}`,
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal'
       },
@@ -80,11 +81,12 @@ async function handleDriverHeartbeat(driverId) {
 
 async function handleDriverOffline(driverId) {
   try {
+    const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
     await fetch(`${HEARTBEAT_URL}?driver_id=eq.${driverId}`, {
       method: 'PATCH',
       headers: {
-        'apikey': 'YOUR_SUPABASE_KEY',
-        'Authorization': 'Bearer YOUR_SUPABASE_KEY',
+        'apikey': key,
+        'Authorization': `Bearer ${key}`,
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal'
       },
@@ -96,27 +98,78 @@ async function handleDriverOffline(driverId) {
 
 // =================== Push Notifications ===================
 self.addEventListener('push', function(event) {
-  let data = {};
-  if (event.data) data = event.data.json();
+  if (!event.data) return;
 
-  const title = data.headings?.ar || 'رحلة جديدة';
-  const body = data.contents?.ar || 'لديك طلب رحلة جديد';
+  let data = {};
+  try {
+    data = event.data.json();
+  } catch (e) {
+    console.error('Error parsing push data:', e);
+    return;
+  }
+
+  // عرض الإشعار
+  const title = data.title || 'رحلة جديدة 🚗';
+  const body = data.body || `طلب رحلة جديد من ${data.customer_name || 'عميل'}`;
+
   const options = {
-    body,
+    body: body,
     icon: '/icons/icon-192x192.png',
     badge: '/icons/icon-96x96.png',
-    data,
+    data: data,
+    vibrate: [200, 100, 200, 100, 200],
+    requireInteraction: true,
+    tag: 'ride-request-' + (data.ride_id || 'general'),
+    actions: [
+      { action: 'accept', title: '✅ قبول' },
+      { action: 'decline', title: '❌ رفض' }
+    ]
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    self.registration.showNotification(title, options).then(() => {
+      // إرسال رسالة إلى التطبيق المفتوح (Post Message)
+      return self.clients.matchAll({ type: 'window' }).then(clients => {
+        clients.forEach(client => {
+          client.postMessage({
+            type: 'RIDE_REQUEST',
+            payload: data
+          });
+        });
+      });
+    })
+  );
 });
 
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
-  const rideId = event.notification.data?.ride_id;
-  const requestId = event.notification.data?.request_id;
+
+  const data = event.notification.data;
+  const rideId = data.ride_id || data.rideId;
+  const requestId = data.request_id || data.requestId;
+
+  // إذا ضغط على زر الرفض
+  if (event.action === 'decline') {
+    return;
+  }
+
+  // فتح التطبيق أو الانتقال لصفحة قبول الرحلة
   event.waitUntil(
-    clients.openWindow(`https://driver.zoonasd.com/accept-ride.html?rideId=${rideId}&requestId=${requestId}`)
+    self.clients.matchAll({ type: 'window' }).then(clients => {
+      // إذا كان التطبيق مفتوحاً، ركز عليه
+      for (const client of clients) {
+        if (client.url.includes('driver.zoonasd.com') && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // إذا لم يكن مفتوحاً، افتحه
+      if (self.clients.openWindow) {
+        const url = rideId ?
+          `https://driver.zoonasd.com/accept-ride.html?rideId=${rideId}&requestId=${requestId}` :
+          'https://driver.zoonasd.com/';
+        return self.clients.openWindow(url);
+      }
+    })
   );
 });
 
