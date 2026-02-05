@@ -1,13 +1,10 @@
 // ============================================
-// sw.js - Service Worker للسائق
-// Push API + VAPID
+// sw.js - Service Worker للسائق (النسخة المبسطة)
+// نظام احتياطي فقط - الإشعارات الأساسية تدار بواسطة Flutter
 // ============================================
 
-const STATIC_CACHE_NAME = 'tarhal-driver-static-v3';
-const DYNAMIC_CACHE_NAME = 'tarhal-driver-dynamic-v3';
-const SB_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
-const HEARTBEAT_URL = `${SB_URL}/rest/v1/driver_locations`;
+const STATIC_CACHE_NAME = 'tarhal-driver-static-v4';
+const DYNAMIC_CACHE_NAME = 'tarhal-driver-dynamic-v4';
 
 const STATIC_FILES = [
   '/',
@@ -26,9 +23,14 @@ const STATIC_FILES = [
 
 // =================== Install & Activate ===================
 self.addEventListener('install', (event) => {
-  console.log('SW: Installing...');
+  console.log('SW: Installing simplified version...');
   event.waitUntil(
-    caches.open(STATIC_CACHE_NAME).then(cache => cache.addAll(STATIC_FILES)).then(() => self.skipWaiting())
+    caches.open(STATIC_CACHE_NAME)
+      .then(cache => cache.addAll(STATIC_FILES))
+      .then(() => {
+        console.log('✅ Static files cached');
+        return self.skipWaiting();
+      })
   );
 });
 
@@ -37,165 +39,137 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then(keys => Promise.all(
       keys.map(key => {
-        if (![STATIC_CACHE_NAME, DYNAMIC_CACHE_NAME].includes(key)) return caches.delete(key);
+        if (![STATIC_CACHE_NAME, DYNAMIC_CACHE_NAME].includes(key)) {
+          console.log(`🗑️ Deleting old cache: ${key}`);
+          return caches.delete(key);
+        }
       })
-    )).then(() => self.clients.claim())
-  );
-});
-
-// =================== Fetch ===================
-self.addEventListener('fetch', (event) => {
-  if (event.request.url.includes('supabase.co')) return event.respondWith(fetch(event.request));
-  
-  event.respondWith(
-    caches.match(event.request)
-      .then(res => res || fetch(event.request).then(fetchRes => {
-        if (fetchRes.ok && event.request.method === 'GET') {
-          caches.open(DYNAMIC_CACHE_NAME).then(cache => cache.put(event.request.url, fetchRes.clone()));
-        }
-        return fetchRes;
-      }).catch(() => caches.match('/404.html')))
-  );
-});
-
-// =================== Heartbeat ===================
-self.addEventListener('message', (event) => {
-  if (event.data.type === 'DRIVER_HEARTBEAT') handleDriverHeartbeat(event.data.driverId);
-  if (event.data.type === 'DRIVER_OFFLINE') handleDriverOffline(event.data.driverId);
-});
-
-async function handleDriverHeartbeat(driverId) {
-  try {
-    await fetch(`${HEARTBEAT_URL}?driver_id=eq.${driverId}`, {
-      method: 'PATCH',
-      headers: {
-        'apikey': SB_KEY,
-        'Authorization': `Bearer ${SB_KEY}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify({ last_seen: new Date().toISOString(), updated_at: new Date().toISOString() })
-    });
-    console.log('✅ Heartbeat sent');
-  } catch (err) { console.error('❌ Heartbeat error', err); }
-}
-
-async function handleDriverOffline(driverId) {
-  try {
-    await fetch(`${HEARTBEAT_URL}?driver_id=eq.${driverId}`, {
-      method: 'PATCH',
-      headers: {
-        'apikey': SB_KEY,
-        'Authorization': `Bearer ${SB_KEY}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify({ is_online: false, last_seen: new Date().toISOString(), updated_at: new Date().toISOString() })
-    });
-    console.log('✅ Driver set offline');
-  } catch (err) { console.error('❌ Offline error', err); }
-}
-
-// =================== Push Notifications ===================
-self.addEventListener('push', function(event) {
-  if (!event.data) return;
-
-  let data = {};
-  try {
-    data = event.data.json();
-  } catch (e) {
-    console.error('Error parsing push data:', e);
-    return;
-  }
-
-  // Logic to prevent duplicate notifications if Flutter is active
-  const checkFlutterAndNotify = async () => {
-    const clients = await self.clients.matchAll({ type: 'window' });
-
-    // Check if any client is active and likely running in Flutter
-    const isFlutterActive = clients.some(client =>
-      client.visibilityState === 'visible' &&
-      (client.url.includes('driver_id=') || client.url.includes('driver.zoonasd.com'))
-    );
-
-    if (isFlutterActive) {
-      console.log('📱 Flutter/PWA is active, skipping SW notification to avoid duplicates');
-
-      // Notify active clients via postMessage instead of showing a system notification
-      clients.forEach(client => {
-        client.postMessage({
-          type: 'RIDE_REQUEST',
-          payload: data
-        });
-      });
-      return;
-    }
-
-    // If not active, show standard notification
-    const title = '🚗 طلب رحلة جديد - زونا';
-    const vehicleTypes = {
-      'tuktuk': 'توك توك',
-      'economy': 'اقتصادية',
-      'comfort': 'متوسطة',
-      'vip': 'VIP'
-    };
-
-    const vehicleName = vehicleTypes[data.vehicle_type || data.vehicleType] || data.vehicle_type || data.vehicleType;
-    const customerName = data.customer_name || data.customerName || 'عميل';
-    const amount = data.amount || '0';
-
-    const body = `${customerName} - ${vehicleName} - ${amount} SDG`;
-
-    const options = {
-      body: body,
-      icon: '/icons/icon-192x192.png',
-      badge: '/icons/icon-96x96.png',
-      data: data,
-      vibrate: [200, 100, 200, 100, 200],
-      requireInteraction: true,
-      tag: 'ride-request-' + (data.ride_id || data.rideId || Date.now()),
-      actions: [
-        { action: 'accept', title: '✅ قبول' },
-        { action: 'decline', title: '❌ رفض' }
-      ]
-    };
-
-    return self.registration.showNotification(title, options);
-  };
-
-  event.waitUntil(checkFlutterAndNotify());
-});
-
-self.addEventListener('notificationclick', function(event) {
-  event.notification.close();
-
-  const data = event.notification.data;
-  const rideId = data.ride_id || data.rideId;
-  const requestId = data.request_id || data.requestId;
-
-  // إذا ضغط على زر الرفض
-  if (event.action === 'decline') {
-    return;
-  }
-
-  // فتح التطبيق أو الانتقال لصفحة قبول الرحلة
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window' }).then(clients => {
-      // إذا كان التطبيق مفتوحاً، ركز عليه
-      for (const client of clients) {
-        if (client.url.includes('driver.zoonasd.com') && 'focus' in client) {
-          return client.focus();
-        }
-      }
-      // إذا لم يكن مفتوحاً، افتحه
-      if (self.clients.openWindow) {
-        const url = rideId ?
-          `https://driver.zoonasd.com/accept-ride.html?rideId=${rideId}&requestId=${requestId}` :
-          'https://driver.zoonasd.com/';
-        return self.clients.openWindow(url);
-      }
+    )).then(() => {
+      console.log('✅ Cache cleanup completed');
+      return self.clients.claim();
     })
   );
 });
 
-console.log('✅ Service Worker loaded - Push API Ready');
+// =================== Fetch Handler ===================
+self.addEventListener('fetch', (event) => {
+  // تجاهل طلبات Service Worker نفسها
+  if (event.request.url.includes('sw.js')) {
+    return;
+  }
+  
+  // تجاهل طلبات غير HTTP/HTTPS
+  if (!event.request.url.startsWith('http')) {
+    return;
+  }
+  
+  event.respondWith(
+    caches.match(event.request)
+      .then(cachedResponse => {
+        // إذا كان الملف مخزناً في الكاش، استخدمه
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        
+        // إذا لم يكن في الكاش، حمله من الشبكة
+        return fetch(event.request)
+          .then(networkResponse => {
+            // التخزين المؤقت للطلبات الناجحة فقط
+            if (networkResponse.ok && 
+                event.request.method === 'GET' &&
+                networkResponse.status === 200) {
+              
+              const responseClone = networkResponse.clone();
+              caches.open(DYNAMIC_CACHE_NAME)
+                .then(cache => {
+                  cache.put(event.request, responseClone);
+                });
+            }
+            return networkResponse;
+          })
+          .catch(() => {
+            // صفحة 404 للطلبات الفاشلة
+            return caches.match('/404.html');
+          });
+      })
+  );
+});
+
+// =================== Message Handler ===================
+// استقبال رسائل من الصفحة الرئيسية
+self.addEventListener('message', (event) => {
+  console.log('SW: Message received:', event.data);
+  
+  const { type } = event.data;
+  
+  switch (type) {
+    case 'SKIP_WAITING':
+      self.skipWaiting();
+      console.log('✅ Skipping waiting phase');
+      break;
+      
+    case 'CLEAR_CACHE':
+      caches.delete(DYNAMIC_CACHE_NAME)
+        .then(() => {
+          console.log('✅ Dynamic cache cleared');
+          if (event.source) {
+            event.source.postMessage({ type: 'CACHE_CLEARED' });
+          }
+        });
+      break;
+      
+    case 'GET_CACHE_INFO':
+      caches.keys().then(cacheNames => {
+        if (event.source) {
+          event.source.postMessage({ 
+            type: 'CACHE_INFO', 
+            data: { 
+              cacheNames,
+              staticCache: STATIC_CACHE_NAME,
+              dynamicCache: DYNAMIC_CACHE_NAME
+            } 
+          });
+        }
+      });
+      break;
+  }
+});
+
+// =================== Push Notification Handler ===================
+// نعطله تماماً لأن Flutter هو من يدير الإشعارات
+self.addEventListener('push', function(event) {
+  console.log('SW: Push received but ignored (handled by Flutter)');
+  // لا نفعل أي شيء - Flutter يتولى الإشعارات
+});
+
+self.addEventListener('notificationclick', function(event) {
+  console.log('SW: Notification click ignored (handled by Flutter)');
+  event.notification.close();
+  // لا نفعل أي شيء - Flutter يتولى النقر على الإشعارات
+});
+
+// =================== Background Sync (احتياطي) ===================
+self.addEventListener('sync', function(event) {
+  console.log('SW: Background sync:', event.tag);
+  
+  if (event.tag === 'heartbeat-sync') {
+    event.waitUntil(
+      // يمكن إضافة منطق مزامنة بسيط هنا إذا لزم الأمر
+      Promise.resolve()
+    );
+  }
+});
+
+// =================== Periodic Background Sync ===================
+if ('periodicSync' in self.registration) {
+  self.addEventListener('periodicsync', (event) => {
+    if (event.tag === 'driver-status-update') {
+      console.log('SW: Periodic sync for driver status');
+      // لا نفعل أي شيء - Flutter يتولى تحديث الحالة
+    }
+  });
+}
+
+console.log('✅ Service Worker loaded (Simplified Version)');
+console.log('📱 Push notifications handled by Flutter');
+console.log('💾 Caching only - No VAPID, No Push API');
