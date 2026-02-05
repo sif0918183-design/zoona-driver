@@ -845,33 +845,74 @@
       return outputArray;
     }
 
-    // دالة الاشتراك في Push Notifications
+    // دالة الاشتراك في Push Notifications المحسنة
     async function subscribeToPushNotifications(driverId) {
       try {
+        // التحقق من دعم المتصفح
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+          showNotification('⚠️ متصفحك لا يدعم الإشعارات الفورية', 'warning');
+          return null;
+        }
+
         console.log('🔔 Requesting notification permission...');
+
+        // طلب الإذن
         const permission = await Notification.requestPermission();
         if (permission !== 'granted') {
-          showNotification('⚠️ تم رفض إذن الإشعارات. يرجى تفعيلها من إعدادات المتصفح.', 'warning');
-          throw new Error('Notification permission denied');
+          showNotification('⚠️ تم رفض إذن الإشعارات. يرجى تفعيلها يدوياً من إعدادات المتصفح.', 'warning');
+          return null;
         }
 
         console.log('🔄 Registering Service Worker...');
-        const registration = await navigator.serviceWorker.register('/sw.js');
+
+        // تسجيل Service Worker
+        let registration;
+        try {
+          registration = await navigator.serviceWorker.register('/sw.js');
+          console.log('✅ Service Worker registered:', registration.scope);
+        } catch (swError) {
+          console.error('Service Worker registration failed:', swError);
+          showNotification('❌ فشل تسجيل Service Worker', 'error');
+          return null;
+        }
+
+        // الانتظار حتى يكون Service Worker جاهزاً
+        await navigator.serviceWorker.ready;
 
         console.log('📡 Subscribing to Push Manager...');
-        const subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-        });
 
-        console.log('✅ Push Subscription obtained:', subscription);
-        await savePushSubscription(driverId, subscription);
+        // الاشتراك في Push
+        let subscription;
+        try {
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+          });
 
-        showNotification('✅ تم تفعيل إشعارات الرحلات بنجاح', 'success');
-        return subscription;
+          console.log('✅ Push Subscription obtained:', subscription);
+        } catch (subscribeError) {
+          console.error('Push subscription failed:', subscribeError);
+          showNotification('❌ فشل الاشتراك في الإشعارات', 'error');
+          return null;
+        }
+
+        // حفظ الاشتراك في Supabase
+        const saved = await savePushSubscription(driverId, subscription);
+        if (saved) {
+          showNotification('✅ تم تفعيل إشعارات الرحلات بنجاح', 'success');
+
+          // إضافة زر الاختبار بعد النجاح
+          addTestPushButton();
+
+          return subscription;
+        } else {
+          showNotification('❌ فشل حفظ معلومات الإشعارات', 'error');
+          return null;
+        }
+
       } catch (error) {
-        console.error('Push subscription failed:', error);
-        showNotification('❌ فشل تفعيل الإشعارات: ' + error.message, 'error');
+        console.error('Push subscription process failed:', error);
+        showNotification('❌ فشل عملية تفعيل الإشعارات', 'error');
         return null;
       }
     }
@@ -890,8 +931,10 @@
 
         if (error) throw error;
         console.log('✅ Push subscription saved for driver:', driverId);
+        return true;
       } catch (error) {
         console.error('Error saving push subscription:', error);
+        return false;
       }
     }
 
@@ -1165,6 +1208,9 @@
         }, 900);
         
         checkAuth();
+
+        // تسجيل Service Worker فوراً عند تحميل الصفحة
+        registerServiceWorker();
     });
 
     // تهيئة الأنظمة بعد تسجيل الدخول
@@ -1178,7 +1224,7 @@
         
         // 1. تسجيل Service Worker
         await registerServiceWorker();
-        
+
         // 2. تحديث/الاشتراك في الإشعارات
         await updatePushSubscriptionOnLogin(currentDriver.id);
 
@@ -1654,6 +1700,67 @@
         showNotification('تم رفض الرحلة', 'info');
     }
 
+    // إضافة زر اختبار الإشعارات
+    function addTestPushButton() {
+      const card = document.querySelector('#driver-dashboard-screen .card');
+      if (card && !document.getElementById('test-push-btn')) {
+        const testBtn = document.createElement('button');
+        testBtn.id = 'test-push-btn';
+        testBtn.className = 'btn btn-outline mt-2';
+        testBtn.innerHTML = `
+          <ion-icon name="notifications-outline"></ion-icon>
+          اختبار إشعار تجريبي
+        `;
+        testBtn.onclick = sendTestPushNotification;
+
+        // البحث عن مكان مناسب للإضافة (قبل زر تسجيل الخروج)
+        const logoutBtn = card.querySelector('button[onclick="logoutDriver()"]');
+        if (logoutBtn) {
+          card.insertBefore(testBtn, logoutBtn);
+        } else {
+          card.appendChild(testBtn);
+        }
+      }
+    }
+
+    // دالة إرسال إشعار تجريبي
+    async function sendTestPushNotification() {
+      if (!currentDriver) {
+        showNotification('❌ يجب تسجيل الدخول أولاً', 'error');
+        return;
+      }
+
+      try {
+        showNotification('🚀 جاري إرسال إشعار تجريبي...', 'info');
+
+        // إرسال طلب لإشعار تجريبي
+        const response = await fetch('/api/send-test-push', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            driverId: currentDriver.id,
+            customerName: 'عميل تجريبي',
+            amount: '5000',
+            distance: '3.5 كم',
+            vehicleType: 'economy'
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          showNotification('✅ تم إرسال إشعار التجريبي', 'success');
+        } else {
+          showNotification(`❌ فشل الإرسال: ${result.error}`, 'error');
+        }
+      } catch (error) {
+        console.error('Test notification error:', error);
+        showNotification('❌ حدث خطأ أثناء إرسال الإشعار التجريبي', 'error');
+      }
+    }
+
     // Helper Functions
     function getVehicleTypeName(type) {
         const names = {
@@ -1689,6 +1796,7 @@
             setTimeout(() => notification.remove(), 300);
         }, 3000);
     }
+    window.showNotification = showNotification;
 
     // Placeholder Functions
     function showDriverProfile() {
@@ -2358,32 +2466,6 @@ async function checkDriverLocationRecord() {
     }
 }
 
-// تعديل checkAuth لاستعادة الحالة
-function checkAuth() {
-    const savedDriver = localStorage.getItem('tarhal_driver');
-    
-    if (savedDriver) {
-        try {
-            currentDriver = JSON.parse(savedDriver);
-            localStorage.setItem('driver_id', currentDriver.id);
-            showScreen('driver-dashboard-screen');
-            updateDriverDashboard();
-            initDriverSystems(); // تهيئة الأنظمة عند تحميل الصفحة
-
-            // استعادة وضع التشغيل بعد ثانية
-            setTimeout(() => {
-                restoreDriverStatus();
-            }, 1000);
-            
-        } catch (e) {
-            localStorage.removeItem('tarhal_driver');
-            showScreen('driver-login-screen');
-        }
-    } else {
-        showScreen('driver-login-screen');
-    }
-}
-
 // إضافة أزرار التحكم في الواجهة (لـ updateDriverDashboard)
 async function updateDriverDashboard() {
     if (!currentDriver) return;
@@ -2432,6 +2514,12 @@ async function updateDriverDashboard() {
     // إضافة أزرار التحكم
     setTimeout(() => {
         const card = document.querySelector('#driver-dashboard-screen .card');
+
+        // فحص وجود اشتراك مسبق لعرض زر الاختبار
+        if (currentDriver.push_subscription) {
+            addTestPushButton();
+        }
+
         if (card && !document.getElementById('control-buttons')) {
             const controlsDiv = document.createElement('div');
             controlsDiv.id = 'control-buttons';
@@ -2465,7 +2553,6 @@ async function updateDriverDashboard() {
         }
     }, 500);
 }
-</script>
 
 // ============================================
 // نظام تكيفي يعمل في جميع الحالات

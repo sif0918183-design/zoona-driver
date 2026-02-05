@@ -5,7 +5,9 @@
 
 const STATIC_CACHE_NAME = 'tarhal-driver-static-v3';
 const DYNAMIC_CACHE_NAME = 'tarhal-driver-dynamic-v3';
-const HEARTBEAT_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co/rest/v1/driver_locations';
+const SB_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
+const HEARTBEAT_URL = `${SB_URL}/rest/v1/driver_locations`;
 
 const STATIC_FILES = [
   '/',
@@ -64,12 +66,11 @@ self.addEventListener('message', (event) => {
 
 async function handleDriverHeartbeat(driverId) {
   try {
-    const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
     await fetch(`${HEARTBEAT_URL}?driver_id=eq.${driverId}`, {
       method: 'PATCH',
       headers: {
-        'apikey': key,
-        'Authorization': `Bearer ${key}`,
+        'apikey': SB_KEY,
+        'Authorization': `Bearer ${SB_KEY}`,
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal'
       },
@@ -81,12 +82,11 @@ async function handleDriverHeartbeat(driverId) {
 
 async function handleDriverOffline(driverId) {
   try {
-    const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
     await fetch(`${HEARTBEAT_URL}?driver_id=eq.${driverId}`, {
       method: 'PATCH',
       headers: {
-        'apikey': key,
-        'Authorization': `Bearer ${key}`,
+        'apikey': SB_KEY,
+        'Authorization': `Bearer ${SB_KEY}`,
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal'
       },
@@ -108,9 +108,22 @@ self.addEventListener('push', function(event) {
     return;
   }
 
-  // عرض الإشعار
-  const title = data.title || 'رحلة جديدة 🚗';
-  const body = data.body || `طلب رحلة جديد من ${data.customer_name || 'عميل'}`;
+  // تحسين عرض الإشعار ليتوافق مع هيكل بيانات الرحلة
+  const title = '🚗 طلب رحلة جديد - زونا';
+
+  // استخدام نفس دالة تحويل نوع المركبة الموجودة في index.html
+  const vehicleTypes = {
+    'tuktuk': 'توك توك',
+    'economy': 'اقتصادية',
+    'comfort': 'متوسطة',
+    'vip': 'VIP'
+  };
+
+  const vehicleName = vehicleTypes[data.vehicle_type || data.vehicleType] || data.vehicle_type || data.vehicleType;
+  const customerName = data.customer_name || data.customerName || 'عميل';
+  const amount = data.amount || '0';
+
+  const body = `${customerName} - ${vehicleName} - ${amount} SDG`;
 
   const options = {
     body: body,
@@ -119,7 +132,7 @@ self.addEventListener('push', function(event) {
     data: data,
     vibrate: [200, 100, 200, 100, 200],
     requireInteraction: true,
-    tag: 'ride-request-' + (data.ride_id || 'general'),
+    tag: 'ride-request-' + (data.ride_id || data.rideId || Date.now()),
     actions: [
       { action: 'accept', title: '✅ قبول' },
       { action: 'decline', title: '❌ رفض' }
@@ -128,7 +141,7 @@ self.addEventListener('push', function(event) {
 
   event.waitUntil(
     self.registration.showNotification(title, options).then(() => {
-      // إرسال رسالة إلى التطبيق المفتوح (Post Message)
+      // إرسال رسالة إلى التطبيق المفتوح
       return self.clients.matchAll({ type: 'window' }).then(clients => {
         clients.forEach(client => {
           client.postMessage({

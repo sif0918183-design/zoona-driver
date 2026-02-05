@@ -2,10 +2,10 @@
 import webpush from 'web-push';
 import { createClient } from '@supabase/supabase-js';
 
-const VAPID_PUBLIC_KEY = 'BH1s1aKlXXTf3TDHjB549HeCOupdhx10DIWrqjfKK7FE9OIXnleoQaW-su_xaCuMAKSHS0B-f1jattX4zYxVd-Y';
-const VAPID_PRIVATE_KEY = 'yL2RoZAOWYf9Ig3JVpMO-vkJSms1j36XUHL2sUMbYJY';
-const SUPABASE_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -39,7 +39,7 @@ export default async function handler(req, res) {
             return res.status(400).json({ success: false, error: 'Missing request body' });
         }
 
-        const { driverId, customerName, amount, distance } = req.body;
+        const { driverId, customerName, amount, distance, vehicleType } = req.body;
 
         console.log('🔔 طلب إرسال إشعار تجريبي Web Push:', { driverId });
 
@@ -67,7 +67,7 @@ export default async function handler(req, res) {
         // 2. إعداد حمولة الإشعار
         const payload = JSON.stringify({
             title: '🔔 اختبار إشعار - زونا',
-            body: `هذا إشعار تجريبي\nالعميل: ${customerName || 'تجريبي'}\nالأجرة: ${amount || '0'} SDG`,
+            body: `هذا إشعار تجريبي\nالعميل: ${customerName || 'تجريبي'}\nالنوع: ${getVehicleTypeArabic(vehicleType || 'economy')}\nالأجرة: ${amount || '0'} SDG`,
             ride_id: 'test-' + Date.now(),
             request_id: 'test-' + Date.now(),
             customer_name: customerName || 'عميل تجريبي',
@@ -103,4 +103,16 @@ export default async function handler(req, res) {
             message: 'حدث خطأ في الخادم'
         });
     }
+}
+
+// دالة مساعدة لتحويل نوع المركبة للعربية
+function getVehicleTypeArabic(type) {
+    const types = {
+        'tuktuk': 'توك توك',
+        'economy': 'اقتصادية',
+        'comfort': 'متوسطة',
+        'vip': 'VIP',
+        'motorcycle': 'دراجة نارية'
+    };
+    return types[type] || type;
 }
