@@ -2,15 +2,17 @@
 import webpush from 'web-push';
 import { createClient } from '@supabase/supabase-js';
 
-const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
+// المفاتيح المضمنة في الكود مباشرة
+const VAPID_PUBLIC_KEY = 'BELQSpfJpLROkcLYhHa1TeEsxdiUrz96HfocRfUCRiZ2cMX8LPt1wwF_a85SruFlX3sdKsAwQzpgyKTIuEhr2FA';
+const VAPID_PRIVATE_KEY = 'iBQkcRI2JjXR9LOR_GLuJMH3lfrHJMg18fgcXkgJB4A'; // استبدل بالمفتاح الخاص الفعلي
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const SUPABASE_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
+
+const tarhalDB = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 webpush.setVapidDetails(
-    'mailto:admin@zoonasd.com',
+    'mailto:mosabkry@gmail.com',
     VAPID_PUBLIC_KEY,
     VAPID_PRIVATE_KEY
 );
@@ -56,7 +58,7 @@ export default async function handler(req, res) {
         }
 
         // 1. جلب بيانات الاشتراك من قاعدة البيانات
-        const { data: driver, error: dbError } = await supabase
+        const { data: driver, error: dbError } = await tarhalDB
             .from('drivers')
             .select('push_subscription, full_name')
             .eq('id', driverId)
@@ -92,7 +94,7 @@ export default async function handler(req, res) {
         console.log('✅ تم إرسال إشعار Web Push بنجاح للسائق:', driver.full_name);
 
         // 4. تسجيل العملية في Supabase
-        await supabase.from('push_notification_logs').insert({
+        await tarhalDB.from('push_notification_logs').insert({
             driver_id: driverId,
             success: true,
             notification_type: 'ride_request',
