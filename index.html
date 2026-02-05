@@ -24,9 +24,6 @@
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-    <!-- OneSignal SDK -->
-    <script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" async=""></script>
-
     <style>
         /* الأنماط الأساسية */
         :root {
@@ -826,249 +823,189 @@
     let currentDriver = null;
     let isDriverOnline = false;
     let locationUpdateInterval = null;
-    let oneSignalManager = null;
 
     // ============================================
-    //  OneSignal Manager Class (دمجت في index.html)
+    // Push API + VAPID Configuration
     // ============================================
+    const VAPID_PUBLIC_KEY = 'BH1s1aKlXXTf3TDHjB549HeCOupdhx10DIWrqjfKK7FE9OIXnleoQaW-su_xaCuMAKSHS0B-f1jattX4zYxVd-Y';
 
-    class OneSignalManager {
-        constructor(supabaseClient, currentDriverRef) {
-            this.appId = null;
-            this.isInitialized = false;
-            this.tarhalDB = supabaseClient;
-            this.currentDriver = currentDriverRef;
+    // دالة تحويل VAPID Key
+    function urlBase64ToUint8Array(base64String) {
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding)
+        .replace(/\-/g, '+')
+        .replace(/_/g, '/');
+
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
+    }
+
+    // دالة الاشتراك في Push Notifications المحسنة
+    async function subscribeToPushNotifications(driverId) {
+      try {
+        // التحقق من دعم المتصفح
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+          showNotification('⚠️ متصفحك لا يدعم الإشعارات الفورية', 'warning');
+          return null;
         }
 
-        async initialize() {
-            if (this.isInitialized || !window.OneSignal) {
-                console.log('OneSignal is already initialized or not available.');
-                return;
-            }
+        console.log('🔔 Requesting notification permission...');
 
-            console.log('OneSignal Manager: Initializing...');
-            
-            this.appId = await this.fetchOneSignalAppId();
-
-            if (!this.appId) {
-                console.error('OneSignal App ID is missing. Cannot initialize.');
-                return;
-            }
-
-            window.OneSignal = window.OneSignal || [];
-            await window.OneSignal.push(() => {
-                OneSignal.init({
-                    appId: this.appId,
-                    allowLocalhostAsSecureOrigin: true,
-                    autoRegister: false,
-                    notifyButton: { enable: false },
-                });
-            });
-
-            this.isInitialized = true;
-            console.log('OneSignal SDK Initialized.');
-            this.registerEventListeners();
+        // طلب الإذن
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          showNotification('⚠️ تم رفض إذن الإشعارات. يرجى تفعيلها يدوياً من إعدادات المتصفح.', 'warning');
+          return null;
         }
 
-        async fetchOneSignalAppId() {
-            try {
-                const response = await fetch('/api/get-onesignal-id');
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch OneSignal App ID: ${response.statusText}`);
-                }
-                const contentType = response.headers.get("content-type");
-                if (contentType && contentType.includes("application/json")) {
-                    const data = await response.json();
-                    return data.appId;
-                } else {
-                    console.warn("OneSignal API response was not JSON. OneSignal might be unavailable in this environment.");
-                    return null;
-                }
-            } catch (error) {
-                console.error('Error fetching OneSignal App ID:', error);
-                return null;
-            }
+        console.log('🔄 Registering Service Worker...');
+
+        // تسجيل Service Worker
+        let registration;
+        try {
+          registration = await navigator.serviceWorker.register('/sw.js');
+          console.log('✅ Service Worker registered:', registration.scope);
+        } catch (swError) {
+          console.error('Service Worker registration failed:', swError);
+          showNotification('❌ فشل تسجيل Service Worker', 'error');
+          return null;
         }
 
-        registerEventListeners() {
-            OneSignal.on('subscriptionChange', (isSubscribed) => {
-                console.log('OneSignal: Subscription status changed:', isSubscribed);
-                if (isSubscribed) {
-                    this.updatePlayerIdForDriver();
-                }
-            });
+        // الانتظار حتى يكون Service Worker جاهزاً
+        await navigator.serviceWorker.ready;
 
-            OneSignal.on('notificationDisplay', (event) => {
-                console.log('OneSignal: Notification displayed:', event);
-            });
+        console.log('📡 Subscribing to Push Manager...');
 
-            OneSignal.on('notificationClick', (event) => {
-                console.log('OneSignal: Notification clicked:', event);
-                this.handleNotificationClick(event);
-            });
+        // الاشتراك في Push
+        let subscription;
+        try {
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+          });
+
+          console.log('✅ Push Subscription obtained:', subscription);
+        } catch (subscribeError) {
+          console.error('Push subscription failed:', subscribeError);
+          showNotification('❌ فشل الاشتراك في الإشعارات', 'error');
+          return null;
         }
 
-        async promptForNotifications() {
-            if (!this.isInitialized) {
-                console.error('OneSignal not initialized. Cannot prompt for notifications.');
-                return false;
-            }
+        // حفظ الاشتراك في Supabase
+        const saved = await savePushSubscription(driverId, subscription);
+        if (saved) {
+          showNotification('✅ تم تفعيل إشعارات الرحلات بنجاح', 'success');
 
-            try {
-                await OneSignal.showSlidedownPrompt();
-                return true;
-            } catch (error) {
-                console.error('Error prompting for notifications:', error);
-                return this.requestNativeNotificationPermission();
-            }
+          // إضافة زر الاختبار بعد النجاح
+          addTestPushButton();
+
+          return subscription;
+        } else {
+          showNotification('❌ فشل حفظ معلومات الإشعارات', 'error');
+          return null;
         }
 
-        async requestNativeNotificationPermission() {
-            if (!('Notification' in window)) {
-                console.log('This browser does not support notifications');
-                return false;
-            }
+      } catch (error) {
+        console.error('Push subscription process failed:', error);
+        showNotification('❌ فشل عملية تفعيل الإشعارات', 'error');
+        return null;
+      }
+    }
 
-            if (Notification.permission === 'granted') {
-                return true;
-            }
+    // دالة لحفظ Push Subscription في Supabase
+    async function savePushSubscription(driverId, subscription) {
+      try {
+        const { error } = await tarhalDB
+          .from('drivers')
+          .update({
+            push_subscription: JSON.stringify(subscription),
+            notification_enabled: true,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', driverId);
 
-            const permission = await Notification.requestPermission();
-            return permission === 'granted';
+        if (error) throw error;
+        console.log('✅ Push subscription saved for driver:', driverId);
+        return true;
+      } catch (error) {
+        console.error('Error saving push subscription:', error);
+        return false;
+      }
+    }
+
+    // تحديث الاشتراك عند تسجيل الدخول
+    async function updatePushSubscriptionOnLogin(driverId) {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+
+        if (subscription) {
+          await savePushSubscription(driverId, subscription);
+        } else {
+          // يمكننا محاولة الاشتراك تلقائياً إذا كان الإذن ممنوحاً مسبقاً
+          if (Notification.permission === 'granted') {
+            await subscribeToPushNotifications(driverId);
+          }
         }
+      } catch (error) {
+        console.error('Error updating push subscription:', error);
+      }
+    }
 
-        async updatePlayerIdForDriver() {
-            if (!this.currentDriver || !this.currentDriver.id) {
-                console.log('No active driver to associate with OneSignal Player ID.');
-                return;
-            }
+    // دالة عالمية تستدعى من Service Worker أو Flutter
+    window.handleRideRequest = function(data) {
+      console.log('🚗 Ride request received:', data);
 
-            const playerId = await OneSignal.getUserId();
-            if (!playerId) {
-                console.error('Could not get OneSignal Player ID.');
-                return;
-            }
+      // تشغيل صوت واهتزاز
+      if (window.soundManager) {
+        window.soundManager.playRideRequestSound();
+      }
 
-            console.log(`Associating OneSignal Player ID: ${playerId} with Driver ID: ${this.currentDriver.id}`);
+      // عرض بيانات الرحلة في واجهة السائق
+      if (typeof showIncomingRideModal === 'function') {
+        showIncomingRideModal(data);
+      } else {
+        // Fallback إذا لم تكن الدالة موجودة
+        console.log('Ride data:', data);
+        showNotification(`🚖 طلب رحلة جديد من ${data.customer_name || 'عميل'}`, 'success');
+      }
 
-            try {
-                const { data, error } = await this.tarhalDB
-                    .from('driver_notifications')
-                    .upsert({
-                        driver_id: this.currentDriver.id,
-                        onesignal_player_id: playerId,
-                        notification_enabled: true,
-                        updated_at: new Date().toISOString(),
-                    }, { onConflict: 'driver_id' });
+      // اهتزاز إضافي
+      if ('vibrate' in navigator) {
+        navigator.vibrate([200, 100, 200, 100, 200]);
+      }
+    };
 
-                if (error) throw error;
-
-                console.log('Successfully updated driver with OneSignal Player ID.');
-                showNotification('✅ تم تفعيل إشعارات OneSignal بنجاح!', 'success');
-                return { success: true, playerId };
-
-            } catch (error) {
-                console.error('Error updating driver with OneSignal Player ID:', error);
-                showNotification('❌ فشل تحديث معرف الإشعارات.', 'error');
-                return { success: false, error: error.message };
-            }
+    // استقبال رسائل من Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', event => {
+        if (event.data.type === 'RIDE_REQUEST') {
+          window.handleRideRequest(event.data.payload);
         }
+      });
+    }
 
-        async syncDriverIdToFlutter() {
-            const driver = this.currentDriver || window.currentDriver;
-            const db = this.tarhalDB || window.tarhalDB;
+    async function registerServiceWorker() {
+      if (!('serviceWorker' in navigator)) {
+        console.warn('Service Worker not supported');
+        return null;
+      }
 
-            if (!driver) return;
-
-            // 1. تحديث localStorage (للربط مع Flutter)
-            localStorage.setItem('driver_id', driver.id);
-            localStorage.setItem('tarhal_driver_id', driver.id);
-
-            // 2. تحديث OneSignal external_user_id
-            if (window.OneSignal && typeof OneSignal.setExternalUserId === 'function') {
-                try {
-                    await OneSignal.setExternalUserId(driver.id);
-                } catch (e) {
-                    console.error('Error setting external user ID:', e);
-                }
-            }
-
-            // 3. تحديث Supabase table 'driver_notifications'
-            try {
-                let playerId = null;
-                if (window.OneSignal && typeof OneSignal.getUserId === 'function') {
-                    playerId = await OneSignal.getUserId();
-                }
-                const { error } = await db
-                    .from('driver_notifications')
-                    .upsert({
-                        driver_id: driver.id,
-                        onesignal_player_id: playerId,
-                        notification_enabled: true,
-                        updated_at: new Date().toISOString()
-                    }, { onConflict: 'driver_id' });
-
-                if (error) throw error;
-                console.log('✅ Driver ID synced to Flutter/OneSignal:', driver.id);
-            } catch (error) {
-                console.error('❌ Error syncing to driver_notifications:', error);
-            }
-        }
-
-        handleNotificationClick(event) {
-            try {
-                const data = event.notification.data;
-                console.log('Notification data:', data);
-                
-                if (data && data.rideId) {
-                    window.location.href = `/accept-ride.html?rideId=${data.rideId}&requestId=${data.requestId}`;
-                    
-                    if (soundManager) {
-                        soundManager.stopRideRequestSound();
-                    }
-                }
-            } catch (error) {
-                console.error('Error handling notification click:', error);
-            }
-        }
-
-        async sendTestNotification(driverId) {
-            try {
-                const playerId = await OneSignal.getUserId();
-                if (!playerId) {
-                    console.log('No player ID found');
-                    return { success: false, error: 'no_player_id' };
-                }
-
-                const testData = {
-                    playerId: playerId,
-                    driverId: driverId,
-                    rideId: 'test-' + Date.now(),
-                    requestId: 'test-' + Date.now(),
-                    customerName: 'عميل اختبار',
-                    vehicleType: 'economy',
-                    amount: '5000',
-                    distance: '3.5'
-                };
-
-                const response = await fetch('/api/send-test-push', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(testData)
-                });
-
-                const result = await response.json();
-                console.log('Test notification result:', result);
-                return result;
-
-            } catch (error) {
-                console.error('Test notification error:', error);
-                return { success: false, error: error.message };
-            }
-        }
+      try {
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        console.log('✅ Service Worker registered:', registration.scope);
+        return registration;
+      } catch (error) {
+        console.error('Service Worker registration failed:', error);
+        return null;
+      }
     }
 
     // ============================================
@@ -1271,6 +1208,9 @@
         }, 900);
         
         checkAuth();
+
+        // تسجيل Service Worker فوراً عند تحميل الصفحة
+        registerServiceWorker();
     });
 
     // تهيئة الأنظمة بعد تسجيل الدخول
@@ -1282,21 +1222,14 @@
         
         console.log('🔄 Initializing driver systems...');
         
-        // Initialize OneSignal Manager
-        if (window.OneSignal) {
-            oneSignalManager = new OneSignalManager(tarhalDB, currentDriver);
-            try {
-                await oneSignalManager.initialize();
-                console.log('✅ OneSignal Manager initialized');
-            } catch (error) {
-                console.error('❌ OneSignal Manager init error:', error);
-            }
-        } else {
-            console.log('⚠️ OneSignal not loaded');
-        }
-        
-        // Sound manager is already initialized
-        if (soundManager) {
+        // 1. تسجيل Service Worker
+        await registerServiceWorker();
+
+        // 2. تحديث/الاشتراك في الإشعارات
+        await updatePushSubscriptionOnLogin(currentDriver.id);
+
+        // 3. Sound manager
+        if (window.soundManager) {
             console.log('✅ Sound Manager is ready');
         }
         
@@ -1413,158 +1346,6 @@
         showNotification('❌ يجب الموافقة على بنود الاستخدام للمتابعة في التسجيل', 'error');
     }
 
-    // --- OneSignal Linking & Test Notifications ---
-
-    // 1. ربط driver.id مع OneSignal
-    async function linkDriverToOneSignal(driverId) {
-        try {
-            if (window.OneSignal) {
-                // الحصول على playerId الحالي
-                const playerId = await OneSignal.getUserId();
-
-                // تعيين external_user_id
-                await OneSignal.setExternalUserId(driverId);
-
-                console.log('✅ Driver linked to OneSignal:', {
-                    driverId,
-                    playerId,
-                    externalUserId: await OneSignal.getExternalUserId()
-                });
-
-                // حفظ في قاعدة البيانات
-                await saveDriverNotificationLink(driverId, playerId);
-
-                return { success: true, playerId };
-            } else {
-                console.warn('⚠️ OneSignal not available');
-                return { success: false, error: 'OneSignal not available' };
-            }
-        } catch (error) {
-            console.error('❌ Error linking driver to OneSignal:', error);
-            return { success: false, error: error.message };
-        }
-    }
-
-    // 2. دالة لحفظ الربط في Supabase
-    async function saveDriverNotificationLink(driverId, playerId) {
-        try {
-            const { error } = await tarhalDB
-                .from('driver_notifications')
-                .upsert({
-                    driver_id: driverId,
-                    onesignal_player_id: playerId,
-                    onesignal_external_user_id: driverId,
-                    notification_enabled: true,
-                    last_synced_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }, { onConflict: 'driver_id' });
-
-            if (error) throw error;
-
-            console.log('✅ Driver notification link saved to database');
-            return true;
-        } catch (error) {
-            console.error('❌ Error saving driver notification link:', error);
-            return false;
-        }
-    }
-
-    // 3. إضافة زر اختبار الإشعارات في لوحة التحكم
-    function addTestNotificationButton() {
-        const dashboardCard = document.querySelector('#driver-dashboard-screen .card');
-        if (dashboardCard && !document.getElementById('test-notification-btn')) {
-            const testBtn = document.createElement('button');
-            testBtn.id = 'test-notification-btn';
-            testBtn.className = 'btn btn-outline mt-2';
-            testBtn.style.width = '100%';
-            testBtn.innerHTML = `
-                <ion-icon name="notifications-outline"></ion-icon>
-                اختبار الإشعارات
-            `;
-            testBtn.onclick = sendTestNotification;
-
-            dashboardCard.appendChild(testBtn);
-        }
-    }
-
-    // 4. دالة إرسال إشعار تجريبي
-    async function sendTestNotification() {
-        if (!currentDriver) {
-            showNotification('❌ يجب تسجيل الدخول أولاً', 'error');
-            return;
-        }
-
-        try {
-            const response = await fetch('/api/send-test-push', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    driverId: currentDriver.id,
-                    customerName: 'عميل تجريبي',
-                    amount: '5000',
-                    distance: '3.5 كم'
-                })
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                showNotification('✅ تم إرسال إشعار تجريبي', 'success');
-            } else {
-                showNotification(`❌ فشل الإرسال: ${result.error}`, 'error');
-            }
-        } catch (error) {
-            console.error('Test notification error:', error);
-            showNotification('❌ حدث خطأ أثناء الإرسال', 'error');
-        }
-    }
-
-    // 5. دالة لفحص حالة الربط مع OneSignal
-    async function checkOneSignalStatus() {
-        if (!window.OneSignal || !currentDriver) return;
-
-        try {
-            const playerId = await OneSignal.getUserId();
-            const externalUserId = await OneSignal.getExternalUserId();
-
-            const statusMessage = `
-                🔍 حالة الربط:
-                السائق: ${currentDriver.full_name}
-                Driver ID: ${currentDriver.id}
-                OneSignal Player ID: ${playerId || 'غير متصل'}
-                External User ID: ${externalUserId || 'غير مرتبط'}
-                متصل بـ localStorage: ${localStorage.getItem('driver_id') ? 'نعم' : 'لا'}
-            `;
-
-            console.log(statusMessage);
-
-            // عرض النتيجة للمستخدم
-            let statusDiv = document.getElementById('onesignal-status-card');
-            if (!statusDiv) {
-                statusDiv = document.createElement('div');
-                statusDiv.id = 'onesignal-status-card';
-                statusDiv.className = 'card mt-2';
-                const dashboardCard = document.querySelector('#driver-dashboard-screen .card');
-                if (dashboardCard) {
-                    dashboardCard.appendChild(statusDiv);
-                }
-            }
-
-            if (statusDiv) {
-                statusDiv.innerHTML = `
-                    <h4><ion-icon name="information-circle-outline"></ion-icon> حالة نظام الإشعارات</h4>
-                    <div style="font-size: 12px; line-height: 1.6; color: var(--gray);">
-                        ${statusMessage.replace(/\n/g, '<br>')}
-                    </div>
-                `;
-            }
-        } catch (e) {
-            console.error('Error checking OneSignal status:', e);
-        }
-    }
-
-    // استدعاء إضافة زر الاختبار
-    setTimeout(addTestNotificationButton, 1000);
 
     // Driver Login
     async function loginDriver() {
@@ -1627,13 +1408,8 @@
         // تحديث إحصائيات لوحة التحكم
         updateDriverDashboard();
         
-        // تهيئة أنظمة OneSignal والصوت للسائق
+        // تهيئة الأنظمة والصوت للسائق
         await initDriverSystems();
-
-        // مزامنة البيانات مع Flutter/OneSignal
-        if (oneSignalManager) {
-            await oneSignalManager.syncDriverIdToFlutter();
-        }
 
     } catch (error) {
         console.error('Driver login error:', error);
@@ -1670,11 +1446,8 @@
 
             if (isOnline) {
                 startLocationUpdates();
-            }
-
-            // إضافة هذا بعد تحديث الموقع:
-            if (isOnline && oneSignalManager) {
-                await oneSignalManager.syncDriverIdToFlutter();
+                // تحديث اشتراك الإشعارات
+                await updatePushSubscriptionOnLogin(currentDriver.id);
             }
 
         } catch (error) {
@@ -1816,16 +1589,14 @@
         try {
             let result = false;
             
-            // Try with OneSignal first
-            if (oneSignalManager) {
-                result = await oneSignalManager.promptForNotifications();
-                if (result) {
-                    showNotification('✅ تم تفعيل إشعارات OneSignal', 'success');
-                    if (notificationBtn) notificationBtn.classList.add('hidden');
-                }
+            // الاشتراك في إشعارات Push API
+            const subscription = await subscribeToPushNotifications(currentDriver.id);
+            if (subscription) {
+                result = true;
+                if (notificationBtn) notificationBtn.classList.add('hidden');
             }
             
-            // If OneSignal fails, try native notifications
+            // If Push API fails, try native notifications
             if (!result && 'Notification' in window) {
                 if (Notification.permission === 'default') {
                     const permission = await Notification.requestPermission();
@@ -1857,16 +1628,137 @@
     // Test Notification
 
     // Ride Handling
+    function showIncomingRideModal(data) {
+        const modal = document.getElementById('incoming-ride-modal');
+        const details = document.getElementById('ride-details');
+
+        if (!modal || !details) return;
+
+        details.innerHTML = `
+            <div style="display: flex; flex-direction: column; gap: 10px; text-align: right;">
+                <div style="font-size: 18px; font-weight: 800; color: var(--driver);">
+                    ${data.customer_name || 'عميل'}
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>النوع:</span>
+                    <span style="font-weight: 700;">${getVehicleTypeName(data.vehicle_type || data.vehicleType)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>المسافة:</span>
+                    <span style="font-weight: 700;">${data.distance || '0'} كم</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 20px; color: var(--danger); margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px;">
+                    <span>المبلغ:</span>
+                    <span style="font-weight: 800;">${data.amount || '0'} SDG</span>
+                </div>
+            </div>
+        `;
+
+        // حفظ البيانات للقبول
+        modal.dataset.rideId = data.ride_id || data.rideId;
+        modal.dataset.requestId = data.request_id || data.requestId;
+
+        modal.classList.remove('hidden');
+
+        // مؤقت تنازلي
+        let timeLeft = 40;
+        const countdownEl = modal.querySelector('.countdown');
+        if (countdownEl) {
+            countdownEl.textContent = timeLeft;
+            const timer = setInterval(() => {
+                timeLeft--;
+                countdownEl.textContent = timeLeft;
+                if (timeLeft <= 0 || modal.classList.contains('hidden')) {
+                    clearInterval(timer);
+                    if (timeLeft <= 0 && !modal.classList.contains('hidden')) {
+                        declineRide();
+                    }
+                }
+            }, 1000);
+        }
+    }
+
     function acceptRide() {
-        document.getElementById('incoming-ride-modal').classList.add('hidden');
-        showNotification('تم قبول الرحلة بنجاح', 'success');
-        // Here you would implement the ride acceptance logic
+        const modal = document.getElementById('incoming-ride-modal');
+        const rideId = modal.dataset.rideId;
+        const requestId = modal.dataset.requestId;
+
+        modal.classList.add('hidden');
+        if (window.soundManager) window.soundManager.stopRideRequestSound();
+
+        if (rideId) {
+            window.location.href = `/accept-ride.html?rideId=${rideId}&requestId=${requestId}`;
+        } else {
+            showNotification('تم قبول الرحلة بنجاح', 'success');
+        }
     }
 
     function declineRide() {
-        document.getElementById('incoming-ride-modal').classList.add('hidden');
+        const modal = document.getElementById('incoming-ride-modal');
+        modal.classList.add('hidden');
+        if (window.soundManager) window.soundManager.stopRideRequestSound();
         showNotification('تم رفض الرحلة', 'info');
-        // Here you would implement the ride decline logic
+    }
+
+    // إضافة زر اختبار الإشعارات
+    function addTestPushButton() {
+      const card = document.querySelector('#driver-dashboard-screen .card');
+      if (card && !document.getElementById('test-push-btn')) {
+        const testBtn = document.createElement('button');
+        testBtn.id = 'test-push-btn';
+        testBtn.className = 'btn btn-outline mt-2';
+        testBtn.innerHTML = `
+          <ion-icon name="notifications-outline"></ion-icon>
+          اختبار إشعار تجريبي
+        `;
+        testBtn.onclick = sendTestPushNotification;
+
+        // البحث عن مكان مناسب للإضافة (قبل زر تسجيل الخروج)
+        const logoutBtn = card.querySelector('button[onclick="logoutDriver()"]');
+        if (logoutBtn) {
+          card.insertBefore(testBtn, logoutBtn);
+        } else {
+          card.appendChild(testBtn);
+        }
+      }
+    }
+
+    // دالة إرسال إشعار تجريبي
+    async function sendTestPushNotification() {
+      if (!currentDriver) {
+        showNotification('❌ يجب تسجيل الدخول أولاً', 'error');
+        return;
+      }
+
+      try {
+        showNotification('🚀 جاري إرسال إشعار تجريبي...', 'info');
+
+        // إرسال طلب لإشعار تجريبي
+        const response = await fetch('/api/send-test-push', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            driverId: currentDriver.id,
+            customerName: 'عميل تجريبي',
+            amount: '5000',
+            distance: '3.5 كم',
+            vehicleType: 'economy'
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          showNotification('✅ تم إرسال إشعار التجريبي', 'success');
+        } else {
+          showNotification(`❌ فشل الإرسال: ${result.error}`, 'error');
+        }
+      } catch (error) {
+        console.error('Test notification error:', error);
+        showNotification('❌ حدث خطأ أثناء إرسال الإشعار التجريبي', 'error');
+      }
     }
 
     // Helper Functions
@@ -1904,6 +1796,7 @@
             setTimeout(() => notification.remove(), 300);
         }, 3000);
     }
+    window.showNotification = showNotification;
 
     // Placeholder Functions
     function showDriverProfile() {
@@ -2362,10 +2255,8 @@ async function toggleDriverStatus() {
             // 5. إشعار النجاح
             showNotification('✅ أنت الآن متصل وجاهز لاستقبال الطلبات', 'success');
             
-            // 6. مزامنة OneSignal
-            if (oneSignalManager) {
-                await oneSignalManager.syncDriverIdToFlutter();
-            }
+            // 6. مزامنة الإشعارات
+            await updatePushSubscriptionOnLogin(currentDriver.id);
 
             console.log('🎯 DRIVER ONLINE mode ACTIVATED FOREVER');
             
@@ -2479,10 +2370,8 @@ async function restoreDriverStatus() {
                     console.log(`⏰ Driver has been online for ${hours} hours`);
                 }
 
-                // مزامنة OneSignal عند استعادة الحالة
-                if (oneSignalManager) {
-                    await oneSignalManager.syncDriverIdToFlutter();
-                }
+                // مزامنة الإشعارات عند استعادة الحالة
+                await updatePushSubscriptionOnLogin(currentDriver.id);
             } catch (error) {
                 console.error('❌ Failed to restore forever online:', error);
                 // في حالة الفشل، نعيد الحالة إلى offline
@@ -2577,32 +2466,6 @@ async function checkDriverLocationRecord() {
     }
 }
 
-// تعديل checkAuth لاستعادة الحالة
-function checkAuth() {
-    const savedDriver = localStorage.getItem('tarhal_driver');
-    
-    if (savedDriver) {
-        try {
-            currentDriver = JSON.parse(savedDriver);
-            localStorage.setItem('driver_id', currentDriver.id);
-            showScreen('driver-dashboard-screen');
-            updateDriverDashboard();
-            initDriverSystems(); // تهيئة الأنظمة عند تحميل الصفحة
-
-            // استعادة وضع التشغيل بعد ثانية
-            setTimeout(() => {
-                restoreDriverStatus();
-            }, 1000);
-            
-        } catch (e) {
-            localStorage.removeItem('tarhal_driver');
-            showScreen('driver-login-screen');
-        }
-    } else {
-        showScreen('driver-login-screen');
-    }
-}
-
 // إضافة أزرار التحكم في الواجهة (لـ updateDriverDashboard)
 async function updateDriverDashboard() {
     if (!currentDriver) return;
@@ -2651,6 +2514,12 @@ async function updateDriverDashboard() {
     // إضافة أزرار التحكم
     setTimeout(() => {
         const card = document.querySelector('#driver-dashboard-screen .card');
+
+        // فحص وجود اشتراك مسبق لعرض زر الاختبار
+        if (currentDriver.push_subscription) {
+            addTestPushButton();
+        }
+
         if (card && !document.getElementById('control-buttons')) {
             const controlsDiv = document.createElement('div');
             controlsDiv.id = 'control-buttons';
@@ -2666,10 +2535,13 @@ async function updateDriverDashboard() {
                         فحص السجل
                     </button>
                 </div>
-                <button class="btn btn-outline mt-2" onclick="testOneSignalLink()" style="padding: 10px; font-size: 13px;">
+
+                <!-- زر تفعيل الإشعارات الجديد -->
+                <button id="push-notification-btn" class="btn btn-driver mt-2" onclick="subscribeToPushNotifications(currentDriver.id)">
                     <ion-icon name="notifications-outline"></ion-icon>
-                    اختبار ربط الإشعارات
+                    تفعيل إشعارات الرحلة
                 </button>
+
                 <div style="margin-top: 12px; padding: 12px; background: #f0f9ff; border-radius: var(--radius); border: 1px solid #bae6fd; text-align: center;">
                     <small style="color: #0369a1; font-size: 12px;">
                         <ion-icon name="information-circle-outline"></ion-icon>
@@ -2680,84 +2552,6 @@ async function updateDriverDashboard() {
             card.appendChild(controlsDiv);
         }
     }, 500);
-}
-</script>
-<script>
-// تسجيل Service Worker
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(registration => {
-        console.log('✅ Service Worker registered:', registration.scope);
-        
-        // إرسال driverId إلى Service Worker إذا كان السائق متصلاً
-        if (foreverOnlineManager && foreverOnlineManager.isActive) {
-          registration.active.postMessage({
-            type: 'DRIVER_HEARTBEAT',
-            driverId: currentDriver.id
-          });
-        }
-      })
-      .catch(error => {
-        console.log('⚠️ Service Worker registration failed:', error);
-      });
-  });
-  
-  // استقبال رسائل من Service Worker
-  navigator.serviceWorker.addEventListener('message', event => {
-    if (event.data.type === 'REQUEST_DRIVER_ID') {
-      if (currentDriver && foreverOnlineManager && foreverOnlineManager.isActive) {
-        event.source.postMessage({
-          type: 'DRIVER_HEARTBEAT',
-          driverId: currentDriver.id
-        });
-      }
-    }
-  });
-}
-</script>
-
-<script>
-async function testOneSignalLink() {
-    if (!currentDriver) {
-        showNotification('❌ يجب تسجيل الدخول أولاً', 'error');
-        return;
-    }
-
-    let playerId = 'غير متوفر';
-    let externalId = 'غير مرتبط';
-
-    if (window.OneSignal) {
-        try {
-            // استخدام try/catch وتجنب التعليق إذا لم يكن OneSignal جاهزاً
-            if (typeof OneSignal.getUserId === 'function') {
-                const getUserIdPromise = OneSignal.getUserId();
-                // إضافة timeout لتجنب التعليق
-                playerId = await Promise.race([
-                    getUserIdPromise,
-                    new Promise(resolve => setTimeout(() => resolve('جاري التحميل...'), 2000))
-                ]) || 'غير متصل';
-            }
-            if (typeof OneSignal.getExternalUserId === 'function') {
-                const getExternalIdPromise = OneSignal.getExternalUserId();
-                externalId = await Promise.race([
-                    getExternalIdPromise,
-                    new Promise(resolve => setTimeout(() => resolve('جاري التحميل...'), 2000))
-                ]) || 'غير مرتبط';
-            }
-        } catch (e) {
-            console.error('OneSignal test error:', e);
-        }
-    }
-
-    const message = `
-        📱 حالة الربط:
-        Driver ID: ${currentDriver.id}
-        OneSignal Player ID: ${playerId}
-        External User ID: ${externalId}
-    `;
-
-    showNotification(message, playerId !== 'غير متصل' ? 'success' : 'error');
 }
 
 // ============================================
@@ -3033,10 +2827,8 @@ async function toggleDriverStatusUniversal() {
                 
                 showNotification('✅ أنت الآن متصل وجاهز لاستقبال الطلبات', 'success');
                 
-                // مزامنة OneSignal
-                if (oneSignalManager) {
-                    await oneSignalManager.syncDriverIdToFlutter();
-                }
+                // مزامنة الإشعارات
+                await updatePushSubscriptionOnLogin(currentDriver.id);
                 
                 console.log('🎯 UNIVERSAL mode ACTIVATED');
             } else {
@@ -3116,9 +2908,8 @@ async function restoreUniversalStatus() {
                 await universalManager.activate();
                 console.log('✅ Universal mode restored');
                 
-                if (oneSignalManager) {
-                    await oneSignalManager.syncDriverIdToFlutter();
-                }
+                // مزامنة الإشعارات
+                await updatePushSubscriptionOnLogin(currentDriver.id);
             } catch (error) {
                 console.error('❌ Failed to restore universal mode:', error);
                 
