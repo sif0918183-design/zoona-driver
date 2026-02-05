@@ -829,7 +829,8 @@
 
             if (data.type === 'DRIVER_STATUS') {
                 if (typeof updateDriverStatusFromFlutter === 'function') {
-                    updateDriverStatusFromFlutter(data.status);
+                    // Pass payload or full data for robust extraction
+                    updateDriverStatusFromFlutter(data.payload || data);
                 }
             }
         },
@@ -867,6 +868,9 @@
     // Listen for messages from Flutter
     window.addEventListener('message', function(event) {
         if (event.data && event.data.flutter) {
+            // Ignore messages sent by the PWA itself to prevent loops
+            if (event.data.source === 'driver_pwa') return;
+
             console.log('📦 Message from Flutter:', event.data);
             window.FlutterBridge.receiveFromFlutter(event.data);
         }
@@ -1452,7 +1456,20 @@
     // ============================================
 
     // Update driver status from Flutter (Remote command)
-    async function updateDriverStatusFromFlutter(online) {
+    async function updateDriverStatusFromFlutter(data) {
+        // Robust extraction of boolean status from various payload formats
+        let online = false;
+        if (typeof data === 'boolean') {
+            online = data;
+        } else if (data && typeof data.isOnline !== 'undefined') {
+            online = (data.isOnline === true || data.isOnline === 'true');
+        } else if (data && typeof data.status !== 'undefined') {
+            online = (data.status === true || data.status === 'true' || data.status === 'online');
+        } else {
+            // Default to current state if data is unparseable
+            return;
+        }
+
         console.log(`📡 Flutter requested status change to: ${online ? 'Online' : 'Offline'}`);
         if (online !== isDriverOnline) {
             await toggleDriverStatusUniversal();
