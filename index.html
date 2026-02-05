@@ -823,20 +823,40 @@
     // Flutter-PWA Communication Bridge
     // ============================================
     window.FlutterBridge = {
-        // Reception from Flutter
+        // Reception from Flutter (Receiver-Only focus)
         receiveFromFlutter: function(data) {
-            console.log('📱 Received from Flutter:', data);
+            console.log('📱 Received FROM Flutter:', data);
 
-            if (data.type === 'DRIVER_STATUS') {
+            if (data.type === 'RIDE_REQUEST') {
+                // Display ride request directly
+                if (typeof showIncomingRideModal === 'function') {
+                    showIncomingRideModal(data.payload || data);
+                }
+            }
+            else if (data.type === 'DRIVER_STATUS') {
+                // Update driver status based on Flutter
                 if (typeof updateDriverStatusFromFlutter === 'function') {
-                    // Pass payload or full data for robust extraction
                     updateDriverStatusFromFlutter(data.payload || data);
+                }
+            }
+            else if (data.type === 'PLAY_SOUND') {
+                // Play sound requested by Flutter
+                if (window.soundManager) {
+                    window.soundManager.playRideRequestSound();
                 }
             }
         },
 
-        // Sending to Flutter
+        // Restricted sending to Flutter
         sendToFlutter: function(type, payload) {
+            // Only allow non-conflicting types
+            const allowedTypes = ['CONNECTION_TEST', 'PWA_READY', 'DRIVER_LOGIN'];
+
+            if (!allowedTypes.includes(type)) {
+                console.warn(`⚠️ Blocked sendToFlutter for type: ${type}`);
+                return false;
+            }
+
             const message = {
                 type: type,
                 payload: payload,
@@ -856,10 +876,6 @@
                 flutter: true,
                 ...message
             }, '*');
-
-            // Method 3: localStorage for polling fallback
-            localStorage.setItem('flutter_message', JSON.stringify(message));
-            localStorage.removeItem('flutter_message'); // Immediate cleanup
 
             return true;
         }
@@ -1037,29 +1053,30 @@
 
     // دالة عالمية تستدعى من Service Worker أو Flutter
     window.handleRideRequest = function(data) {
-      console.log('🚗 Ride request received:', data);
+      console.log('🚗 Ride request FROM FLUTTER:', data);
 
-      // 1. إرسال إلى Flutter
-      sendToFlutter(data);
-
-      // 2. تشغيل صوت واهتزاز في PWA
-      if (window.soundManager) {
-        window.soundManager.playRideRequestSound();
-      }
-
-      // 3. عرض بيانات الرحلة في واجهة السائق
+      // Display the modal in PWA
       if (typeof showIncomingRideModal === 'function') {
-        showIncomingRideModal(data);
+        showIncomingRideModal(data.payload || data);
       } else {
-        // Fallback إذا لم تكن الدالة موجودة
         console.log('Ride data:', data);
         showNotification(`🚖 طلب رحلة جديد من ${data.customer_name || 'عميل'}`, 'success');
       }
 
-      // اهتزاز إضافي
-      if ('vibrate' in navigator) {
+      // Play sound in PWA as fallback if Flutter is not active/not handling it
+      if (!window.flutter_inappwebview && window.soundManager) {
+        console.log('🔊 Playing sound in PWA (fallback mode)');
+        window.soundManager.playRideRequestSound();
+      } else if (window.flutter_inappwebview) {
+        console.log('✅ Sound handled by Flutter');
+      }
+
+      // Vibrate if not in Flutter
+      if (!window.flutter_inappwebview && 'vibrate' in navigator) {
         navigator.vibrate([200, 100, 200, 100, 200]);
       }
+
+      // ❌ No sendToFlutter call here - Flutter already sent it to us!
     };
 
     // استقبال رسائل من Service Worker
@@ -1274,9 +1291,89 @@
     //  دوال التطبيق الرئيسية
     // ============================================
 
+    // إضافة مؤشر "النمط المتكامل"
+    function addIntegrationStatus() {
+        const card = document.querySelector('#driver-dashboard-screen .card');
+        if (!card || document.getElementById('integration-status')) return;
+
+        const statusDiv = document.createElement('div');
+        statusDiv.id = 'integration-status';
+        statusDiv.innerHTML = `
+            <div style="margin-top: 15px; padding: 12px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: var(--radius); color: white;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <ion-icon name="sync-outline" style="font-size: 18px;"></ion-icon>
+                    <span style="font-weight: 600; font-size: 14px;">النمط المتكامل</span>
+                </div>
+                <div style="font-size: 12px; opacity: 0.9;">
+                    ✅ Flutter يدير الإشعارات والصوت<br>
+                    ✅ PWA تعرض الواجهة فقط<br>
+                    ✅ لا ازدواجية في الاستقبال
+                </div>
+            </div>
+        `;
+
+        // إضافة بعد الملف الشخصي
+        const profile = card.querySelector('.user-profile');
+        if (profile) {
+            profile.after(statusDiv);
+        } else {
+            card.prepend(statusDiv);
+        }
+    }
+
+    // دالة التحقق من وجود Flutter
+    function checkFlutterAvailability() {
+        const flutterAvailable = !!window.flutter_inappwebview;
+
+        // تحديث واجهة Flutter Controls
+        const statusEl = document.getElementById('flutter-status');
+        if (statusEl) {
+            if (flutterAvailable) {
+                statusEl.innerHTML = '✅ متصل بـ Flutter (التحكم المركزي)';
+                statusEl.style.color = '#16a34a';
+            } else {
+                statusEl.innerHTML = '⚠️ يعمل في المتصفح فقط - الإشعارات محدودة';
+                statusEl.style.color = '#f59e0b';
+            }
+        }
+
+        // إذا لم يكن Flutter متاحاً، تفعيل الوضع الاحتياطي
+        if (!flutterAvailable && currentDriver && !window.fallbackEnabled) {
+            console.log('⚠️ Flutter not available, enabling fallback mode');
+            enableFallbackMode();
+        }
+
+        return flutterAvailable;
+    }
+
+    // الوضع الاحتياطي (إذا لم يكن Flutter متاحاً)
+    function enableFallbackMode() {
+        if (window.fallbackEnabled) return;
+        console.log('🔄 Enabling fallback notification mode');
+
+        // تفعيل Realtime listener كنسخة احتياطية
+        tarhalDB.channel(`fallback_${currentDriver.id}`)
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'ride_requests',
+                filter: `driver_id=eq.${currentDriver.id}`
+            }, (payload) => {
+                const rideData = payload.new?.payload || payload.new;
+                window.handleRideRequest(rideData);
+            })
+            .subscribe();
+
+        window.fallbackEnabled = true;
+        showNotification('✅ تم تفعيل الوضع الاحتياطي (بدون Flutter)', 'info');
+    }
+
+    // التحقق الدوري
+    setInterval(checkFlutterAvailability, 10000);
+
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('🚗 تطبيق ترحال زونا للسائقين');
+        console.log('🚗 تطبيق ترحال زونا للسائقين (النمط المتكامل)');
         
         // Initialize sound manager
         window.soundManager = new SoundManager();
@@ -1284,13 +1381,16 @@
         // تهيئة الاتصال مع Flutter
         setTimeout(() => {
             if (window.flutter_inappwebview) {
-                console.log('✅ Flutter WebView detected');
+                console.log('✅ Flutter WebView detected - Central Control Mode');
 
                 // إعلام Flutter بأن PWA جاهز
                 window.FlutterBridge.sendToFlutter('PWA_READY', {
-                    url: window.location.href,
+                    mode: 'view_only',
                     timestamp: new Date().toISOString()
                 });
+
+                // طلب الحالة الحالية من Flutter
+                window.flutter_inappwebview.callHandler('getCurrentStatus');
 
                 // إرسال بيانات السائق إذا كان مسجلاً
                 const savedDriver = localStorage.getItem('tarhal_driver');
@@ -1299,13 +1399,18 @@
                     window.FlutterBridge.sendToFlutter('DRIVER_RESTORED', driver);
                 }
             } else {
-                console.log('⚠️ Running in browser, Flutter not detected');
+                console.log('⚠️ Running in browser, Flutter not detected - Fallback Mode');
             }
-        }, 1000);
+
+            if (typeof checkFlutterAvailability === 'function') {
+                checkFlutterAvailability();
+            }
+        }, 1500);
 
         // Hide splash screen
         setTimeout(() => {
-            document.getElementById('splash-screen').classList.add('hide');
+            const splash = document.getElementById('splash-screen');
+            if (splash) splash.classList.add('hide');
         }, 900);
         
         checkAuth();
@@ -1458,21 +1563,46 @@
     // Update driver status from Flutter (Remote command)
     async function updateDriverStatusFromFlutter(data) {
         // Robust extraction of boolean status from various payload formats
-        let online = false;
+        let flutterOnline = false;
         if (typeof data === 'boolean') {
-            online = data;
+            flutterOnline = data;
         } else if (data && typeof data.isOnline !== 'undefined') {
-            online = (data.isOnline === true || data.isOnline === 'true');
-        } else if (data && typeof data.status !== 'undefined') {
-            online = (data.status === true || data.status === 'true' || data.status === 'online');
-        } else {
-            // Default to current state if data is unparseable
-            return;
+            flutterOnline = (data.isOnline === true || data.isOnline === 'true');
+        } else if (data && (data.status === 'online' || data.status === true)) {
+            flutterOnline = true;
         }
 
-        console.log(`📡 Flutter requested status change to: ${online ? 'Online' : 'Offline'}`);
-        if (online !== isDriverOnline) {
-            await toggleDriverStatusUniversal();
+        console.log(`📡 Flutter status sync: ${flutterOnline ? 'ONLINE' : 'OFFLINE'}`);
+
+        // Update UI ONLY if different, avoiding recursive logic
+        if (flutterOnline !== isDriverOnline) {
+            const statusIndicator = document.getElementById('driver-status-indicator');
+            const statusText = document.getElementById('driver-status-text');
+            const toggleBtn = document.getElementById('toggle-online-btn');
+
+            if (flutterOnline) {
+                // UI shows Online
+                if (statusIndicator) statusIndicator.className = 'status-indicator status-online';
+                if (statusText) statusText.textContent = 'متصل وجاهز';
+                if (toggleBtn) {
+                    toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> إيقاف وضع العمل';
+                    toggleBtn.classList.add('btn-danger');
+                    toggleBtn.classList.remove('btn-driver');
+                }
+                isDriverOnline = true;
+            } else {
+                // UI shows Offline
+                if (statusIndicator) statusIndicator.className = 'status-indicator status-offline';
+                if (statusText) statusText.textContent = 'غير متصل';
+                if (toggleBtn) {
+                    toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> تفعيل وضع العمل';
+                    toggleBtn.classList.remove('btn-danger');
+                    toggleBtn.classList.add('btn-driver');
+                }
+                isDriverOnline = false;
+            }
+
+            // ❌ Don't touch database or localStorage - Flutter owns the state
         }
     }
 
@@ -1513,10 +1643,12 @@
 
     // Supabase Realtime Listener for PWA
     async function setupRealtimeListener() {
+        // ❌ Realtime listener disabled in PWA - Handled by Flutter app
+        console.log('📡 Realtime listener disabled in PWA - Centralized via Flutter');
+        return null;
+
+        /* Original logic (Keep for reference or fallback)
         if (!currentDriver) return;
-
-        console.log(`🔌 Setting up Realtime listener for driver: ${currentDriver.id}`);
-
         const channel = tarhalDB.channel(`pwa_ride_requests_${currentDriver.id}`)
             .on('postgres_changes', {
                 event: 'INSERT',
@@ -1524,23 +1656,12 @@
                 table: 'ride_requests',
                 filter: `driver_id=eq.${currentDriver.id}`
             }, (payload) => {
-                console.log('🔔 Ride request from Realtime:', payload);
-
                 const rideData = payload.new?.payload || payload.new;
-
-                // Dispatch to Flutter
-                sendToFlutter(rideData);
-
-                // Show in PWA
-                if (typeof showIncomingRideModal === 'function') {
-                    showIncomingRideModal(rideData);
-                }
+                window.handleRideRequest(rideData);
             })
-            .subscribe((status) => {
-                console.log('📡 Realtime subscription status:', status);
-            });
-
+            .subscribe();
         return channel;
+        */
     }
 
     // Driver Login
@@ -1602,12 +1723,20 @@
         showScreen('driver-dashboard-screen');
 
         // === إرسال بيانات السائق إلى Flutter ===
+        if (window.flutter_inappwebview) {
+            window.flutter_inappwebview.callHandler('driverLogin', {
+                driverId: driver.id,
+                name: driver.full_name,
+                phone: driver.whatsapp_number
+            });
+            console.log('✅ Notified Flutter of driver login');
+        }
+
+        // Also use the bridge
         window.FlutterBridge.sendToFlutter('DRIVER_LOGIN', {
             driverId: driver.id,
             name: driver.full_name,
-            phone: driver.whatsapp_number,
-            car: driver.car_model,
-            type: driver.car_type
+            phone: driver.whatsapp_number
         });
 
         // حفظ في localStorage للالتقاط من Flutter
@@ -1623,8 +1752,14 @@
         // تحديث إحصائيات لوحة التحكم
         updateDriverDashboard();
         
-        // تهيئة الأنظمة والصوت للسائق
-        await initDriverSystems();
+        // تهيئة الأنظمة والصوت للسائق (فقط إذا لم نكن في Flutter)
+        if (!window.flutter_inappwebview) {
+            await initDriverSystems();
+        } else {
+            console.log('🚀 Systems initialization handled by Flutter');
+            // We still need Service Worker for some assets, but push/realtime is Flutter's job
+            registerServiceWorker();
+        }
 
     } catch (error) {
         console.error('Driver login error:', error);
@@ -1844,13 +1979,9 @@
 
     // Ride Handling
     function showIncomingRideModal(data) {
-        // 1. إرسال البيانات إلى Flutter
-        sendToFlutter(data);
+        // ❌ Removed sendToFlutter from here - Handled by central controller
 
-        // 2. تشغيل الصوت والاهتزاز في PWA
-        if (window.soundManager) {
-            window.soundManager.playRideRequestSound();
-        }
+        // Sound and vibration logic moved to handleRideRequest for better control
 
         const modal = document.getElementById('incoming-ride-modal');
         const details = document.getElementById('ride-details');
@@ -2742,6 +2873,11 @@ async function updateDriverDashboard() {
     setTimeout(() => {
         const card = document.querySelector('#driver-dashboard-screen .card');
 
+        // إضافة حالة التكامل مع Flutter إذا كان متاحاً
+        if (window.flutter_inappwebview) {
+            addIntegrationStatus();
+        }
+
         // فحص وجود اشتراك مسبق لعرض زر الاختبار
         if (currentDriver.push_subscription) {
             addTestPushButton();
@@ -3023,65 +3159,55 @@ async function toggleDriverStatusUniversal() {
         return;
     }
 
+    const newStatus = !isDriverOnline;
+
+    // If in Flutter, let it handle the database update
+    if (window.flutter_inappwebview) {
+        console.log(`📱 Requesting status change via Flutter: ${newStatus}`);
+        window.flutter_inappwebview.callHandler('driverStatusChange', {
+            driverId: currentDriver.id,
+            online: newStatus
+        });
+
+        showNotification(newStatus ? 'جاري التفعيل عبر التطبيق...' : 'جاري الإيقاف عبر التطبيق...', 'info');
+        return; // UI will update when Flutter confirms via receiveFromFlutter
+    }
+
+    // Standard PWA Logic (Fallback)
     const statusIndicator = document.getElementById('driver-status-indicator');
     const statusText = document.getElementById('driver-status-text');
     const toggleBtn = document.getElementById('toggle-online-btn');
 
     if (!isDriverOnline) {
-        console.log('🚀 Activating UNIVERSAL mode...');
-        
+        console.log('🚀 Activating Fallback mode...');
         const originalText = toggleBtn.innerHTML;
         toggleBtn.innerHTML = '<span class="loading"></span> جاري التفعيل...';
         toggleBtn.disabled = true;
         
         try {
-            // استخدام النظام الشامل
             universalManager = new UniversalDriverManager(currentDriver.id);
             const activated = await universalManager.activate();
             
             if (activated) {
-                // تحديث الواجهة
                 statusIndicator.className = 'status-indicator status-online';
                 statusText.textContent = 'متصل وجاهز';
                 toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> إيقاف وضع العمل';
                 toggleBtn.classList.add('btn-danger');
                 toggleBtn.classList.remove('btn-driver');
-                
                 isDriverOnline = true;
-                driverOnlineSince = new Date().toISOString();
-                
-                // حفظ الحالة
                 localStorage.setItem('driver_forever_online', 'true');
-                localStorage.setItem('driver_online_since', driverOnlineSince);
                 localStorage.setItem('driver_online_id', currentDriver.id);
-                
-                showNotification('✅ أنت الآن متصل وجاهز لاستقبال الطلبات', 'success');
-                
-                // مزامنة الإشعارات
-                await updatePushSubscriptionOnLogin(currentDriver.id);
-
-                // مزامنة الحالة مع Flutter
-                await syncDriverStatusWithFlutter();
-
-                // بدء المزامنة المنتظمة
-                startFlutterSync();
-                
-                console.log('🎯 UNIVERSAL mode ACTIVATED');
-            } else {
-                throw new Error('فشل التفعيل');
+                showNotification('✅ أنت الآن متصل (وضع المتصفح)', 'success');
             }
-            
         } catch (error) {
-            console.error('❌ Activation error:', error);
+            console.error('Activation error:', error);
             showNotification('❌ فشل تفعيل وضع العمل', 'error');
             toggleBtn.innerHTML = originalText;
         } finally {
             toggleBtn.disabled = false;
         }
-
     } else {
-        console.log('🛑 Deactivating UNIVERSAL mode...');
-        
+        console.log('🛑 Deactivating Fallback mode...');
         const originalText = toggleBtn.innerHTML;
         toggleBtn.innerHTML = '<span class="loading"></span> جاري الإيقاف...';
         toggleBtn.disabled = true;
@@ -3091,31 +3217,16 @@ async function toggleDriverStatusUniversal() {
                 await universalManager.deactivate();
                 universalManager = null;
             }
-            
             statusIndicator.className = 'status-indicator status-offline';
             statusText.textContent = 'غير متصل';
             toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> تفعيل وضع العمل';
             toggleBtn.classList.remove('btn-danger');
             toggleBtn.classList.add('btn-driver');
-            
             isDriverOnline = false;
-            
             localStorage.removeItem('driver_forever_online');
-            localStorage.removeItem('driver_online_since');
-            localStorage.removeItem('driver_online_id');
-
-            // مزامنة الحالة مع Flutter (Offline)
-            await syncDriverStatusWithFlutter();
-            if (window.flutterSyncInterval) {
-                clearInterval(window.flutterSyncInterval);
-                window.flutterSyncInterval = null;
-            }
-            
-            showNotification('✅ تم إيقاف وضع العمل بنجاح', 'info');
-            console.log('🛑 UNIVERSAL mode DEACTIVATED');
-            
+            showNotification('✅ تم إيقاف وضع العمل', 'info');
         } catch (error) {
-            console.error('❌ Deactivation error:', error);
+            console.error('Deactivation error:', error);
             showNotification('❌ فشل إيقاف وضع العمل', 'error');
             toggleBtn.innerHTML = originalText;
         } finally {

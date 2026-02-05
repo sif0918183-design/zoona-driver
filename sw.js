@@ -108,50 +108,62 @@ self.addEventListener('push', function(event) {
     return;
   }
 
-  // تحسين عرض الإشعار ليتوافق مع هيكل بيانات الرحلة
-  const title = '🚗 طلب رحلة جديد - زونا';
+  // Logic to prevent duplicate notifications if Flutter is active
+  const checkFlutterAndNotify = async () => {
+    const clients = await self.clients.matchAll({ type: 'window' });
 
-  // استخدام نفس دالة تحويل نوع المركبة الموجودة في index.html
-  const vehicleTypes = {
-    'tuktuk': 'توك توك',
-    'economy': 'اقتصادية',
-    'comfort': 'متوسطة',
-    'vip': 'VIP'
-  };
+    // Check if any client is active and likely running in Flutter
+    const isFlutterActive = clients.some(client =>
+      client.visibilityState === 'visible' &&
+      (client.url.includes('driver_id=') || client.url.includes('driver.zoonasd.com'))
+    );
 
-  const vehicleName = vehicleTypes[data.vehicle_type || data.vehicleType] || data.vehicle_type || data.vehicleType;
-  const customerName = data.customer_name || data.customerName || 'عميل';
-  const amount = data.amount || '0';
+    if (isFlutterActive) {
+      console.log('📱 Flutter/PWA is active, skipping SW notification to avoid duplicates');
 
-  const body = `${customerName} - ${vehicleName} - ${amount} SDG`;
-
-  const options = {
-    body: body,
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/icon-96x96.png',
-    data: data,
-    vibrate: [200, 100, 200, 100, 200],
-    requireInteraction: true,
-    tag: 'ride-request-' + (data.ride_id || data.rideId || Date.now()),
-    actions: [
-      { action: 'accept', title: '✅ قبول' },
-      { action: 'decline', title: '❌ رفض' }
-    ]
-  };
-
-  event.waitUntil(
-    self.registration.showNotification(title, options).then(() => {
-      // إرسال رسالة إلى التطبيق المفتوح
-      return self.clients.matchAll({ type: 'window' }).then(clients => {
-        clients.forEach(client => {
-          client.postMessage({
-            type: 'RIDE_REQUEST',
-            payload: data
-          });
+      // Notify active clients via postMessage instead of showing a system notification
+      clients.forEach(client => {
+        client.postMessage({
+          type: 'RIDE_REQUEST',
+          payload: data
         });
       });
-    })
-  );
+      return;
+    }
+
+    // If not active, show standard notification
+    const title = '🚗 طلب رحلة جديد - زونا';
+    const vehicleTypes = {
+      'tuktuk': 'توك توك',
+      'economy': 'اقتصادية',
+      'comfort': 'متوسطة',
+      'vip': 'VIP'
+    };
+
+    const vehicleName = vehicleTypes[data.vehicle_type || data.vehicleType] || data.vehicle_type || data.vehicleType;
+    const customerName = data.customer_name || data.customerName || 'عميل';
+    const amount = data.amount || '0';
+
+    const body = `${customerName} - ${vehicleName} - ${amount} SDG`;
+
+    const options = {
+      body: body,
+      icon: '/icons/icon-192x192.png',
+      badge: '/icons/icon-96x96.png',
+      data: data,
+      vibrate: [200, 100, 200, 100, 200],
+      requireInteraction: true,
+      tag: 'ride-request-' + (data.ride_id || data.rideId || Date.now()),
+      actions: [
+        { action: 'accept', title: '✅ قبول' },
+        { action: 'decline', title: '❌ رفض' }
+      ]
+    };
+
+    return self.registration.showNotification(title, options);
+  };
+
+  event.waitUntil(checkFlutterAndNotify());
 });
 
 self.addEventListener('notificationclick', function(event) {
