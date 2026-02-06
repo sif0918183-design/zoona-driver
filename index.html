@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ترحال زونا - تطبيق السائقين</title>
+    <title>زونا - تطبيق السائقين</title>
 
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="manifest.json">
@@ -154,7 +154,6 @@
 
         .btn-driver:hover {
             background: var(--driver-dark);
-            box-shadow: 0 6px 20px rgba(22, 163, 74, 0.3);
         }
 
         .btn-danger {
@@ -164,7 +163,6 @@
 
         .btn-danger:hover {
             background: var(--danger-dark);
-            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3);
         }
 
         .btn-outline {
@@ -198,6 +196,13 @@
             font-size: 16px;
             transition: all 0.3s ease;
             background: white;
+            direction: rtl;
+            text-align: right;
+        }
+
+        .form-input::placeholder {
+            direction: rtl;
+            text-align: right;
         }
 
         .form-input:focus {
@@ -500,123 +505,56 @@
             opacity: 0;
             visibility: hidden;
         }
-        .form-input {
-    direction: rtl;
-    text-align: right;
-}
-.form-input::placeholder {
-    direction: rtl;
-    text-align: right;
-}
 
-/* Agreement Modal Refined Styles */
-.agreement-modal {
-    display: flex !important;
-    flex-direction: column !important;
-    padding: 0 !important;
-    max-height: 85vh;
-    width: 95%;
-    max-width: 450px;
-}
+        /* Agreement Modal */
+        .agreement-content {
+            max-height: 60vh;
+            overflow-y: auto;
+            padding: 16px;
+            text-align: right;
+            direction: rtl;
+            line-height: 1.6;
+        }
 
-.agreement-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px;
-    max-height: 60vh;
-    min-height: 300px;
-    background: #f8fafc;
-    border-radius: var(--radius);
-    border: 1px solid var(--gray-light);
-    line-height: 1.6;
-    text-align: right;
-    direction: rtl;
-}
+        .scroll-indicator {
+            text-align: center;
+            padding: 8px;
+            color: var(--gray);
+            font-size: 13px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
 
-.agreement-content h3 {
-    color: var(--driver-dark);
-    margin: 20px 0 12px 0;
-    font-size: 16px;
-    font-weight: 700;
-    padding-bottom: 6px;
-    border-bottom: 1px solid var(--driver-light);
-}
+        .bounce {
+            animation: bounce 2s infinite;
+        }
 
-.agreement-content p {
-    margin-bottom: 12px;
-    color: var(--dark);
-    font-size: 14px;
-}
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+            40% {transform: translateY(-8px);}
+            60% {transform: translateY(-4px);}
+        }
 
-.agreement-content ol {
-    padding-right: 20px;
-    margin-bottom: 16px;
-}
+        /* Flutter Status */
+        .flutter-status {
+            margin-top: 12px;
+            padding: 10px;
+            background: #f0f4ff;
+            border-radius: var(--radius);
+            border: 1px solid #3b82f6;
+            font-size: 12px;
+            text-align: center;
+        }
 
-.agreement-content li {
-    margin-bottom: 10px;
-    padding-right: 8px;
-    position: relative;
-    font-size: 13.5px;
-    color: #374151;
-}
+        .flutter-connected {
+            color: #16a34a;
+        }
 
-.agreement-content li:before {
-    content: "•";
-    color: var(--driver);
-    font-weight: bold;
-    font-size: 16px;
-    position: absolute;
-    right: -18px;
-    top: 0;
-}
-
-.scroll-indicator {
-    text-align: center;
-    padding: 8px;
-    color: var(--gray);
-    font-size: 13px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-}
-
-.bounce {
-    animation: bounce 2s infinite;
-}
-
-@keyframes bounce {
-    0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
-    40% {transform: translateY(-8px);}
-    60% {transform: translateY(-4px);}
-}
-
-.overlay.agreement-overlay {
-    background: rgba(0, 0, 0, 0.95) !important;
-    z-index: 10001 !important;
-}
-
-/* Modal and Button Adjustments */
-.btn-small {
-    padding: 10px 16px !important;
-    font-size: 14px !important;
-    border-radius: 10px !important;
-}
-
-.modal .btn {
-    padding: 12px 16px !important;
-    font-size: 14px !important;
-}
-
-.modal-header h2 {
-    font-size: 20px !important;
-    margin-bottom: 4px !important;
-}
-
-.modal-header p {
-    font-size: 14px !important;
-}
+        .flutter-disconnected {
+            color: #ef4444;
+        }
     </style>
 </head>
 <body>
@@ -624,7 +562,7 @@
 <!-- Splash Screen -->
 <div id="splash-screen">
     <div class="splash-content">
-        <img src="icons/icon-384x384.png" alt="Tarhal Zoona Logo" class="splash-logo">
+        <img src="icons/icon-384x384.png" alt="Zoona Logo" class="splash-logo">
         <div class="loader"></div>
         <p class="splash-text">جاري تشغيل زونا للسائقين...</p>
     </div>
@@ -634,7 +572,7 @@
     <!-- Header -->
     <header class="app-header">
         <h1 class="app-title">
-            <img src="icons/icon-512x512.png" alt="ترحال زونا" class="logo-img">
+            <img src="icons/icon-512x512.png" alt="زونا" class="logo-img">
             زونــا - السائقين
         </h1>
     </header>
@@ -683,7 +621,7 @@
             </h2>
 
             <div class="mb-3">
-                <p>للتسجيل كسائق في تطبيق ترحال زونا ، يرجى التواصل مع إدارتنا على واتساب لإكمال عملية التسجيل:</p>
+                <p>للتسجيل كسائق في تطبيق زونا، يرجى التواصل مع إدارتنا على واتساب لإكمال عملية التسجيل:</p>
 
                 <div class="p-3" style="background: #f0f9ff; border-radius: var(--radius); margin: 20px 0;">
                     <h4 class="mb-2" style="color: var(--driver);">المستندات المطلوبة:</h4>
@@ -728,7 +666,7 @@
                     <span id="driver-status-text">غير متصل</span>
                 </div>
 
-                <button id="toggle-online-btn" class="btn btn-driver" onclick="toggleDriverStatus()">
+                <button id="toggle-online-btn" class="btn btn-driver" onclick="toggleDriverStatusUniversal()">
                     <ion-icon name="power-outline"></ion-icon>
                     تفعيل وضع العمل
                 </button>
@@ -756,17 +694,14 @@
                 </div>
             </div>
 
+            <div id="flutter-controls"></div>
+
             <button class="btn btn-driver mt-2" onclick="showDriverProfile()">
                 <ion-icon name="person-circle-outline"></ion-icon>
                 الملف الشخصي
             </button>
 
-            <button class="btn btn-driver mt-2" onclick="window.location.href='travel-platform.html'">
-                <ion-icon name="airplane-outline"></ion-icon>
-                دخول منصة سفريات زونا
-            </button>
-
-            <button class="btn btn-driver mt-2" onclick="logoutDriver()">
+            <button class="btn btn-outline mt-2" onclick="logoutDriver()">
                 <ion-icon name="exit-outline"></ion-icon>
                 تسجيل خروج السائق
             </button>
@@ -809,6 +744,41 @@
     </div>
 </div>
 
+<!-- Driver Agreement Modal -->
+<div id="driver-agreement-modal" class="overlay hidden">
+    <div class="modal" style="max-height: 90vh; width: 95%;">
+        <div class="modal-header" style="background: linear-gradient(135deg, var(--driver), var(--driver-dark)); color: white; padding: 16px 20px; border-radius: var(--radius-lg) var(--radius-lg) 0 0;">
+            <h2 style="font-size: 20px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
+                <ion-icon name="document-text-outline"></ion-icon>
+                إقرار وموافقة السائق
+            </h2>
+            <p style="color: rgba(255,255,255,0.9); margin-top: 4px; font-size: 14px;">
+                تطبيق زونا (النسخة التجريبية)
+            </p>
+        </div>
+
+        <div class="agreement-content" id="agreement-content">
+            <!-- محتوى الإقرار -->
+        </div>
+
+        <div class="scroll-indicator">
+            <ion-icon name="chevron-down-outline" class="bounce"></ion-icon>
+            <span>مرر لأسفل لقراءة البنود كاملة</span>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 16px; padding: 16px; padding-top: 12px; border-top: 1px solid var(--gray-light);">
+            <button class="btn btn-driver" onclick="acceptAgreement()" style="flex: 1; padding: 12px; font-size: 14px;">
+                <ion-icon name="checkmark-circle-outline"></ion-icon>
+                أوافق على جميع البنود
+            </button>
+            <button class="btn btn-danger" onclick="rejectAgreement()" style="flex: 1; padding: 12px; font-size: 14px;">
+                <ion-icon name="close-circle-outline"></ion-icon>
+                لا أوافق
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
     // ============================================
     //  تهيئة التطبيق للسائقين فقط
@@ -818,769 +788,216 @@
     const SB_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
     const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
     const tarhalDB = supabase.createClient(SB_URL, SB_KEY);
-// في index.html - أضف هذا الكود في بداية <script>
-
-// ============================================
-// دالة اختبار استقبال الإشعارات من Flutter
-// ============================================
-
-window.testFlutterConnection = function() {
-  console.log('🔍 Testing Flutter connection...');
-  
-  if (window.flutter_inappwebview) {
-    console.log('✅ Flutter WebView is available');
-    
-    // إرسال رسالة اختبار لـ Flutter
-    window.flutter_inappwebview.callHandler('messageHandler', {
-      type: 'TEST',
-      message: 'Hello from PWA',
-      timestamp: new Date().toISOString()
-    }).then((response) => {
-      console.log('✅ Flutter responded:', response);
-    }).catch((error) => {
-      console.error('❌ Flutter handler error:', error);
-    });
-    
-    return true;
-  } else {
-    console.log('❌ Flutter WebView not found');
-    
-    // محاولة الاتصال عبر postMessage
-    window.postMessage({
-      type: 'CHECK_FLUTTER',
-      source: 'pwa'
-    }, '*');
-    
-    return false;
-  }
-};
-
-// ============================================
-// دالة استقبال معززة من Flutter
-// ============================================
-
-window.handleRideRequest = function(data) {
-  console.log('🎯 RIDE REQUEST RECEIVED from Flutter:', data);
-  
-  // 1. تشغيل الصوت والاهتزاز في PWA
-  if (window.soundManager) {
-    console.log('🔊 Playing sound in PWA');
-    window.soundManager.playRideRequestSound();
-  }
-  
-  if ('vibrate' in navigator) {
-    navigator.vibrate([200, 100, 200]);
-  }
-  
-  // 2. عرض النافذة
-  if (typeof showIncomingRideModal === 'function') {
-    console.log('📱 Showing ride modal');
-    showIncomingRideModal(data);
-  } else {
-    console.log('⚠️ showIncomingRideModal not found, showing notification');
-    showNotification(`🚖 ${data.customerName || 'عميل'} - ${data.amount || '0'} SDG`, 'success');
-  }
-  
-  // 3. حفظ في localStorage للتتبع
-  localStorage.setItem('last_received_ride', JSON.stringify(data));
-  localStorage.setItem('last_ride_time', new Date().toISOString());
-  
-  console.log('✅ Ride request processed successfully');
-};
-
-// ============================================
-// استقبال رسائل من Flutter عبر postMessage
-// ============================================
-
-window.addEventListener('message', function(event) {
-  // فقط معالجة الرسائل من Flutter
-  if (event.data && (event.data.source === 'flutter' || event.data.flutter)) {
-    console.log('📨 Message from Flutter via postMessage:', event.data);
-    
-    if (event.data.type === 'RIDE_REQUEST') {
-      window.handleRideRequest(event.data.payload || event.data);
-    }
-    
-    if (event.data.type === 'SET_DRIVER_ID') {
-      console.log('🆔 Driver ID from Flutter:', event.data.driverId);
-      localStorage.setItem('driver_id', event.data.driverId);
-      localStorage.setItem('tarhal_driver_id', event.data.driverId);
-    }
-  }
-});
-
-// ============================================
-// إضافة زر اختبار في الواجهة
-// ============================================
-
-function addTestButton() {
-  setTimeout(() => {
-    const card = document.querySelector('#driver-dashboard-screen .card');
-    if (card && !document.getElementById('flutter-test-btn')) {
-      const testBtn = document.createElement('button');
-      testBtn.id = 'flutter-test-btn';
-      testBtn.className = 'btn btn-outline mt-2';
-      testBtn.innerHTML = `
-        <ion-icon name="bug-outline"></ion-icon>
-        اختبار استقبال الإشعارات
-      `;
-      testBtn.onclick = function() {
-        // محاكاة استقبال إشعار تجريبي
-        const testData = {
-          rideId: 'test_' + Date.now(),
-          requestId: 'req_test',
-          customerName: 'عميل تجريبي',
-          customerPhone: '0912345678',
-          vehicleType: 'economy',
-          amount: '5000',
-          distance: '3.5 كم',
-          type: 'ride_request'
-        };
-        
-        window.handleRideRequest(testData);
-        showNotification('✅ تم اختبار استقبال الإشعار', 'success');
-      };
-      
-      // إضافة قبل زر تسجيل الخروج
-      const logoutBtn = card.querySelector('button[onclick="logoutDriver()"]');
-      if (logoutBtn) {
-        card.insertBefore(testBtn, logoutBtn);
-      } else {
-        card.appendChild(testBtn);
-      }
-    }
-  }, 2000);
-}
-
-// استدعاء addTestButton بعد تحميل Dashboard
-// أضف في updateDriverDashboard:
-setTimeout(addTestButton, 1500);
-
-    // ============================================
-    // Flutter-PWA Communication Bridge
-    // ============================================
-    window.FlutterBridge = {
-        // Reception from Flutter (Receiver-Only focus)
-        receiveFromFlutter: function(data) {
-            console.log('📱 Received FROM Flutter:', data);
-
-            if (data.type === 'RIDE_REQUEST') {
-                // Display ride request directly
-                if (typeof showIncomingRideModal === 'function') {
-                    showIncomingRideModal(data.payload || data);
-                }
-            }
-            else if (data.type === 'DRIVER_STATUS') {
-                // Update driver status based on Flutter
-                if (typeof updateDriverStatusFromFlutter === 'function') {
-                    updateDriverStatusFromFlutter(data.payload || data);
-                }
-            }
-            else if (data.type === 'PLAY_SOUND') {
-                // Play sound requested by Flutter
-                if (window.soundManager) {
-                    window.soundManager.playRideRequestSound();
-                }
-            }
-        },
-
-        // Restricted sending to Flutter
-        sendToFlutter: function(type, payload) {
-            // Only allow non-conflicting types
-            const allowedTypes = ['CONNECTION_TEST', 'PWA_READY', 'DRIVER_LOGIN'];
-
-            if (!allowedTypes.includes(type)) {
-                console.warn(`⚠️ Blocked sendToFlutter for type: ${type}`);
-                return false;
-            }
-
-            const message = {
-                type: type,
-                payload: payload,
-                timestamp: new Date().toISOString(),
-                source: 'driver_pwa'
-            };
-
-            console.log(`📤 Sending to Flutter [${type}]:`, payload);
-
-            // Method 1: flutter_inappwebview
-            if (window.flutter_inappwebview) {
-                window.flutter_inappwebview.callHandler('messageHandler', message);
-            }
-
-            // Method 2: postMessage for WebView
-            window.postMessage({
-                flutter: true,
-                ...message
-            }, '*');
-
-            return true;
-        }
-    };
-
-    // Listen for messages from Flutter
-    window.addEventListener('message', function(event) {
-        if (event.data && event.data.flutter) {
-            // Ignore messages sent by the PWA itself to prevent loops
-            if (event.data.source === 'driver_pwa') return;
-
-            console.log('📦 Message from Flutter:', event.data);
-            window.FlutterBridge.receiveFromFlutter(event.data);
-        }
-    });
-
-    // Ride-specific Flutter sender
-    function sendToFlutter(rideData) {
-        console.log('🏎️ Dispatching ride to Flutter:', rideData);
-
-        if (window.flutter_inappwebview) {
-            window.flutter_inappwebview.callHandler('rideRequest', rideData);
-        }
-
-        localStorage.setItem('last_ride_request', JSON.stringify(rideData));
-
-        window.postMessage({
-            type: 'RIDE_REQUEST',
-            payload: rideData
-        }, '*');
-
-        // Also use the generic bridge
-        window.FlutterBridge.sendToFlutter('RIDE_REQUEST', rideData);
-    }
 
     // Application State
     let currentDriver = null;
     let isDriverOnline = false;
-    let locationUpdateInterval = null;
+    let driverOnlineSince = null;
+    let universalManager = null;
+    let isFlutterControlling = false;
+    let currentRideId = null;
+    let currentRequestId = null;
+    let rideCountdownTimer = null;
 
     // ============================================
-    // Push API + VAPID Configuration
+    // Flutter-PWA Communication Bridge
     // ============================================
-    const VAPID_PUBLIC_KEY = 'BELQSpfJpLROkcLYhHa1TeEsxdiUrz96HfocRfUCRiZ2cMX8LPt1wwF_a85SruFlX3sdKsAwQzpgyKTIuEhr2FA';
 
-    // دالة تحويل VAPID Key
-    function urlBase64ToUint8Array(base64String) {
-      const padding = '='.repeat((4 - base64String.length % 4) % 4);
-      const base64 = (base64String + padding)
-        .replace(/\-/g, '+')
-        .replace(/_/g, '/');
-
-      const rawData = window.atob(base64);
-      const outputArray = new Uint8Array(rawData.length);
-
-      for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-      }
-      return outputArray;
+    // دالة لفحص اتصال Flutter
+    function checkFlutterConnection() {
+        const flutterAvailable = !!window.flutter_inappwebview;
+        
+        if (flutterAvailable && !isFlutterControlling) {
+            console.log('✅ Flutter WebView detected - Central Control Mode');
+            isFlutterControlling = true;
+            
+            // إعلام Flutter بأن PWA جاهز
+            try {
+                window.flutter_inappwebview.callHandler('testConnection', {});
+                console.log('📱 Sent test connection to Flutter');
+            } catch (e) {
+                console.log('⚠️ Flutter handler error:', e);
+            }
+            
+            // إرسال event
+            window.postMessage({
+                type: 'PWA_READY',
+                source: 'pwa',
+                timestamp: new Date().toISOString()
+            }, '*');
+        }
+        
+        return flutterAvailable;
     }
 
-    // دالة الاشتراك في Push Notifications المحسنة
-    async function subscribeToPushNotifications(driverId) {
-      try {
-        // التحقق من دعم المتصفح
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-          showNotification('⚠️ متصفحك لا يدعم الإشعارات الفورية', 'warning');
-          return null;
-        }
-
-        console.log('🔔 Requesting notification permission...');
-
-        // طلب الإذن
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') {
-          showNotification('⚠️ تم رفض إذن الإشعارات. يرجى تفعيلها يدوياً من إعدادات المتصفح.', 'warning');
-          return null;
-        }
-
-        console.log('🔄 Registering Service Worker...');
-
-        // تسجيل Service Worker
-        let registration;
-        try {
-          registration = await navigator.serviceWorker.register('/sw.js');
-          console.log('✅ Service Worker registered:', registration.scope);
-        } catch (swError) {
-          console.error('Service Worker registration failed:', swError);
-          showNotification('❌ فشل تسجيل Service Worker', 'error');
-          return null;
-        }
-
-        // الانتظار حتى يكون Service Worker جاهزاً
-        await navigator.serviceWorker.ready;
-
-        console.log('📡 Subscribing to Push Manager...');
-
-        // الاشتراك في Push
-        let subscription;
-        try {
-          subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-          });
-
-          console.log('✅ Push Subscription obtained:', subscription);
-        } catch (subscribeError) {
-          console.error('Push subscription failed:', subscribeError);
-          showNotification('❌ فشل الاشتراك في الإشعارات', 'error');
-          return null;
-        }
-
-        // حفظ الاشتراك في Supabase
-        const saved = await savePushSubscription(driverId, subscription);
-        if (saved) {
-          showNotification('✅ تم تفعيل إشعارات الرحلات بنجاح', 'success');
-
-          // إضافة زر الاختبار بعد النجاح
-          addTestPushButton();
-
-          return subscription;
-        } else {
-          showNotification('❌ فشل حفظ معلومات الإشعارات', 'error');
-          return null;
-        }
-
-      } catch (error) {
-        console.error('Push subscription process failed:', error);
-        showNotification('❌ فشل عملية تفعيل الإشعارات', 'error');
-        return null;
-      }
-    }
-
-    // دالة لحفظ Push Subscription في Supabase
-    async function savePushSubscription(driverId, subscription) {
-      try {
-        const { error } = await tarhalDB
-          .from('drivers')
-          .update({
-            push_subscription: JSON.stringify(subscription),
-            notification_enabled: true,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', driverId);
-
-        if (error) throw error;
-        console.log('✅ Push subscription saved for driver:', driverId);
-        return true;
-      } catch (error) {
-        console.error('Error saving push subscription:', error);
-        return false;
-      }
-    }
-
-    // تحديث الاشتراك عند تسجيل الدخول
-    async function updatePushSubscriptionOnLogin(driverId) {
-      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-
-      try {
-        const registration = await navigator.serviceWorker.ready;
-        const subscription = await registration.pushManager.getSubscription();
-
-        if (subscription) {
-          await savePushSubscription(driverId, subscription);
-        } else {
-          // يمكننا محاولة الاشتراك تلقائياً إذا كان الإذن ممنوحاً مسبقاً
-          if (Notification.permission === 'granted') {
-            await subscribeToPushNotifications(driverId);
-          }
-        }
-      } catch (error) {
-        console.error('Error updating push subscription:', error);
-      }
-    }
-
-    // دالة عالمية تستدعى من Service Worker أو Flutter
+    // دالة استقبال الرحلات من Flutter
     window.handleRideRequest = function(data) {
-      console.log('🚗 Ride request FROM FLUTTER:', data);
-
-      // Display the modal in PWA
-      if (typeof showIncomingRideModal === 'function') {
-        showIncomingRideModal(data.payload || data);
-      } else {
-        console.log('Ride data:', data);
-        showNotification(`🚖 طلب رحلة جديد من ${data.customer_name || 'عميل'}`, 'success');
-      }
-
-      // Play sound in PWA as fallback if Flutter is not active/not handling it
-      if (!window.flutter_inappwebview && window.soundManager) {
-        console.log('🔊 Playing sound in PWA (fallback mode)');
-        window.soundManager.playRideRequestSound();
-      } else if (window.flutter_inappwebview) {
-        console.log('✅ Sound handled by Flutter');
-      }
-
-      // Vibrate if not in Flutter
-      if (!window.flutter_inappwebview && 'vibrate' in navigator) {
-        navigator.vibrate([200, 100, 200, 100, 200]);
-      }
-
-      // ❌ No sendToFlutter call here - Flutter already sent it to us!
+        console.log('🎯 RIDE REQUEST RECEIVED from Flutter:', data);
+        
+        // 1. التحقق من أن البيانات صالحة
+        if (!data || (!data.ride_id && !data.rideId)) {
+            console.error('❌ Invalid ride data received');
+            return;
+        }
+        
+        // 2. تحديث البيانات المحلية
+        currentRideId = data.ride_id || data.rideId;
+        currentRequestId = data.request_id || data.requestId;
+        
+        // 3. عرض نافذة الرحلة
+        showIncomingRideModal(data);
+        
+        // 4. حفظ في localStorage للتتبع
+        localStorage.setItem('last_received_ride', JSON.stringify(data));
+        localStorage.setItem('last_ride_time', new Date().toISOString());
+        
+        console.log('✅ Ride request processed successfully');
     };
 
-    // استقبال رسائل من Service Worker
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.addEventListener('message', event => {
-        if (event.data.type === 'RIDE_REQUEST') {
-          window.handleRideRequest(event.data.payload);
+    // استقبال رسائل من Flutter عبر postMessage
+    window.addEventListener('message', function(event) {
+        // فقط معالجة الرسائل من Flutter
+        if (event.data && event.data.source === 'flutter') {
+            console.log('📨 Message from Flutter via postMessage:', event.data);
+            
+            if (event.data.type === 'RIDE_REQUEST') {
+                window.handleRideRequest(event.data.payload || event.data);
+            }
+            
+            if (event.data.type === 'SET_DRIVER_ID') {
+                console.log('🆔 Driver ID from Flutter:', event.data.driverId);
+                localStorage.setItem('driver_id', event.data.driverId);
+                localStorage.setItem('tarhal_driver_id', event.data.driverId);
+                
+                // إذا لم يكن السائق مسجلاً حالياً، نقوم بتسجيله
+                if (!currentDriver && event.data.driverId) {
+                    restoreDriverFromId(event.data.driverId);
+                }
+            }
+            
+            if (event.data.type === 'DRIVER_STATUS') {
+                updateDriverStatusFromFlutter(event.data.payload || event.data);
+            }
         }
-      });
-    }
-
-    async function registerServiceWorker() {
-      if (!('serviceWorker' in navigator)) {
-        console.warn('Service Worker not supported');
-        return null;
-      }
-
-      try {
-        const registration = await navigator.serviceWorker.register('/sw.js');
-        console.log('✅ Service Worker registered:', registration.scope);
-        return registration;
-      } catch (error) {
-        console.error('Service Worker registration failed:', error);
-        return null;
-      }
-    }
+    });
 
     // ============================================
-    //  Sound Manager Class (دمجت في index.html)
+    //  Sound Manager
     // ============================================
 
     class SoundManager {
         constructor() {
             this.enabled = true;
-            this.volume = 0.8;
             this.audioContext = null;
-            this.isPlaying = false;
-            this.loopInterval = null;
             console.log('🎵 Sound Manager initialized');
-            
-            this.setupAudioContext();
-        }
-        
-        setupAudioContext() {
-            const initAudio = () => {
-                if (!this.audioContext && (window.AudioContext || window.webkitAudioContext)) {
-                    try {
-                        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                        console.log('✅ AudioContext created');
-                    } catch (error) {
-                        console.warn('⚠️ Cannot create AudioContext:', error);
-                    }
-                }
-            };
-            
-            ['click', 'touchstart', 'keydown'].forEach(event => {
-                document.addEventListener(event, initAudio, { once: true });
-            });
         }
         
         playRideRequestSound() {
-            if (!this.enabled || this.isPlaying) {
-                console.log('⚠️ الصوت معطّل أو يعمل بالفعل');
-                return;
-            }
+            if (!this.enabled) return;
             
-            console.log('🔊 بدء صوت طلب الرحلة');
-            this.isPlaying = true;
+            console.log('🔊 Playing ride request sound');
             
-            if (this.audioContext && this.audioContext.state !== 'suspended') {
-                this.playWithAudioContext();
-            } else {
+            // محاولة استخدام AudioContext
+            try {
+                if (!this.audioContext && (window.AudioContext || window.webkitAudioContext)) {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                
+                if (this.audioContext && this.audioContext.state !== 'suspended') {
+                    this.playWithAudioContext();
+                } else {
+                    this.playSimpleBeep();
+                }
+            } catch (error) {
+                console.error('❌ Audio error:', error);
                 this.playSimpleBeep();
             }
             
+            // اهتزاز
             this.startVibration();
         }
         
         playWithAudioContext() {
-            const playAlertPattern = () => {
-                if (!this.isPlaying) return;
-                
-                try {
-                    this.playTone(800, 0.2);
-                    
-                    setTimeout(() => {
-                        if (!this.isPlaying) return;
-                        this.playTone(1000, 0.2);
-                    }, 300);
-                    
-                    setTimeout(() => {
-                        if (!this.isPlaying) return;
-                        this.playTone(1200, 0.3);
-                    }, 600);
-                    
-                } catch (error) {
-                    console.error('❌ AudioContext error:', error);
-                    this.playSimpleBeep();
-                }
-            };
-            
-            playAlertPattern();
-            
-            this.loopInterval = setInterval(() => {
-                if (this.isPlaying) {
-                    playAlertPattern();
-                } else {
-                    clearInterval(this.loopInterval);
-                }
-            }, 2500);
-        }
-        
-        playTone(frequency, duration) {
             try {
                 const oscillator = this.audioContext.createOscillator();
                 const gainNode = this.audioContext.createGain();
                 
                 oscillator.type = 'sine';
-                oscillator.frequency.value = frequency;
+                oscillator.frequency.value = 800;
                 
-                gainNode.gain.setValueAtTime(this.volume, this.audioContext.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+                gainNode.gain.setValueAtTime(0.8, this.audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);
                 
                 oscillator.connect(gainNode);
                 gainNode.connect(this.audioContext.destination);
                 
                 oscillator.start(this.audioContext.currentTime);
-                oscillator.stop(this.audioContext.currentTime + duration);
+                oscillator.stop(this.audioContext.currentTime + 0.3);
                 
+                setTimeout(() => {
+                    oscillator.disconnect();
+                    gainNode.disconnect();
+                }, 300);
             } catch (error) {
-                console.error('❌ Error in playTone:', error);
-                throw error;
+                console.error('❌ AudioContext error:', error);
+                this.playSimpleBeep();
             }
         }
         
         playSimpleBeep() {
-            const beep = () => {
-                if (!this.isPlaying) return;
-                try {
-                    if ('vibrate' in navigator) {
-                        navigator.vibrate(200);
-                    }
-                } catch (error) {
-                    console.log('Beep error:', error);
-                }
-            };
-            
-            beep();
-            this.loopInterval = setInterval(beep, 2000);
+            // استخدام صوت بسيط عبر إنشاء عنصر audio
+            try {
+                const audio = new Audio();
+                audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==';
+                audio.play().catch(e => console.log('Audio play error:', e));
+            } catch (error) {
+                console.log('Simple beep error:', error);
+            }
         }
         
         startVibration() {
-            if (!('vibrate' in navigator)) {
-                console.log('⚠️ Vibration API not supported');
-                return;
-            }
-            
-            const vibratePattern = () => {
-                if (this.isPlaying) {
-                    try {
-                        navigator.vibrate([200, 100, 200]);
-                        setTimeout(vibratePattern, 1500);
-                    } catch (error) {
-                        console.log('Vibration failed:', error);
-                    }
-                }
-            };
-            
-            vibratePattern();
-        }
-        
-        stopRideRequestSound() {
-            console.log('🛑 إيقاف صوت طلب الرحلة...');
-            this.isPlaying = false;
-            
-            if (this.loopInterval) {
-                clearInterval(this.loopInterval);
-                this.loopInterval = null;
-            }
-            
             if ('vibrate' in navigator) {
                 try {
-                    navigator.vibrate(0);
+                    navigator.vibrate([200, 100, 200]);
                 } catch (error) {
-                    console.log('Stop vibration error:', error);
+                    console.log('Vibration error:', error);
                 }
             }
         }
         
-        enable() {
-            this.enabled = true;
-            console.log('✅ الصوت مفعّل');
-        }
-        
-        disable() {
-            this.enabled = false;
-            this.stopRideRequestSound();
-            console.log('🔇 الصوت معطّل');
-        }
-        
-        toggle() {
-            if (this.enabled) {
-                this.disable();
-            } else {
-                this.enable();
+        stopSound() {
+            if (this.audioContext) {
+                this.audioContext.close();
+                this.audioContext = null;
             }
-            return this.enabled;
         }
     }
+
+    // Initialize sound manager
+    window.soundManager = new SoundManager();
 
     // ============================================
     //  دوال التطبيق الرئيسية
     // ============================================
 
-    // إضافة مؤشر "النمط المتكامل"
-    function addIntegrationStatus() {
-        const card = document.querySelector('#driver-dashboard-screen .card');
-        if (!card || document.getElementById('integration-status')) return;
-
-        const statusDiv = document.createElement('div');
-        statusDiv.id = 'integration-status';
-        statusDiv.innerHTML = `
-            <div style="margin-top: 15px; padding: 12px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: var(--radius); color: white;">
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                    <ion-icon name="sync-outline" style="font-size: 18px;"></ion-icon>
-                    <span style="font-weight: 600; font-size: 14px;">النمط المتكامل</span>
-                </div>
-                <div style="font-size: 12px; opacity: 0.9;">
-                    ✅ Flutter يدير الإشعارات والصوت<br>
-                    ✅ PWA تعرض الواجهة فقط<br>
-                    ✅ لا ازدواجية في الاستقبال
-                </div>
-            </div>
-        `;
-
-        // إضافة بعد الملف الشخصي
-        const profile = card.querySelector('.user-profile');
-        if (profile) {
-            profile.after(statusDiv);
-        } else {
-            card.prepend(statusDiv);
-        }
-    }
-
-    // دالة التحقق من وجود Flutter
-    function checkFlutterAvailability() {
-        const flutterAvailable = !!window.flutter_inappwebview;
-
-        // تحديث واجهة Flutter Controls
-        const statusEl = document.getElementById('flutter-status');
-        if (statusEl) {
-            if (flutterAvailable) {
-                statusEl.innerHTML = '✅ متصل بـ Flutter (التحكم المركزي)';
-                statusEl.style.color = '#16a34a';
-            } else {
-                statusEl.innerHTML = '⚠️ يعمل في المتصفح فقط - الإشعارات محدودة';
-                statusEl.style.color = '#f59e0b';
-            }
-        }
-
-        // إذا لم يكن Flutter متاحاً، تفعيل الوضع الاحتياطي
-        if (!flutterAvailable && currentDriver && !window.fallbackEnabled) {
-            console.log('⚠️ Flutter not available, enabling fallback mode');
-            enableFallbackMode();
-        }
-
-        return flutterAvailable;
-    }
-
-    // الوضع الاحتياطي (إذا لم يكن Flutter متاحاً)
-    function enableFallbackMode() {
-        if (window.fallbackEnabled) return;
-        console.log('🔄 Enabling fallback notification mode');
-
-        // تفعيل Realtime listener كنسخة احتياطية
-        tarhalDB.channel(`fallback_${currentDriver.id}`)
-            .on('postgres_changes', {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'ride_requests',
-                filter: `driver_id=eq.${currentDriver.id}`
-            }, (payload) => {
-                const rideData = payload.new?.payload || payload.new;
-                window.handleRideRequest(rideData);
-            })
-            .subscribe();
-
-        window.fallbackEnabled = true;
-        showNotification('✅ تم تفعيل الوضع الاحتياطي (بدون Flutter)', 'info');
-    }
-
-    // التحقق الدوري
-    setInterval(checkFlutterAvailability, 10000);
-
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('🚗 تطبيق ترحال زونا للسائقين (النمط المتكامل)');
+        console.log('🚗 تطبيق زونا للسائقين');
         
-        // Initialize sound manager
-        window.soundManager = new SoundManager();
-
-        // تهيئة الاتصال مع Flutter
-        setTimeout(() => {
-            if (window.flutter_inappwebview) {
-                console.log('✅ Flutter WebView detected - Central Control Mode');
-
-                // إعلام Flutter بأن PWA جاهز
-                window.FlutterBridge.sendToFlutter('PWA_READY', {
-                    mode: 'view_only',
-                    timestamp: new Date().toISOString()
-                });
-
-                // طلب الحالة الحالية من Flutter
-                window.flutter_inappwebview.callHandler('getCurrentStatus');
-
-                // إرسال بيانات السائق إذا كان مسجلاً
-                const savedDriver = localStorage.getItem('tarhal_driver');
-                if (savedDriver) {
-                    const driver = JSON.parse(savedDriver);
-                    window.FlutterBridge.sendToFlutter('DRIVER_RESTORED', driver);
-                }
-            } else {
-                console.log('⚠️ Running in browser, Flutter not detected - Fallback Mode');
-            }
-
-            if (typeof checkFlutterAvailability === 'function') {
-                checkFlutterAvailability();
-            }
-        }, 1500);
-
         // Hide splash screen
         setTimeout(() => {
             const splash = document.getElementById('splash-screen');
             if (splash) splash.classList.add('hide');
-        }, 900);
+        }, 1500);
         
         checkAuth();
-
-        // تسجيل Service Worker فوراً عند تحميل الصفحة
-        registerServiceWorker();
+        
+        // فحص اتصال Flutter
+        setTimeout(checkFlutterConnection, 2000);
+        
+        // تحديث اتصال Flutter بشكل دوري
+        setInterval(checkFlutterConnection, 10000);
     });
-
-    // تهيئة الأنظمة بعد تسجيل الدخول
-    async function initDriverSystems() {
-        if (!currentDriver) {
-            console.log('⚠️ No driver logged in');
-            return;
-        }
-        
-        console.log('🔄 Initializing driver systems...');
-        
-        // 1. تسجيل Service Worker
-        await registerServiceWorker();
-
-        // 2. تحديث/الاشتراك في الإشعارات
-        await updatePushSubscriptionOnLogin(currentDriver.id);
-
-        // 3. Sound manager
-        if (window.soundManager) {
-            console.log('✅ Sound Manager is ready');
-        }
-
-        // 4. تشغيل Realtime listener
-        await setupRealtimeListener();
-        
-        showNotification('✅ الأنظمة جاهزة لاستقبال الطلبات', 'success');
-    }
 
     // Screen Navigation
     function showScreen(screenId) {
@@ -1596,14 +1013,11 @@ setTimeout(addTestButton, 1500);
     }
 
     function showDriverRegisterInfo() {
-        // التحقق إذا كان المستخدم قد وافق مسبقاً
         const hasAccepted = localStorage.getItem('driver_agreement_accepted');
-
+        
         if (!hasAccepted) {
-            // عرض نافذة الإقرار أولاً
             showDriverAgreement();
         } else {
-            // إذا كان قد وافق مسبقاً، الانتقال مباشرة
             showScreen('driver-register-info-screen');
         }
     }
@@ -1612,15 +1026,12 @@ setTimeout(addTestButton, 1500);
     function showDriverAgreement() {
         const modal = document.getElementById('driver-agreement-modal');
         modal.classList.remove('hidden');
-
-        // منع التمرير خلف النافذة
+        
         document.body.style.overflow = 'hidden';
-
-        // إضافة محتوى النص البرمجي مع تصميم محسّن
+        
         const contentDiv = document.getElementById('agreement-content');
         contentDiv.innerHTML = `
             <div style="text-align: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
-                <div style="font-size: 36px; color: var(--driver); margin-bottom: 8px;"></div>
                 <h3 style="color: var(--driver-dark); font-size: 16px; margin: 0;">مقدمة</h3>
             </div>
 
@@ -1632,7 +1043,7 @@ setTimeout(addTestButton, 1500);
                 بنود الإقرار والموافقة
             </h3>
 
-            <ol style="font-size: 13.5px;">
+            <ol style="font-size: 13.5px; padding-right: 20px;">
                 <li>أقر بأنني سائق متطوع في مبادرة مجتمعية عبر تطبيق «زونا» وليس في عمل تجاري.</li>
                 <li>أقر بأن تطبيق «زونا» منصة تقنية وسيطة فقط لربط السائقين بالركاب، ولا يمنحني أي صفة رسمية كسائق نقل عام أو خاص.</li>
                 <li>أقر بعدم وجود أي علاقة تعاقدية أو عقد عمل بيني وبين إدارة التطبيق، وأنني مجرد مستخدم للمنصة.</li>
@@ -1660,9 +1071,6 @@ setTimeout(addTestButton, 1500);
                 </p>
             </div>
         `;
-
-        // التأكد من أن المحتوى يبدأ من الأعلى
-        contentDiv.scrollTop = 0;
     }
 
     // قبول الإقرار
@@ -1670,13 +1078,11 @@ setTimeout(addTestButton, 1500);
         const modal = document.getElementById('driver-agreement-modal');
         modal.classList.add('hidden');
         document.body.style.overflow = 'auto';
-
-        // تخزين موافقة المستخدم في localStorage
+        
         localStorage.setItem('driver_agreement_accepted', 'true');
-
+        
         showNotification('✅ شكراً لك، تم تسجيل موافقتك على بنود الاستخدام', 'success');
-
-        // الاستمرار في عملية التسجيل
+        
         showScreen('driver-register-info-screen');
     }
 
@@ -1685,21 +1091,209 @@ setTimeout(addTestButton, 1500);
         const modal = document.getElementById('driver-agreement-modal');
         modal.classList.add('hidden');
         document.body.style.overflow = 'auto';
-
-        // إعادة المستخدم لشاشة الدخول الرئيسية
+        
         showScreen('driver-login-screen');
-
+        
         showNotification('❌ يجب الموافقة على بنود الاستخدام للمتابعة في التسجيل', 'error');
     }
 
+    // Driver Login
+    async function loginDriver() {
+        const phone = document.getElementById('driver-phone').value.trim();
+        const password = document.getElementById('driver-password').value;
+
+        if (!phone || !password) {
+            showNotification('الرجاء إدخال رقم الواتساب وكلمة المرور', 'error');
+            return;
+        }
+
+        const loginBtn = document.querySelector('#driverLoginForm button');
+        const originalText = loginBtn.innerHTML;
+        loginBtn.innerHTML = '<span class="loading"></span> جاري تسجيل الدخول...';
+        loginBtn.disabled = true;
+
+        try {
+            const { data: driver, error } = await tarhalDB
+                .from('drivers')
+                .select('*')
+                .eq('whatsapp_number', phone)
+                .eq('is_active', true)
+                .single();
+
+            if (error || !driver) {
+                showNotification('رقم الواتساب غير مسجل أو الحساب غير مفعل', 'error');
+                return;
+            }
+
+            if (driver.password !== password) {
+                showNotification('كلمة المرور غير صحيحة', 'error');
+                return;
+            }
+
+            // === نجاح تسجيل الدخول ===
+            currentDriver = driver;
+            
+            localStorage.setItem('tarhal_driver', JSON.stringify(driver));
+            localStorage.setItem('driver_id', driver.id);
+            localStorage.setItem('tarhal_driver_id', driver.id);
+
+            // إضافة معرف السائق للـ URL
+            const url = new URL(window.location.href);
+            url.searchParams.set('driver_id', driver.id);
+            url.searchParams.set('driver_name', encodeURIComponent(driver.full_name));
+            window.history.replaceState({}, '', url);
+
+            showNotification('مرحباً بعودتك أيها السائق!', 'success');
+            showScreen('driver-dashboard-screen');
+
+            // إعلام Flutter بتسجيل الدخول
+            if (window.flutter_inappwebview) {
+                try {
+                    await window.flutter_inappwebview.callHandler('driverLogin', {
+                        driverId: driver.id,
+                        name: driver.full_name,
+                        phone: driver.whatsapp_number,
+                        timestamp: new Date().toISOString()
+                    });
+                    console.log('✅ Notified Flutter of driver login');
+                } catch (e) {
+                    console.log('⚠️ Flutter handler error:', e);
+                }
+            }
+
+            // إرسال عبر postMessage
+            window.postMessage({
+                type: 'DRIVER_LOGIN',
+                driverId: driver.id,
+                name: driver.full_name,
+                phone: driver.whatsapp_number,
+                source: 'pwa'
+            }, '*');
+
+            // تحديث Dashboard
+            updateDriverDashboard();
+            
+            // استعادة الحالة
+            restoreUniversalStatus();
+            
+            // إضافة عناصر Flutter
+            addFlutterControlButtons();
+
+        } catch (error) {
+            console.error('Driver login error:', error);
+            showNotification('حدث خطأ أثناء تسجيل الدخول، حاول مرة أخرى', 'error');
+        } finally {
+            loginBtn.innerHTML = originalText;
+            loginBtn.disabled = false;
+        }
+    }
+
+    // استعادة السائق من معرف
+    async function restoreDriverFromId(driverId) {
+        try {
+            const { data: driver, error } = await tarhalDB
+                .from('drivers')
+                .select('*')
+                .eq('id', driverId)
+                .eq('is_active', true)
+                .single();
+
+            if (error || !driver) {
+                console.log('❌ Driver not found for ID:', driverId);
+                return;
+            }
+
+            currentDriver = driver;
+            localStorage.setItem('tarhal_driver', JSON.stringify(driver));
+            
+            showScreen('driver-dashboard-screen');
+            updateDriverDashboard();
+            restoreUniversalStatus();
+            
+            console.log('✅ Driver restored from ID:', driver.full_name);
+        } catch (error) {
+            console.error('Error restoring driver:', error);
+        }
+    }
+
+    // التحقق من المصادقة
+    function checkAuth() {
+        const savedDriver = localStorage.getItem('tarhal_driver');
+        
+        if (savedDriver) {
+            try {
+                currentDriver = JSON.parse(savedDriver);
+                localStorage.setItem('driver_id', currentDriver.id);
+                showScreen('driver-dashboard-screen');
+                updateDriverDashboard();
+                
+                // استعادة الحالة بعد تأخير بسيط
+                setTimeout(() => {
+                    restoreUniversalStatus();
+                    addFlutterControlButtons();
+                }, 1000);
+                
+            } catch (e) {
+                localStorage.removeItem('tarhal_driver');
+                showScreen('driver-login-screen');
+            }
+        } else {
+            showScreen('driver-login-screen');
+        }
+    }
+
+    // تحديث لوحة التحكم
+    async function updateDriverDashboard() {
+        if (!currentDriver) return;
+
+        document.getElementById('driver-avatar').textContent = currentDriver.full_name.charAt(0);
+        document.getElementById('driver-name').textContent = currentDriver.full_name;
+        document.getElementById('driver-car-info').textContent = 
+            `${currentDriver.car_model || 'سيارة'} - ${getVehicleTypeName(currentDriver.car_type)}`;
+
+        document.getElementById('driver-balance').textContent = 
+            (currentDriver.balance || 0).toLocaleString();
+
+        try {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // Today's trips
+            const { data: rides, error } = await tarhalDB
+                .from('rides')
+                .select('*')
+                .eq('driver_id', currentDriver.id)
+                .gte('created_at', today.toISOString())
+                .eq('status', 'completed');
+
+            if (!error && rides) {
+                const todayEarnings = rides.reduce((sum, ride) => sum + (ride.driver_earnings || 0), 0);
+                document.getElementById('today-trips').textContent = rides.length;
+                document.getElementById('today-earnings').textContent = todayEarnings.toLocaleString();
+            }
+
+            // Total trips
+            const { data: totalRides, error: totalError } = await tarhalDB
+                .from('rides')
+                .select('id')
+                .eq('driver_id', currentDriver.id)
+                .eq('status', 'completed');
+
+            if (!totalError && totalRides) {
+                document.getElementById('total-trips').textContent = totalRides.length;
+            }
+
+        } catch (error) {
+            console.error('Error fetching driver stats:', error);
+        }
+    }
 
     // ============================================
-    // Flutter Synchronization Logic
+    // Flutter Status Synchronization
     // ============================================
 
-    // Update driver status from Flutter (Remote command)
+    // Update driver status from Flutter
     async function updateDriverStatusFromFlutter(data) {
-        // Robust extraction of boolean status from various payload formats
         let flutterOnline = false;
         if (typeof data === 'boolean') {
             flutterOnline = data;
@@ -1711,424 +1305,402 @@ setTimeout(addTestButton, 1500);
 
         console.log(`📡 Flutter status sync: ${flutterOnline ? 'ONLINE' : 'OFFLINE'}`);
 
-        // Update UI ONLY if different, avoiding recursive logic
         if (flutterOnline !== isDriverOnline) {
             const statusIndicator = document.getElementById('driver-status-indicator');
             const statusText = document.getElementById('driver-status-text');
             const toggleBtn = document.getElementById('toggle-online-btn');
 
             if (flutterOnline) {
-                // UI shows Online
-                if (statusIndicator) statusIndicator.className = 'status-indicator status-online';
-                if (statusText) statusText.textContent = 'متصل وجاهز';
-                if (toggleBtn) {
-                    toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> إيقاف وضع العمل';
-                    toggleBtn.classList.add('btn-danger');
-                    toggleBtn.classList.remove('btn-driver');
-                }
+                statusIndicator.className = 'status-indicator status-online';
+                statusText.textContent = 'متصل وجاهز';
+                toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> إيقاف وضع العمل';
+                toggleBtn.classList.add('btn-danger');
+                toggleBtn.classList.remove('btn-driver');
                 isDriverOnline = true;
             } else {
-                // UI shows Offline
-                if (statusIndicator) statusIndicator.className = 'status-indicator status-offline';
-                if (statusText) statusText.textContent = 'غير متصل';
-                if (toggleBtn) {
-                    toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> تفعيل وضع العمل';
-                    toggleBtn.classList.remove('btn-danger');
-                    toggleBtn.classList.add('btn-driver');
-                }
+                statusIndicator.className = 'status-indicator status-offline';
+                statusText.textContent = 'غير متصل';
+                toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> تفعيل وضع العمل';
+                toggleBtn.classList.remove('btn-danger');
+                toggleBtn.classList.add('btn-driver');
                 isDriverOnline = false;
             }
-
-            // ❌ Don't touch database or localStorage - Flutter owns the state
         }
     }
 
-    // Synchronize driver status with Flutter
-    async function syncDriverStatusWithFlutter() {
-        if (!currentDriver) return;
+    // ============================================
+    // Universal Driver Manager
+    // ============================================
 
-        const status = {
-            driverId: currentDriver.id,
-            isOnline: isDriverOnline,
-            since: typeof driverOnlineSince !== 'undefined' ? driverOnlineSince : null,
-            timestamp: new Date().toISOString()
-        };
-
-        console.log('🔄 Syncing status with Flutter:', status);
-
-        // Send via bridge
-        window.FlutterBridge.sendToFlutter('DRIVER_STATUS', status);
-
-        // Persist in localStorage for Flutter capture
-        localStorage.setItem('driver_status', JSON.stringify(status));
-    }
-
-    // Start regular sync interval
-    function startFlutterSync() {
-        if (window.flutterSyncInterval) {
-            clearInterval(window.flutterSyncInterval);
-        }
-
-        window.flutterSyncInterval = setInterval(() => {
-            if (currentDriver && isDriverOnline) {
-                syncDriverStatusWithFlutter();
-            }
-        }, 15000); // Every 15 seconds
-
-        console.log('⏱️ Flutter sync interval started');
-    }
-
-    // Supabase Realtime Listener for PWA
-    async function setupRealtimeListener() {
-        // ❌ Realtime listener disabled in PWA - Handled by Flutter app
-        console.log('📡 Realtime listener disabled in PWA - Centralized via Flutter');
-        return null;
-
-        /* Original logic (Keep for reference or fallback)
-        if (!currentDriver) return;
-        const channel = tarhalDB.channel(`pwa_ride_requests_${currentDriver.id}`)
-            .on('postgres_changes', {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'ride_requests',
-                filter: `driver_id=eq.${currentDriver.id}`
-            }, (payload) => {
-                const rideData = payload.new?.payload || payload.new;
-                window.handleRideRequest(rideData);
-            })
-            .subscribe();
-        return channel;
-        */
-    }
-
-    // Driver Login
-    async function loginDriver() {
-    const phone = document.getElementById('driver-phone').value.trim();
-    const password = document.getElementById('driver-password').value;
-
-    // 1. التحقق من إدخال البيانات
-    if (!phone || !password) {
-        showNotification('الرجاء إدخال رقم الواتساب وكلمة المرور', 'error');
-        return;
-    }
-
-    // 2. تجهيز زر تسجيل الدخول (حالة التحميل)
-    const loginBtn = document.querySelector('#driverLoginForm button');
-    const originalText = loginBtn.innerHTML;
-    loginBtn.innerHTML = '<span class="loading"></span> جاري تسجيل الدخول...';
-    loginBtn.disabled = true;
-
-    try {
-        // 3. الاستعلام من قاعدة بيانات Supabase
-        const { data: driver, error } = await tarhalDB
-            .from('drivers')
-            .select('*')
-            .eq('whatsapp_number', phone)
-            .eq('is_active', true)
-            .single();
-
-        // 4. معالجة أخطاء الاستعلام
-        if (error || !driver) {
-            showNotification('رقم الواتساب غير مسجل أو الحساب غير مفعل', 'error');
-            return;
-        }
-
-        // 5. التحقق من كلمة المرور
-        if (driver.password !== password) {
-            showNotification('كلمة المرور غير صحيحة', 'error');
-            return;
-        }
-
-        // === نجاح تسجيل الدخول ===
-        currentDriver = driver;
-        
-        // حفظ بيانات السائق محلياً في المتصفح
-        localStorage.setItem('tarhal_driver', JSON.stringify(driver));
-        localStorage.setItem('driver_id', driver.id);
-        localStorage.setItem('tarhal_driver_id', driver.id);
-
-        // --- الجزء المضاف للربط مع تطبيق Flutter (مهم جداً للإشعارات) ---
-        // نقوم بإضافة driver_id للرابط الحالي لكي يلتقطه WebView في Flutter عبر onLoadStop
-        const url = new URL(window.location.href);
-        url.searchParams.set('driver_id', driver.id);
-        window.history.replaceState({}, '', url); 
-        // -----------------------------------------------------------
-
-        showNotification('مرحباً بعودتك أيها السائق!', 'success');
-        
-        // الانتقال لشاشة لوحة التحكم
-        showScreen('driver-dashboard-screen');
-
-        // === إرسال بيانات السائق إلى Flutter ===
-        if (window.flutter_inappwebview) {
-            window.flutter_inappwebview.callHandler('driverLogin', {
-                driverId: driver.id,
-                name: driver.full_name,
-                phone: driver.whatsapp_number
-            });
-            console.log('✅ Notified Flutter of driver login');
-        }
-
-        // Also use the bridge
-        window.FlutterBridge.sendToFlutter('DRIVER_LOGIN', {
-            driverId: driver.id,
-            name: driver.full_name,
-            phone: driver.whatsapp_number
-        });
-
-        // حفظ في localStorage للالتقاط من Flutter
-        localStorage.setItem('driver_id', driver.id);
-        localStorage.setItem('driver_data', JSON.stringify(driver));
-
-        // إعلام Flutter بالسائق الجديد عبر postMessage
-        window.postMessage({
-            type: 'SET_DRIVER_ID',
-            driverId: driver.id
-        }, '*');
-        
-        // تحديث إحصائيات لوحة التحكم
-        updateDriverDashboard();
-        
-        // تهيئة الأنظمة والصوت للسائق (فقط إذا لم نكن في Flutter)
-        if (!window.flutter_inappwebview) {
-            await initDriverSystems();
-        } else {
-            console.log('🚀 Systems initialization handled by Flutter');
-            // We still need Service Worker for some assets, but push/realtime is Flutter's job
-            registerServiceWorker();
-        }
-
-    } catch (error) {
-        console.error('Driver login error:', error);
-        showNotification('حدث خطأ أثناء تسجيل الدخول، حاول مرة أخرى', 'error');
-    } finally {
-        // إعادة الزر لحالته الطبيعية
-        loginBtn.innerHTML = originalText;
-        loginBtn.disabled = false;
-    }
-}
-
-
-    // Driver Dashboard
-
-    async function updateDriverOnlineStatus(isOnline) {
-        if (!currentDriver) return;
-
-        try {
-            const position = await getCurrentPosition();
+    class UniversalDriverManager {
+        constructor(driverId) {
+            this.driverId = driverId;
+            this.isActive = false;
+            this.heartbeatInterval = null;
+            this.useLastSeen = true;
             
-            await tarhalDB
-                .from('driver_locations')
-                .upsert({
-                    driver_id: currentDriver.id,
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude,
-                    is_online: isOnline,
-                    last_seen: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }, {
-                    onConflict: 'driver_id',
-                    ignoreDuplicates: false
-                });
-
-            if (isOnline) {
-                startLocationUpdates();
-                // تحديث اشتراك الإشعارات
-                await updatePushSubscriptionOnLogin(currentDriver.id);
-            }
-
-        } catch (error) {
-            console.error('Error updating driver status:', error);
+            console.log(`🌐 Universal Driver Manager for: ${driverId}`);
+        }
+        
+        async activate() {
+            console.log('🔓 Activating universal mode...');
             
-            await tarhalDB
-                .from('driver_locations')
-                .upsert({
-                    driver_id: currentDriver.id,
-                    is_online: isOnline,
-                    last_seen: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }, {
-                    onConflict: 'driver_id',
-                    ignoreDuplicates: false
-                });
+            await this.checkLastSeenColumn();
+            
+            this.isActive = true;
+            
+            await this.setOnline();
+            
+            this.startUniversalHeartbeat();
+            
+            this.setupUniversalListeners();
+            
+            console.log('✅ Universal mode activated');
+            return true;
         }
-    }
-
-    function getCurrentPosition() {
-        return new Promise((resolve, reject) => {
-            if (!navigator.geolocation) {
-                reject(new Error('Geolocation not supported'));
-                return;
-            }
-
-            navigator.geolocation.getCurrentPosition(
-                resolve,
-                reject,
-                {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 0
-                }
-            );
-        });
-    }
-
-    function startLocationUpdates() {
-        if (locationUpdateInterval) {
-            clearInterval(locationUpdateInterval);
+        
+        async deactivate() {
+            console.log('🔒 Deactivating universal mode...');
+            
+            this.isActive = false;
+            
+            this.stopAllIntervals();
+            
+            await this.setOffline();
+            
+            console.log('🛑 Universal mode deactivated');
+            return true;
         }
-
-        locationUpdateInterval = setInterval(async () => {
-            if (!currentDriver || !isDriverOnline) {
-                clearInterval(locationUpdateInterval);
-                return;
-            }
-
+        
+        async checkLastSeenColumn() {
             try {
-                const position = await getCurrentPosition();
-
-                await tarhalDB
+                const testData = {
+                    driver_id: this.driverId,
+                    is_online: true,
+                    updated_at: new Date().toISOString(),
+                    last_seen: new Date().toISOString()
+                };
+                
+                const { error } = await tarhalDB
                     .from('driver_locations')
-                    .update({
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude,
-                        last_seen: new Date().toISOString()
-                    })
-                    .eq('driver_id', currentDriver.id);
-
+                    .upsert(testData, { onConflict: 'driver_id' });
+                
+                if (error && error.code === 'PGRST204') {
+                    this.useLastSeen = false;
+                    console.log('⚠️ last_seen column not found, using fallback');
+                    return false;
+                }
+                
+                this.useLastSeen = true;
+                console.log('✅ last_seen column available');
+                return true;
+                
             } catch (error) {
-                console.error('Location update error:', error);
+                console.error('❌ Error checking last_seen:', error);
+                this.useLastSeen = false;
+                return false;
+            }
+        }
+        
+        async setOnline() {
+            try {
+                const updateData = {
+                    driver_id: this.driverId,
+                    is_online: true,
+                    updated_at: new Date().toISOString()
+                };
+                
+                if (this.useLastSeen) {
+                    updateData.last_seen = new Date().toISOString();
+                }
                 
                 await tarhalDB
                     .from('driver_locations')
-                    .update({
-                        last_seen: new Date().toISOString()
-                    })
-                    .eq('driver_id', currentDriver.id);
-            }
-        }, 30000);
-    }
-
-    function startDriverTracking() {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(async (position) => {
+                    .upsert(updateData, { onConflict: 'driver_id' });
+                
+                console.log('✅ Driver set online');
+                return true;
+                
+            } catch (error) {
+                console.error('❌ Error setting online:', error);
+                
                 try {
                     await tarhalDB
                         .from('driver_locations')
                         .upsert({
-                            driver_id: currentDriver.id,
-                            lat: position.coords.latitude,
-                            lng: position.coords.longitude,
-                            car_type: currentDriver.car_type,
-                            last_seen: new Date().toISOString()
+                            driver_id: this.driverId,
+                            is_online: true
                         }, { onConflict: 'driver_id' });
-
-                    showNotification('بدأ تتبع موقعك...', 'success');
-                } catch (error) {
-                    console.error('Tracking error:', error);
+                    return true;
+                } catch (simpleError) {
+                    console.error('❌ Simple online also failed:', simpleError);
+                    return false;
                 }
-            }, (error) => {
-                showNotification('خطأ في الوصول للموقع الجغرافي', 'error');
+            }
+        }
+        
+        async setOffline() {
+            try {
+                await tarhalDB
+                    .from('driver_locations')
+                    .update({
+                        is_online: false,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('driver_id', this.driverId);
+                
+                console.log('✅ Driver set offline');
+                return true;
+                
+            } catch (error) {
+                console.error('❌ Error setting offline:', error);
+                
+                try {
+                    await tarhalDB
+                        .from('driver_locations')
+                        .update({ is_online: false })
+                        .eq('driver_id', this.driverId);
+                    return true;
+                } catch (simpleError) {
+                    console.error('❌ Simple offline also failed:', simpleError);
+                    return false;
+                }
+            }
+        }
+        
+        async sendHeartbeat() {
+            if (!this.isActive) return;
+            
+            try {
+                const updateData = {
+                    updated_at: new Date().toISOString()
+                };
+                
+                if (this.useLastSeen) {
+                    updateData.last_seen = new Date().toISOString();
+                }
+                
+                await tarhalDB
+                    .from('driver_locations')
+                    .update(updateData)
+                    .eq('driver_id', this.driverId);
+                
+                console.log('💓 Universal heartbeat sent');
+                return true;
+                
+            } catch (error) {
+                console.error('❌ Heartbeat error:', error);
+                
+                try {
+                    await tarhalDB
+                        .from('driver_locations')
+                        .update({
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('driver_id', this.driverId);
+                    return true;
+                } catch (simpleError) {
+                    console.error('❌ Simple heartbeat failed:', simpleError);
+                    return false;
+                }
+            }
+        }
+        
+        startUniversalHeartbeat() {
+            this.sendHeartbeat();
+            
+            this.heartbeatInterval = setInterval(() => {
+                if (this.isActive) {
+                    this.sendHeartbeat();
+                }
+            }, 20000);
+        }
+        
+        setupUniversalListeners() {
+            window.addEventListener('focus', () => {
+                if (this.isActive) {
+                    console.log('🔍 Page focused, sending heartbeat...');
+                    this.sendHeartbeat();
+                }
+            });
+            
+            window.addEventListener('online', () => {
+                if (this.isActive) {
+                    console.log('🌐 Internet restored, sending heartbeat...');
+                    setTimeout(() => this.sendHeartbeat(), 2000);
+                }
             });
         }
-    }
-
-    function stopDriverTracking() {
-        console.log('Driver tracking stopped');
-        if (locationUpdateInterval) {
-            clearInterval(locationUpdateInterval);
-            locationUpdateInterval = null;
+        
+        stopAllIntervals() {
+            if (this.heartbeatInterval) {
+                clearInterval(this.heartbeatInterval);
+                this.heartbeatInterval = null;
+            }
         }
     }
 
-    // Driver Registration
-    function contactAdminForDriverRegistration() {
-        // التحقق من الموافقة على الإقرار أولاً
-        const hasAccepted = localStorage.getItem('driver_agreement_accepted');
-
-        if (!hasAccepted) {
-            showDriverAgreement();
-            return;
-        }
-
-        const adminNumber = "249918183521";
-        const message = "مرحباً، أريد التسجيل كسائق في تطبيق ترحال زونا";
-        const whatsappUrl = `https://wa.me/${adminNumber}?text=${encodeURIComponent(message)}`;
-
-        window.open(whatsappUrl, '_blank');
-        showNotification('تم فتح واتساب الإدارة', 'info');
-    }
-
-    // Notifications
-    async function setupDriverNotifications() {
+    // تفعيل/إيقاف وضع العمل
+    async function toggleDriverStatusUniversal() {
         if (!currentDriver) {
-            showNotification('❌ يجب تسجيل الدخول كسائق أولاً', 'error');
+            showNotification('❌ يجب تسجيل الدخول أولاً', 'error');
             return;
         }
-        
-        const notificationBtn = document.getElementById('driver-notification-activation');
-        if (notificationBtn) {
-            const originalHtml = notificationBtn.innerHTML;
-            notificationBtn.innerHTML = '<span class="loading"></span> جاري التفعيل...';
-            notificationBtn.disabled = true;
+
+        const newStatus = !isDriverOnline;
+
+        // If in Flutter, let it handle the database update
+        if (window.flutter_inappwebview && isFlutterControlling) {
+            console.log(`📱 Requesting status change via Flutter: ${newStatus}`);
+            
+            try {
+                await window.flutter_inappwebview.callHandler('driverStatusChange', {
+                    driverId: currentDriver.id,
+                    online: newStatus
+                });
+            } catch (e) {
+                console.log('⚠️ Flutter handler error:', e);
+            }
+
+            showNotification(newStatus ? 'جاري التفعيل عبر التطبيق...' : 'جاري الإيقاف عبر التطبيق...', 'info');
+            return;
         }
-        
-        try {
-            let result = false;
+
+        // Standard PWA Logic (Fallback)
+        const statusIndicator = document.getElementById('driver-status-indicator');
+        const statusText = document.getElementById('driver-status-text');
+        const toggleBtn = document.getElementById('toggle-online-btn');
+
+        if (!isDriverOnline) {
+            console.log('🚀 Activating Fallback mode...');
+            const originalText = toggleBtn.innerHTML;
+            toggleBtn.innerHTML = '<span class="loading"></span> جاري التفعيل...';
+            toggleBtn.disabled = true;
             
-            // الاشتراك في إشعارات Push API
-            const subscription = await subscribeToPushNotifications(currentDriver.id);
-            if (subscription) {
-                result = true;
-                if (notificationBtn) notificationBtn.classList.add('hidden');
-            }
-            
-            // If Push API fails, try native notifications
-            if (!result && 'Notification' in window) {
-                if (Notification.permission === 'default') {
-                    const permission = await Notification.requestPermission();
-                    if (permission === 'granted') {
-                        showNotification('✅ تم تفعيل الإشعارات المحلية', 'success');
-                        result = true;
-                    }
-                } else if (Notification.permission === 'granted') {
-                    showNotification('✅ الإشعارات مفعلة بالفعل', 'info');
-                    result = true;
+            try {
+                universalManager = new UniversalDriverManager(currentDriver.id);
+                const activated = await universalManager.activate();
+                
+                if (activated) {
+                    statusIndicator.className = 'status-indicator status-online';
+                    statusText.textContent = 'متصل وجاهز';
+                    toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> إيقاف وضع العمل';
+                    toggleBtn.classList.add('btn-danger');
+                    toggleBtn.classList.remove('btn-driver');
+                    isDriverOnline = true;
+                    localStorage.setItem('driver_forever_online', 'true');
+                    localStorage.setItem('driver_online_id', currentDriver.id);
+                    showNotification('✅ أنت الآن متصل (وضع المتصفح)', 'success');
                 }
+            } catch (error) {
+                console.error('Activation error:', error);
+                showNotification('❌ فشل تفعيل وضع العمل', 'error');
+                toggleBtn.innerHTML = originalText;
+            } finally {
+                toggleBtn.disabled = false;
             }
+        } else {
+            console.log('🛑 Deactivating Fallback mode...');
+            const originalText = toggleBtn.innerHTML;
+            toggleBtn.innerHTML = '<span class="loading"></span> جاري الإيقاف...';
+            toggleBtn.disabled = true;
             
-            if (!result) {
-                showNotification('❌ لم تتمكن من تفعيل الإشعارات', 'error');
-            }
-            
-        } catch (error) {
-            console.error('❌ Error setting up notifications:', error);
-            showNotification('❌ فشل تفعيل الإشعارات', 'error');
-        } finally {
-            if (notificationBtn) {
-                notificationBtn.innerHTML = '<ion-icon name="notifications-outline"></ion-icon> تفعيل إشعارات الرحلات';
-                notificationBtn.disabled = false;
+            try {
+                if (universalManager) {
+                    await universalManager.deactivate();
+                    universalManager = null;
+                }
+                statusIndicator.className = 'status-indicator status-offline';
+                statusText.textContent = 'غير متصل';
+                toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> تفعيل وضع العمل';
+                toggleBtn.classList.remove('btn-danger');
+                toggleBtn.classList.add('btn-driver');
+                isDriverOnline = false;
+                localStorage.removeItem('driver_forever_online');
+                showNotification('✅ تم إيقاف وضع العمل', 'info');
+            } catch (error) {
+                console.error('Deactivation error:', error);
+                showNotification('❌ فشل إيقاف وضع العمل', 'error');
+                toggleBtn.innerHTML = originalText;
+            } finally {
+                toggleBtn.disabled = false;
             }
         }
     }
 
-    // Test Notification
+    // استعادة الحالة
+    async function restoreUniversalStatus() {
+        const wasOnline = localStorage.getItem('driver_forever_online') === 'true';
+        const savedDriverId = localStorage.getItem('driver_online_id');
+        
+        if (wasOnline && currentDriver && savedDriverId === currentDriver.id) {
+            console.log('🔄 Restoring universal mode from storage...');
+            
+            document.getElementById('driver-status-indicator').className = 'status-indicator status-online';
+            document.getElementById('driver-status-text').textContent = 'متصل وجاهز';
+            document.getElementById('toggle-online-btn').innerHTML = '<ion-icon name="power-outline"></ion-icon> إيقاف وضع العمل';
+            document.getElementById('toggle-online-btn').classList.add('btn-danger');
+            document.getElementById('toggle-online-btn').classList.remove('btn-driver');
+            
+            isDriverOnline = true;
+            
+            universalManager = new UniversalDriverManager(currentDriver.id);
+            setTimeout(async () => {
+                try {
+                    await universalManager.activate();
+                    console.log('✅ Universal mode restored');
+                } catch (error) {
+                    console.error('❌ Failed to restore universal mode:', error);
+                    
+                    localStorage.removeItem('driver_forever_online');
+                    localStorage.removeItem('driver_online_since');
+                    localStorage.removeItem('driver_online_id');
+                    
+                    document.getElementById('driver-status-indicator').className = 'status-indicator status-offline';
+                    document.getElementById('driver-status-text').textContent = 'غير متصل';
+                    document.getElementById('toggle-online-btn').innerHTML = '<ion-icon name="power-outline"></ion-icon> تفعيل وضع العمل';
+                    document.getElementById('toggle-online-btn').classList.remove('btn-danger');
+                    document.getElementById('toggle-online-btn').classList.add('btn-driver');
+                    
+                    isDriverOnline = false;
+                }
+            }, 1000);
+        }
+    }
 
+    // ============================================
     // Ride Handling
+    // ============================================
+
     function showIncomingRideModal(data) {
-        // ❌ Removed sendToFlutter from here - Handled by central controller
-
-        // Sound and vibration logic moved to handleRideRequest for better control
-
         const modal = document.getElementById('incoming-ride-modal');
         const details = document.getElementById('ride-details');
 
         if (!modal || !details) return;
 
+        // Stop any existing countdown
+        if (rideCountdownTimer) {
+            clearInterval(rideCountdownTimer);
+            rideCountdownTimer = null;
+        }
+
+        // Store ride data
+        currentRideId = data.ride_id || data.rideId;
+        currentRequestId = data.request_id || data.requestId;
+
+        // Play sound
+        if (window.soundManager) {
+            window.soundManager.playRideRequestSound();
+        }
+
         details.innerHTML = `
             <div style="display: flex; flex-direction: column; gap: 10px; text-align: right;">
                 <div style="font-size: 18px; font-weight: 800; color: var(--driver);">
-                    ${data.customer_name || 'عميل'}
+                    ${data.customer_name || data.customerName || 'عميل'}
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>الهاتف:</span>
+                    <span style="font-weight: 700;">${data.customer_phone || data.customerPhone || 'غير متوفر'}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
                     <span>النوع:</span>
@@ -2138,6 +1710,14 @@ setTimeout(addTestButton, 1500);
                     <span>المسافة:</span>
                     <span style="font-weight: 700;">${data.distance || '0'} كم</span>
                 </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>من:</span>
+                    <span style="font-weight: 700; text-align: left;">${data.pickup_address || data.pickupAddress || 'غير محدد'}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>إلى:</span>
+                    <span style="font-weight: 700; text-align: left;">${data.destination_address || data.destinationAddress || 'غير محدد'}</span>
+                </div>
                 <div style="display: flex; justify-content: space-between; font-size: 20px; color: var(--danger); margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px;">
                     <span>المبلغ:</span>
                     <span style="font-weight: 800;">${data.amount || '0'} SDG</span>
@@ -2145,22 +1725,19 @@ setTimeout(addTestButton, 1500);
             </div>
         `;
 
-        // حفظ البيانات للقبول
-        modal.dataset.rideId = data.ride_id || data.rideId;
-        modal.dataset.requestId = data.request_id || data.requestId;
-
         modal.classList.remove('hidden');
 
-        // مؤقت تنازلي
+        // Start countdown
         let timeLeft = 40;
         const countdownEl = modal.querySelector('.countdown');
         if (countdownEl) {
             countdownEl.textContent = timeLeft;
-            const timer = setInterval(() => {
+            rideCountdownTimer = setInterval(() => {
                 timeLeft--;
                 countdownEl.textContent = timeLeft;
                 if (timeLeft <= 0 || modal.classList.contains('hidden')) {
-                    clearInterval(timer);
+                    clearInterval(rideCountdownTimer);
+                    rideCountdownTimer = null;
                     if (timeLeft <= 0 && !modal.classList.contains('hidden')) {
                         declineRide();
                     }
@@ -2169,90 +1746,169 @@ setTimeout(addTestButton, 1500);
         }
     }
 
-    function acceptRide() {
+    async function acceptRide() {
         const modal = document.getElementById('incoming-ride-modal');
-        const rideId = modal.dataset.rideId;
-        const requestId = modal.dataset.requestId;
+        
+        if (!currentRideId) {
+            showNotification('❌ لا يوجد رحلة محددة', 'error');
+            return;
+        }
+
+        // Stop sound
+        if (window.soundManager) {
+            window.soundManager.stopSound();
+        }
+
+        // Stop countdown
+        if (rideCountdownTimer) {
+            clearInterval(rideCountdownTimer);
+            rideCountdownTimer = null;
+        }
 
         modal.classList.add('hidden');
-        if (window.soundManager) window.soundManager.stopRideRequestSound();
 
-        if (rideId) {
-            window.location.href = `/accept-ride.html?rideId=${rideId}&requestId=${requestId}`;
-        } else {
-            showNotification('تم قبول الرحلة بنجاح', 'success');
+        try {
+            // Update ride status in database
+            const { error } = await tarhalDB
+                .from('ride_requests')
+                .update({
+                    status: 'accepted',
+                    driver_response: 'accepted',
+                    response_time: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                })
+                .eq('ride_id', currentRideId);
+
+            if (error) {
+                console.error('Error accepting ride:', error);
+                showNotification('❌ فشل قبول الرحلة', 'error');
+                return;
+            }
+
+            showNotification('✅ تم قبول الرحلة بنجاح', 'success');
+            
+            // Redirect to acceptance page
+            setTimeout(() => {
+                window.location.href = `/accept-ride.html?rideId=${currentRideId}&requestId=${currentRequestId || ''}`;
+            }, 1000);
+
+        } catch (error) {
+            console.error('Error accepting ride:', error);
+            showNotification('❌ حدث خطأ أثناء قبول الرحلة', 'error');
         }
     }
 
-    function declineRide() {
+    async function declineRide() {
         const modal = document.getElementById('incoming-ride-modal');
+        
+        // Stop sound
+        if (window.soundManager) {
+            window.soundManager.stopSound();
+        }
+
+        // Stop countdown
+        if (rideCountdownTimer) {
+            clearInterval(rideCountdownTimer);
+            rideCountdownTimer = null;
+        }
+
         modal.classList.add('hidden');
-        if (window.soundManager) window.soundManager.stopRideRequestSound();
+
+        if (currentRideId) {
+            try {
+                // Update ride status in database
+                const { error } = await tarhalDB
+                    .from('ride_requests')
+                    .update({
+                        status: 'declined',
+                        driver_response: 'declined',
+                        response_time: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('ride_id', currentRideId);
+
+                if (error) {
+                    console.error('Error declining ride:', error);
+                }
+            } catch (error) {
+                console.error('Error declining ride:', error);
+            }
+        }
+
         showNotification('تم رفض الرحلة', 'info');
+        currentRideId = null;
+        currentRequestId = null;
     }
 
-    // إضافة زر اختبار الإشعارات
-    function addTestPushButton() {
-      const card = document.querySelector('#driver-dashboard-screen .card');
-      if (card && !document.getElementById('test-push-btn')) {
-        const testBtn = document.createElement('button');
-        testBtn.id = 'test-push-btn';
-        testBtn.className = 'btn btn-outline mt-2';
-        testBtn.innerHTML = `
-          <ion-icon name="notifications-outline"></ion-icon>
-          اختبار إشعار تجريبي
+    // ============================================
+    // Flutter Control Buttons
+    // ============================================
+
+    function addFlutterControlButtons() {
+        const card = document.querySelector('#driver-dashboard-screen .card');
+        const controlsDiv = document.getElementById('flutter-controls');
+        
+        if (!card || controlsDiv) return;
+
+        const controls = document.createElement('div');
+        controls.id = 'flutter-controls';
+        controls.innerHTML = `
+            <div class="flutter-status">
+                <div id="flutter-status-text" style="margin-bottom: 8px;">
+                    ${isFlutterControlling ? '✅ متصل بتطبيق Flutter' : '⚠️ يعمل في المتصفح فقط'}
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <button class="btn btn-outline" onclick="testFlutterConnection()" style="padding: 8px; font-size: 12px;">
+                        اختبار الاتصال
+                    </button>
+                    <button class="btn btn-outline" onclick="sendTestRide()" style="padding: 8px; font-size: 12px;">
+                        رحلة تجريبية
+                    </button>
+                </div>
+            </div>
         `;
-        testBtn.onclick = sendTestPushNotification;
 
-        // البحث عن مكان مناسب للإضافة (قبل زر تسجيل الخروج)
-        const logoutBtn = card.querySelector('button[onclick="logoutDriver()"]');
-        if (logoutBtn) {
-          card.insertBefore(testBtn, logoutBtn);
-        } else {
-          card.appendChild(testBtn);
-        }
-      }
+        card.appendChild(controls);
     }
 
-    // دالة إرسال إشعار تجريبي
-    async function sendTestPushNotification() {
-      if (!currentDriver) {
-        showNotification('❌ يجب تسجيل الدخول أولاً', 'error');
-        return;
-      }
+    function testFlutterConnection() {
+        if (window.flutter_inappwebview) {
+            try {
+                window.flutter_inappwebview.callHandler('testConnection', {
+                    ping: 'pong',
+                    time: new Date().toISOString()
+                });
+                showNotification('📡 تم إرسال طلب اختبار الاتصال لـ Flutter', 'info');
+            } catch (e) {
+                showNotification('❌ فشل الاتصال بـ Flutter', 'error');
+            }
+        } else {
+            showNotification('⚠️ تطبيق Flutter غير متاح', 'warning');
+        }
+    }
 
-      try {
-        showNotification('🚀 جاري إرسال إشعار تجريبي...', 'info');
-
-        // إرسال طلب لإشعار تجريبي
-        const response = await fetch('/api/send-test-push', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            driverId: currentDriver.id,
-            customerName: 'عميل تجريبي',
+    function sendTestRide() {
+        const testData = {
+            ride_id: 'test_' + Date.now(),
+            request_id: 'req_' + Date.now(),
+            customer_name: 'عميل تجريبي',
+            customer_phone: '0912345678',
+            vehicle_type: 'economy',
             amount: '5000',
             distance: '3.5 كم',
-            vehicleType: 'economy'
-          })
-        });
+            pickup_address: 'موقع تجريبي للالتقاط',
+            destination_address: 'موقع تجريبي للوصول',
+            timestamp: new Date().toISOString()
+        };
 
-        const result = await response.json();
-
-        if (result.success) {
-          showNotification('✅ تم إرسال إشعار التجريبي', 'success');
-        } else {
-          showNotification(`❌ فشل الإرسال: ${result.error}`, 'error');
-        }
-      } catch (error) {
-        console.error('Test notification error:', error);
-        showNotification('❌ حدث خطأ أثناء إرسال الإشعار التجريبي', 'error');
-      }
+        window.handleRideRequest(testData);
+        showNotification('🚗 تم إرسال رحلة تجريبية', 'success');
     }
 
+    // ============================================
     // Helper Functions
+    // ============================================
+
     function getVehicleTypeName(type) {
         const names = {
             tuktuk: 'توك توك',
@@ -2294,1262 +1950,53 @@ setTimeout(addTestButton, 1500);
         showNotification('قريباً: الملف الشخصي للسائق', 'info');
     }
 
-    function logoutDriver() {
-        if (isDriverOnline) {
-            toggleDriverStatus();
+    function contactAdminForDriverRegistration() {
+        const hasAccepted = localStorage.getItem('driver_agreement_accepted');
+
+        if (!hasAccepted) {
+            showDriverAgreement();
+            return;
         }
+
+        const adminNumber = "249918183521";
+        const message = "مرحباً، أريد التسجيل كسائق في تطبيق زونا";
+        const whatsappUrl = `https://wa.me/${adminNumber}?text=${encodeURIComponent(message)}`;
+
+        window.open(whatsappUrl, '_blank');
+        showNotification('تم فتح واتساب الإدارة', 'info');
+    }
+
+    function logoutDriver() {
+        if (isDriverOnline && universalManager) {
+            universalManager.deactivate();
+            universalManager = null;
+        }
+        
         localStorage.removeItem('tarhal_driver');
+        localStorage.removeItem('driver_forever_online');
+        localStorage.removeItem('driver_online_id');
+        
         currentDriver = null;
+        isDriverOnline = false;
+        
         showScreen('driver-login-screen');
         showNotification('تم تسجيل خروج السائق', 'success');
     }
-</script>
 
-<!-- Driver Agreement Modal -->
-<div id="driver-agreement-modal" class="overlay agreement-overlay hidden">
-    <div class="modal agreement-modal" style="max-height: 90vh; width: 95%;">
-        <div class="modal-header" style="background: linear-gradient(135deg, var(--driver), var(--driver-dark)); color: white; padding: 16px 20px; border-radius: var(--radius-lg) var(--radius-lg) 0 0;">
-            <h2 style="font-size: 20px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
-                <ion-icon name="document-text-outline"></ion-icon>
-                إقرار وموافقة السائق
-            </h2>
-            <p style="color: rgba(255,255,255,0.9); margin-top: 4px; font-size: 14px;">
-                تطبيق زونا (النسخة التجريبية)
-            </p>
-        </div>
-
-        <div class="agreement-content" id="agreement-content" style="flex: 1; overflow-y: auto; padding: 16px; max-height: 60vh; min-height: 300px;">
-            <!-- سيتم تعبئة محتوى الإقرار هنا -->
-        </div>
-
-        <div class="scroll-indicator" style="text-align: center; padding: 8px; color: var(--gray); font-size: 13px; display: flex; flex-direction: column; align-items: center; gap: 4px;">
-            <ion-icon name="chevron-down-outline" style="animation: bounce 2s infinite;"></ion-icon>
-            <span>مرر لأسفل لقراءة البنود كاملة</span>
-        </div>
-
-        <div style="display: flex; gap: 10px; margin-top: 16px; padding: 16px; padding-top: 12px; border-top: 1px solid var(--gray-light);">
-            <button class="btn btn-driver" onclick="acceptAgreement()" style="flex: 1; padding: 12px; font-size: 14px;">
-                <ion-icon name="checkmark-circle-outline"></ion-icon>
-                أوافق على جميع البنود
-            </button>
-            <button class="btn btn-danger" onclick="rejectAgreement()" style="flex: 1; padding: 12px; font-size: 14px;">
-                <ion-icon name="close-circle-outline"></ion-icon>
-                لا أوافق
-            </button>
-        </div>
-    </div>
-</div>
-<script>
-// ============================================
-// FOREVER ONLINE SYSTEM - مدمج في index.html
-// ============================================
-
-class ForeverOnlineManager {
-    constructor(driverId) {
-        this.driverId = driverId;
-        this.isActive = false;
-        this.heartbeatInterval = null;
-        this.locationWatcher = null;
-        this.reconnectAttempts = 0;
-        this.maxReconnectAttempts = 10;
-        this.lastUpdateTime = null;
-        this.forceStop = false;
-        
-        console.log(`🚀 Forever Online Manager created for driver: ${driverId}`);
-    }
-
-    // تفعيل وضع "الأبدي"
-    async activate() {
-        if (this.isActive || this.forceStop) {
-            console.log('✅ Already active or force stopped');
-            return true;
-        }
-
-        console.log('🔓 Activating FOREVER ONLINE mode...');
-        this.isActive = true;
-        this.forceStop = false;
-
-        try {
-            // A. تأكيد السجل في قاعدة البيانات
-            await this.ensureDriverLocationRecord();
-            
-            // B. تعيين is_online = true أول مرة
-            await this.forceOnlineStatus();
-            
-            // C. بدء Heartbeat الإجباري (كل 20 ثانية)
-            this.startHeartbeat();
-            
-            // D. مراقبة حالة الاتصال
-            this.startConnectionWatchdog();
-            
-            // E. الاستماع لأحداث الصفحة
-            this.setupEventListeners();
-            
-            console.log('🎯 FOREVER ONLINE mode ACTIVATED');
-            return true;
-            
-        } catch (error) {
-            console.error('❌ Failed to activate forever online:', error);
-            this.isActive = false;
-            return false;
-        }
-    }
-
-    // تعطيل وضع "الأبدي"
-    async deactivate() {
-        if (!this.isActive) {
-            return true;
-        }
-
-        console.log('🔒 Deactivating FOREVER ONLINE mode...');
-        this.isActive = false;
-        this.forceStop = true;
-
-        // إيقاف جميع المؤقتات
-        this.stopAllIntervals();
-
-        // تعيين is_online = false
-        await this.forceOfflineStatus();
-        
-        console.log('🛑 FOREVER ONLINE mode DEACTIVATED');
-        return true;
-    }
-
-    // تأكد من وجود سجل في driver_locations
-    async ensureDriverLocationRecord() {
-        try {
-            const now = new Date().toISOString();
-            
-            // استخدام upsert مباشرة
-            const { error } = await tarhalDB
-                .from('driver_locations')
-                .upsert({
-                    driver_id: this.driverId,
-                    is_online: true,
-                    last_seen: now,
-                    created_at: now,
-                    updated_at: now
-                }, {
-                    onConflict: 'driver_id',
-                    ignoreDuplicates: false
-                });
-
-            if (error) {
-                console.error('❌ DB Upsert Error:', error);
-                throw error;
-            }
-            
-            console.log('✅ Driver location record ensured');
-            return true;
-            
-        } catch (error) {
-            console.error('❌ Error ensuring driver location record:', error);
-            throw error;
-        }
-    }
-
-    // تعيين is_online = true بالقوة
-    async forceOnlineStatus() {
-        try {
-            const now = new Date().toISOString();
-            
-            const { error } = await tarhalDB
-                .from('driver_locations')
-                .update({
-                    is_online: true,
-                    last_seen: now,
-                    updated_at: now
-                })
-                .eq('driver_id', this.driverId);
-
-            if (error) {
-                console.error('❌ Force Online Error:', error);
-                // محاولة upsert بدلاً من update
-                await this.ensureDriverLocationRecord();
-                return;
-            }
-
-            this.lastUpdateTime = now;
-            console.log(`✅ FORCED ONLINE at ${now}`);
-            return true;
-            
-        } catch (error) {
-            console.error('❌ Failed to force online status:', error);
-            throw error;
-        }
-    }
-
-    // تعيين is_online = false
-    async forceOfflineStatus() {
-        try {
-            const now = new Date().toISOString();
-            
-            const { error } = await tarhalDB
-                .from('driver_locations')
-                .update({
-                    is_online: false,
-                    last_seen: now,
-                    updated_at: now
-                })
-                .eq('driver_id', this.driverId);
-
-            if (error) {
-                console.error('❌ Force Offline Error:', error);
-                return false;
-            }
-
-            console.log(`✅ FORCED OFFLINE at ${now}`);
-            return true;
-            
-        } catch (error) {
-            console.error('❌ Failed to force offline status:', error);
-            return false;
-        }
-    }
-
-    // تحديث last_seen فقط
-    async updateLastSeen() {
-        try {
-            const now = new Date().toISOString();
-            
-            const { error } = await tarhalDB
-                .from('driver_locations')
-                .update({
-                    last_seen: now,
-                    updated_at: now
-                })
-                .eq('driver_id', this.driverId);
-
-            if (error) {
-                console.error('❌ Update Last Seen Error:', error);
-                return false;
-            }
-
-            this.lastUpdateTime = now;
-            return true;
-            
-        } catch (error) {
-            console.error('❌ Failed to update last seen:', error);
-            return false;
-        }
-    }
-
-    // Heartbeat الإجباري (كل 20 ثانية)
-    startHeartbeat() {
-        if (this.heartbeatInterval) {
-            clearInterval(this.heartbeatInterval);
-        }
-
-        // أول heartbeat فوري
-        this.updateLastSeen().then(() => {
-            console.log('💓 First heartbeat sent');
-        });
-
-        // ثم كل 20 ثانية
-        this.heartbeatInterval = setInterval(async () => {
-            if (!this.isActive || this.forceStop) {
-                clearInterval(this.heartbeatInterval);
-                return;
-            }
-
-            try {
-                const success = await this.updateLastSeen();
-                if (success) {
-                    console.log('💓 Heartbeat sent');
-                    this.reconnectAttempts = 0;
-                } else {
-                    this.reconnectAttempts++;
-                    console.warn(`⚠️ Heartbeat failed (attempt ${this.reconnectAttempts})`);
-                }
-                
-                // محاولة إعادة الاتصال التلقائي
-                if (this.reconnectAttempts >= 3) {
-                    await this.recoverConnection();
-                }
-                
-            } catch (error) {
-                console.error('❌ Heartbeat error:', error);
-                this.reconnectAttempts++;
-            }
-        }, 20000); // كل 20 ثانية
-    }
-
-    // كلب الحراسة لمراقبة الاتصال
-    startConnectionWatchdog() {
-        // التحقق من الاتصال كل دقيقة
-        setInterval(async () => {
-            if (!this.isActive || this.forceStop) return;
-            
-            try {
-                // اختبار اتصال بسيط
-                const { data, error } = await tarhalDB
-                    .from('driver_locations')
-                    .select('last_seen')
-                    .eq('driver_id', this.driverId)
-                    .maybeSingle();
-
-                if (error) {
-                    console.warn('⚠️ Connection watchdog detected issue:', error.message);
-                    await this.recoverConnection();
-                } else {
-                    console.log('🔗 Connection is healthy');
-                }
-                
-            } catch (error) {
-                console.warn('⚠️ Connection test failed:', error.message);
-                await this.recoverConnection();
-            }
-        }, 60000);
-    }
-
-    // استعادة الاتصال التلقائي
-    async recoverConnection() {
-        if (this.reconnectAttempts >= this.maxReconnectAttempts || this.forceStop) {
-            console.error('❌ Max reconnection attempts reached or force stopped');
-            return false;
-        }
-
-        this.reconnectAttempts++;
-        console.log(`🔄 Reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
-        
-        try {
-            // محاولة الإصلاح
-            await this.forceOnlineStatus();
-            this.reconnectAttempts = 0;
-            console.log('✅ Connection recovered');
-            return true;
-            
-        } catch (error) {
-            console.error('❌ Reconnection failed:', error);
-            
-            // المحاولة مرة أخرى بعد 10 ثواني
-            setTimeout(() => {
-                if (this.isActive && !this.forceStop) {
-                    this.recoverConnection();
-                }
-            }, 10000);
-            
-            return false;
-        }
-    }
-
-    // إعداد مستمعي الأحداث
-    setupEventListeners() {
-        // عند التركيز على الصفحة
-        window.addEventListener('focus', () => {
-            if (this.isActive && !this.forceStop) {
-                console.log('🔍 Page focused, refreshing connection...');
-                this.forceOnlineStatus();
-            }
-        });
-
-        // عند استعادة الاتصال بالإنترنت
-        window.addEventListener('online', () => {
-            if (this.isActive && !this.forceStop) {
-                console.log('🌐 Internet connection restored');
-                setTimeout(() => {
-                    this.forceOnlineStatus();
-                }, 2000);
-            }
-        });
-
-        // قبل إغلاق الصفحة
-        window.addEventListener('beforeunload', () => {
-            if (this.isActive && !this.forceStop) {
-                console.log('⚠️ Page unloading, sending final heartbeat...');
-                this.updateLastSeen();
-            }
-        });
-    }
-
-    // إيقاف جميع المؤقتات
-    stopAllIntervals() {
-        if (this.heartbeatInterval) {
-            clearInterval(this.heartbeatInterval);
-            this.heartbeatInterval = null;
-        }
-        
-        if (this.locationWatcher && navigator.geolocation) {
-            navigator.geolocation.clearWatch(this.locationWatcher);
-            this.locationWatcher = null;
-        }
-        
-        console.log('🛑 All intervals stopped');
-    }
-
-    // الحصول على الحالة الحالية
-    getStatus() {
-        return {
-            isActive: this.isActive,
-            driverId: this.driverId,
-            lastUpdate: this.lastUpdateTime,
-            reconnectAttempts: this.reconnectAttempts,
-            forceStop: this.forceStop
-        };
-    }
-}
-
-// ============================================
-// نظام إدارة حالة السائق - مدمج في index.html
-// ============================================
-
-let foreverOnlineManager = null;
-// isDriverOnline already declared above
-let driverOnlineSince = null;
-
-// دالة تفعيل/إيقاف وضع العمل
-async function toggleDriverStatus() {
-    if (!currentDriver) {
-        showNotification('❌ يجب تسجيل الدخول أولاً', 'error');
-        return;
-    }
-
-    const statusIndicator = document.getElementById('driver-status-indicator');
-    const statusText = document.getElementById('driver-status-text');
-    const toggleBtn = document.getElementById('toggle-online-btn');
-
-    if (!isDriverOnline) {
-        // ==================== تفعيل وضع العمل ====================
-        console.log('🚀 Activating DRIVER ONLINE mode...');
-        
-        // إظهار مؤشر تحميل
-        const originalText = toggleBtn.innerHTML;
-        toggleBtn.innerHTML = '<span class="loading"></span> جاري التفعيل...';
-        toggleBtn.disabled = true;
-        
-        try {
-            // 1. تهيئة ForeverOnlineManager
-            foreverOnlineManager = new ForeverOnlineManager(currentDriver.id);
-            
-            // 2. تفعيل النظام الأبدي
-            const activated = await foreverOnlineManager.activate();
-            
-            if (!activated) {
-                throw new Error('فشل تفعيل النظام');
-            }
-            
-            // 3. تحديث الواجهة
-            statusIndicator.className = 'status-indicator status-online';
-            statusText.textContent = 'متصل وجاهز';
-            toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> إيقاف وضع العمل';
-            toggleBtn.classList.add('btn-danger');
-            toggleBtn.classList.remove('btn-driver');
-            
-            isDriverOnline = true;
-            driverOnlineSince = new Date().toISOString();
-            
-            // 4. حفظ الحالة في localStorage
-            localStorage.setItem('driver_forever_online', 'true');
-            localStorage.setItem('driver_online_since', driverOnlineSince);
-            localStorage.setItem('driver_online_id', currentDriver.id);
-            
-            // 5. إشعار النجاح
-            showNotification('✅ أنت الآن متصل وجاهز لاستقبال الطلبات', 'success');
-            
-            // 6. مزامنة الإشعارات
-            await updatePushSubscriptionOnLogin(currentDriver.id);
-
-            console.log('🎯 DRIVER ONLINE mode ACTIVATED FOREVER');
-            
-        } catch (error) {
-            console.error('❌ Activation error:', error);
-            showNotification('❌ فشل تفعيل وضع العمل', 'error');
-            
-            // التراجع
-            foreverOnlineManager = null;
-            toggleBtn.innerHTML = originalText;
-        } finally {
-            toggleBtn.disabled = false;
-        }
-
-    } else {
-        // ==================== إيقاف وضع العمل ====================
-        console.log('🛑 Deactivating DRIVER ONLINE mode...');
-        
-        // إظهار مؤشر تحميل
-        const originalText = toggleBtn.innerHTML;
-        toggleBtn.innerHTML = '<span class="loading"></span> جاري الإيقاف...';
-        toggleBtn.disabled = true;
-        
-        try {
-            // 1. إيقاف النظام الأبدي
-            if (foreverOnlineManager) {
-                await foreverOnlineManager.deactivate();
-                foreverOnlineManager = null;
-            }
-            
-            // 2. التأكيد النهائي على قاعدة البيانات
-            await forceDriverOfflineInDB();
-            
-            // 3. تحديث الواجهة
-            statusIndicator.className = 'status-indicator status-offline';
-            statusText.textContent = 'غير متصل';
-            toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> تفعيل وضع العمل';
-            toggleBtn.classList.remove('btn-danger');
-            toggleBtn.classList.add('btn-driver');
-            
-            isDriverOnline = false;
-            
-            // 4. مسح الحالة من localStorage
-            localStorage.removeItem('driver_forever_online');
-            localStorage.removeItem('driver_online_since');
-            localStorage.removeItem('driver_online_id');
-            
-            showNotification('تم إيقاف وضع العمل بنجاح', 'info');
-            console.log('🛑 DRIVER ONLINE mode DEACTIVATED');
-            
-        } catch (error) {
-            console.error('❌ Deactivation error:', error);
-            showNotification('❌ فشل إيقاف وضع العمل', 'error');
-        } finally {
-            toggleBtn.disabled = false;
-        }
-    }
-}
-
-// التأكد من إيقاف السائق في قاعدة البيانات
-async function forceDriverOfflineInDB() {
-    try {
-        if (!currentDriver) return;
-        
-        const now = new Date().toISOString();
-        
-        await tarhalDB
-            .from('driver_locations')
-            .update({
-                is_online: false,
-                last_seen: now,
-                updated_at: now
-            })
-            .eq('driver_id', currentDriver.id);
-            
-        console.log('✅ Driver forcefully set to offline in database');
-        
-    } catch (error) {
-        console.error('❌ Error forcing offline:', error);
-    }
-}
-
-// استعادة الحالة عند تحميل الصفحة
-async function restoreDriverStatus() {
-    const wasOnline = localStorage.getItem('driver_forever_online') === 'true';
-    const savedDriverId = localStorage.getItem('driver_online_id');
-    const onlineSince = localStorage.getItem('driver_online_since');
-    
-    if (wasOnline && currentDriver && savedDriverId === currentDriver.id) {
-        console.log('🔄 Restoring FOREVER ONLINE mode from storage...');
-        
-        // تحديث الواجهة أولاً
-        document.getElementById('driver-status-indicator').className = 'status-indicator status-online';
-        document.getElementById('driver-status-text').textContent = 'متصل وجاهز';
-        document.getElementById('toggle-online-btn').innerHTML = '<ion-icon name="power-outline"></ion-icon> إيقاف وضع العمل';
-        document.getElementById('toggle-online-btn').classList.add('btn-danger');
-        document.getElementById('toggle-online-btn').classList.remove('btn-driver');
-        
-        isDriverOnline = true;
-        driverOnlineSince = onlineSince || new Date().toISOString();
-        
-        // إعادة تهيئة النظام
-        foreverOnlineManager = new ForeverOnlineManager(currentDriver.id);
-        setTimeout(async () => {
-            try {
-                await foreverOnlineManager.activate();
-                console.log('✅ FOREVER ONLINE mode restored');
-                
-                if (onlineSince) {
-                    const hours = Math.floor((new Date() - new Date(onlineSince)) / 3600000);
-                    console.log(`⏰ Driver has been online for ${hours} hours`);
-                }
-
-                // مزامنة الإشعارات عند استعادة الحالة
-                await updatePushSubscriptionOnLogin(currentDriver.id);
-
-                // مزامنة الحالة مع Flutter
-                await syncDriverStatusWithFlutter();
-                startFlutterSync();
-            } catch (error) {
-                console.error('❌ Failed to restore forever online:', error);
-                // في حالة الفشل، نعيد الحالة إلى offline
-                localStorage.removeItem('driver_forever_online');
-                localStorage.removeItem('driver_online_since');
-                localStorage.removeItem('driver_online_id');
-                
-                document.getElementById('driver-status-indicator').className = 'status-indicator status-offline';
-                document.getElementById('driver-status-text').textContent = 'غير متصل';
-                document.getElementById('toggle-online-btn').innerHTML = '<ion-icon name="power-outline"></ion-icon> تفعيل وضع العمل';
-                document.getElementById('toggle-online-btn').classList.remove('btn-danger');
-                document.getElementById('toggle-online-btn').classList.add('btn-driver');
-                
-                isDriverOnline = false;
-            }
-        }, 1000);
-    }
-}
-
-// فحص حالة السائق
-async function checkDriverOnlineStatus() {
-    if (!currentDriver) return;
-    
-    try {
-        const { data, error } = await tarhalDB
-            .from('driver_locations')
-            .select('is_online, last_seen, updated_at')
-            .eq('driver_id', currentDriver.id)
-            .maybeSingle();
-            
-        if (error) throw error;
-        
-        const isOnline = data?.is_online || false;
-        const lastSeen = data?.last_seen ? new Date(data.last_seen).toLocaleString('ar-SA') : 'غير معروف';
-        const updatedAt = data?.updated_at ? new Date(data.updated_at).toLocaleString('ar-SA') : 'غير معروف';
-        
-        let message = `الحالة: ${isOnline ? '🟢 متصل' : '🔴 غير متصل'}<br>`;
-        message += `آخر نشاط: ${lastSeen}<br>`;
-        message += `آخر تحديث: ${updatedAt}`;
-        
-        if (driverOnlineSince) {
-            const hours = Math.floor((new Date() - new Date(driverOnlineSince)) / 3600000);
-            message += `<br>المدة: ${hours} ساعة`;
-        }
-        
-        showNotification(message, isOnline ? 'success' : 'error');
-        
-    } catch (error) {
-        showNotification('❌ فشل فحص الحالة', 'error');
-    }
-}
-
-// فحص سجل driver_locations
-async function checkDriverLocationRecord() {
-    if (!currentDriver) return;
-    
-    try {
-        const { data, error } = await tarhalDB
-            .from('driver_locations')
-            .select('*')
-            .eq('driver_id', currentDriver.id)
-            .maybeSingle();
-            
-        if (error) throw error;
-        
-        if (!data) {
-            showNotification('⚠️ لا يوجد سجل في driver_locations', 'warning');
-            
-            // إنشاء سجل جديد
-            const now = new Date().toISOString();
-            const { error: insertError } = await tarhalDB
-                .from('driver_locations')
-                .insert({
-                    driver_id: currentDriver.id,
-                    is_online: false,
-                    last_seen: now,
-                    created_at: now,
-                    updated_at: now
-                });
-                
-            if (insertError) {
-                showNotification('❌ فشل إنشاء السجل', 'error');
-            } else {
-                showNotification('✅ تم إنشاء سجل جديد', 'success');
-            }
-        } else {
-            showNotification(`✅ السجل موجود<br>الحالة: ${data.is_online ? 'متصل' : 'غير متصل'}`, 'success');
-        }
-        
-    } catch (error) {
-        showNotification('❌ فشل فحص السجل', 'error');
-    }
-}
-
-// إضافة أزرار التحكم في الواجهة (لـ updateDriverDashboard)
-async function updateDriverDashboard() {
-    if (!currentDriver) return;
-
-    document.getElementById('driver-avatar').textContent = currentDriver.full_name.charAt(0);
-    document.getElementById('driver-name').textContent = currentDriver.full_name;
-    document.getElementById('driver-car-info').textContent = 
-        `${currentDriver.car_model || 'سيارة'} - ${getVehicleTypeName(currentDriver.car_type)}`;
-
-    document.getElementById('driver-balance').textContent = 
-        (currentDriver.balance || 0).toLocaleString();
-
-    try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        // Today's trips
-        const { data: rides, error } = await tarhalDB
-            .from('rides')
-            .select('*')
-            .eq('driver_id', currentDriver.id)
-            .gte('created_at', today.toISOString())
-            .eq('status', 'completed');
-
-        if (!error && rides) {
-            const todayEarnings = rides.reduce((sum, ride) => sum + (ride.driver_earnings || 0), 0);
-            document.getElementById('today-trips').textContent = rides.length;
-            document.getElementById('today-earnings').textContent = todayEarnings.toLocaleString();
-        }
-
-        // Total trips
-        const { data: totalRides, error: totalError } = await tarhalDB
-            .from('rides')
-            .select('id')
-            .eq('driver_id', currentDriver.id)
-            .eq('status', 'completed');
-
-        if (!totalError && totalRides) {
-            document.getElementById('total-trips').textContent = totalRides.length;
-        }
-
-    } catch (error) {
-        console.error('Error fetching driver stats:', error);
-    }
-
-    // إضافة أزرار التحكم
-    setTimeout(() => {
-        const card = document.querySelector('#driver-dashboard-screen .card');
-
-        // إضافة حالة التكامل مع Flutter إذا كان متاحاً
-        if (window.flutter_inappwebview) {
-            addIntegrationStatus();
-        }
-
-        // فحص وجود اشتراك مسبق لعرض زر الاختبار
-        if (currentDriver.push_subscription) {
-            addTestPushButton();
-        }
-
-        // إضافة أزرار Flutter
-        addFlutterControlButtons();
-
-        if (card && !document.getElementById('control-buttons')) {
-            const controlsDiv = document.createElement('div');
-            controlsDiv.id = 'control-buttons';
-            controlsDiv.className = 'mt-3';
-            controlsDiv.innerHTML = `
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;">
-                    <button class="btn btn-outline" onclick="checkDriverOnlineStatus()" style="padding: 10px; font-size: 13px;">
-                        <ion-icon name="wifi-outline"></ion-icon>
-                        فحص الاتصال
-                    </button>
-                    <button class="btn btn-outline" onclick="checkDriverLocationRecord()" style="padding: 10px; font-size: 13px;">
-                        <ion-icon name="document-text-outline"></ion-icon>
-                        فحص السجل
-                    </button>
-                </div>
-
-                <!-- زر تفعيل الإشعارات الجديد -->
-                <button id="push-notification-btn" class="btn btn-driver mt-2" onclick="subscribeToPushNotifications(currentDriver.id)">
-                    <ion-icon name="notifications-outline"></ion-icon>
-                    تفعيل إشعارات الرحلة
-                </button>
-
-                <div style="margin-top: 12px; padding: 12px; background: #f0f9ff; border-radius: var(--radius); border: 1px solid #bae6fd; text-align: center;">
-                    <small style="color: #0369a1; font-size: 12px;">
-                        <ion-icon name="information-circle-outline"></ion-icon>
-                        ستستمر حالتك "متصل" حتى تضغط على "إيقاف وضع العمل"
-                    </small>
-                </div>
-            `;
-            card.appendChild(controlsDiv);
-        }
-    }, 500);
-}
-
-// ============================================
-// نظام تكيفي يعمل في جميع الحالات
-// ============================================
-
-class UniversalDriverManager {
-    constructor(driverId) {
-        this.driverId = driverId;
-        this.isActive = false;
-        this.heartbeatInterval = null;
-        this.useLastSeen = true; // افتراضياً نستخدم last_seen
-        
-        console.log(`🌐 Universal Driver Manager for: ${driverId}`);
-    }
-    
-    async activate() {
-        console.log('🔓 Activating universal mode...');
-        
-        // اختبار وجود last_seen
-        await this.checkLastSeenColumn();
-        
-        this.isActive = true;
-        
-        // تفعيل الحالة
-        await this.setOnline();
-        
-        // بدء Heartbeat
-        this.startUniversalHeartbeat();
-        
-        // إعداد مستمعي الأحداث
-        this.setupUniversalListeners();
-        
-        console.log('✅ Universal mode activated');
-        return true;
-    }
-    
-    async deactivate() {
-        console.log('🔒 Deactivating universal mode...');
-        
-        this.isActive = false;
-        
-        // إيقاف جميع المؤقتات
-        this.stopAllIntervals();
-        
-        // تعيين الحالة إلى Offline
-        await this.setOffline();
-        
-        console.log('🛑 Universal mode deactivated');
-        return true;
-    }
-    
-    async checkLastSeenColumn() {
-        try {
-            // اختبار بسيط لمعرفة إذا كان العمود موجوداً
-            const testData = {
-                driver_id: this.driverId,
-                is_online: true,
-                updated_at: new Date().toISOString()
-            };
-            
-            // محاولة مع last_seen
-            const { error } = await tarhalDB
-                .from('driver_locations')
-                .upsert({
-                    ...testData,
-                    last_seen: new Date().toISOString()
-                }, { onConflict: 'driver_id' });
-            
-            if (error && error.code === 'PGRST204') {
-                this.useLastSeen = false;
-                console.log('⚠️ last_seen column not found, using fallback');
-                return false;
-            }
-            
-            this.useLastSeen = true;
-            console.log('✅ last_seen column available');
-            return true;
-            
-        } catch (error) {
-            console.error('❌ Error checking last_seen:', error);
-            this.useLastSeen = false;
-            return false;
-        }
-    }
-    
-    async setOnline() {
-        try {
-            const updateData = {
-                driver_id: this.driverId,
-                is_online: true,
-                updated_at: new Date().toISOString()
-            };
-            
-            if (this.useLastSeen) {
-                updateData.last_seen = new Date().toISOString();
-            }
-            
-            await tarhalDB
-                .from('driver_locations')
-                .upsert(updateData, { onConflict: 'driver_id' });
-            
-            console.log('✅ Driver set online');
-            return true;
-            
-        } catch (error) {
-            console.error('❌ Error setting online:', error);
-            
-            // محاولة أبسط
-            try {
-                await tarhalDB
-                    .from('driver_locations')
-                    .upsert({
-                        driver_id: this.driverId,
-                        is_online: true
-                    }, { onConflict: 'driver_id' });
-                return true;
-            } catch (simpleError) {
-                console.error('❌ Simple online also failed:', simpleError);
-                return false;
-            }
-        }
-    }
-    
-    async setOffline() {
-        try {
-            await tarhalDB
-                .from('driver_locations')
-                .update({
-                    is_online: false,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('driver_id', this.driverId);
-            
-            console.log('✅ Driver set offline');
-            return true;
-            
-        } catch (error) {
-            console.error('❌ Error setting offline:', error);
-            
-            // محاولة أبسط
-            try {
-                await tarhalDB
-                    .from('driver_locations')
-                    .update({ is_online: false })
-                    .eq('driver_id', this.driverId);
-                return true;
-            } catch (simpleError) {
-                console.error('❌ Simple offline also failed:', simpleError);
-                return false;
-            }
-        }
-    }
-    
-    async sendHeartbeat() {
-        if (!this.isActive) return;
-        
-        try {
-            const updateData = {
-                updated_at: new Date().toISOString()
-            };
-            
-            if (this.useLastSeen) {
-                updateData.last_seen = new Date().toISOString();
-            }
-            
-            await tarhalDB
-                .from('driver_locations')
-                .update(updateData)
-                .eq('driver_id', this.driverId);
-            
-            console.log('💓 Universal heartbeat sent');
-            return true;
-            
-        } catch (error) {
-            console.error('❌ Heartbeat error:', error);
-            
-            // محاولة أبسط
-            try {
-                await tarhalDB
-                    .from('driver_locations')
-                    .update({
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('driver_id', this.driverId);
-                return true;
-            } catch (simpleError) {
-                console.error('❌ Simple heartbeat failed:', simpleError);
-                return false;
-            }
-        }
-    }
-    
-    startUniversalHeartbeat() {
-        // أول heartbeat فوري
-        this.sendHeartbeat();
-        
-        // ثم كل 20 ثانية
-        this.heartbeatInterval = setInterval(() => {
-            if (this.isActive) {
-                this.sendHeartbeat();
-            }
-        }, 20000);
-    }
-    
-    setupUniversalListeners() {
-        window.addEventListener('focus', () => {
-            if (this.isActive) {
-                console.log('🔍 Page focused, sending heartbeat...');
-                this.sendHeartbeat();
-            }
-        });
-        
-        window.addEventListener('online', () => {
-            if (this.isActive) {
-                console.log('🌐 Internet restored, sending heartbeat...');
-                setTimeout(() => this.sendHeartbeat(), 2000);
-            }
-        });
-    }
-    
-    stopAllIntervals() {
-        if (this.heartbeatInterval) {
-            clearInterval(this.heartbeatInterval);
-            this.heartbeatInterval = null;
-        }
-    }
-}
-
-// ============================================
-// استبدال نظام التشغيل بالنظام الشامل
-// ============================================
-
-let universalManager = null;
-
-async function toggleDriverStatusUniversal() {
-    if (!currentDriver) {
-        showNotification('❌ يجب تسجيل الدخول أولاً', 'error');
-        return;
-    }
-
-    const newStatus = !isDriverOnline;
-
-    // If in Flutter, let it handle the database update
-    if (window.flutter_inappwebview) {
-        console.log(`📱 Requesting status change via Flutter: ${newStatus}`);
-        window.flutter_inappwebview.callHandler('driverStatusChange', {
-            driverId: currentDriver.id,
-            online: newStatus
-        });
-
-        showNotification(newStatus ? 'جاري التفعيل عبر التطبيق...' : 'جاري الإيقاف عبر التطبيق...', 'info');
-        return; // UI will update when Flutter confirms via receiveFromFlutter
-    }
-
-    // Standard PWA Logic (Fallback)
-    const statusIndicator = document.getElementById('driver-status-indicator');
-    const statusText = document.getElementById('driver-status-text');
-    const toggleBtn = document.getElementById('toggle-online-btn');
-
-    if (!isDriverOnline) {
-        console.log('🚀 Activating Fallback mode...');
-        const originalText = toggleBtn.innerHTML;
-        toggleBtn.innerHTML = '<span class="loading"></span> جاري التفعيل...';
-        toggleBtn.disabled = true;
-        
-        try {
-            universalManager = new UniversalDriverManager(currentDriver.id);
-            const activated = await universalManager.activate();
-            
-            if (activated) {
-                statusIndicator.className = 'status-indicator status-online';
-                statusText.textContent = 'متصل وجاهز';
-                toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> إيقاف وضع العمل';
-                toggleBtn.classList.add('btn-danger');
-                toggleBtn.classList.remove('btn-driver');
-                isDriverOnline = true;
-                localStorage.setItem('driver_forever_online', 'true');
-                localStorage.setItem('driver_online_id', currentDriver.id);
-                showNotification('✅ أنت الآن متصل (وضع المتصفح)', 'success');
-            }
-        } catch (error) {
-            console.error('Activation error:', error);
-            showNotification('❌ فشل تفعيل وضع العمل', 'error');
-            toggleBtn.innerHTML = originalText;
-        } finally {
-            toggleBtn.disabled = false;
-        }
-    } else {
-        console.log('🛑 Deactivating Fallback mode...');
-        const originalText = toggleBtn.innerHTML;
-        toggleBtn.innerHTML = '<span class="loading"></span> جاري الإيقاف...';
-        toggleBtn.disabled = true;
-        
-        try {
-            if (universalManager) {
-                await universalManager.deactivate();
-                universalManager = null;
-            }
-            statusIndicator.className = 'status-indicator status-offline';
-            statusText.textContent = 'غير متصل';
-            toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> تفعيل وضع العمل';
-            toggleBtn.classList.remove('btn-danger');
-            toggleBtn.classList.add('btn-driver');
-            isDriverOnline = false;
-            localStorage.removeItem('driver_forever_online');
-            showNotification('✅ تم إيقاف وضع العمل', 'info');
-        } catch (error) {
-            console.error('Deactivation error:', error);
-            showNotification('❌ فشل إيقاف وضع العمل', 'error');
-            toggleBtn.innerHTML = originalText;
-        } finally {
-            toggleBtn.disabled = false;
-        }
-    }
-}
-
-// استبدال الدالة الأصلية بالنظام الشامل
-document.getElementById('toggle-online-btn').onclick = toggleDriverStatusUniversal;
-
-// تعديل restoreDriverStatus لتعمل مع النظام الشامل
-async function restoreUniversalStatus() {
-    const wasOnline = localStorage.getItem('driver_forever_online') === 'true';
-    const savedDriverId = localStorage.getItem('driver_online_id');
-    
-    if (wasOnline && currentDriver && savedDriverId === currentDriver.id) {
-        console.log('🔄 Restoring universal mode from storage...');
-        
-        // تحديث الواجهة أولاً
-        document.getElementById('driver-status-indicator').className = 'status-indicator status-online';
-        document.getElementById('driver-status-text').textContent = 'متصل وجاهز';
-        document.getElementById('toggle-online-btn').innerHTML = '<ion-icon name="power-outline"></ion-icon> إيقاف وضع العمل';
-        document.getElementById('toggle-online-btn').classList.add('btn-danger');
-        document.getElementById('toggle-online-btn').classList.remove('btn-driver');
-        
-        isDriverOnline = true;
-        
-        // إعادة تهيئة النظام الشامل
-        universalManager = new UniversalDriverManager(currentDriver.id);
-        setTimeout(async () => {
-            try {
-                await universalManager.activate();
-                console.log('✅ Universal mode restored');
-                
-                // مزامنة الإشعارات
-                await updatePushSubscriptionOnLogin(currentDriver.id);
-            } catch (error) {
-                console.error('❌ Failed to restore universal mode:', error);
-                
-                // في حالة الفشل، نعيد الحالة إلى offline
-                localStorage.removeItem('driver_forever_online');
-                localStorage.removeItem('driver_online_since');
-                localStorage.removeItem('driver_online_id');
-                
-                document.getElementById('driver-status-indicator').className = 'status-indicator status-offline';
-                document.getElementById('driver-status-text').textContent = 'غير متصل';
-                document.getElementById('toggle-online-btn').innerHTML = '<ion-icon name="power-outline"></ion-icon> تفعيل وضع العمل';
-                document.getElementById('toggle-online-btn').classList.remove('btn-danger');
-                document.getElementById('toggle-online-btn').classList.add('btn-driver');
-                
-                isDriverOnline = false;
-            }
-        }, 1000);
-    }
-}
-
-// تعديل checkAuth لاستخدام النظام الشامل
-function checkAuth() {
-    const savedDriver = localStorage.getItem('tarhal_driver');
-    
-    if (savedDriver) {
-        try {
-            currentDriver = JSON.parse(savedDriver);
-            localStorage.setItem('driver_id', currentDriver.id);
-            showScreen('driver-dashboard-screen');
-            updateDriverDashboard();
-            initDriverSystems();
-
-            // استعادة وضع التشغيل بعد ثانية
-            setTimeout(() => {
-                restoreUniversalStatus();
-            }, 1000);
-            
-        } catch (e) {
-            localStorage.removeItem('tarhal_driver');
-            showScreen('driver-login-screen');
-        }
-    } else {
-        showScreen('driver-login-screen');
-    }
-}
-
-// ============================================
-// Flutter-PWA Bridge Diagnostics
-// ============================================
-function addFlutterControlButtons() {
-    const card = document.querySelector('#driver-dashboard-screen .card');
-    if (!card || document.getElementById('flutter-controls')) return;
-
-    const controls = document.createElement('div');
-    controls.id = 'flutter-controls';
-    controls.innerHTML = `
-      <div style="margin-top: 15px; padding: 12px; background: #f0f4ff; border-radius: var(--radius); border: 1px solid #3b82f6;">
-        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-          <ion-icon name="phone-portrait-outline" style="color: #3b82f6;"></ion-icon>
-          <span style="color: #3b82f6; font-weight: 600;">اتصال Flutter</span>
-        </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-          <button class="btn btn-outline" onclick="testFlutterConnection()" style="padding: 8px; font-size: 12px;">
-            اختبار الاتصال
-          </button>
-          <button class="btn btn-outline" onclick="sendTestRideToFlutter()" style="padding: 8px; font-size: 12px;">
-            رحلة تجريبية
-          </button>
-        </div>
-        <div id="flutter-status" style="margin-top: 8px; font-size: 11px; color: #4b5563;">
-          جاري التحقق...
-        </div>
-      </div>
-    `;
-
-    card.appendChild(controls);
-    checkFlutterConnection();
-}
-
-function checkFlutterConnection() {
-    const statusEl = document.getElementById('flutter-status');
-    if (!statusEl) return;
-
-    if (window.flutter_inappwebview) {
-        statusEl.innerHTML = '✅ متصل بتطبيق Flutter';
-        statusEl.style.color = '#16a34a';
-    } else {
-        statusEl.innerHTML = '⚠️ يعمل في المتصفح فقط';
-        statusEl.style.color = '#ef4444';
-    }
-}
-
-function testFlutterConnection() {
-    if (window.FlutterBridge) {
-        window.FlutterBridge.sendToFlutter('CONNECTION_TEST', {
-            ping: 'pong',
-            time: new Date().toISOString()
-        });
-        showNotification('📡 تم إرسال طلب اختبار الاتصال لـ Flutter', 'info');
-    }
-}
-
-function sendTestRideToFlutter() {
-    const testData = {
-        ride_id: 'test_' + Date.now(),
-        request_id: 'req_' + Date.now(),
-        customer_name: 'عميل تجريبي',
-        vehicle_type: 'economy',
-        amount: '5000',
-        distance: '3.5',
-        type: 'RIDE_REQUEST'
-    };
-
-    sendToFlutter(testData);
-    showNotification('🚗 تم إرسال رحلة تجريبية لـ Flutter', 'success');
-}
-
-// إضافة معلومات النظام إلى الواجهة
-function addSystemInfo() {
-    const card = document.querySelector('#driver-dashboard-screen .card');
-    if (card && !document.getElementById('system-info')) {
-        const infoDiv = document.createElement('div');
-        infoDiv.id = 'system-info';
-        infoDiv.style.marginTop = '15px';
-        infoDiv.style.padding = '12px';
-        infoDiv.style.background = '#e8f4fd';
-        infoDiv.style.border = '1px solid #3498db';
-        infoDiv.style.borderRadius = 'var(--radius)';
-        infoDiv.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                <ion-icon name="settings-outline" style="color: #2980b9; font-size: 16px;"></ion-icon>
-                <span style="color: #2980b9; font-weight: 600; font-size: 13px;">
-                    معلومات النظام
-                </span>
-            </div>
-            <div style="color: #2c3e50; font-size: 11px; line-height: 1.5;">
-                ✅ النظام الشامل مفعّل<br>
-                📱 يعمل مع أو بدون last_seen<br>
-                🔄 تحديث تلقائي كل 20 ثانية<br>
-                💾 حفظ حالة عند إغلاق التطبيق
-            </div>
-        `;
-        card.appendChild(infoDiv);
-    }
-}
-
-setTimeout(addSystemInfo, 1500);
-
-console.log('✅ Universal Driver System Loaded');
+    // Expose functions to global scope
+    window.loginDriver = loginDriver;
+    window.showDriverRegisterInfo = showDriverRegisterInfo;
+    window.showDriverLogin = showDriverLogin;
+    window.toggleDriverStatusUniversal = toggleDriverStatusUniversal;
+    window.acceptRide = acceptRide;
+    window.declineRide = declineRide;
+    window.acceptAgreement = acceptAgreement;
+    window.rejectAgreement = rejectAgreement;
+    window.contactAdminForDriverRegistration = contactAdminForDriverRegistration;
+    window.showDriverProfile = showDriverProfile;
+    window.logoutDriver = logoutDriver;
+    window.testFlutterConnection = testFlutterConnection;
+    window.sendTestRide = sendTestRide;
 </script>
 
 </body>
