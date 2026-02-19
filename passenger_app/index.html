@@ -6,7 +6,7 @@
     <title>زونا - الراكب - Tarhal</title>
     
     <!-- PWA Meta Tags -->
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4f46e5">
     <link rel="icon" href="/icons/icon-192x192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2289,6 +2289,48 @@ const tarhalDB = supabase.createClient(SB_URL, SB_KEY);
 
 // Application State
 let currentUser = null;
+
+// ============================================
+// Flutter & WebView Bridge
+// ============================================
+const FlutterBridge = {
+    // إرسال رسالة إلى تطبيق Flutter
+    postMessage: function(type, data = {}) {
+        console.log(`[Bridge] Sending message: ${type}`, data);
+        if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+            window.flutter_inappwebview.callHandler(type, JSON.stringify(data));
+        } else if (window.parent && window.parent.postMessage) {
+            window.parent.postMessage({ type, data, source: 'tarhal_pwa' }, '*');
+        }
+    },
+
+    // انتظار جاهزية localStorage
+    waitForStorage: async function(maxAttempts = 10) {
+        for (let i = 0; i < maxAttempts; i++) {
+            if (window.localStorage) return true;
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        return !!window.localStorage;
+    }
+};
+
+// معالج تحديثات الرحلات من Flutter
+window.handleRideRequest = function(data) {
+    console.log('Ride update received:', data);
+    if (!data) return;
+
+    if (data.title || data.body) {
+        showNotification(data.body || data.title, 'info');
+    }
+};
+
+// مستمع لطلبات الرحلات من Flutter
+window.addEventListener('rideRequest', (event) => {
+    console.log('🔔 Ride Request received from Flutter:', event.detail);
+    if (typeof handleRideRequest === 'function') {
+        handleRideRequest(event.detail);
+    }
+});
 let selectedVehicleType = null;
 let googleMap = null;
 let markersMap = {
@@ -2307,6 +2349,7 @@ let manualModeActive = false;
 let locationTimer = null;
 let gpsRetryCount = 0;
 let currentRideId = null;
+let rideStatusInterval = null;
 
 // Vehicle Prices
 const VEHICLE_PRICES = {
@@ -2319,7 +2362,7 @@ const VEHICLE_PRICES = {
 // ============================================
 // Initialization
 // ============================================
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     console.log('🚀 ترحال زونا - تطبيق الراكب');
     
     // إخفاء Splash Screen
@@ -2327,11 +2370,17 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('splash-screen').classList.add('hide');
     }, 1500);
     
+    // انتظار جاهزية التخزين (خاص بالـ WebView)
+    await FlutterBridge.waitForStorage();
+
     // تحميل خرائط Google بشكل منفصل
     loadGoogleMaps();
     
     // تهيئة التطبيق
     checkAuth();
+
+    // إرسال إشعار جاهزية التطبيق لـ Flutter
+    FlutterBridge.postMessage('pwa_ready', { app: 'passenger' });
 });
 
 // ============================================
@@ -2682,6 +2731,13 @@ async function loginCustomer() {
         currentUser = customer;
         localStorage.setItem('tarhal_customer', JSON.stringify(customer));
         
+        // مزامنة مع Flutter
+        FlutterBridge.postMessage('pwa_login', {
+            id: customer.id,
+            phone: customer.phone,
+            role: 'passenger'
+        });
+
         showNotification('تم تسجيل الدخول بنجاح!', 'success');
 
         showPageLoader(true);
@@ -2738,6 +2794,35 @@ async function checkDriverLinked(driverId) {
     }
 }
 
+function initRealtime() {
+    if (!currentUser || !currentUser.id) return;
+
+    console.log('📡 Initializing Supabase Realtime for Passenger...');
+
+    // Subscribe to ride updates
+    tarhalDB
+        .channel('passenger-rides')
+        .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'rides',
+            filter: `passenger_id=eq.${currentUser.id}`
+        }, (payload) => {
+            console.log('🚗 Ride update received:', payload);
+            if (payload.eventType === 'UPDATE') {
+                const ride = payload.new;
+                if (ride.driver_accepted) {
+                    showNotification(`✅ تم قبول الرحلة من السائق ${ride.driver_name || 'سائق'}!`, 'success');
+                    // Refresh UI if on relevant screen
+                    if (currentRideId === ride.id) {
+                        // Logic to update active ride UI
+                    }
+                }
+            }
+        })
+        .subscribe();
+}
+
 function checkAuth() {
     const savedUser = localStorage.getItem('tarhal_customer');
     
@@ -2746,6 +2831,7 @@ function checkAuth() {
             currentUser = JSON.parse(savedUser);
             showScreen('home-screen');
             updateUserProfile();
+            initRealtime();
         } catch (e) {
             localStorage.removeItem('tarhal_customer');
             showScreen('customer-login-screen');
@@ -2756,8 +2842,22 @@ function checkAuth() {
 }
 
 function logout() {
+    // Clear intervals and timers
+    if (rideStatusInterval) {
+        clearInterval(rideStatusInterval);
+        rideStatusInterval = null;
+    }
+    if (locationTimer) {
+        clearTimeout(locationTimer);
+        locationTimer = null;
+    }
+
     localStorage.removeItem('tarhal_customer');
     currentUser = null;
+
+    // مزامنة مع Flutter
+    FlutterBridge.postMessage('pwa_logout');
+
     showScreen('customer-login-screen');
     showNotification('تم تسجيل الخروج بنجاح', 'success');
 }
@@ -3645,7 +3745,7 @@ async function confirmRide() {
             }]);
         } catch (e) { /* تجاهل الخطأ إذا كان الجدول غير موجود */ }
         
-        // إرسال إشعار OneSignal للسائق عبر API الخاص بالتطبيق
+        // إرسال إشعار Web Push للسائق عبر API الخاص بالتطبيق
         // تجهيز البيانات للإشعار كما هو مطلوب في api/send-push.js
         const pushPayload = {
             driverId: selectedDriver.driver_id, // يجب أن يكون UUID السائق
@@ -3756,14 +3856,17 @@ async function confirmRide() {
 }
 // دالة جديدة لمراقبة حالة الرحلة
 async function startRideStatusMonitoring(rideId, requestId, driverName) {
+    if (rideStatusInterval) clearInterval(rideStatusInterval);
+
     let checkCount = 0;
     const maxChecks = 60; // 5 دقائق (60 × 5 ثواني)
     
-    const checkInterval = setInterval(async () => {
+    rideStatusInterval = setInterval(async () => {
         checkCount++;
         
         if (checkCount > maxChecks) {
-            clearInterval(checkInterval);
+            clearInterval(rideStatusInterval);
+            rideStatusInterval = null;
             showNotification('⏰ انتهى وقت الانتظار. الرحلة ملغاة تلقائياً', 'warning');
             
             // تحديث حالة الرحلة
@@ -3792,7 +3895,8 @@ async function startRideStatusMonitoring(rideId, requestId, driverName) {
             if (error) throw error;
             
             if (ride.driver_accepted) {
-                clearInterval(checkInterval);
+                clearInterval(rideStatusInterval);
+                rideStatusInterval = null;
                 showNotification(`✅ تم قبول الرحلة من السائق ${ride.driver_name || driverName}!`, 'success');
 
                 // تحديث حالة الرحلة
@@ -3814,7 +3918,8 @@ async function startRideStatusMonitoring(rideId, requestId, driverName) {
                 }, 2000);
                 
             } else if (ride.driver_rejected) {
-                clearInterval(checkInterval);
+                clearInterval(rideStatusInterval);
+                rideStatusInterval = null;
                 showNotification('❌ رفض السائق الرحلة. جاري البحث عن سائق آخر...', 'warning');
                 
                 // تحديث حالة الرحلة
@@ -3985,6 +4090,11 @@ async function findAlternativeDriver(userPosition, vehicleType, excludedDriverId
 
 // دالة لإلغاء البحث عن الرحلة
 async function cancelRideSearch() {
+    if (rideStatusInterval) {
+        clearInterval(rideStatusInterval);
+        rideStatusInterval = null;
+    }
+
     if (!currentRideId) return;
     
     try {
@@ -4149,6 +4259,19 @@ function formatPhoneNumber(phone) {
 }
 
 console.log('✅ Tarhal Zoona Passenger App - Loaded Successfully');
+
+// تسجيل Service Worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw-passenger.js')
+      .then(registration => {
+        console.log('✅ Service Worker registered:', registration.scope);
+      })
+      .catch(error => {
+        console.log('⚠️ Service Worker registration failed:', error);
+      });
+  });
+}
 </script>
 
 </body>
