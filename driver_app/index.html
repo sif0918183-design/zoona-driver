@@ -9,10 +9,10 @@
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#16a34a">
-    <link rel="icon" href="icons/icon-192x192.png">
+    <link rel="icon" href="../icons/icon-192x192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    <link rel="apple-touch-icon" href="../icons/icon-192x192.png">
 
     <!-- Tajawal Font -->
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
@@ -23,6 +23,8 @@
 
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../shared/supabase-config.js"></script>
+    <script src="../shared/notification-utils.js"></script>
 
     <style>
         /* الأنماط الأساسية */
@@ -562,7 +564,7 @@
 <!-- Splash Screen -->
 <div id="splash-screen">
     <div class="splash-content">
-        <img src="icons/icon-384x384.png" alt="Zoona Logo" class="splash-logo">
+        <img src="../icons/icon-384x384.png" alt="Zoona Logo" class="splash-logo">
         <div class="loader"></div>
         <p class="splash-text">جاري تشغيل زونا للسائقين...</p>
     </div>
@@ -572,7 +574,7 @@
     <!-- Header -->
     <header class="app-header">
         <h1 class="app-title">
-            <img src="icons/icon-512x512.png" alt="زونا" class="logo-img">
+            <img src="../icons/icon-512x512.png" alt="زونا" class="logo-img">
             زونــا - السائقين
         </h1>
     </header>
@@ -784,10 +786,8 @@
     //  تهيئة التطبيق للسائقين فقط
     // ============================================
 
-    // Supabase Configuration
-    const SB_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
-    const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
-    const tarhalDB = supabase.createClient(SB_URL, SB_KEY);
+    // Supabase Configuration from shared/supabase-config.js
+    const tarhalDB = supabase.createClient(window.SB_URL, window.SB_KEY);
 
     // Application State
     let currentDriver = null;
@@ -992,6 +992,13 @@
         
         checkAuth();
         
+        // Register Service Worker for Driver
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw-driver.js')
+                .then(reg => console.log('Driver SW registered'))
+                .catch(err => console.error('Driver SW failed', err));
+        }
+
         // فحص اتصال Flutter
         setTimeout(checkFlutterConnection, 2000);
         
@@ -1789,7 +1796,7 @@
             
             // Redirect to acceptance page
             setTimeout(() => {
-                window.location.href = `/accept-ride.html?rideId=${currentRideId}&requestId=${currentRequestId || ''}`;
+                window.location.href = `accept-ride.html?rideId=${currentRideId}&requestId=${currentRequestId || ''}`;
             }, 1000);
 
         } catch (error) {

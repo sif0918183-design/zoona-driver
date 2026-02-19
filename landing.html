@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ترحال زونا - اختر تطبيقك</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --passenger: #4f46e5;
+            --driver: #16a34a;
+            --dark: #111827;
+            --light: #f9fafb;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: var(--light);
+            color: var(--dark);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .landing-container {
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--passenger);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .logo img {
+            height: 80px;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #6b7280;
+            margin-bottom: 40px;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+        }
+
+        .app-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 2px solid transparent;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .app-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 35px rgba(0,0,0,0.1);
+        }
+
+        .app-card.passenger:hover {
+            border-color: var(--passenger);
+        }
+
+        .app-card.driver:hover {
+            border-color: var(--driver);
+        }
+
+        .icon-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            color: white;
+        }
+
+        .passenger .icon-circle {
+            background: linear-gradient(135deg, var(--passenger), #6366f1);
+        }
+
+        .driver .icon-circle {
+            background: linear-gradient(135deg, var(--driver), #22c55e);
+        }
+
+        .app-card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        .app-card p {
+            color: #6b7280;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border-radius: 12px;
+            font-weight: 700;
+            text-decoration: none;
+            color: white;
+            transition: opacity 0.3s;
+            width: 100%;
+        }
+
+        .passenger .btn {
+            background-color: var(--passenger);
+        }
+
+        .driver .btn {
+            background-color: var(--driver);
+        }
+
+        @media (max-width: 480px) {
+            .logo { font-size: 2rem; }
+            .logo img { height: 60px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="landing-container">
+        <div class="logo">
+            <img src="icons/icon-512x512.png" alt="زونا">
+            <span>ترحال زونــا</span>
+        </div>
+        <p class="subtitle">اختر التطبيق المناسب لاحتياجك</p>
+
+        <div class="cards-grid">
+            <div class="app-card passenger" onclick="selectApp('passenger')">
+                <div class="icon-circle">
+                    <i class="fas fa-user"></i>
+                </div>
+                <h2>تطبيق الراكب</h2>
+                <p>اطلب رحلتك الآن، سافر بكل راحة وأمان مع أفضل السائقين في السودان.</p>
+                <span class="btn">دخول كراكب</span>
+            </div>
+
+            <div class="app-card driver" onclick="selectApp('driver')">
+                <div class="icon-circle">
+                    <i class="fas fa-car"></i>
+                </div>
+                <h2>تطبيق السائق</h2>
+                <p>انضم إلى عائلة سائقي زونا، استقبل الطلبات وزد دخلك بكل سهولة.</p>
+                <span class="btn">دخول كسائق</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function selectApp(type) {
+            localStorage.setItem('user_app_choice', type);
+
+            if (type === 'passenger') {
+                registerSW('passenger_app/sw-passenger.js');
+                window.location.href = 'passenger_app/index.html';
+            } else {
+                registerSW('driver_app/sw-driver.js');
+                window.location.href = 'driver_app/index.html';
+            }
+        }
+
+        function registerSW(path) {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register(path)
+                    .then(reg => console.log('SW Registered:', path))
+                    .catch(err => console.error('SW Registration Failed:', err));
+            }
+        }
+
+        // Auto redirect if choice exists
+        window.onload = () => {
+            const choice = localStorage.getItem('user_app_choice');
+            // We only auto-redirect if specifically told or if desired.
+            // For now, let's let them choose or add a "Change" option later.
+        };
+    </script>
+</body>
+</html>
