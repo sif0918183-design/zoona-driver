@@ -9,10 +9,10 @@
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#16a34a">
-    <link rel="icon" href="../icons/icon-192x192.png">
+    <link rel="icon" href="icons/icon-192x192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="../icons/icon-192x192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
 
     <!-- Tajawal Font -->
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
@@ -23,8 +23,6 @@
 
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../shared/supabase-config.js"></script>
-    <script src="../shared/notification-utils.js"></script>
 
     <style>
         /* الأنماط الأساسية */
@@ -564,7 +562,7 @@
 <!-- Splash Screen -->
 <div id="splash-screen">
     <div class="splash-content">
-        <img src="../icons/icon-384x384.png" alt="Zoona Logo" class="splash-logo">
+        <img src="icons/icon-384x384.png" alt="Zoona Logo" class="splash-logo">
         <div class="loader"></div>
         <p class="splash-text">جاري تشغيل زونا للسائقين...</p>
     </div>
@@ -574,7 +572,7 @@
     <!-- Header -->
     <header class="app-header">
         <h1 class="app-title">
-            <img src="../icons/icon-512x512.png" alt="زونا" class="logo-img">
+            <img src="icons/icon-512x512.png" alt="زونا" class="logo-img">
             زونــا - السائقين
         </h1>
     </header>
@@ -718,7 +716,7 @@
 <div id="incoming-ride-modal" class="overlay hidden">
     <div class="modal">
         <div class="modal-header">
-            <div style="font-size: 48px; margin-bottom: 16px;">🚖</div>
+            <div style="font-size: 48px; margin-bottom: 16px;"></div>
             <h2 class="modal-title">طلب رحلة جديد!</h2>
             <p class="modal-subtitle">لديك 40 ثانية للرد</p>
         </div>
@@ -786,8 +784,10 @@
     //  تهيئة التطبيق للسائقين فقط
     // ============================================
 
-    // Supabase Configuration from shared/supabase-config.js
-    const tarhalDB = supabase.createClient(window.SB_URL, window.SB_KEY);
+    // Supabase Configuration
+    const SB_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
+    const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
+    const tarhalDB = supabase.createClient(SB_URL, SB_KEY);
 
     // Application State
     let currentDriver = null;
@@ -814,7 +814,7 @@
             // إعلام Flutter بأن PWA جاهز
             try {
                 window.flutter_inappwebview.callHandler('testConnection', {});
-                console.log('📱 Sent test connection to Flutter');
+                console.log(' Sent test connection to Flutter');
             } catch (e) {
                 console.log('⚠️ Flutter handler error:', e);
             }
@@ -832,7 +832,7 @@
 
     // دالة استقبال الرحلات من Flutter
     window.handleRideRequest = function(data) {
-        console.log('🎯 RIDE REQUEST RECEIVED from Flutter:', data);
+        console.log(' RIDE REQUEST RECEIVED from Flutter:', data);
         
         // 1. التحقق من أن البيانات صالحة
         if (!data || (!data.ride_id && !data.rideId)) {
@@ -858,14 +858,14 @@
     window.addEventListener('message', function(event) {
         // فقط معالجة الرسائل من Flutter
         if (event.data && event.data.source === 'flutter') {
-            console.log('📨 Message from Flutter via postMessage:', event.data);
+            console.log(' Message from Flutter via postMessage:', event.data);
             
             if (event.data.type === 'RIDE_REQUEST') {
                 window.handleRideRequest(event.data.payload || event.data);
             }
             
             if (event.data.type === 'SET_DRIVER_ID') {
-                console.log('🆔 Driver ID from Flutter:', event.data.driverId);
+                console.log(' Driver ID from Flutter:', event.data.driverId);
                 localStorage.setItem('driver_id', event.data.driverId);
                 localStorage.setItem('tarhal_driver_id', event.data.driverId);
                 
@@ -889,13 +889,13 @@
         constructor() {
             this.enabled = true;
             this.audioContext = null;
-            console.log('🎵 Sound Manager initialized');
+            console.log(' Sound Manager initialized');
         }
         
         playRideRequestSound() {
             if (!this.enabled) return;
             
-            console.log('🔊 Playing ride request sound');
+            console.log(' Playing ride request sound');
             
             // محاولة استخدام AudioContext
             try {
@@ -982,7 +982,7 @@
 
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('🚗 تطبيق زونا للسائقين');
+        console.log(' تطبيق زونا للسائقين');
         
         // Hide splash screen
         setTimeout(() => {
@@ -992,13 +992,6 @@
         
         checkAuth();
         
-        // Register Service Worker for Driver
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw-driver.js')
-                .then(reg => console.log('Driver SW registered'))
-                .catch(err => console.error('Driver SW failed', err));
-        }
-
         // فحص اتصال Flutter
         setTimeout(checkFlutterConnection, 2000);
         
@@ -1310,7 +1303,7 @@
             flutterOnline = true;
         }
 
-        console.log(`📡 Flutter status sync: ${flutterOnline ? 'ONLINE' : 'OFFLINE'}`);
+        console.log(` Flutter status sync: ${flutterOnline ? 'ONLINE' : 'OFFLINE'}`);
 
         if (flutterOnline !== isDriverOnline) {
             const statusIndicator = document.getElementById('driver-status-indicator');
@@ -1346,11 +1339,11 @@
             this.heartbeatInterval = null;
             this.useLastSeen = true;
             
-            console.log(`🌐 Universal Driver Manager for: ${driverId}`);
+            console.log(` Universal Driver Manager for: ${driverId}`);
         }
         
         async activate() {
-            console.log('🔓 Activating universal mode...');
+            console.log(' Activating universal mode...');
             
             await this.checkLastSeenColumn();
             
@@ -1367,7 +1360,7 @@
         }
         
         async deactivate() {
-            console.log('🔒 Deactivating universal mode...');
+            console.log(' Deactivating universal mode...');
             
             this.isActive = false;
             
@@ -1375,7 +1368,7 @@
             
             await this.setOffline();
             
-            console.log('🛑 Universal mode deactivated');
+            console.log(' Universal mode deactivated');
             return true;
         }
         
@@ -1492,7 +1485,7 @@
                     .update(updateData)
                     .eq('driver_id', this.driverId);
                 
-                console.log('💓 Universal heartbeat sent');
+                console.log(' Universal heartbeat sent');
                 return true;
                 
             } catch (error) {
@@ -1526,14 +1519,14 @@
         setupUniversalListeners() {
             window.addEventListener('focus', () => {
                 if (this.isActive) {
-                    console.log('🔍 Page focused, sending heartbeat...');
+                    console.log(' Page focused, sending heartbeat...');
                     this.sendHeartbeat();
                 }
             });
             
             window.addEventListener('online', () => {
                 if (this.isActive) {
-                    console.log('🌐 Internet restored, sending heartbeat...');
+                    console.log(' Internet restored, sending heartbeat...');
                     setTimeout(() => this.sendHeartbeat(), 2000);
                 }
             });
@@ -1558,7 +1551,7 @@
 
         // If in Flutter, let it handle the database update
         if (window.flutter_inappwebview && isFlutterControlling) {
-            console.log(`📱 Requesting status change via Flutter: ${newStatus}`);
+            console.log(` Requesting status change via Flutter: ${newStatus}`);
             
             try {
                 await window.flutter_inappwebview.callHandler('driverStatusChange', {
@@ -1579,7 +1572,7 @@
         const toggleBtn = document.getElementById('toggle-online-btn');
 
         if (!isDriverOnline) {
-            console.log('🚀 Activating Fallback mode...');
+            console.log(' Activating Fallback mode...');
             const originalText = toggleBtn.innerHTML;
             toggleBtn.innerHTML = '<span class="loading"></span> جاري التفعيل...';
             toggleBtn.disabled = true;
@@ -1607,7 +1600,7 @@
                 toggleBtn.disabled = false;
             }
         } else {
-            console.log('🛑 Deactivating Fallback mode...');
+            console.log(' Deactivating Fallback mode...');
             const originalText = toggleBtn.innerHTML;
             toggleBtn.innerHTML = '<span class="loading"></span> جاري الإيقاف...';
             toggleBtn.disabled = true;
@@ -1641,7 +1634,7 @@
         const savedDriverId = localStorage.getItem('driver_online_id');
         
         if (wasOnline && currentDriver && savedDriverId === currentDriver.id) {
-            console.log('🔄 Restoring universal mode from storage...');
+            console.log(' Restoring universal mode from storage...');
             
             document.getElementById('driver-status-indicator').className = 'status-indicator status-online';
             document.getElementById('driver-status-text').textContent = 'متصل وجاهز';
@@ -1796,7 +1789,7 @@
             
             // Redirect to acceptance page
             setTimeout(() => {
-                window.location.href = `accept-ride.html?rideId=${currentRideId}&requestId=${currentRequestId || ''}`;
+                window.location.href = `/accept-ride.html?rideId=${currentRideId}&requestId=${currentRequestId || ''}`;
             }, 1000);
 
         } catch (error) {
@@ -1885,7 +1878,7 @@
                     ping: 'pong',
                     time: new Date().toISOString()
                 });
-                showNotification('📡 تم إرسال طلب اختبار الاتصال لـ Flutter', 'info');
+                showNotification(' تم إرسال طلب اختبار الاتصال لـ Flutter', 'info');
             } catch (e) {
                 showNotification('❌ فشل الاتصال بـ Flutter', 'error');
             }
@@ -1909,7 +1902,7 @@
         };
 
         window.handleRideRequest(testData);
-        showNotification('🚗 تم إرسال رحلة تجريبية', 'success');
+        showNotification(' تم إرسال رحلة تجريبية', 'success');
     }
 
     // ============================================
