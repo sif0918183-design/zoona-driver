@@ -1,5 +1,5 @@
-// sw-driver.js - Service Worker for Driver App
-const CACHE_NAME = 'tarhal-driver-v1';
+// sw-driver.js - Optimized Service Worker for Driver App (v2)
+const CACHE_NAME = 'tarhal-driver-v2';
 const ASSETS = [
     './',
     './index.html',
@@ -8,10 +8,34 @@ const ASSETS = [
     '../shared/notification-utils.js'
 ];
 
+// Domains to NEVER cache
+const EXCLUDED_DOMAINS = [
+    'maps.googleapis.com',
+    'maps.gstatic.com',
+    'cdn.onesignal.com',
+    'unpkg.com',
+    'cdnjs.cloudflare.com',
+    'fonts.googleapis.com',
+    'fonts.gstatic.com'
+];
+
+const MAX_CACHE_ITEMS = 50;
+
+// Helper to limit cache size
+async function limitCacheSize(name, size) {
+    const cache = await caches.open(name);
+    const keys = await cache.keys();
+    if (keys.length > size) {
+        await cache.delete(keys[0]);
+        await limitCacheSize(name, size);
+    }
+}
+
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
     );
+    self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -22,12 +46,40 @@ self.addEventListener('activate', (event) => {
             );
         })
     );
+    self.clients.claim();
 });
 
+// Cache First for Assets, Network First for others
 self.addEventListener('fetch', (event) => {
+    if (event.request.method !== 'GET') return;
+
+    const url = new URL(event.request.url);
+
+    // Skip caching for excluded domains or Supabase API
+    if (EXCLUDED_DOMAINS.some(domain => url.hostname.includes(domain)) ||
+        url.hostname.includes('supabase.co')) {
+        event.respondWith(fetch(event.request));
+        return;
+    }
+
     event.respondWith(
-        caches.match(event.request).then((response) => {
-            return response || fetch(event.request);
+        caches.match(event.request).then((cachedResponse) => {
+            if (cachedResponse) {
+                return cachedResponse;
+            }
+
+            return fetch(event.request).then((networkResponse) => {
+                if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+                    return networkResponse;
+                }
+
+                const responseClone = networkResponse.clone();
+                caches.open(CACHE_NAME).then((cache) => {
+                    cache.put(event.request, responseClone);
+                    limitCacheSize(CACHE_NAME, MAX_CACHE_ITEMS);
+                });
+                return networkResponse;
+            });
         })
     );
 });
@@ -35,8 +87,12 @@ self.addEventListener('fetch', (event) => {
 // Push Notification Handling
 self.addEventListener('push', (event) => {
     let data = {};
-    if (event.data) {
-        data = event.data.json();
+    try {
+        if (event.data) {
+            data = event.data.json();
+        }
+    } catch (e) {
+        data = { title: 'طلب رحلة جديد 🚗', body: event.data.text() };
     }
 
     const title = data.title || 'طلب رحلة جديد 🚗';
@@ -64,22 +120,12 @@ self.addEventListener('notificationclick', (event) => {
     event.notification.close();
 
     if (event.action === 'accept') {
-        // Logic to accept ride (e.g., via background sync or opening a specific URL)
         event.waitUntil(
             clients.openWindow(event.notification.data + '?action=accept')
         );
-    } else if (event.action === 'decline') {
-        // Logic to decline ride
     } else {
         event.waitUntil(
             clients.openWindow(event.notification.data)
         );
-    }
-});
-
-// Sync Driver Status
-self.addEventListener('sync', (event) => {
-    if (event.tag === 'sync-driver-status') {
-        // Logic to sync status with Supabase if offline changes were made
     }
 });
