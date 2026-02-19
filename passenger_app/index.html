@@ -11,8 +11,14 @@
     <!-- Tajawal Font -->
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
     
+    <!-- PWA Meta -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4f46e5">
+
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../shared/supabase-config.js"></script>
+    <script src="../shared/notification-utils.js"></script>
     
     <style>
         /* ============================================
@@ -1293,9 +1299,8 @@
         // ============================================
         // GLOBAL VARIABLES AND CONFIGURATION
         // ============================================
-        const SB_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
-        const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
-        const travelSupabase = supabase.createClient(SB_URL, SB_KEY);
+        // Config loaded from shared/supabase-config.js
+        const travelSupabase = supabase.createClient(window.SB_URL, window.SB_KEY);
 
         // Application State
         let currentUser = null;
@@ -1374,6 +1379,14 @@
         // ============================================
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('🚀 ترحال زونا - سفيريات السفر');
+
+            // Register Service Worker for Passenger
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw-passenger.js')
+                    .then(reg => console.log('Passenger SW registered'))
+                    .catch(err => console.error('Passenger SW failed', err));
+            }
+
             await initializeUser();
         });
 
