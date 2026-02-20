@@ -1712,8 +1712,9 @@
 // ============================================
 
 class ForeverOnlineManager {
-    constructor(driverId) {
-        this.driverId = driverId;
+    constructor(driver) {
+        this.driver = driver;
+        this.driverId = driver.id;
         this.isActive = false;
         this.heartbeatInterval = null;
         this.locationWatcher = null;
@@ -1722,7 +1723,7 @@ class ForeverOnlineManager {
         this.lastUpdateTime = null;
         this.forceStop = false;
         
-        console.log(` Forever Online Manager created for driver: ${driverId}`);
+        console.log(` Forever Online Manager created for driver: ${this.driverId}`);
     }
 
     // تفعيل وضع "الأبدي"
@@ -1757,6 +1758,9 @@ class ForeverOnlineManager {
             
         } catch (error) {
             console.error('❌ Failed to activate forever online:', error);
+            if (typeof showNotification === 'function') {
+                showNotification('❌ فشل تفعيل وضع العمل: ' + (error.message || error), 'error');
+            }
             this.isActive = false;
             return false;
         }
@@ -1775,8 +1779,12 @@ class ForeverOnlineManager {
         // إيقاف جميع المؤقتات
         this.stopAllIntervals();
 
-        // تعيين is_online = false
-        await this.forceOfflineStatus();
+        try {
+            // تعيين is_online = false
+            await this.forceOfflineStatus();
+        } catch (error) {
+            console.warn('⚠️ Could not set offline status in DB, but stopping local manager anyway');
+        }
         
         console.log(' FOREVER ONLINE mode DEACTIVATED');
         return true;
@@ -1787,23 +1795,43 @@ class ForeverOnlineManager {
         try {
             const now = new Date().toISOString();
             
-            // استخدام upsert مباشرة
-            const { error } = await tarhalDB
+            // التحقق من وجود السجل أولاً لتجنب مشاكل ON CONFLICT
+            const { data, error: selectError } = await tarhalDB
                 .from('driver_locations')
-                .upsert({
-                    driver_id: this.driverId,
-                    is_online: true,
-                    last_seen: now,
-                    created_at: now,
-                    updated_at: now
-                }, {
-                    onConflict: 'driver_id',
-                    ignoreDuplicates: false
-                });
+                .select('driver_id')
+                .eq('driver_id', this.driverId)
+                .maybeSingle();
 
-            if (error) {
-                console.error('❌ DB Upsert Error:', error);
-                throw error;
+            if (selectError) throw selectError;
+
+            if (data) {
+                // تحديث السجل الموجود
+                const { error: updateError } = await tarhalDB
+                    .from('driver_locations')
+                    .update({
+                        is_online: true,
+                        is_available: true,
+                        car_type: this.driver ? this.driver.car_type : null,
+                        last_seen: now,
+                        updated_at: now
+                    })
+                    .eq('driver_id', this.driverId);
+
+                if (updateError) throw updateError;
+            } else {
+                // إنشاء سجل جديد
+                const { error: insertError } = await tarhalDB
+                    .from('driver_locations')
+                    .insert({
+                        driver_id: this.driverId,
+                        is_online: true,
+                        is_available: true,
+                        car_type: this.driver ? this.driver.car_type : null,
+                        last_seen: now,
+                        updated_at: now
+                    });
+
+                if (insertError) throw insertError;
             }
             
             console.log('✅ Driver location record ensured');
@@ -1820,21 +1848,8 @@ class ForeverOnlineManager {
         try {
             const now = new Date().toISOString();
             
-            const { error } = await tarhalDB
-                .from('driver_locations')
-                .update({
-                    is_online: true,
-                    last_seen: now,
-                    updated_at: now
-                })
-                .eq('driver_id', this.driverId);
-
-            if (error) {
-                console.error('❌ Force Online Error:', error);
-                // محاولة upsert بدلاً من update
-                await this.ensureDriverLocationRecord();
-                return;
-            }
+            // نستخدم نفس المنطق للتأكد من الحالة
+            await this.ensureDriverLocationRecord();
 
             this.lastUpdateTime = now;
             console.log(`✅ FORCED ONLINE at ${now}`);
@@ -1855,6 +1870,7 @@ class ForeverOnlineManager {
                 .from('driver_locations')
                 .update({
                     is_online: false,
+                    is_available: false,
                     last_seen: now,
                     updated_at: now
                 })
@@ -1862,7 +1878,7 @@ class ForeverOnlineManager {
 
             if (error) {
                 console.error('❌ Force Offline Error:', error);
-                return false;
+                throw error;
             }
 
             console.log(`✅ FORCED OFFLINE at ${now}`);
@@ -1870,7 +1886,7 @@ class ForeverOnlineManager {
             
         } catch (error) {
             console.error('❌ Failed to force offline status:', error);
-            return false;
+            throw error;
         }
     }
 
@@ -2080,19 +2096,19 @@ async function toggleDriverStatus() {
     const statusIndicator = document.getElementById('driver-status-indicator');
     const statusText = document.getElementById('driver-status-text');
     const toggleBtn = document.getElementById('toggle-online-btn');
+    const originalText = toggleBtn.innerHTML;
 
     if (!isDriverOnline) {
         // ==================== تفعيل وضع العمل ====================
         console.log(' Activating DRIVER ONLINE mode...');
         
         // إظهار مؤشر تحميل
-        const originalText = toggleBtn.innerHTML;
         toggleBtn.innerHTML = '<span class="loading"></span> جاري التفعيل...';
         toggleBtn.disabled = true;
         
         try {
             // 1. تهيئة ForeverOnlineManager
-            foreverOnlineManager = new ForeverOnlineManager(currentDriver.id);
+            foreverOnlineManager = new ForeverOnlineManager(currentDriver);
             
             // 2. تفعيل النظام الأبدي
             const activated = await foreverOnlineManager.activate();
@@ -2120,7 +2136,11 @@ async function toggleDriverStatus() {
             showNotification('✅ أنت الآن متصل وجاهز لاستقبال الطلبات', 'success');
             
             // 6. مزامنة مع Flutter
-            FlutterBridge.callHandler('driverLogin', { id: currentDriver.id, online: true });
+            FlutterBridge.callHandler('driverLogin', {
+                id: currentDriver.id,
+                driver_id: currentDriver.id,
+                online: true
+            });
             FlutterBridge.postMessage('driver_status_change', { online: true });
 
 
@@ -2142,7 +2162,6 @@ async function toggleDriverStatus() {
         console.log(' Deactivating DRIVER ONLINE mode...');
         
         // إظهار مؤشر تحميل
-        const originalText = toggleBtn.innerHTML;
         toggleBtn.innerHTML = '<span class="loading"></span> جاري الإيقاف...';
         toggleBtn.disabled = true;
         
@@ -2228,7 +2247,7 @@ async function restoreDriverStatus() {
         driverOnlineSince = onlineSince || new Date().toISOString();
         
         // إعادة تهيئة النظام
-        foreverOnlineManager = new ForeverOnlineManager(currentDriver.id);
+        foreverOnlineManager = new ForeverOnlineManager(currentDriver);
         setTimeout(async () => {
             try {
                 await foreverOnlineManager.activate();
