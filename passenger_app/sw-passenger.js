@@ -1,5 +1,5 @@
-// sw-passenger.js - Optimized Service Worker for Passenger App (v2)
-const CACHE_NAME = 'tarhal-passenger-v2';
+// sw-passenger.js - Optimized Service Worker for Passenger App (v3)
+const CACHE_NAME = 'tarhal-passenger-v3';
 const ASSETS = [
     './',
     './index.html',

@@ -838,6 +838,14 @@
             }
         },
 
+        // نداء مباشر للـ Flutter Wrapper
+        callHandler: function(handlerName, data = {}) {
+            console.log(`[Bridge] Calling Flutter handler: ${handlerName}`, data);
+            if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+                window.flutter_inappwebview.callHandler(handlerName, JSON.stringify(data));
+            }
+        },
+
         // انتظار جاهزية localStorage
         waitForStorage: async function(maxAttempts = 10) {
             for (let i = 0; i < maxAttempts; i++) {
@@ -2112,6 +2120,7 @@ async function toggleDriverStatus() {
             showNotification('✅ أنت الآن متصل وجاهز لاستقبال الطلبات', 'success');
             
             // 6. مزامنة مع Flutter
+            FlutterBridge.callHandler('driverLogin', { id: currentDriver.id, online: true });
             FlutterBridge.postMessage('driver_status_change', { online: true });
 
 
@@ -2248,80 +2257,6 @@ async function restoreDriverStatus() {
     }
 }
 
-// فحص حالة السائق
-async function checkDriverOnlineStatus() {
-    if (!currentDriver) return;
-    
-    try {
-        const { data, error } = await tarhalDB
-            .from('driver_locations')
-            .select('is_online, last_seen, updated_at')
-            .eq('driver_id', currentDriver.id)
-            .maybeSingle();
-            
-        if (error) throw error;
-        
-        const isOnline = data?.is_online || false;
-        const lastSeen = data?.last_seen ? new Date(data.last_seen).toLocaleString('ar-SA') : 'غير معروف';
-        const updatedAt = data?.updated_at ? new Date(data.updated_at).toLocaleString('ar-SA') : 'غير معروف';
-        
-        let message = `الحالة: ${isOnline ? ' متصل' : ' غير متصل'}<br>`;
-        message += `آخر نشاط: ${lastSeen}<br>`;
-        message += `آخر تحديث: ${updatedAt}`;
-        
-        if (driverOnlineSince) {
-            const hours = Math.floor((new Date() - new Date(driverOnlineSince)) / 3600000);
-            message += `<br>المدة: ${hours} ساعة`;
-        }
-        
-        showNotification(message, isOnline ? 'success' : 'error');
-        
-    } catch (error) {
-        showNotification('❌ فشل فحص الحالة', 'error');
-    }
-}
-
-// فحص سجل driver_locations
-async function checkDriverLocationRecord() {
-    if (!currentDriver) return;
-    
-    try {
-        const { data, error } = await tarhalDB
-            .from('driver_locations')
-            .select('*')
-            .eq('driver_id', currentDriver.id)
-            .maybeSingle();
-            
-        if (error) throw error;
-        
-        if (!data) {
-            showNotification('⚠️ لا يوجد سجل في driver_locations', 'warning');
-            
-            // إنشاء سجل جديد
-            const now = new Date().toISOString();
-            const { error: insertError } = await tarhalDB
-                .from('driver_locations')
-                .insert({
-                    driver_id: currentDriver.id,
-                    is_online: false,
-                    last_seen: now,
-                    created_at: now,
-                    updated_at: now
-                });
-                
-            if (insertError) {
-                showNotification('❌ فشل إنشاء السجل', 'error');
-            } else {
-                showNotification('✅ تم إنشاء سجل جديد', 'success');
-            }
-        } else {
-            showNotification(`✅ السجل موجود<br>الحالة: ${data.is_online ? 'متصل' : 'غير متصل'}`, 'success');
-        }
-        
-    } catch (error) {
-        showNotification('❌ فشل فحص السجل', 'error');
-    }
-}
 
 function initRealtime() {
     if (!currentDriver || !currentDriver.id) return;
@@ -2381,47 +2316,6 @@ function checkAuth() {
     }
 }
 
-// إضافة أزرار التحكم في الواجهة (لـ updateDriverDashboard)
-function updateDriverDashboard() {
-    if (!currentDriver) return;
-
-    document.getElementById('driver-avatar').textContent = currentDriver.full_name.charAt(0);
-    document.getElementById('driver-name').textContent = currentDriver.full_name;
-    document.getElementById('driver-car-info').textContent = 
-        `${currentDriver.car_model || 'سيارة'} - ${getVehicleTypeName(currentDriver.car_type)}`;
-
-    document.getElementById('driver-balance').textContent = 
-        (currentDriver.balance || 0).toLocaleString();
-
-    // إضافة أزرار التحكم
-    setTimeout(() => {
-        const card = document.querySelector('#driver-dashboard-screen .card');
-        if (card && !document.getElementById('control-buttons')) {
-            const controlsDiv = document.createElement('div');
-            controlsDiv.id = 'control-buttons';
-            controlsDiv.className = 'mt-3';
-            controlsDiv.innerHTML = `
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;">
-                    <button class="btn btn-outline" onclick="checkDriverOnlineStatus()" style="padding: 10px; font-size: 13px;">
-                        <ion-icon name="wifi-outline"></ion-icon>
-                        فحص الاتصال
-                    </button>
-                    <button class="btn btn-outline" onclick="checkDriverLocationRecord()" style="padding: 10px; font-size: 13px;">
-                        <ion-icon name="document-text-outline"></ion-icon>
-                        فحص السجل
-                    </button>
-                </div>
-                <div style="margin-top: 12px; padding: 12px; background: #f0f9ff; border-radius: var(--radius); border: 1px solid #bae6fd; text-align: center;">
-                    <small style="color: #0369a1; font-size: 12px;">
-                        <ion-icon name="information-circle-outline"></ion-icon>
-                        ستستمر حالتك "متصل" حتى تضغط على "إيقاف وضع العمل"
-                    </small>
-                </div>
-            `;
-            card.appendChild(controlsDiv);
-        }
-    }, 500);
-}
 </script>
 <script>
 // تسجيل Service Worker
