@@ -1,5 +1,5 @@
-// sw-driver.js - Optimized Service Worker for Driver App (v2)
-const CACHE_NAME = 'tarhal-driver-v2';
+// sw-driver.js - Optimized Service Worker for Driver App (v3)
+const CACHE_NAME = 'tarhal-driver-v3';
 const ASSETS = [
     './',
     './index.html',

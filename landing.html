@@ -2,205 +2,329 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ترحال زونا - اختر تطبيقك</title>
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ترحال زونا - اختيارك الأول للتنقل</title>
+
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" href="icons/icon-192x192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+
+    <!-- Tajawal Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
     <style>
         :root {
             --passenger: #4f46e5;
+            --passenger-dark: #4338ca;
             --driver: #16a34a;
-            --dark: #111827;
-            --light: #f9fafb;
+            --driver-dark: #15803d;
+            --dark: #0f172a;
+            --light: #f8fafc;
+            --white: #ffffff;
+            --gray: #64748b;
+            --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
             font-family: 'Tajawal', sans-serif;
-            background-color: var(--light);
+            background-color: var(--white);
             color: var(--dark);
             height: 100vh;
+            overflow: hidden;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+            flex-direction: column;
         }
 
-        .landing-container {
-            max-width: 800px;
-            width: 100%;
-            text-align: center;
-        }
-
-        .logo {
-            font-size: 3rem;
-            font-weight: 800;
-            color: var(--passenger);
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-        }
-
-        .logo img {
-            height: 80px;
-        }
-
-        .subtitle {
-            font-size: 1.2rem;
-            color: #6b7280;
-            margin-bottom: 40px;
-        }
-
-        .cards-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 25px;
-        }
-
-        .app-card {
-            background: white;
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-            transition: all 0.3s ease;
-            cursor: pointer;
-            border: 2px solid transparent;
+        .splash-screen {
+            flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: center;
+            padding: 24px;
+            animation: fadeIn 0.8s ease-out;
         }
 
-        .app-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 20px 35px rgba(0,0,0,0.1);
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        .app-card.passenger:hover {
+        .brand-container {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .brand-logo {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.1));
+            animation: logoFloat 3s ease-in-out infinite;
+        }
+
+        @keyframes logoFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .brand-name {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: var(--dark);
+            letter-spacing: -1px;
+            margin-bottom: 8px;
+        }
+
+        .brand-tagline {
+            font-size: 1.1rem;
+            color: var(--gray);
+            font-weight: 500;
+        }
+
+        .options-container {
+            width: 100%;
+            max-width: 450px;
+            display: grid;
+            gap: 20px;
+        }
+
+        .option-card {
+            background: var(--light);
+            border-radius: 24px;
+            padding: 24px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .option-card:hover {
+            transform: scale(1.02);
+            background: var(--white);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+        }
+
+        .option-card.passenger:hover {
             border-color: var(--passenger);
         }
 
-        .app-card.driver:hover {
+        .option-card.driver:hover {
             border-color: var(--driver);
         }
 
-        .icon-circle {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
+        .icon-box {
+            width: 64px;
+            height: 64px;
+            border-radius: 18px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2.5rem;
-            margin-bottom: 20px;
-            color: white;
+            font-size: 1.8rem;
+            flex-shrink: 0;
+            transition: var(--transition);
         }
 
-        .passenger .icon-circle {
-            background: linear-gradient(135deg, var(--passenger), #6366f1);
+        .passenger .icon-box {
+            background: rgba(79, 70, 229, 0.1);
+            color: var(--passenger);
         }
 
-        .driver .icon-circle {
-            background: linear-gradient(135deg, var(--driver), #22c55e);
+        .driver .icon-box {
+            background: rgba(22, 163, 74, 0.1);
+            color: var(--driver);
         }
 
-        .app-card h2 {
-            font-size: 1.5rem;
-            margin-bottom: 15px;
-            font-weight: 700;
+        .option-card:hover .icon-box {
+            transform: scale(1.1) rotate(-5deg);
         }
 
-        .app-card p {
-            color: #6b7280;
-            line-height: 1.6;
-            margin-bottom: 25px;
+        .passenger:hover .icon-box {
+            background: var(--passenger);
+            color: var(--white);
         }
 
-        .btn {
-            padding: 12px 30px;
-            border-radius: 12px;
-            font-weight: 700;
-            text-decoration: none;
-            color: white;
-            transition: opacity 0.3s;
-            width: 100%;
+        .driver:hover .icon-box {
+            background: var(--driver);
+            color: var(--white);
         }
 
-        .passenger .btn {
-            background-color: var(--passenger);
+        .option-info {
+            flex: 1;
         }
 
-        .driver .btn {
-            background-color: var(--driver);
+        .option-title {
+            font-size: 1.3rem;
+            font-weight: 800;
+            margin-bottom: 4px;
         }
 
+        .option-desc {
+            font-size: 0.95rem;
+            color: var(--gray);
+            line-height: 1.4;
+        }
+
+        .arrow-icon {
+            font-size: 1.2rem;
+            color: var(--gray);
+            opacity: 0.3;
+            transition: var(--transition);
+        }
+
+        .option-card:hover .arrow-icon {
+            opacity: 1;
+            transform: translateX(-5px);
+            color: var(--dark);
+        }
+
+        .footer {
+            padding: 30px;
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+
+        /* Loading Animation Layer */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--white);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--passenger);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Mobile specific adjustments */
         @media (max-width: 480px) {
-            .logo { font-size: 2rem; }
-            .logo img { height: 60px; }
+            .brand-name { font-size: 2rem; }
+            .option-card { padding: 20px; }
+            .icon-box { width: 56px; height: 56px; font-size: 1.5rem; }
+            .option-title { font-size: 1.15rem; }
         }
     </style>
 </head>
 <body>
-    <div class="landing-container">
-        <div class="logo">
-            <img src="icons/icon-512x512.png" alt="زونا">
-            <span>ترحال زونــا</span>
-        </div>
-        <p class="subtitle">اختر التطبيق المناسب لاحتياجك</p>
 
-        <div class="cards-grid">
-            <div class="app-card passenger" onclick="selectApp('passenger')">
-                <div class="icon-circle">
-                    <i class="fas fa-user"></i>
+    <div class="splash-screen">
+        <div class="brand-container">
+            <img src="icons/icon-512x512.png" alt="زونا" class="brand-logo">
+            <h1 class="brand-name">ترحال زونــا</h1>
+            <p class="brand-tagline">مشوارك بذكاء.. وأمان أكثر</p>
+        </div>
+
+        <div class="options-container">
+            <!-- Passenger Option -->
+            <div class="option-card passenger" onclick="selectApp('passenger')">
+                <div class="icon-box">
+                    <i class="fas fa-street-view"></i>
                 </div>
-                <h2>تطبيق الراكب</h2>
-                <p>اطلب رحلتك الآن، سافر بكل راحة وأمان مع أفضل السائقين في السودان.</p>
-                <span class="btn">دخول كراكب</span>
+                <div class="option-info">
+                    <h2 class="option-title">أنا راكب</h2>
+                    <p class="option-desc">اطلب رحلة الآن وسافر براحة تامة</p>
+                </div>
+                <div class="arrow-icon">
+                    <i class="fas fa-chevron-left"></i>
+                </div>
             </div>
 
-            <div class="app-card driver" onclick="selectApp('driver')">
-                <div class="icon-circle">
-                    <i class="fas fa-car"></i>
+            <!-- Driver Option -->
+            <div class="option-card driver" onclick="selectApp('driver')">
+                <div class="icon-box">
+                    <i class="fas fa-car-side"></i>
                 </div>
-                <h2>تطبيق السائق</h2>
-                <p>انضم إلى عائلة سائقي زونا، استقبل الطلبات وزد دخلك بكل سهولة.</p>
-                <span class="btn">دخول كسائق</span>
+                <div class="option-info">
+                    <h2 class="option-title">أنا سائق</h2>
+                    <p class="option-desc">انضم إلينا وابدأ بزيادة دخلك اليوم</p>
+                </div>
+                <div class="arrow-icon">
+                    <i class="fas fa-chevron-left"></i>
+                </div>
             </div>
         </div>
     </div>
 
+    <div class="footer">
+        <p>&copy; 2024 ترحال زونا. جميع الحقوق محفوظة.</p>
+    </div>
+
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loader" id="main-loader"></div>
+        <p id="loader-text" style="font-weight: 700; color: var(--dark);">جاري التحميل...</p>
+    </div>
+
     <script>
         function selectApp(type) {
+            // Save choice
             localStorage.setItem('user_app_choice', type);
 
-            if (type === 'passenger') {
-                registerSW('passenger_app/sw-passenger.js');
-                window.location.href = 'passenger_app/index.html';
+            // Show loading
+            const overlay = document.getElementById('loading-overlay');
+            const loader = document.getElementById('main-loader');
+            const loaderText = document.getElementById('loader-text');
+
+            overlay.style.display = 'flex';
+            if(type === 'driver') {
+                loader.style.borderTopColor = 'var(--driver)';
+                loaderText.innerText = 'جاري دخول تطبيق السائق...';
             } else {
-                registerSW('driver_app/sw-driver.js');
-                window.location.href = 'driver_app/index.html';
+                loader.style.borderTopColor = 'var(--passenger)';
+                loaderText.innerText = 'جاري دخول تطبيق الراكب...';
             }
-        }
 
-        function registerSW(path) {
+            // Register SW and redirect
+            const swPath = type === 'passenger' ? 'passenger_app/sw-passenger.js' : 'driver_app/sw-driver.js';
+            const targetUrl = type === 'passenger' ? 'passenger_app/index.html' : 'driver_app/index.html';
+
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register(path)
-                    .then(reg => console.log('SW Registered:', path))
-                    .catch(err => console.error('SW Registration Failed:', err));
+                navigator.serviceWorker.register(swPath).finally(() => {
+                    setTimeout(() => {
+                        window.location.href = targetUrl;
+                    }, 800);
+                });
+            } else {
+                setTimeout(() => {
+                    window.location.href = targetUrl;
+                }, 800);
             }
         }
 
-        // Auto redirect if choice exists
+        // Auto-redirect if returning within same session or specifically desired
+        // Removed auto-redirect to let user choose, but check if they are already logged in
         window.onload = () => {
-            const choice = localStorage.getItem('user_app_choice');
-            // We only auto-redirect if specifically told or if desired.
-            // For now, let's let them choose or add a "Change" option later.
+            console.log('Landing page ready.');
         };
     </script>
 </body>
