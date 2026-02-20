@@ -3342,31 +3342,64 @@ function calculateSearchBounds(center, radiusKm) {
  * @returns {Array} قائمة السائقين مع المسافة
  */
 async function findNearbyDrivers(userPosition, vehicleType, radiusKm) {
-    console.log(`🔍 Searching drivers in radius: ${radiusKm} km`);
+    console.log(`🔍 Searching drivers via RPC (get_nearest_drivers_v2) in radius: ${radiusKm} km`);
+    console.log(`📍 Coordinates: Longitude: ${userPosition.lng}, Latitude: ${userPosition.lat}`);
+    console.log(`🚗 Vehicle Type: ${vehicleType.toLowerCase()}, Max Distance: ${radiusKm * 1000}m`);
 
+    // استخدام RPC get_nearest_drivers_v2 للبحث الجغرافي الدقيق باستخدام PostGIS
+    // نمرر longitude أولاً ثم latitude كما يتطلب PostGIS
+    const { data: locations, error } = await tarhalDB.rpc('get_nearest_drivers_v2', {
+        lng: parseFloat(userPosition.lng),
+        lat: parseFloat(userPosition.lat),
+        max_dist: radiusKm * 1000, // قيمة max_dist بالأمتار (10 كم = 10000 م)
+        v_type: vehicleType.toLowerCase() // التأكد من مطابقة حالة الأحرف (Lowercase)
+    });
+
+    if (error) {
+        console.error('❌ Error calling RPC get_nearest_drivers_v2:', error);
+        // Fallback to manual search if RPC fails
+        console.log('⚠️ Falling back to manual bounding box search...');
+        return await manualFindNearbyDrivers(userPosition, vehicleType, radiusKm);
+    }
+
+    console.log(`✅ Drivers found via RPC:`, locations ? locations.length : 0);
+
+    if (!locations || locations.length === 0) return [];
+
+    // معالجة البيانات لتتوافق مع هيكل التطبيق
+    return locations.map(loc => ({
+        ...loc,
+        driver_id: loc.driver_id || loc.id,
+        distance: (loc.dist_meters || 0) / 1000, // تحويل المسافة من أمتار إلى كم
+        vehicle_type: loc.car_type || loc.v_type || vehicleType
+    })).sort((a, b) => a.distance - b.distance);
+}
+
+/**
+ * البحث اليدوي عن السائقين (Fallback) في حالة فشل الـ RPC
+ */
+async function manualFindNearbyDrivers(userPosition, vehicleType, radiusKm) {
     const bounds = calculateSearchBounds(userPosition, radiusKm);
 
-    // استخدام جدول driver_locations مع الربط بجدول drivers للحصول على التقييمات والبيانات الإضافية
     const { data: locations, error } = await tarhalDB
         .from('driver_locations')
         .select('*, drivers(*)')
         .eq('is_online', true)
         .eq('is_available', true)
-        .eq('car_type', vehicleType)
+        .eq('car_type', vehicleType.toLowerCase())
         .gte('lat', bounds.minLat)
         .lte('lat', bounds.maxLat)
         .gte('lng', bounds.minLng)
         .lte('lng', bounds.maxLng);
 
     if (error) {
-        console.error('Error fetching driver locations:', error);
+        console.error('❌ Manual search error:', error);
         return [];
     }
 
     if (!locations || locations.length === 0) return [];
 
-    // معالجة البيانات وحساب المسافة الحقيقية لكل سائق
-    const driversWithDistance = locations.map(loc => {
+    return locations.map(loc => {
         const driver = loc.drivers || {};
         const distance = calculateDistance(
             userPosition.lat,
@@ -3383,13 +3416,7 @@ async function findNearbyDrivers(userPosition, vehicleType, radiusKm) {
             distance: distance,
             vehicle_type: loc.car_type
         };
-    });
-
-    // تصفية السائقين الذين هم فعلاً داخل الدائرة (لأن البحث المربع أوسع قليلاً)
-    const filteredDrivers = driversWithDistance.filter(d => d.distance <= radiusKm);
-
-    // ترتيب السائقين بالأقرب أولاً
-    return filteredDrivers.sort((a, b) => a.distance - b.distance);
+    }).filter(d => d.distance <= radiusKm).sort((a, b) => a.distance - b.distance);
 }
 
 /**
@@ -3694,7 +3721,7 @@ async function confirmRide() {
             nearbyDrivers = await findNearbyDrivers(userPosition, selectedVehicleType, radius);
 
             if (nearbyDrivers.length > 0) {
-                console.log(`✅ Found ${nearbyDrivers.length} drivers in ${radius} km`);
+                console.log(`[ConfirmRide] Found ${nearbyDrivers.length} potential candidates in ${radius} km`);
 
                 // ترتيب السائقين حسب الأفضلية والتحقق من ربطهم بالإشعارات
                 const sortedCandidates = [...nearbyDrivers].sort((a, b) => {
@@ -3704,18 +3731,23 @@ async function confirmRide() {
                 });
 
                 for (const candidate of sortedCandidates) {
+                    console.log(`[ConfirmRide] Checking link status for driver: ${candidate.name || candidate.id}`);
                     const driverLinked = await checkDriverLinked(candidate.driver_id);
                     if (driverLinked) {
+                        console.log(`[ConfirmRide] Driver ${candidate.name || candidate.id} is linked and available.`);
                         selectedDriver = candidate;
                         break;
                     } else {
-                        console.log(`Driver ${candidate.name} is not linked, checking next candidate...`);
+                        console.warn(`[ConfirmRide] Driver ${candidate.name || candidate.id} is NOT linked (missing push subscription). Skipping...`);
                     }
                 }
 
                 if (selectedDriver) break;
 
-                showNotification(`⚠️ لم نجد سائقين مرتبكين في نطاق ${radius} كم. جاري توسيع البحث...`, 'warning');
+                console.warn(`[ConfirmRide] No linked drivers found in ${radius} km. Expanding search...`);
+                showNotification(`⚠️ لم نجد سائقين متاحين حالياً في نطاق ${radius} كم. جاري توسيع البحث...`, 'warning');
+            } else {
+                console.log(`[ConfirmRide] No drivers at all found in ${radius} km.`);
             }
 
             // انتظار بسيط لمدة ثانية قبل توسيع النطاق لإعطاء انطباع البحث للمستخدم
