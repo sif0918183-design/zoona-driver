@@ -2272,7 +2272,7 @@ function initRealtime() {
             table: 'rides',
             filter: `driver_id=eq.${currentDriver.id}`
         }, (payload) => {
-            console.log('🔔 New ride request received via Realtime:', payload);
+            console.log('🔔 New ride request received via Realtime (INSERT):', payload);
             if (typeof handleRideRequest === 'function') {
                 handleRideRequest(payload.new);
             }
@@ -2283,8 +2283,20 @@ function initRealtime() {
             table: 'rides',
             filter: `driver_id=eq.${currentDriver.id}`
         }, (payload) => {
-            console.log('🚗 Ride update received via Realtime:', payload);
-            // Handle updates if needed
+            console.log('🚗 Ride update received via Realtime (UPDATE):', payload);
+
+            const ride = payload.new;
+            // التحقق مما إذا كان التحديث يعني وجود طلب رحلة جديد ينتظر القبول
+            // نتحقق من الحالة 'awaiting_driver_acceptance' التي يضبطها تطبيق الراكب بعد اختيار السائق
+            if (ride.status === 'awaiting_driver_acceptance' && !ride.driver_accepted && !ride.driver_rejected) {
+                console.log('✨ Triggering ride request display from update event');
+                if (typeof handleRideRequest === 'function') {
+                    // تجنب تكرار العرض لنفس الرحلة إذا كانت مفتوحة بالفعل
+                    if (!window.currentIncomingRide || window.currentIncomingRide.id !== ride.id) {
+                        handleRideRequest(ride);
+                    }
+                }
+            }
         })
         .subscribe();
 }
