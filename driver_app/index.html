@@ -1331,59 +1331,27 @@
         }
     }
 
-    async function updateDriverOnlineStatus(isOnline) {
-        if (!currentDriver) return;
-
-        try {
-            const position = await getCurrentPosition();
-            
-            await tarhalDB
-                .from('driver_locations')
-                .upsert({
-                    driver_id: currentDriver.id,
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude,
-                    car_type: currentDriver.car_type,
-                    is_online: isOnline,
-                    last_seen: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }, {
-                    onConflict: 'driver_id',
-                    ignoreDuplicates: false
-                });
-
-            if (isOnline) {
-                startLocationUpdates();
-            }
-
-
-        } catch (error) {
-            console.error('Error updating driver status:', error);
-            
-            await tarhalDB
-                .from('driver_locations')
-                .upsert({
-                    driver_id: currentDriver.id,
-                    is_online: isOnline,
-                    last_seen: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }, {
-                    onConflict: 'driver_id',
-                    ignoreDuplicates: false
-                });
-        }
-    }
-
-    function getCurrentPosition() {
+    // الحصول على الموقع الحالي مع رسالة خطأ مخصصة ومهلة زمنية
+    function getCurrentLocation() {
         return new Promise((resolve, reject) => {
             if (!navigator.geolocation) {
-                reject(new Error('Geolocation not supported'));
+                reject(new Error('المتصفح لا يدعم تحديد الموقع الجغرافي'));
                 return;
             }
 
+            const timeoutId = setTimeout(() => {
+                reject(new Error('تعذر تحديد موقعك، تأكد من وجودك في مكان مكشوف.'));
+            }, 10000);
+
             navigator.geolocation.getCurrentPosition(
-                resolve,
-                reject,
+                (position) => {
+                    clearTimeout(timeoutId);
+                    resolve(position);
+                },
+                (error) => {
+                    clearTimeout(timeoutId);
+                    reject(new Error('تعذر تحديد موقعك، تأكد من وجودك في مكان مكشوف.'));
+                },
                 {
                     enableHighAccuracy: true,
                     timeout: 10000,
@@ -1391,74 +1359,6 @@
                 }
             );
         });
-    }
-
-    function startLocationUpdates() {
-        if (locationUpdateInterval) {
-            clearInterval(locationUpdateInterval);
-        }
-
-        locationUpdateInterval = setInterval(async () => {
-            if (!currentDriver || !isDriverOnline) {
-                clearInterval(locationUpdateInterval);
-                return;
-            }
-
-            try {
-                const position = await getCurrentPosition();
-
-                await tarhalDB
-                    .from('driver_locations')
-                    .update({
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude,
-                        last_seen: new Date().toISOString()
-                    })
-                    .eq('driver_id', currentDriver.id);
-
-            } catch (error) {
-                console.error('Location update error:', error);
-                
-                await tarhalDB
-                    .from('driver_locations')
-                    .update({
-                        last_seen: new Date().toISOString()
-                    })
-                    .eq('driver_id', currentDriver.id);
-            }
-        }, 30000);
-    }
-
-    function startDriverTracking() {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(async (position) => {
-                try {
-                    await tarhalDB
-                        .from('driver_locations')
-                        .upsert({
-                            driver_id: currentDriver.id,
-                            lat: position.coords.latitude,
-                            lng: position.coords.longitude,
-                            car_type: currentDriver.car_type,
-                            last_seen: new Date().toISOString()
-                        }, { onConflict: 'driver_id' });
-
-                    showNotification('بدأ تتبع موقعك...', 'success');
-                } catch (error) {
-                    console.error('Tracking error:', error);
-                }
-            }, (error) => {
-                showNotification('خطأ في الوصول للموقع الجغرافي', 'error');
-            });
-        }
-    }
-
-    function stopDriverTracking() {
-        console.log('Driver tracking stopped');
-        if (locationUpdateInterval) {
-            clearInterval(locationUpdateInterval);
-            locationUpdateInterval = null;
-        }
     }
 
     // Driver Registration
@@ -1727,7 +1627,7 @@ class ForeverOnlineManager {
     }
 
     // تفعيل وضع "الأبدي"
-    async activate() {
+    async activate(position = null) {
         if (this.isActive || this.forceStop) {
             console.log('✅ Already active or force stopped');
             return true;
@@ -1738,11 +1638,11 @@ class ForeverOnlineManager {
         this.forceStop = false;
 
         try {
-            // A. تأكيد السجل في قاعدة البيانات
-            await this.ensureDriverLocationRecord();
+            // A. تأكيد السجل في قاعدة البيانات مع الموقع الجغرافي
+            await this.ensureDriverLocationRecord(position);
             
-            // B. تعيين is_online = true أول مرة
-            await this.forceOnlineStatus();
+            // B. تحديث وقت الحالة محلياً
+            this.lastUpdateTime = new Date().toISOString();
             
             // C. بدء Heartbeat الإجباري (كل 20 ثانية)
             this.startHeartbeat();
@@ -1791,8 +1691,12 @@ class ForeverOnlineManager {
     }
 
     // تأكد من وجود سجل في driver_locations
-    async ensureDriverLocationRecord() {
+    async ensureDriverLocationRecord(providedPosition = null) {
         try {
+            // انتظار الحصول على الموقع الجغرافي قبل المتابعة
+            const position = providedPosition || await getCurrentLocation();
+            const { latitude: lat, longitude: lng } = position.coords;
+
             const now = new Date().toISOString();
             
             // التحقق من وجود السجل أولاً لتجنب مشاكل ON CONFLICT
@@ -1804,17 +1708,21 @@ class ForeverOnlineManager {
 
             if (selectError) throw selectError;
 
+            const locationData = {
+                is_online: true,
+                is_available: true,
+                lat: lat,
+                lng: lng,
+                car_type: this.driver ? this.driver.car_type : null,
+                last_seen: now,
+                updated_at: now
+            };
+
             if (data) {
                 // تحديث السجل الموجود
                 const { error: updateError } = await tarhalDB
                     .from('driver_locations')
-                    .update({
-                        is_online: true,
-                        is_available: true,
-                        car_type: this.driver ? this.driver.car_type : null,
-                        last_seen: now,
-                        updated_at: now
-                    })
+                    .update(locationData)
                     .eq('driver_id', this.driverId);
 
                 if (updateError) throw updateError;
@@ -1824,17 +1732,13 @@ class ForeverOnlineManager {
                     .from('driver_locations')
                     .insert({
                         driver_id: this.driverId,
-                        is_online: true,
-                        is_available: true,
-                        car_type: this.driver ? this.driver.car_type : null,
-                        last_seen: now,
-                        updated_at: now
+                        ...locationData
                     });
 
                 if (insertError) throw insertError;
             }
             
-            console.log('✅ Driver location record ensured');
+            console.log('✅ Driver location record ensured with coordinates');
             return true;
             
         } catch (error) {
@@ -1843,14 +1747,10 @@ class ForeverOnlineManager {
         }
     }
 
-    // تعيين is_online = true بالقوة
+    // تحديث الحالة محلياً
     async forceOnlineStatus() {
         try {
             const now = new Date().toISOString();
-            
-            // نستخدم نفس المنطق للتأكد من الحالة
-            await this.ensureDriverLocationRecord();
-
             this.lastUpdateTime = now;
             console.log(`✅ FORCED ONLINE at ${now}`);
             return true;
@@ -1997,7 +1897,8 @@ class ForeverOnlineManager {
         console.log(` Reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
         
         try {
-            // محاولة الإصلاح
+            // محاولة الإصلاح - تحديث السجل والموقع
+            await this.ensureDriverLocationRecord();
             await this.forceOnlineStatus();
             this.reconnectAttempts = 0;
             console.log('✅ Connection recovered');
@@ -2023,7 +1924,9 @@ class ForeverOnlineManager {
         window.addEventListener('focus', () => {
             if (this.isActive && !this.forceStop) {
                 console.log(' Page focused, refreshing connection...');
-                this.forceOnlineStatus();
+                this.ensureDriverLocationRecord()
+                    .then(() => this.forceOnlineStatus())
+                    .catch(err => console.warn('⚠️ Focus recovery failed:', err.message));
             }
         });
 
@@ -2032,7 +1935,9 @@ class ForeverOnlineManager {
             if (this.isActive && !this.forceStop) {
                 console.log(' Internet connection restored');
                 setTimeout(() => {
-                    this.forceOnlineStatus();
+                    this.ensureDriverLocationRecord()
+                        .then(() => this.forceOnlineStatus())
+                        .catch(err => console.warn('⚠️ Online recovery failed:', err.message));
                 }, 2000);
             }
         });
@@ -2096,46 +2001,51 @@ async function toggleDriverStatus() {
     const statusIndicator = document.getElementById('driver-status-indicator');
     const statusText = document.getElementById('driver-status-text');
     const toggleBtn = document.getElementById('toggle-online-btn');
+
+    // حفظ النص الأصلي قبل التغيير
     const originalText = toggleBtn.innerHTML;
 
     if (!isDriverOnline) {
         // ==================== تفعيل وضع العمل ====================
         console.log(' Activating DRIVER ONLINE mode...');
         
-        // إظهار مؤشر تحميل
-        toggleBtn.innerHTML = '<span class="loading"></span> جاري التفعيل...';
+        // إظهار مؤشر تحميل - جاري تحديد الموقع
+        toggleBtn.innerHTML = '<span class="loading"></span> جاري تحديد الموقع...';
         toggleBtn.disabled = true;
         
         try {
-            // 1. تهيئة ForeverOnlineManager
+            // 1. الحصول على الموقع الجغرافي أولاً (شرط أساسي)
+            const position = await getCurrentLocation();
+
+            // 2. تهيئة ForeverOnlineManager
             foreverOnlineManager = new ForeverOnlineManager(currentDriver);
             
-            // 2. تفعيل النظام الأبدي
-            const activated = await foreverOnlineManager.activate();
+            // 3. تفعيل النظام الأبدي مع تمرير الموقع
+            const activated = await foreverOnlineManager.activate(position);
             
             if (!activated) {
                 throw new Error('فشل تفعيل النظام');
             }
             
-            // 3. تحديث الواجهة
+            // 4. تحديث الواجهة
             statusIndicator.className = 'status-indicator status-online';
             statusText.textContent = 'متصل وجاهز';
-            toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> إيقاف وضع العمل';
+            toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> متصل الآن';
             toggleBtn.classList.add('btn-danger');
             toggleBtn.classList.remove('btn-driver');
             
             isDriverOnline = true;
             driverOnlineSince = new Date().toISOString();
             
-            // 4. حفظ الحالة في localStorage
+            // 5. حفظ الحالة في localStorage
             localStorage.setItem('driver_forever_online', 'true');
             localStorage.setItem('driver_online_since', driverOnlineSince);
             localStorage.setItem('driver_online_id', currentDriver.id);
             
-            // 5. إشعار النجاح
+            // 6. إشعار النجاح
             showNotification('✅ أنت الآن متصل وجاهز لاستقبال الطلبات', 'success');
             
-            // 6. مزامنة مع Flutter
+            // 7. مزامنة مع Flutter
             FlutterBridge.callHandler('driverLogin', {
                 id: currentDriver.id,
                 driver_id: currentDriver.id,
@@ -2148,11 +2058,13 @@ async function toggleDriverStatus() {
             
         } catch (error) {
             console.error('❌ Activation error:', error);
-            showNotification('❌ فشل تفعيل وضع العمل', 'error');
+            showNotification(error.message || '❌ فشل تفعيل وضع العمل', 'error');
             
             // التراجع
             foreverOnlineManager = null;
             toggleBtn.innerHTML = originalText;
+            toggleBtn.classList.remove('btn-danger');
+            toggleBtn.classList.add('btn-driver');
         } finally {
             toggleBtn.disabled = false;
         }
@@ -2198,6 +2110,8 @@ async function toggleDriverStatus() {
         } catch (error) {
             console.error('❌ Deactivation error:', error);
             showNotification('❌ فشل إيقاف وضع العمل', 'error');
+            // في حالة الفشل نعود للنص الأصلي إذا لزم الأمر، لكن عادة هنا لا نحتاج
+            toggleBtn.innerHTML = originalText;
         } finally {
             toggleBtn.disabled = false;
         }
@@ -2239,7 +2153,7 @@ async function restoreDriverStatus() {
         // تحديث الواجهة أولاً
         document.getElementById('driver-status-indicator').className = 'status-indicator status-online';
         document.getElementById('driver-status-text').textContent = 'متصل وجاهز';
-        document.getElementById('toggle-online-btn').innerHTML = '<ion-icon name="power-outline"></ion-icon> إيقاف وضع العمل';
+        document.getElementById('toggle-online-btn').innerHTML = '<ion-icon name="power-outline"></ion-icon> متصل الآن';
         document.getElementById('toggle-online-btn').classList.add('btn-danger');
         document.getElementById('toggle-online-btn').classList.remove('btn-driver');
         
