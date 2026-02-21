@@ -51,13 +51,18 @@ const NotificationUtils = {
      * Syncs the push subscription with the Supabase push_subscriptions table
      */
     async syncSubscriptionWithSupabase(userId, appType, subscription) {
-        if (!window.supabase) return;
+        if (!window.supabase || !window.SB_URL || !window.SB_KEY) {
+            console.error('Supabase configuration missing for push sync');
+            return;
+        }
 
         const client = window.supabase.createClient(window.SB_URL, window.SB_KEY);
+        const subscriptionData = subscription.toJSON();
+        const subscriptionJSON = JSON.stringify(subscriptionData);
 
-        const { endpoint, keys } = subscription.toJSON();
-
-        const subscriptionData = {
+        // 1. Always sync with the central push_subscriptions table
+        const { endpoint, keys } = subscriptionData;
+        const pushSubscriptionRecord = {
             endpoint: endpoint,
             keys: keys,
             user_id: userId,
@@ -66,14 +71,28 @@ const NotificationUtils = {
             updated_at: new Date().toISOString()
         };
 
-        const { error } = await client
+        const { error: upsertError } = await client
             .from('push_subscriptions')
-            .upsert(subscriptionData, { onConflict: 'endpoint' });
+            .upsert(pushSubscriptionRecord, { onConflict: 'endpoint' });
 
-        if (error) {
-            console.error('Error syncing push subscription with Supabase:', error);
-        } else {
-            console.log('Push subscription synced successfully with Supabase.');
+        if (upsertError) {
+            console.error('❌ Error syncing with push_subscriptions table:', upsertError);
+        }
+
+        // 2. If it's a driver, update the push_subscription column in the drivers table
+        if (appType === 'driver') {
+            console.log('Updating drivers table with push_subscription for:', userId);
+            const { error: updateError } = await client
+                .from('drivers')
+                .update({ push_subscription: subscriptionJSON })
+                .eq('id', userId);
+
+            if (updateError) {
+                console.error('❌ CRITICAL: Error updating push_subscription in drivers table:', updateError);
+                console.error('This may be due to RLS policies or missing column.');
+            } else {
+                console.log('✅ push_subscription updated successfully in drivers table');
+            }
         }
     },
 
