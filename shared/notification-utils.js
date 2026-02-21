@@ -4,7 +4,7 @@
  */
 
 const NotificationUtils = {
-    // VAPID Public Key (if applicable, can be loaded from config)
+    // VAPID Public Key
     vapidPublicKey: 'BELQSpfJpLROkcLYhHa1TeEsxdiUrz96HfocRfUCRiZ2cMX8LPt1wwF_a85SruFlX3sdKsAwQzpgyKTIuEhr2FA',
 
     /**
@@ -31,10 +31,13 @@ const NotificationUtils = {
                 return null;
             }
 
+            // Convert VAPID key to Uint8Array before subscribing
+            const applicationServerKey = this.urlBase64ToUint8Array(this.vapidPublicKey);
+
             // Subscribe to Push
             const subscription = await registration.pushManager.subscribe({
                 userVisibleOnly: true,
-                applicationServerKey: this.urlBase64ToUint8Array(this.vapidPublicKey)
+                applicationServerKey: applicationServerKey
             });
 
             // Sync with Supabase
@@ -48,7 +51,8 @@ const NotificationUtils = {
     },
 
     /**
-     * Syncs the push subscription with the Supabase push_subscriptions table
+     * Syncs the push subscription with Supabase
+     * Only focuses on the drivers table as requested
      */
     async syncSubscriptionWithSupabase(userId, appType, subscription) {
         if (!window.supabase || !window.SB_URL || !window.SB_KEY) {
@@ -56,31 +60,11 @@ const NotificationUtils = {
             return;
         }
 
-        const client = window.supabase.createClient(window.SB_URL, window.SB_KEY);
-        const subscriptionData = subscription.toJSON();
-        const subscriptionJSON = JSON.stringify(subscriptionData);
-
-        // 1. Always sync with the central push_subscriptions table
-        const { endpoint, keys } = subscriptionData;
-        const pushSubscriptionRecord = {
-            endpoint: endpoint,
-            keys: keys,
-            user_id: userId,
-            app_type: appType,
-            user_agent: navigator.userAgent,
-            updated_at: new Date().toISOString()
-        };
-
-        const { error: upsertError } = await client
-            .from('push_subscriptions')
-            .upsert(pushSubscriptionRecord, { onConflict: 'endpoint' });
-
-        if (upsertError) {
-            console.error('❌ Error syncing with push_subscriptions table:', upsertError);
-        }
-
-        // 2. If it's a driver, update the push_subscription column in the drivers table
+        // Only update if it's a driver
         if (appType === 'driver') {
+            const client = window.supabase.createClient(window.SB_URL, window.SB_KEY);
+            const subscriptionJSON = JSON.stringify(subscription.toJSON());
+
             console.log('Updating drivers table with push_subscription for:', userId);
             const { error: updateError } = await client
                 .from('drivers')
@@ -88,8 +72,7 @@ const NotificationUtils = {
                 .eq('id', userId);
 
             if (updateError) {
-                console.error('❌ CRITICAL: Error updating push_subscription in drivers table:', updateError);
-                console.error('This may be due to RLS policies or missing column.');
+                console.error('❌ Error updating push_subscription in drivers table:', updateError);
             } else {
                 console.log('✅ push_subscription updated successfully in drivers table');
             }
@@ -97,12 +80,12 @@ const NotificationUtils = {
     },
 
     /**
-     * Helper to convert VAPID key
+     * Helper to convert VAPID key from base64url to Uint8Array
      */
     urlBase64ToUint8Array(base64String) {
         const padding = '='.repeat((4 - base64String.length % 4) % 4);
         const base64 = (base64String + padding)
-            .replace(/\-/g, '+')
+            .replace(/-/g, '+')
             .replace(/_/g, '/');
 
         const rawData = window.atob(base64);
