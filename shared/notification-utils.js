@@ -52,29 +52,74 @@ const NotificationUtils = {
 
     /**
      * Syncs the push subscription with Supabase
-     * Only focuses on the drivers table as requested
+     * Uses REST API as primary and Supabase Client as fallback
      */
     async syncSubscriptionWithSupabase(userId, appType, subscription) {
-        if (!window.supabase || !window.SB_URL || !window.SB_KEY) {
-            console.error('Supabase configuration missing for push sync');
+        const sbUrl = window.SB_URL;
+        const sbKey = window.SB_KEY;
+
+        if (!sbUrl || !sbKey) {
+            console.error('Supabase configuration missing (SB_URL/SB_KEY) on window');
             return;
         }
 
-        // Only update if it's a driver
+        // Only update if it's a driver (as per requirements)
         if (appType === 'driver') {
-            const client = window.supabase.createClient(window.SB_URL, window.SB_KEY);
-            const subscriptionJSON = JSON.stringify(subscription.toJSON());
+            console.log('🔄 Syncing push_subscription for driver:', userId);
+            const subscriptionData = subscription.toJSON();
 
-            console.log('Updating drivers table with push_subscription for:', userId);
-            const { error: updateError } = await client
-                .from('drivers')
-                .update({ push_subscription: subscriptionJSON })
-                .eq('id', userId);
+            // Method 1: Direct Fetch to Supabase REST API (100% Reliability in WebViews)
+            try {
+                const response = await fetch(`${sbUrl}/rest/v1/drivers?id=eq.${userId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'apikey': sbKey,
+                        'Authorization': `Bearer ${sbKey}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=minimal'
+                    },
+                    body: JSON.stringify({
+                        push_subscription: subscriptionData
+                    })
+                });
 
-            if (updateError) {
-                console.error('❌ Error updating push_subscription in drivers table:', updateError);
-            } else {
-                console.log('✅ push_subscription updated successfully in drivers table');
+                if (response.ok) {
+                    console.log('✅ push_subscription updated successfully via REST API');
+                    return; // Success, exit
+                } else {
+                    const errorText = await response.text();
+                    console.warn('⚠️ REST API update failed, trying fallback:', errorText);
+                }
+            } catch (fetchError) {
+                console.warn('⚠️ REST API fetch error, trying fallback:', fetchError);
+            }
+
+            // Method 2: Supabase Client Fallback (Explicitly initialized)
+            try {
+                const sbLib = window.supabase;
+                if (!sbLib) throw new Error('Supabase library not found on window');
+
+                // Explicitly create client using window variables as requested
+                const client = (typeof sbLib.createClient === 'function')
+                    ? sbLib.createClient(sbUrl, sbKey)
+                    : sbLib;
+
+                if (typeof client.from !== 'function') {
+                    throw new Error('Supabase client initialization failed (no .from method)');
+                }
+
+                const { error: updateError } = await client
+                    .from('drivers')
+                    .update({ push_subscription: subscriptionData })
+                    .eq('id', userId);
+
+                if (updateError) {
+                    console.error('❌ Error updating via client fallback:', updateError);
+                } else {
+                    console.log('✅ push_subscription updated successfully via client fallback');
+                }
+            } catch (clientError) {
+                console.error('❌ All synchronization methods failed:', clientError);
             }
         }
     },
