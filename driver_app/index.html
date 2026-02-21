@@ -626,7 +626,7 @@
 <!-- Splash Screen -->
 <div id="splash-screen">
     <div class="splash-content">
-        <img src="icons/icon-384x384.png" alt="Tarhal Zoona Logo" class="splash-logo">
+        <img src="../icons/icon-384x384.png" alt="Tarhal Zoona Logo" class="splash-logo">
         <div class="loader"></div>
         <p class="splash-text">جاري تشغيل زونا للسائقين...</p>
     </div>
@@ -636,7 +636,7 @@
     <!-- Header -->
     <header class="app-header">
         <h1 class="app-title">
-            <img src="icons/icon-512x512.png" alt="ترحال زونا" class="logo-img">
+            <img src="../icons/icon-512x512.png" alt="ترحال زونا" class="logo-img">
             زونــا - السائقين
         </h1>
     </header>
@@ -1137,10 +1137,11 @@
         console.log('🔄 Updating push subscription for driver...');
 
         try {
+            // استخدام المسار المطلق لـ Service Worker لضمان النطاق الكامل (Global Scope)
             const subscription = await NotificationUtils.subscribeUserToPush(
                 currentDriver.id,
                 'driver',
-                'sw-driver.js'
+                '/sw.js'
             );
 
             if (subscription) {
@@ -2396,7 +2397,8 @@ function checkAuth() {
 // تسجيل Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw-driver.js')
+    // تسجيل من الجذر لضمان الصلاحية على كامل التطبيق كما هو مطلوب
+    navigator.serviceWorker.register('/sw.js')
       .then(registration => {
         console.log('✅ Service Worker registered:', registration.scope);
         

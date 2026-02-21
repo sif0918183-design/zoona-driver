@@ -1,11 +1,14 @@
-// sw-driver.js - Optimized Service Worker for Driver App (v3)
-const CACHE_NAME = 'tarhal-driver-v3';
+// sw.js - Service Worker for Driver App (v3.1)
+const CACHE_NAME = 'tarhal-driver-v3.1';
 const ASSETS = [
-    './',
-    './index.html',
-    './manifest.json',
-    '../shared/supabase-config.js',
-    '../shared/notification-utils.js'
+    '/',
+    '/driver_app/index.html',
+    '/driver_app/manifest.json',
+    '/shared/supabase-config.js',
+    '/shared/notification-utils.js',
+    '/icons/icon-192x192.png',
+    '/icons/icon-72x72.png',
+    '/res/raw/ride_request_sound.wav'
 ];
 
 // Domains to NEVER cache
@@ -86,25 +89,32 @@ self.addEventListener('fetch', (event) => {
 
 // Push Notification Handling
 self.addEventListener('push', (event) => {
+    if (!event.data) return;
+
     let data = {};
     try {
-        if (event.data) {
-            data = event.data.json();
-        }
+        data = event.data.json();
     } catch (e) {
         data = { title: 'طلب رحلة جديد 🚗', body: event.data.text() };
     }
 
     const title = data.title || 'طلب رحلة جديد 🚗';
+
+    // Construct URL if not provided
+    const targetUrl = data.url || (data.ride_id ? `/driver_app/accept-ride.html?rideId=${data.ride_id}&requestId=${data.request_id}` : '/driver_app/index.html');
+
     const options = {
         body: data.body || 'لديك طلب رحلة جديد في منطقتك',
-        icon: '../icons/icon-192x192.png',
-        badge: '../icons/icon-72x72.png',
-        vibrate: [500, 110, 500, 110, 450, 110, 200, 110, 170, 40, 450, 110, 200, 110, 170, 40],
-        data: data.url || './index.html',
+        icon: '/icons/icon-192x192.png',
+        badge: '/icons/icon-72x72.png',
+        vibrate: [200, 100, 200, 100, 200, 100, 400],
+        sound: '/res/raw/ride_request_sound.wav',
+        data: {
+            url: targetUrl
+        },
         actions: [
-            { action: 'accept', title: '✅ قبول الرحلة', icon: '../icons/check-icon.png' },
-            { action: 'decline', title: '❌ رفض', icon: '../icons/close-icon.png' }
+            { action: 'accept', title: '✅ قبول الرحلة', icon: '/icons/icon-72x72.png' },
+            { action: 'decline', title: '❌ رفض', icon: '/icons/icon-72x72.png' }
         ],
         tag: 'ride-request',
         renotify: true,
@@ -118,14 +128,18 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
+    const url = event.notification.data.url;
 
     if (event.action === 'accept') {
+        const acceptUrl = url + (url.includes('?') ? '&' : '?') + 'action=accept';
         event.waitUntil(
-            clients.openWindow(event.notification.data + '?action=accept')
+            clients.openWindow(acceptUrl)
         );
+    } else if (event.action === 'decline') {
+        // Just close the notification
     } else {
         event.waitUntil(
-            clients.openWindow(event.notification.data)
+            clients.openWindow(url)
         );
     }
 });
