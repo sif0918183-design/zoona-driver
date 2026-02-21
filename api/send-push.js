@@ -1,10 +1,10 @@
-// /api/send-push.js - النسخة الجديدة باستخدام Web Push API + VAPID
+// /api/send-push.js - النسخة المصححة والمؤمنة
 import webpush from 'web-push';
 import { createClient } from '@supabase/supabase-js';
 
-// المفاتيح المضمنة في الكود مباشرة
+// المفاتيح المضمنة (يفضل مستقبلاً نقلها لـ Environment Variables في Vercel)
 const VAPID_PUBLIC_KEY = 'BELQSpfJpLROkcLYhHa1TeEsxdiUrz96HfocRfUCRiZ2cMX8LPt1wwF_a85SruFlX3sdKsAwQzpgyKTIuEhr2FA';
-const VAPID_PRIVATE_KEY = 'iBQkcRI2JjXR9LOR_GLuJMH3lfrHJMg18fgcXkgJB4A'; // استبدل بالمفتاح الخاص الفعلي
+const VAPID_PRIVATE_KEY = 'iBQkcRI2JjXR9LOR_GLuJMH3lfrHJMg18fgcXkgJB4A'; 
 
 const SUPABASE_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
@@ -23,17 +23,12 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS, GET');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     
-    // التعامل مع طلبات OPTIONS
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
     }
     
-    // التحقق من أن الطريقة POST
     if (req.method !== 'POST') {
-        return res.status(405).json({ 
-            success: false, 
-            error: 'Method not allowed. Use POST.' 
-        });
+        return res.status(405).json({ success: false, error: 'Method not allowed' });
     }
 
     try {
@@ -51,7 +46,7 @@ export default async function handler(req, res) {
             distance 
         } = req.body;
 
-        console.log('🔔 طلب إرسال إشعار Web Push:', { driverId, rideId, customerName });
+        console.log('🔔 طلب إرسال إشعار Web Push للسائق:', driverId);
 
         if (!driverId) {
             return res.status(400).json({ success: false, error: 'يجب تحديد driverId' });
@@ -66,14 +61,26 @@ export default async function handler(req, res) {
 
         if (dbError || !driver || !driver.push_subscription) {
             console.error('❌ فشل العثور على اشتراك للسائق:', driverId, dbError);
-            return res.status(404).json({
-                success: false, 
-                error: 'subscription_not_found',
-                message: 'لم يتم العثور على اشتراك إشعارات لهذا السائق'
-            });
+            return res.status(404).json({ success: false, error: 'subscription_not_found' });
         }
 
-        const subscription = JSON.parse(driver.push_subscription);
+        // --- التعديل الجوهري هنا (السطر 76 وما بعده) ---
+        let subscription;
+        try {
+            // التحقق مما إذا كانت البيانات نصاً يحتاج لمعالجة أو كائناً جاهزاً
+            subscription = typeof driver.push_subscription === 'string' 
+                ? JSON.parse(driver.push_subscription) 
+                : driver.push_subscription;
+            
+            // تأكد من أن الكائن يحتوي على الحقول المطلوبة (endpoint)
+            if (!subscription || !subscription.endpoint) {
+                throw new Error("Invalid subscription format");
+            }
+        } catch (parseError) {
+            console.error('❌ خطأ في تنسيق بيانات الاشتراك:', parseError);
+            return res.status(400).json({ success: false, error: 'invalid_subscription_format' });
+        }
+        // ----------------------------------------------
 
         // 2. إعداد حمولة الإشعار
         const payload = JSON.stringify({
@@ -101,18 +108,14 @@ export default async function handler(req, res) {
             sent_at: new Date().toISOString()
         });
 
-        return res.status(200).json({
-            success: true,
-            message: 'تم إرسال الإشعار بنجاح'
-        });
+        return res.status(200).json({ success: true, message: 'تم إرسال الإشعار بنجاح' });
 
     } catch (error) {
         console.error('❌ خطأ في إرسال Web Push:', error);
-
-        // إذا كان الاشتراك غير صالح، يمكننا حذفه أو تحديثه
+        
+        // التعامل مع الاشتراكات التي انتهت صلاحيتها
         if (error.statusCode === 410 || error.statusCode === 404) {
-            console.log('⚠️ الاشتراك لم يعد صالحاً، جاري التحديث...');
-            // هنا يمكن إضافة كود لمسح الاشتراك غير الصالح من قاعدة البيانات
+            console.log('⚠️ الاشتراك منتهي الصلاحية، يجب تحديثه من طرف السائق.');
         }
 
         return res.status(500).json({
@@ -123,7 +126,6 @@ export default async function handler(req, res) {
     }
 }
 
-// دالة مساعدة لتحويل نوع المركبة للعربية
 function getVehicleTypeArabic(type) {
     const types = {
         'tuktuk': 'توك توك',
