@@ -23,6 +23,8 @@
 
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Shared Utils -->
+    <script src="../shared/notification-utils.js"></script>
 
     <style>
         /* الأنماط الأساسية */
@@ -761,6 +763,11 @@
                 الملف الشخصي
             </button>
 
+            <button id="fix-notifications-btn" class="btn btn-outline mt-2" onclick="manualFixNotifications()">
+                <ion-icon name="notifications-outline"></ion-icon>
+                إصلاح استلام الإشعارات
+            </button>
+
             <button class="btn btn-driver mt-2" onclick="window.location.href='travel-platform.html'">
                 <ion-icon name="airplane-outline"></ion-icon>
                 دخول منصة سفريات زونا
@@ -817,6 +824,11 @@
     // Supabase Configuration
     const SB_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
     const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
+
+    // Attach to window for Shared Utils
+    window.SB_URL = SB_URL;
+    window.SB_KEY = SB_KEY;
+
     const tarhalDB = supabase.createClient(SB_URL, SB_KEY);
 
     // Application State
@@ -1092,6 +1104,55 @@
         showNotification('✅ الأنظمة جاهزة لاستقبال الطلبات', 'success');
     }
 
+    /**
+     * إصلاح يدوي للإشعارات
+     */
+    async function manualFixNotifications() {
+        if (!currentDriver) return;
+
+        const btn = document.getElementById('fix-notifications-btn');
+        const originalText = btn.innerHTML;
+
+        btn.innerHTML = '<span class="loading"></span> جاري الإصلاح...';
+        btn.disabled = true;
+
+        try {
+            await updatePushSubscriptionOnLogin();
+            showNotification('✅ تم تحديث إعدادات الإشعارات بنجاح', 'success');
+        } catch (error) {
+            console.error('Manual fix failed:', error);
+            showNotification('❌ فشل إصلاح الإشعارات', 'error');
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
+
+    /**
+     * تحديث اشتراك الإشعارات للسائق
+     */
+    async function updatePushSubscriptionOnLogin() {
+        if (!currentDriver || !currentDriver.id) return;
+
+        console.log('🔄 Updating push subscription for driver...');
+
+        try {
+            const subscription = await NotificationUtils.subscribeUserToPush(
+                currentDriver.id,
+                'driver',
+                'sw-driver.js'
+            );
+
+            if (subscription) {
+                console.log('✅ Push subscription updated successfully');
+            } else {
+                console.warn('⚠️ Push subscription was not created (permission denied or error)');
+            }
+        } catch (error) {
+            console.error('❌ Error updating push subscription:', error);
+        }
+    }
+
     // Screen Navigation
     function showScreen(screenId) {
         document.querySelectorAll('.screen').forEach(screen => {
@@ -1270,8 +1331,9 @@
         // تحديث إحصائيات لوحة التحكم
         updateDriverDashboard();
         
-        // تهيئة أنظمة OneSignal والصوت للسائق
+        // تهيئة أنظمة الإشعارات والصوت للسائق
         await initDriverSystems();
+        await updatePushSubscriptionOnLogin();
 
 
     } catch (error) {
@@ -2313,6 +2375,7 @@ function checkAuth() {
             updateDriverDashboard();
             initDriverSystems(); // تهيئة الأنظمة عند تحميل الصفحة
             initRealtime();
+            updatePushSubscriptionOnLogin();
 
             // استعادة وضع التشغيل بعد ثانية
             setTimeout(() => {
