@@ -4295,7 +4295,8 @@ console.log('✅ Tarhal Zoona Passenger App - Loaded Successfully');
 // تسجيل Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw-passenger.js')
+    // تسجيل من الجذر لضمان الصلاحية على كامل التطبيق
+    navigator.serviceWorker.register('/sw-passenger.js')
       .then(registration => {
         console.log('✅ Service Worker registered:', registration.scope);
       })

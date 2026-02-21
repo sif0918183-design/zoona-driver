@@ -1,11 +1,13 @@
-// sw-passenger.js - Optimized Service Worker for Passenger App (v3)
-const CACHE_NAME = 'tarhal-passenger-v3';
+// sw-passenger.js - Service Worker for Passenger App (v3.1)
+const CACHE_NAME = 'tarhal-passenger-v3.1';
 const ASSETS = [
-    './',
-    './index.html',
-    './manifest.json',
-    '../shared/supabase-config.js',
-    '../shared/notification-utils.js'
+    '/',
+    '/passenger_app/index.html',
+    '/passenger_app/manifest.json',
+    '/shared/supabase-config.js',
+    '/shared/notification-utils.js',
+    '/icons/icon-192x192.png',
+    '/icons/icon-72x72.png'
 ];
 
 // Domains to NEVER cache
@@ -84,21 +86,24 @@ self.addEventListener('fetch', (event) => {
 
 // Ride Update Notifications
 self.addEventListener('push', (event) => {
+    if (!event.data) return;
+
     let data = {};
     try {
-        if (event.data) {
-            data = event.data.json();
-        }
+        data = event.data.json();
     } catch (e) {
-        data = { title: 'تحديث جديد 🚘', body: event.data.text() };
+        data = { title: 'تحديث لرحلتك 🚘', body: event.data.text() };
     }
 
     const title = data.title || 'تحديث لرحلتك 🚘';
     const options = {
         body: data.body || 'هناك تحديث جديد بخصوص طلب رحلتك.',
-        icon: '../icons/icon-192x192.png',
-        badge: '../icons/icon-72x72.png',
-        data: data.url || './index.html',
+        icon: '/icons/icon-192x192.png',
+        badge: '/icons/icon-72x72.png',
+        vibrate: [200, 100, 200],
+        data: {
+            url: data.url || '/passenger_app/index.html'
+        },
         tag: 'ride-update',
         renotify: true
     };
@@ -110,7 +115,8 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
+    const url = event.notification.data.url;
     event.waitUntil(
-        clients.openWindow(event.notification.data)
+        clients.openWindow(url)
     );
 });
