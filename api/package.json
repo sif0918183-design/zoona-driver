@@ -1,7 +1,8 @@
 {
   "dependencies": {
-    "googleapis": "^128.0.0",
     "@supabase/supabase-js": "^2.35.0",
+    "firebase-admin": "^13.6.1",
+    "googleapis": "^128.0.0",
     "web-push": "^3.6.7"
   }
 }

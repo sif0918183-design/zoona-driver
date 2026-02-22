@@ -1,21 +1,27 @@
-// /api/send-push.js - النسخة المصححة والمؤمنة
-import webpush from 'web-push';
+import admin from 'firebase-admin';
 import { createClient } from '@supabase/supabase-js';
 
-// المفاتيح المضمنة (يفضل مستقبلاً نقلها لـ Environment Variables في Vercel)
-const VAPID_PUBLIC_KEY = 'BELQSpfJpLROkcLYhHa1TeEsxdiUrz96HfocRfUCRiZ2cMX8LPt1wwF_a85SruFlX3sdKsAwQzpgyKTIuEhr2FA';
-const VAPID_PRIVATE_KEY = 'iBQkcRI2JjXR9LOR_GLuJMH3lfrHJMg18fgcXkgJB4A'; 
-
-const SUPABASE_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://zsmlyiygjagmhnglrhoa.supabase.co';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
 
 const tarhalDB = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-webpush.setVapidDetails(
-    'mailto:mosabkry@gmail.com',
-    VAPID_PUBLIC_KEY,
-    VAPID_PRIVATE_KEY
-);
+// تهيئة Firebase Admin
+if (!admin.apps.length) {
+    try {
+        if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+            const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount)
+            });
+            console.log('✅ Firebase Admin initialized');
+        } else {
+            console.warn('⚠️ FIREBASE_SERVICE_ACCOUNT environment variable is missing');
+        }
+    } catch (error) {
+        console.error('❌ Firebase initialization error:', error);
+    }
+}
 
 export default async function handler(req, res) {
     // تمكين CORS
@@ -46,78 +52,74 @@ export default async function handler(req, res) {
             distance 
         } = req.body;
 
-        console.log('🔔 طلب إرسال إشعار Web Push للسائق:', driverId);
+        console.log('🔔 طلب إرسال إشعار FCM للسائق:', driverId);
 
         if (!driverId) {
             return res.status(400).json({ success: false, error: 'يجب تحديد driverId' });
         }
 
-        // 1. جلب بيانات الاشتراك من قاعدة البيانات
+        // 1. جلب توكن FCM من قاعدة البيانات
         const { data: driver, error: dbError } = await tarhalDB
             .from('drivers')
-            .select('push_subscription, full_name')
+            .select('fcm_token, full_name')
             .eq('id', driverId)
             .single();
 
-        if (dbError || !driver || !driver.push_subscription) {
-            console.error('❌ فشل العثور على اشتراك للسائق:', driverId, dbError);
-            return res.status(404).json({ success: false, error: 'subscription_not_found' });
+        if (dbError || !driver || !driver.fcm_token) {
+            console.error('❌ فشل العثور على FCM Token للسائق:', driverId, dbError);
+            return res.status(404).json({ success: false, error: 'fcm_token_not_found' });
         }
 
-        // --- التعديل الجوهري هنا (السطر 76 وما بعده) ---
-        let subscription;
-        try {
-            // التحقق مما إذا كانت البيانات نصاً يحتاج لمعالجة أو كائناً جاهزاً
-            subscription = typeof driver.push_subscription === 'string' 
-                ? JSON.parse(driver.push_subscription) 
-                : driver.push_subscription;
-            
-            // تأكد من أن الكائن يحتوي على الحقول المطلوبة (endpoint)
-            if (!subscription || !subscription.endpoint) {
-                throw new Error("Invalid subscription format");
+        // 2. إعداد رسالة FCM
+        const message = {
+            token: driver.fcm_token,
+            notification: {
+                title: '🚖 طلب رحلة جديدة - زونا',
+                body: `عميل: ${customerName || 'عميل'}\nالنوع: ${getVehicleTypeArabic(vehicleType) || 'سيارة'}\nالمبلغ: ${amount || '0'} SDG`,
+            },
+            data: {
+                ride_id: String(rideId || ''),
+                request_id: String(requestId || ''),
+                customer_name: String(customerName || ''),
+                amount: String(amount || '0'),
+                distance: String(distance || ''),
+                vehicle_type: String(vehicleType || ''),
+                type: 'RIDE_REQUEST'
+            },
+            android: {
+                priority: 'high',
+                notification: {
+                    sound: 'ride_request_sound',
+                    channelId: 'ride_requests',
+                    clickAction: 'FLUTTER_NOTIFICATION_CLICK'
+                }
+            },
+            apns: {
+                payload: {
+                    aps: {
+                        sound: 'ride_request_sound.wav',
+                        contentAvailable: true
+                    }
+                }
             }
-        } catch (parseError) {
-            console.error('❌ خطأ في تنسيق بيانات الاشتراك:', parseError);
-            return res.status(400).json({ success: false, error: 'invalid_subscription_format' });
-        }
-        // ----------------------------------------------
+        };
 
-        // 2. إعداد حمولة الإشعار
-        const payload = JSON.stringify({
-            title: '🚖 طلب رحلة جديدة - زونا',
-            body: `عميل: ${customerName || 'عميل'}\nالنوع: ${getVehicleTypeArabic(vehicleType) || 'سيارة'}\nالمبلغ: ${amount || '0'} SDG`,
-            ride_id: rideId,
-            request_id: requestId,
-            customer_name: customerName,
-            amount: amount,
-            distance: distance,
-            vehicle_type: vehicleType,
-            type: 'RIDE_REQUEST'
-        });
-
-        // 3. إرسال الإشعار
-        await webpush.sendNotification(subscription, payload);
-
-        console.log('✅ تم إرسال إشعار Web Push بنجاح للسائق:', driver.full_name);
+        // 3. إرسال الإشعار عبر Firebase
+        const response = await admin.messaging().send(message);
+        console.log('✅ تم إرسال إشعار FCM بنجاح:', response);
 
         // 4. تسجيل العملية في Supabase
         await tarhalDB.from('push_notification_logs').insert({
             driver_id: driverId,
             success: true,
-            notification_type: 'ride_request',
+            notification_type: 'ride_request_fcm',
             sent_at: new Date().toISOString()
         });
 
-        return res.status(200).json({ success: true, message: 'تم إرسال الإشعار بنجاح' });
+        return res.status(200).json({ success: true, message: 'تم إرسال الإشعار بنجاح عبر FCM' });
 
     } catch (error) {
-        console.error('❌ خطأ في إرسال Web Push:', error);
-        
-        // التعامل مع الاشتراكات التي انتهت صلاحيتها
-        if (error.statusCode === 410 || error.statusCode === 404) {
-            console.log('⚠️ الاشتراك منتهي الصلاحية، يجب تحديثه من طرف السائق.');
-        }
-
+        console.error('❌ خطأ في إرسال FCM:', error);
         return res.status(500).json({
             success: false,
             error: error.message,
