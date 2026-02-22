@@ -27,6 +27,7 @@ export default async function handler(req, res) {
         }
 
         // التحديث للتحقق من fcm_token بدلاً من push_subscription
+        console.log(`[check-driver-linked] Checking FCM token for driver: ${driverId}`);
         const { data, error } = await supabase
             .from('drivers')
             .select('fcm_token')
@@ -38,11 +39,15 @@ export default async function handler(req, res) {
             return res.status(200).json({ linked: false });
         }
 
-        const isLinked = !!data.fcm_token;
+        const fcmToken = data.fcm_token;
+        // التحقق من وجود التوكن وأنه ليس القيمة "false" كما ورد في البلاغ
+        const isLinked = !!fcmToken && fcmToken !== 'false';
+
         console.log(`[check-driver-linked] Driver ${driverId} linked status (FCM): ${isLinked}`);
 
         return res.status(200).json({
-            linked: isLinked
+            linked: isLinked,
+            fcm_token: fcmToken // إرجاع التوكن للفحص
         });
 
     } catch (error) {
