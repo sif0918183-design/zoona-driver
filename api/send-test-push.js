@@ -70,20 +70,24 @@ export default async function handler(req, res) {
                 body: `هذا إشعار تجريبي\nالعميل: ${customerName || 'تجريبي'}\nالنوع: ${getVehicleTypeArabic(vehicleType || 'economy')}\nالأجرة: ${amount || '0'} SDG`,
             },
             data: {
-                ride_id: 'test-' + Date.now(),
-                request_id: 'test-' + Date.now(),
-                customer_name: customerName || 'عميل تجريبي',
+                ride_id: String('test-' + Date.now()),
+                request_id: String('test-' + Date.now()),
+                customer_name: String(customerName || 'عميل تجريبي'),
                 amount: String(amount || '0'),
-                distance: distance || '0 كم',
-                vehicle_type: vehicleType || 'economy',
-                type: 'RIDE_REQUEST'
+                distance: String(distance || '0 كم'),
+                vehicle_type: String(vehicleType || 'economy'),
+                type: 'RIDE_REQUEST',
+                click_action: 'FLUTTER_NOTIFICATION_CLICK'
             },
             android: {
                 priority: 'high',
+                ttl: '60s',
+                sticky: true,
                 notification: {
                     sound: 'ride_request_sound',
                     channelId: 'ride_requests',
-                    clickAction: 'FLUTTER_NOTIFICATION_CLICK'
+                    clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+                    sticky: true
                 }
             },
             apns: {

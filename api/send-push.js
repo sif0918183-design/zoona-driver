@@ -84,14 +84,18 @@ export default async function handler(req, res) {
                 amount: String(amount || '0'),
                 distance: String(distance || ''),
                 vehicle_type: String(vehicleType || ''),
-                type: 'RIDE_REQUEST'
+                type: 'RIDE_REQUEST',
+                click_action: 'FLUTTER_NOTIFICATION_CLICK'
             },
             android: {
                 priority: 'high',
+                ttl: '60s',
+                sticky: true,
                 notification: {
                     sound: 'ride_request_sound',
                     channelId: 'ride_requests',
-                    clickAction: 'FLUTTER_NOTIFICATION_CLICK'
+                    clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+                    sticky: true
                 }
             },
             apns: {
