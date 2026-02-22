@@ -26,9 +26,10 @@ export default async function handler(req, res) {
             return res.status(400).json({ success: false, error: 'driverId is required' });
         }
 
+        // التحديث للتحقق من fcm_token بدلاً من push_subscription
         const { data, error } = await supabase
             .from('drivers')
-            .select('push_subscription')
+            .select('fcm_token')
             .eq('id', driverId)
             .single();
 
@@ -37,8 +38,8 @@ export default async function handler(req, res) {
             return res.status(200).json({ linked: false });
         }
 
-        const isLinked = !!data.push_subscription;
-        console.log(`[check-driver-linked] Driver ${driverId} linked status: ${isLinked}`);
+        const isLinked = !!data.fcm_token;
+        console.log(`[check-driver-linked] Driver ${driverId} linked status (FCM): ${isLinked}`);
 
         return res.status(200).json({
             linked: isLinked

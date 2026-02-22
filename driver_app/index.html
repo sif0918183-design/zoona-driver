@@ -875,6 +875,36 @@
             handleRideRequest(event.detail);
         }
     });
+
+    /**
+     * استقبال توكن FCM من Flutter وحفظه
+     * يتم مناداة هذه الدالة من طرف Flutter Wrapper عند الحصول على توكن جديد
+     */
+    window.setFCMToken = async function(token) {
+        console.log('📲 Received FCM Token from Flutter:', token);
+        if (!token) return;
+
+        // حفظ التوكن مؤقتاً في localStorage
+        localStorage.setItem('pending_fcm_token', token);
+
+        // إذا كان السائق مسجلاً دخوله، نقوم بتحديث قاعدة البيانات فوراً
+        if (currentDriver && currentDriver.id) {
+            try {
+                const { error } = await tarhalDB
+                    .from('drivers')
+                    .update({ fcm_token: token })
+                    .eq('id', currentDriver.id);
+
+                if (error) throw error;
+                console.log('✅ FCM Token updated in Supabase');
+                // لا نمسح التوكن من localStorage لضمان بقائه في الجلسات القادمة إذا لزم الأمر
+                // ولكن يمكننا اعتباره تمت معالجته
+            } catch (err) {
+                console.error('❌ Failed to update FCM Token in DB:', err);
+            }
+        }
+    };
+
     let locationUpdateInterval = null;
 
     // ============================================
@@ -1335,6 +1365,12 @@
         await initDriverSystems();
         await updatePushSubscriptionOnLogin();
 
+        // مزامنة توكن FCM المكتسب من Flutter إن وجد
+        const pendingToken = localStorage.getItem('pending_fcm_token');
+        if (pendingToken) {
+            console.log('🔄 Syncing pending FCM token after login...');
+            await window.setFCMToken(pendingToken);
+        }
 
     } catch (error) {
         console.error('Driver login error:', error);
@@ -2376,6 +2412,12 @@ function checkAuth() {
             initDriverSystems(); // تهيئة الأنظمة عند تحميل الصفحة
             initRealtime();
             updatePushSubscriptionOnLogin();
+
+            // مزامنة توكن FCM إذا وجد في التخزين المحلي
+            const pendingToken = localStorage.getItem('pending_fcm_token');
+            if (pendingToken) {
+                window.setFCMToken(pendingToken);
+            }
 
             // استعادة وضع التشغيل بعد ثانية
             setTimeout(() => {
