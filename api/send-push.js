@@ -89,7 +89,7 @@ export default async function handler(req, res) {
             },
             android: {
                 priority: 'high',
-                ttl: '60s',
+                ttl: 60 * 1000,
                 sticky: true,
                 notification: {
                     sound: 'ride_request_sound',
