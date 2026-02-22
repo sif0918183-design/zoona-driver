@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>قبول الرحلة - ترحال زونا</title>
+    <title>طلب رحلة جديد - ترحال زونا</title>
 
     <!-- ✅ مكتبات التصميم -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -11,23 +11,23 @@
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
 
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
         :root {
-            --primary: #4f46e5;
-            --primary-dark: #4338ca;
-            --primary-light: #e0e7ff;
-            --secondary: #10b981;
-            --secondary-dark: #059669;
+            --primary: #16a34a;
+            --primary-dark: #15803d;
+            --primary-light: #dcfce7;
             --danger: #ef4444;
+            --danger-dark: #dc2626;
             --warning: #f59e0b;
             --light: #f9fafb;
             --dark: #111827;
             --gray: #6b7280;
             --gray-light: #e5e7eb;
-            --radius: 12px;
-            --radius-lg: 16px;
-            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.15);
+            --radius: 16px;
+            --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.2);
         }
 
         * {
@@ -38,1400 +38,453 @@
         
         body {
             font-family: 'Tajawal', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            color: var(--dark);
+            background: #111827;
+            height: 100vh;
+            width: 100vw;
+            color: white;
             display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        
-        .app-container {
-            max-width: 420px;
-            width: 100%;
-            background: white;
-            border-radius: 20px;
-            box-shadow: var(--shadow-lg);
+            flex-direction: column;
             overflow: hidden;
         }
-
-        /* ✅ Header مختصر */
-        .app-header {
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            color: white;
-            padding: 20px;
-            text-align: center;
+        
+        .full-screen-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
             position: relative;
         }
-        
-        .header-content {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-        }
-        
-        .logo {
-            width: 40px;
-            height: 40px;
-            object-fit: contain;
-        }
-        
-        .header-text {
-            flex: 1;
-            text-align: right;
-        }
 
-        .app-header h1 {
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 4px;
-        }
-        
-        .app-header p {
-            font-size: 12px;
-            opacity: 0.9;
-        }
-
-        .urgent-badge {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 600;
-        }
-
-        /* ✅ محتوى الصفحة */
-        .page-content {
-            padding: 20px;
-        }
-        
-        /* ✅ العد التنازلي المدمج */
-        .countdown-section {
-            background: linear-gradient(135deg, #fef2f2, #fef3c7);
-            border-radius: var(--radius);
-            padding: 16px;
-            margin-bottom: 20px;
+        /* ✅ Header */
+        .app-header {
             text-align: center;
-            border: 2px solid var(--warning);
+            margin-bottom: 20px;
+            padding-top: 10px;
+        }
+        
+        .app-header h1 {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--primary);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
 
-        .countdown-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
+        /* ✅ Countdown */
+        .countdown-container {
+            background: rgba(239, 68, 68, 0.1);
+            border: 2px solid var(--danger);
+            border-radius: var(--radius);
+            padding: 15px;
+            text-align: center;
+            margin-bottom: 25px;
         }
-        
-        .countdown-label {
-            font-size: 14px;
-            color: var(--gray);
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        
-        .countdown-timer {
-            font-size: 32px;
+
+        .timer-value {
+            font-size: 48px;
             font-weight: 900;
             color: var(--danger);
-            font-family: 'Tajawal', monospace;
-        }
-        
-        .countdown-progress {
-            height: 6px;
-            background: rgba(239, 68, 68, 0.2);
-            border-radius: 3px;
-            overflow: hidden;
-        }
-        
-        .countdown-bar {
-            height: 100%;
-            background: linear-gradient(90deg, var(--danger), var(--warning));
-            width: 100%;
-            animation: countdownShrink 45s linear forwards;
+            font-family: monospace;
         }
 
-        @keyframes countdownShrink {
-            from { width: 100%; }
-            to { width: 0%; }
-        }
-
-        /* ✅ تفاصيل الرحلة المدمجة */
-        .ride-summary {
-            background: var(--light);
+        /* ✅ Ride Details */
+        .ride-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: var(--radius);
-            padding: 16px;
-            margin-bottom: 20px;
-            border: 1px solid var(--gray-light);
+            padding: 20px;
+            flex: 1;
+            margin-bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
         }
 
-        .ride-header {
+        .detail-row {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 15px;
+            gap: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
 
-        .ride-icon {
+        .detail-icon {
             font-size: 24px;
             color: var(--primary);
+            width: 30px;
         }
 
-        .ride-title {
-            font-size: 16px;
-            font-weight: 700;
-            color: var(--primary);
-        }
-
-        /* ✅ الشبكة المدمجة */
-        .details-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-
-        .detail-item {
-            background: white;
-            border-radius: var(--radius);
-            padding: 12px;
-            border: 1px solid var(--gray-light);
+        .detail-info {
+            flex: 1;
         }
 
         .detail-label {
-            font-size: 11px;
+            font-size: 12px;
             color: var(--gray);
-            margin-bottom: 4px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
+            margin-bottom: 2px;
         }
 
         .detail-value {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .price-box {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            padding: 20px;
+            border-radius: var(--radius);
+            text-align: center;
+            margin-top: auto;
+        }
+
+        .price-label {
             font-size: 14px;
-            font-weight: 600;
-            color: var(--dark);
-            line-height: 1.4;
+            opacity: 0.9;
         }
 
-        .detail-price {
-            background: linear-gradient(135deg, #e0e7ff, #ede9fe);
-            border-color: var(--primary-light);
+        .price-value {
+            font-size: 32px;
+            font-weight: 900;
         }
 
-        /* ✅ أزرار القرار */
+        /* ✅ Action Buttons */
         .action-buttons {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin: 20px 0;
+            grid-template-columns: 1fr;
+            gap: 16px;
+            padding-bottom: 20px;
         }
         
         .btn {
-            padding: 14px;
+            height: 70px;
             border-radius: var(--radius);
             border: none;
             font-family: 'Tajawal', sans-serif;
-            font-size: 14px;
-            font-weight: 600;
+            font-size: 22px;
+            font-weight: 800;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 12px;
             transition: all 0.2s ease;
+            width: 100%;
         }
         
         .btn:active {
-            transform: scale(0.98);
+            transform: scale(0.95);
         }
         
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            color: white;
-        }
-        
-        .btn-danger {
-            background: linear-gradient(135deg, var(--danger), #dc2626);
-            color: white;
-        }
-        
-        /* ✅ أزرار إضافية */
-        .secondary-actions {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 16px;
-        }
-
-        .btn-secondary {
-            background: white;
-            color: var(--primary);
-            border: 1px solid var(--primary);
-            font-size: 13px;
-            padding: 10px;
-        }
-
-        .btn-secondary:hover {
-            background: var(--primary-light);
-        }
-
-        /* ✅ الحالة */
-        .status-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            margin-bottom: 15px;
-        }
-
-        .status-pending {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        /* ✅ تحكم الصوت */
-        .sound-control {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .sound-toggle {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
+        .btn-accept {
             background: var(--primary);
-            border: 3px solid white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-shadow: var(--shadow-lg);
-            transition: all 0.3s ease;
-        }
-
-        .sound-toggle:hover {
-            transform: scale(1.1);
-        }
-
-        .volume-slider {
-            background: white;
-            padding: 12px;
-            border-radius: 25px;
-            box-shadow: var(--shadow-lg);
-            width: 50px;
-            display: none;
+            color: white;
+            box-shadow: 0 4px 15px rgba(22, 163, 74, 0.4);
         }
         
-        .volume-slider input {
-            width: 100%;
-            direction: ltr;
-            transform: rotate(-90deg);
+        .btn-decline {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 18px;
+            height: 60px;
         }
-        
-        /* ✅ Responsive */
-        @media (max-width: 380px) {
-            .page-content {
-                padding: 16px;
-            }
 
-            .details-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .action-buttons {
-                grid-template-columns: 1fr;
-            }
-
-            .secondary-actions {
-                grid-template-columns: 1fr;
-            }
-        }
-        
-        /* ✅ إشعارات */
-        .notification {
+        /* ✅ Notification */
+        #notification {
             position: fixed;
             top: 20px;
-            right: 20px;
             left: 20px;
+            right: 20px;
             background: white;
+            color: var(--dark);
+            padding: 16px;
             border-radius: 12px;
-            padding: 14px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            z-index: 10000;
-            animation: notificationSlide 0.3s ease;
-            border-right: 3px solid var(--primary);
-            max-width: 400px;
-            margin: 0 auto;
+            box-shadow: var(--shadow-lg);
+            z-index: 1000;
+            display: none;
+            animation: slideIn 0.3s ease;
         }
-        
-        @keyframes notificationSlide {
-            from {
-                transform: translateY(-100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
+
+        @keyframes slideIn {
+            from { transform: translateY(-100%); }
+            to { transform: translateY(0); }
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
-<!-- أضف هذا داخل <body> في بداية الصفحة -->
-<div id="audio-enabler" style="
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.8);
-    z-index: 99999;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-family: 'Tajawal';
-">
-    <div style="
-        background: white;
-        border-radius: 20px;
-        padding: 30px;
-        max-width: 400px;
-        width: 90%;
-        text-align: center;
-    ">
-        <div style="font-size: 48px; margin-bottom: 20px;">🔊</div>
-        <h3 style="color: #4f46e5; margin-bottom: 15px;">تفعيل الأصوات</h3>
-        <p style="color: #666; margin-bottom: 25px;">
-            لتلقي إشعارات الرحلات بشكل صحيح، يرجى تفعيل الأصوات الآن.
-        </p>
-        <button onclick="enableAudioSystem()" style="
-            background: #4f46e5;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            width: 100%;
-        ">
-            تفعيل الأصوات الآن
-        </button>
-    </div>
-</div>
 
-<script>
-function enableAudioSystem() {
-    // 1. إزالة واجهة التفعيل
-    document.getElementById('audio-enabler').remove();
-
-    // 2. تشغيل صوت اختبار لتفعيل النظام
-    const testSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-retro-game-emergency-alarm-1000.mp3');
-    testSound.volume = 0.3;
-
-    testSound.play().then(() => {
-        // 3. تخزين أن الصوت مفعل
-        localStorage.setItem('audio_enabled', 'true');
-
-        // 4. إشعار النجاح
-        showNotification('✅ تم تفعيل الأصوات بنجاح!');
-        
-        // 5. تشغيل صوت الرحلة
-        if (window.soundManager) {
-            window.soundManager.enabled = true;
-            window.soundManager.play('new_ride');
-        }
-
-    }).catch(error => {
-        showNotification('⚠️ تعذر تفعيل الصوت. تأكد من إعدادات المتصفح', 'error');
-    });
-}
-
-// التحقق إذا كان الصوت مفعلاً مسبقاً
-if (localStorage.getItem('audio_enabled') === 'true') {
-    document.getElementById('audio-enabler').style.display = 'none';
-}
-</script>
-    <!-- ✅ تحكم الصوت -->
-    <div class="sound-control">
-        <div class="sound-toggle" id="sound-toggle" onclick="toggleSound()">
-            <ion-icon name="volume-high-outline" id="sound-icon" style="font-size: 24px; color: white;"></ion-icon>
-        </div>
-        <div class="volume-slider" id="volume-slider">
-            <input type="range" min="0" max="100" value="70"
-                   oninput="changeVolume(this.value)">
-        </div>
-    </div>
-
-    <div class="app-container">
-        <!-- ✅ Header مختصر -->
+    <div class="full-screen-container">
+        <!-- ✅ Header -->
         <header class="app-header">
-            <div class="header-content">
-                <div class="header-text">
-                    <h1>🚖 طلب رحلة جديد</h1>
-                    <p>ترحال زونا - قبول سريع</p>
-                </div>
-                <div>
-                    <span class="urgent-badge">
-                        <ion-icon name="flash"></ion-icon>
-                        عاجل
-                    </span>
-                </div>
-            </div>
+            <h1>🚖 طلب رحلة جديد</h1>
         </header>
         
-        <!-- ✅ محتوى الصفحة -->
-        <div class="page-content">
-            <!-- ✅ حالة الرحلة -->
-            <div class="status-indicator status-pending" id="status-indicator">
-                <ion-icon name="time-outline"></ion-icon>
-                <span id="status-text">بانتظار ردك - 45 ثانية</span>
-            </div>
+        <!-- ✅ Countdown -->
+        <div class="countdown-container">
+            <div style="font-size: 14px; margin-bottom: 5px;">الوقت المتبقي للرد</div>
+            <div class="timer-value" id="countdown">60</div>
+        </div>
 
-            <!-- ✅ العد التنازلي المدمج -->
-            <div class="countdown-section">
-                <div class="countdown-info">
-                    <div class="countdown-label">
-                        <ion-icon name="timer-outline"></ion-icon>
-                        الوقت المتبقي
-                    </div>
-                    <div class="countdown-timer" id="countdown-timer">45</div>
-                </div>
-                <div class="countdown-progress">
-                    <div class="countdown-bar"></div>
+        <!-- ✅ Ride Details Card -->
+        <div class="ride-card">
+            <div class="detail-row">
+                <div class="detail-icon"><ion-icon name="person-circle-outline"></ion-icon></div>
+                <div class="detail-info">
+                    <div class="detail-label">العميل</div>
+                    <div class="detail-value" id="customer-name">جاري التحميل...</div>
                 </div>
             </div>
 
-            <!-- ✅ تفاصيل الرحلة المدمجة -->
-            <div class="ride-summary">
-                <div class="ride-header">
-                    <ion-icon name="information-circle-outline" class="ride-icon"></ion-icon>
-                    <div class="ride-title">تفاصيل الرحلة</div>
-                </div>
-
-                <div class="details-grid">
-                    <div class="detail-item">
-                        <div class="detail-label">
-                            <ion-icon name="person-outline"></ion-icon>
-                            العميل
-                        </div>
-                        <div class="detail-value" id="customer-name">جاري التحميل...</div>
-                    </div>
-
-                    <div class="detail-item">
-                        <div class="detail-label">
-                            <ion-icon name="call-outline"></ion-icon>
-                            الهاتف
-                        </div>
-                        <div class="detail-value" id="customer-phone">جاري التحميل...</div>
-                    </div>
-
-                    <div class="detail-item">
-                        <div class="detail-label">
-                            <ion-icon name="car-outline"></ion-icon>
-                            النوع
-                        </div>
-                        <div class="detail-value" id="vehicle-type">جاري التحميل...</div>
-                    </div>
-
-                    <div class="detail-item">
-                        <div class="detail-label">
-                            <ion-icon name="navigate-outline"></ion-icon>
-                            المسافة
-                        </div>
-                        <div class="detail-value" id="distance">جاري التحميل...</div>
-                    </div>
-
-                    <div class="detail-item">
-                        <div class="detail-label">
-                            <ion-icon name="location-outline"></ion-icon>
-                            الانطلاق
-                        </div>
-                        <div class="detail-value" id="pickup-location">جاري التحميل...</div>
-                    </div>
-
-                    <div class="detail-item">
-                        <div class="detail-label">
-                            <ion-icon name="pin-outline"></ion-icon>
-                            الوصول
-                        </div>
-                        <div class="detail-value" id="destination">جاري التحميل...</div>
-                    </div>
-
-                    <div class="detail-item detail-price" style="grid-column: span 2;">
-                        <div class="detail-label">
-                            <ion-icon name="cash-outline"></ion-icon>
-                            السعر
-                        </div>
-                        <div class="detail-value" id="price" style="color: var(--primary); font-size: 16px;">جاري التحميل...</div>
-                    </div>
+            <div class="detail-row">
+                <div class="detail-icon"><ion-icon name="navigate-outline"></ion-icon></div>
+                <div class="detail-info">
+                    <div class="detail-label">المسافة</div>
+                    <div class="detail-value" id="distance">-- كم</div>
                 </div>
             </div>
 
-            <!-- ✅ أزرار القرار الرئيسية -->
-            <div class="action-buttons">
-                <button class="btn btn-primary" onclick="acceptRide()" id="accept-btn">
-                    <ion-icon name="checkmark-circle-outline"></ion-icon>
-                    قبول
-                </button>
-
-                <button class="btn btn-danger" onclick="declineRide()" id="decline-btn">
-                    <ion-icon name="close-circle-outline"></ion-icon>
-                    رفض
-                </button>
-            </div>
-
-            <!-- ✅ أزرار إضافية -->
-            <div class="secondary-actions">
-                <button class="btn btn-secondary" onclick="callCustomer()">
-                    <ion-icon name="call-outline"></ion-icon>
-                    اتصال سريع
-                </button>
-
-                <button class="btn btn-secondary" onclick="viewMap()">
-                    <ion-icon name="map-outline"></ion-icon>
-                    عرض الخريطة
-                </button>
-            </div>
-
-            <!-- ✅ معلومات إضافية -->
-            <div style="text-align: center; margin-top: 20px;">
-                <div style="font-size: 12px; color: var(--gray);">
-                    <ion-icon name="information-circle-outline" style="font-size: 14px;"></ion-icon>
-                    وقت الاستجابة: <span id="response-time" style="font-weight: 600;">0</span> ثانية
+            <div class="detail-row">
+                <div class="detail-icon"><ion-icon name="location-outline"></ion-icon></div>
+                <div class="detail-info">
+                    <div class="detail-label">موقع الانطلاق</div>
+                    <div class="detail-value" id="pickup-location" style="font-size: 14px;">جاري تحديد الموقع...</div>
                 </div>
             </div>
 
-            <!-- ✅ رسالة الاستجابة -->
-            <div id="response-message" style="margin-top: 16px;"></div>
+            <div class="price-box">
+                <div class="price-label">الأجرة المقدرة</div>
+                <div class="price-value"><span id="amount">0</span> <small style="font-size: 16px;">SDG</small></div>
+            </div>
+        </div>
 
-            <!-- ✅ زر العودة -->
-            <button class="btn btn-secondary" onclick="goBack()" style="width: 100%; margin-top: 16px;">
-                <ion-icon name="arrow-back-outline"></ion-icon>
-                العودة
+        <!-- ✅ Action Buttons -->
+        <div class="action-buttons">
+            <button class="btn btn-accept" onclick="handleAccept()" id="accept-btn">
+                <ion-icon name="checkmark-circle"></ion-icon>
+                قــبـول الـرحـلـة
+            </button>
+            <button class="btn btn-decline" onclick="handleDecline()" id="decline-btn">
+                رفض الطلب
             </button>
         </div>
     </div>
 
+    <!-- Notification Area -->
+    <div id="notification"></div>
+
     <script>
         // ==============================================
-        // ✅ نظام الصوت الدائم لترحال
+        // ✅ Supabase Configuration
         // ==============================================
-        class TarhalSoundManager {
-            constructor() {
-                this.initialized = false;
-                this.enabled = true;
-                this.volume = 0.7;
-                this.sounds = new Map();
+        const SB_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
+        const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
+        const tarhalDB = supabase.createClient(SB_URL, SB_KEY);
 
-                // مكتبة الأصوات
-                this.soundLibrary = {
-    'new_ride': 'https://assets.mixkit.co/sfx/download/mixkit-retro-game-emergency-alarm-1000.mp3',
-    'ride_accepted': 'https://assets.mixkit.co/sfx/download/mixkit-winning-chimes-2015.mp3',
-    'ride_declined': 'https://assets.mixkit.co/sfx/download/mixkit-wrong-answer-fail-notification-946.mp3',
-    'notification': 'https://assets.mixkit.co/sfx/download/mixkit-message-pop-up-alert-2354.mp3',
-    'time_warning': 'https://assets.mixkit.co/sfx/download/mixkit-fast-small-sweep-transition-166.mp3',
-    'beep': 'https://assets.mixkit.co/sfx/download/mixkit-alarm-digital-clock-beep-989.mp3'
-};
-
-                this.init();
-            }
-            
-            async init() {
-                // تحميل الإعدادات من localStorage
-                this.loadPreferences();
-
-                // محاولة تفعيل الصوت تلقائياً
-                await this.attemptAutoEnable();
-
-                // تحميل الأصوات مسبقاً
-                await this.preloadSounds();
-
-                this.initialized = true;
-                console.log('🔊 نظام الصوت الدائم جاهز');
-            }
-            
-            loadPreferences() {
-                try {
-                    const saved = localStorage.getItem('tarhal_sound_prefs');
-                    if (saved) {
-                        const prefs = JSON.parse(saved);
-                        this.enabled = prefs.enabled !== false;
-                        this.volume = prefs.volume || 0.7;
-                    }
-                } catch (e) {
-                    console.log('❌ خطأ في تحميل إعدادات الصوت');
-                }
-            }
-
-            savePreferences() {
-                const prefs = {
-                    enabled: this.enabled,
-                    volume: this.volume,
-                    lastUpdated: new Date().toISOString()
-                };
-                localStorage.setItem('tarhal_sound_prefs', JSON.stringify(prefs));
-            }
-
-            async attemptAutoEnable() {
-                if (!this.enabled) return false;
-
-                try {
-                    // محاولة ذكية لتفعيل الصوت
-                    const audio = new Audio();
-                    audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==';
-                    audio.volume = 0.001;
-
-                    await audio.play();
-                    audio.pause();
-
-                    return true;
-                } catch (error) {
-                    console.log('🔇 يحتاج تفعيل يدوي');
-                    this.showEnablePrompt();
-                    return false;
-                }
-            }
-
-            async preloadSounds() {
-                // تحميل الأصوات في الخلفية
-                for (const [name, url] of Object.entries(this.soundLibrary)) {
-                    try {
-                        const audio = new Audio();
-                        audio.src = url;
-                        audio.volume = 0;
-                        this.sounds.set(name, audio);
-                    } catch (error) {
-                        console.log(`⚠️ تعذر تحميل الصوت ${name}`);
-                    }
-                }
-            }
-
-            async play(soundName, options = {}) {
-                if (!this.enabled || !this.initialized) {
-                    if (!this.enabled && this.initialized) {
-                        this.showEnablePrompt();
-                    }
-                    return false;
-                }
-
-                const config = {
-                    volume: options.volume || this.volume,
-                    loop: options.loop || false,
-                    ...options
-                };
-
-                try {
-                    const url = this.soundLibrary[soundName];
-                    if (!url) return false;
-
-                    const audio = new Audio(url);
-                    audio.volume = config.volume;
-                    audio.loop = config.loop;
-
-                    const playPromise = audio.play();
-
-                    if (playPromise !== undefined) {
-                        await playPromise;
-                    }
-
-                    return true;
-
-                } catch (error) {
-                    console.log('❌ تعذر تشغيل الصوت:', error.name);
-
-                    // إذا كان الخطأ بسبب سياسة المستخدم، عرض واجهة تفعيل
-                    if (error.name === 'NotAllowedError') {
-                        this.showEnablePrompt();
-                    }
-
-                    return false;
-                }
-            }
-            
-            showEnablePrompt() {
-                // منع العرض المتكرر
-                if (document.getElementById('tarhal-sound-prompt')) return;
-
-                const prompt = document.createElement('div');
-                prompt.id = 'tarhal-sound-prompt';
-                prompt.style.cssText = `
-                    position: fixed;
-                    top: 0; left: 0; right: 0; bottom: 0;
-                    background: rgba(0,0,0,0.8);
-                    z-index: 99999;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    font-family: 'Tajawal', sans-serif;
-                    animation: fadeIn 0.3s ease;
-                `;
-
-                prompt.innerHTML = `
-                    <div style="background: white; border-radius: 20px; padding: 30px; max-width: 400px; width: 90%; text-align: center;">
-                        <div style="font-size: 48px; margin-bottom: 20px;">🔊</div>
-                        <h3 style="color: #4f46e5; margin-bottom: 15px; font-weight: 700;">تفعيل الأصوات</h3>
-                        <p style="color: #6b7280; margin-bottom: 25px; line-height: 1.6;">
-                            تحتاج إلى تفعيل الأصوات لسماع إشعارات الرحلات الجديدة وتنبيهات الوقت.
-                            اضغط على الزر أدناه لتفعيل الأصوات مرة واحدة فقط.
-                        </p>
-                        <div style="display: flex; gap: 10px; justify-content: center;">
-                            <button onclick="window.soundManager.enableSounds()"
-                                    style="background: #4f46e5; color: white; border: none;
-                                           padding: 15px 30px; border-radius: 12px;
-                                           font-size: 16px; font-weight: bold; cursor: pointer;
-                                           flex: 1;">
-                                تفعيل الأصوات
-                            </button>
-                            <button onclick="document.getElementById('tarhal-sound-prompt').remove()"
-                                    style="background: transparent; color: #6b7280; border: 1px solid #e5e7eb;
-                                           padding: 15px 20px; border-radius: 12px; cursor: pointer;">
-                                تخطي الآن
-                            </button>
-                        </div>
-                    </div>
-                `;
-
-                document.body.appendChild(prompt);
-
-                // إزالة تلقائية بعد 20 ثانية
-                setTimeout(() => {
-                    if (prompt.parentNode) {
-                        prompt.remove();
-                    }
-                }, 20000);
-            }
-            
-            async enableSounds() {
-                try {
-                    // تشغيل صوت اختبار
-                    await this.play('beep', { volume: 0.3 });
-
-                    this.enabled = true;
-                    this.savePreferences();
-
-                    // إغلاق النافذة
-                    const prompt = document.getElementById('tarhal-sound-prompt');
-                    if (prompt) prompt.remove();
-
-                    // عرض رسالة نجاح
-                    this.showToast('✅ تم تفعيل الأصوات بنجاح');
-                    
-                    // تحديث الواجهة
-                    updateSoundUI();
-
-                    return true;
-
-                } catch (error) {
-                    console.log('❌ فشل تفعيل الصوت:', error);
-                    this.showToast('⚠️ تعذر تفعيل الصوت. جرب متصفحاً آخر', 'error');
-                    return false;
-                }
-            }
-
-            toggle() {
-                this.enabled = !this.enabled;
-                this.savePreferences();
-
-                // تشغيل صوت تجريبي إذا تم التفعيل
-                if (this.enabled) {
-                    this.play('beep', { volume: 0.3 });
-                }
-
-                // تحديث الواجهة
-                updateSoundUI();
-
-                // عرض إشعار
-                this.showToast(this.enabled ? '🔊 تم تفعيل الصوت' : '🔇 تم إيقاف الصوت');
-
-                return this.enabled;
-            }
-
-            setVolume(level) {
-                this.volume = Math.max(0, Math.min(1, level / 100));
-                this.savePreferences();
-
-                // تشغيل صوت تجريبي للتأكد
-                if (this.enabled && this.volume > 0) {
-                    this.play('beep', { volume: this.volume * 0.5 });
-                }
-            }
-
-            showToast(message, type = 'info') {
-                const toast = document.createElement('div');
-                toast.style.cssText = `
-                    position: fixed;
-                    bottom: 80px;
-                    right: 20px;
-                    left: 20px;
-                    background: ${type === 'error' ? '#ef4444' : '#4f46e5'};
-                    color: white;
-                    padding: 14px;
-                    border-radius: 12px;
-                    text-align: center;
-                    font-weight: 600;
-                    z-index: 100000;
-                    animation: slideUp 0.3s ease;
-                    max-width: 400px;
-                    margin: 0 auto;
-                    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-                `;
-
-                toast.textContent = message;
-                document.body.appendChild(toast);
-
-                setTimeout(() => {
-                    toast.style.opacity = '0';
-                    toast.style.transform = 'translateY(20px)';
-                    setTimeout(() => toast.remove(), 300);
-                }, 3000);
-            }
-        }
+        let currentRideId = null;
+        let countdownValue = 60;
+        let timerInterval = null;
 
         // ==============================================
-        // ✅ المتغيرات الأساسية للتطبيق
+        // ✅ Global Handler for Flutter
         // ==============================================
-        let rideId = null;
-        let countdown = 45;
-        let countdownInterval = null;
-        let soundManager = null;
-        let startTime = Date.now();
+        window.handleIncomingRide = function(data) {
+            console.log('Incoming ride data from Flutter Bridge:', data);
+            updateUI(data);
+
+            if (data.ride_id) {
+                currentRideId = data.ride_id;
+            }
+        };
 
         // ==============================================
-        // ✅ تهيئة الصفحة
+        // ✅ Initialization
         // ==============================================
         document.addEventListener('DOMContentLoaded', async function() {
-            console.log('🚀 صفحة قبول الرحلة جاهزة');
-
-            // تهيئة نظام الصوت الدائم
-            soundManager = new TarhalSoundManager();
-            window.soundManager = soundManager;
-
-            // الحصول على rideId من URL
             const urlParams = new URLSearchParams(window.location.search);
-            rideId = urlParams.get('rideId') || 'TEST_' + Date.now();
+            currentRideId = urlParams.get('rideId') || urlParams.get('ride_id');
 
-            // تحميل بيانات الاختبار
-            loadTestData();
-
-            // تشغيل صوت الرحلة الجديدة
-            if (soundManager.enabled) {
-                soundManager.play('new_ride', { volume: 0.8 });
-
-                // تكرار صوت التنبيه كل 10 ثواني
-                setInterval(() => {
-                    if (countdown > 10 && soundManager.enabled) {
-                        soundManager.play('notification', { volume: 0.4 });
-                    }
-                }, 10000);
+            if (currentRideId) {
+                fetchRideDetails(currentRideId);
             }
 
-            // تشغيل الاهتزاز إذا متاح
+            startTimer();
             triggerVibration();
-
-            // بدء العد التنازلي
-            startCountdown();
-
-            // تحديث وقت الاستجابة
-            setInterval(updateResponseTime, 1000);
-
-            // تحديث واجهة الصوت
-            updateSoundUI();
         });
-        
-        // ==============================================
-        // ✅ دوال النظام الأساسية
-        // ==============================================
-        function loadTestData() {
-            // بيانات تجريبية للاختبار
-            const testData = {
-                customerName: 'أحمد محمد',
-                customerPhone: '+249 90 123 4567',
-                vehicleType: 'اقتصادية',
-                pickupLocation: 'الخرطوم - العمارات',
-                destination: 'أم درمان - السوق',
-                distance: '5.2 كم',
-                price: '12,500 SDG'
-            };
 
-            document.getElementById('customer-name').textContent = testData.customerName;
-            document.getElementById('customer-phone').textContent = testData.customerPhone;
-            document.getElementById('vehicle-type').textContent = testData.vehicleType;
-            document.getElementById('pickup-location').textContent = testData.pickupLocation;
-            document.getElementById('destination').textContent = testData.destination;
-            document.getElementById('distance').textContent = testData.distance;
-            document.getElementById('price').textContent = testData.price;
+        async function fetchRideDetails(rideId) {
+            try {
+                const { data, error } = await tarhalDB
+                    .from('rides')
+                    .select('*')
+                    .eq('id', rideId)
+                    .single();
 
-            // تحديث العنوان
-            document.getElementById('status-text').textContent = `طلب #${rideId.substring(0, 8)}`;
+                if (error) throw error;
+                if (data) {
+                    updateUI({
+                        customer_name: data.passenger_name || data.customer_name,
+                        amount: data.amount || data.final_price,
+                        distance: data.distance_km || data.distance,
+                        pickup_address: data.pickup_address,
+                        ride_id: data.id
+                    });
+                }
+            } catch (err) {
+                console.error('Error fetching ride details:', err);
+            }
         }
 
-        function startCountdown() {
-            const timerElement = document.getElementById('countdown-timer');
+        function updateUI(data) {
+            if (data.customer_name) document.getElementById('customer-name').textContent = data.customer_name;
+            if (data.amount) document.getElementById('amount').textContent = data.amount;
+            if (data.distance) document.getElementById('distance').textContent = data.distance;
+            if (data.pickup_address) document.getElementById('pickup-location').textContent = data.pickup_address;
+        }
 
-            countdownInterval = setInterval(() => {
-                countdown--;
-                timerElement.textContent = countdown;
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                countdownValue--;
+                document.getElementById('countdown').textContent = countdownValue;
                 
-                // تحديث حالة الرحلة
-                document.getElementById('status-text').textContent = `بانتظار ردك - ${countdown} ثانية`;
-
-                // تغيير الألوان مع الوقت
-                if (countdown <= 10) {
-                    timerElement.style.color = '#ef4444';
-
-                    // صوت تنبيه عند قرب الانتهاء
-                    if (soundManager?.enabled && countdown <= 5) {
-                        soundManager.play('time_warning', { volume: 0.6 });
-                    }
-                } else if (countdown <= 20) {
-                    timerElement.style.color = '#f59e0b';
-                }
-                
-                if (countdown <= 0) {
-                    clearInterval(countdownInterval);
+                if (countdownValue <= 0) {
+                    clearInterval(timerInterval);
                     autoDecline();
                 }
             }, 1000);
         }
-        
+
         function triggerVibration() {
-            if (navigator.vibrate) {
-                navigator.vibrate([200, 100, 200]);
+            if ('vibrate' in navigator) {
+                navigator.vibrate([500, 200, 500, 200, 500]);
             }
         }
-        
-        function updateResponseTime() {
-            const elapsed = Math.floor((Date.now() - startTime) / 1000);
-            document.getElementById('response-time').textContent = elapsed;
+
+        // ==============================================
+        // ✅ Accept/Decline Logic
+        // ==============================================
+        async function handleAccept() {
+            if (!currentRideId) {
+                showToast('خطأ: لا يوجد معرف للرحلة', 'error');
+                return;
+            }
+
+            setLoading(true, 'accept');
+            clearInterval(timerInterval);
+
+            try {
+                const { error } = await tarhalDB
+                    .from('rides')
+                    .update({
+                        status: 'accepted',
+                        driver_accepted: true,
+                        accepted_at: new Date().toISOString()
+                    })
+                    .eq('id', currentRideId);
+
+                if (error) throw error;
+
+                showToast('✅ تم قبول الرحلة بنجاح!', 'success');
+                
+                // إبلاغ Flutter
+                if (window.flutter_inappwebview) {
+                    window.flutter_inappwebview.callHandler('rideAccepted', { ride_id: currentRideId });
+                }
+
+                setTimeout(() => {
+                    // التوجه لصفحة تتبع الرحلة أو العودة للرئيسية
+                    window.location.href = 'index.html';
+                }, 1500);
+
+            } catch (err) {
+                console.error('Accept error:', err);
+                showToast('❌ فشل قبول الرحلة، حاول مرة أخرى', 'error');
+                setLoading(false, 'accept');
+                startTimer();
+            }
         }
-        
-        // ==============================================
-        // ✅ التعامل مع الرحلة
-        // ==============================================
-        async function acceptRide() {
-            clearInterval(countdownInterval);
-            
+
+        async function handleDecline() {
+            if (!currentRideId) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            setLoading(true, 'decline');
+            clearInterval(timerInterval);
+
+            try {
+                const { error } = await tarhalDB
+                    .from('rides')
+                    .update({
+                        status: 'driver_rejected',
+                        driver_rejected: true
+                    })
+                    .eq('id', currentRideId);
+
+                if (error) throw error;
+
+                showToast('تم رفض الرحلة');
+
+                // إبلاغ Flutter
+                if (window.flutter_inappwebview) {
+                    window.flutter_inappwebview.callHandler('rideRejected', { ride_id: currentRideId });
+                }
+
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1000);
+
+            } catch (err) {
+                console.error('Decline error:', err);
+                window.location.href = 'index.html';
+            }
+        }
+
+        function autoDecline() {
+            handleDecline();
+        }
+
+        function setLoading(loading, type) {
             const acceptBtn = document.getElementById('accept-btn');
             const declineBtn = document.getElementById('decline-btn');
-            const responseMessage = document.getElementById('response-message');
 
-            // تعطيل الأزرار
-            acceptBtn.disabled = true;
-            declineBtn.disabled = true;
-            acceptBtn.innerHTML = '<span style="display:inline-block;width:16px;height:16px;border:2px solid white;border-radius:50%;border-top-color:transparent;animation:spin 1s linear infinite"></span> جاري القبول';
-            
-            // تشغيل صوت القبول
-            if (soundManager?.enabled) {
-                soundManager.play('ride_accepted', { volume: 0.7 });
-            }
-            
-            try {
-                // محاكاة اتصال بالسيرفر
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                // تحديث الواجهة
-                responseMessage.innerHTML = `
-                    <div style="background: linear-gradient(135deg, #dcfce7, #bbf7d0); padding: 14px; border-radius: var(--radius); border: 2px solid var(--secondary); text-align: center;">
-                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                            <ion-icon name="checkmark-circle" style="font-size: 24px; color: var(--secondary-dark);"></ion-icon>
-                            <div style="text-align: right; flex: 1;">
-                                <strong style="display: block; color: var(--secondary-dark);">تم قبول الرحلة بنجاح!</strong>
-                                <span style="font-size: 13px; color: var(--gray);">تم إبلاغ العميل</span>
-                            </div>
-                        </div>
-                        <button class="btn btn-secondary" onclick="callCustomer()" style="padding: 10px; margin-top: 10px;">
-                            <ion-icon name="call-outline"></ion-icon> الاتصال بالعميل
-                        </button>
-                    </div>
-                `;
-                
-                // تحديث الحالة
-                document.getElementById('status-indicator').innerHTML = `
-                    <ion-icon name="checkmark-circle" style="color: var(--secondary-dark);"></ion-icon>
-                    <span style="color: var(--secondary-dark);">تم القبول</span>
-                `;
-                document.getElementById('status-indicator').style.background = '#dcfce7';
-                
-                // إخفاء الأزرار
-                acceptBtn.style.display = 'none';
-                declineBtn.style.display = 'none';
-                document.querySelector('.countdown-section').style.display = 'none';
-                document.querySelector('.secondary-actions').style.display = 'none';
-                
-                // إشعار النجاح
-                showNotification('✅ تم قبول الرحلة! توجه لنقطة الانطلاق.');
-                
-                // حفظ في localStorage للتتبع
-                localStorage.setItem(`tarhal_ride_${rideId}`, JSON.stringify({
-                    status: 'accepted',
-                    time: new Date().toISOString()
-                }));
-                
-            } catch (error) {
-                responseMessage.innerHTML = `
-                    <div style="background: #fee2e2; padding: 14px; border-radius: var(--radius); border: 2px solid var(--danger); text-align: center; color: var(--danger);">
-                        <ion-icon name="warning"></ion-icon> حدث خطأ في القبول
-                    </div>
-                `;
-                
+            if (loading) {
+                acceptBtn.disabled = true;
+                declineBtn.disabled = true;
+                if (type === 'accept') {
+                    acceptBtn.innerHTML = '<div class="spinner"></div> جاري القبول...';
+                }
+            } else {
                 acceptBtn.disabled = false;
                 declineBtn.disabled = false;
-                acceptBtn.innerHTML = '<ion-icon name="checkmark-circle-outline"></ion-icon> قبول';
-            }
-        }
-        
-        async function declineRide() {
-            clearInterval(countdownInterval);
-            
-            const acceptBtn = document.getElementById('accept-btn');
-            const declineBtn = document.getElementById('decline-btn');
-            const responseMessage = document.getElementById('response-message');
-
-            acceptBtn.disabled = true;
-            declineBtn.disabled = true;
-            declineBtn.innerHTML = '<span style="display:inline-block;width:16px;height:16px;border:2px solid white;border-radius:50%;border-top-color:transparent;animation:spin 1s linear infinite"></span> جاري الرفض';
-            
-            // تشغيل صوت الرفض
-            if (soundManager?.enabled) {
-                soundManager.play('ride_declined', { volume: 0.7 });
-            }
-            
-            try {
-                await new Promise(resolve => setTimeout(resolve, 800));
-                
-                responseMessage.innerHTML = `
-                    <div style="background: #fef3c7; padding: 14px; border-radius: var(--radius); border: 2px solid var(--warning); text-align: center;">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <ion-icon name="information-circle" style="font-size: 24px; color: #92400e;"></ion-icon>
-                            <div style="text-align: right; flex: 1;">
-                                <strong style="display: block; color: #92400e;">تم رفض الرحلة</strong>
-                                <span style="font-size: 13px; color: var(--gray);">سيتم إرسالها لسائق آخر</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                // تحديث الحالة
-                document.getElementById('status-indicator').innerHTML = `
-                    <ion-icon name="close-circle" style="color: #92400e;"></ion-icon>
-                    <span style="color: #92400e;">تم الرفض</span>
-                `;
-                document.getElementById('status-indicator').style.background = '#fef3c7';
-                
-                // إخفاء العناصر
-                acceptBtn.style.display = 'none';
-                declineBtn.style.display = 'none';
-                document.querySelector('.countdown-section').style.display = 'none';
-                document.querySelector('.secondary-actions').style.display = 'none';
-                
-                showNotification('تم رفض الرحلة');
-                
-                // حفظ في localStorage
-                localStorage.setItem(`tarhal_ride_${rideId}`, JSON.stringify({
-                    status: 'declined',
-                    time: new Date().toISOString()
-                }));
-                
-                // العودة التلقائية
-                setTimeout(() => {
-                    goBack();
-                }, 3000);
-                
-            } catch (error) {
-                responseMessage.innerHTML = `
-                    <div style="background: #fee2e2; padding: 14px; border-radius: var(--radius); border: 2px solid var(--danger); text-align: center; color: var(--danger);">
-                        <ion-icon name="warning"></ion-icon> حدث خطأ في الرفض
-                    </div>
-                `;
-                
-                declineBtn.disabled = false;
-                declineBtn.innerHTML = '<ion-icon name="close-circle-outline"></ion-icon> رفض';
-            }
-        }
-        
-        function autoDecline() {
-            showNotification('⏰ انتهى وقت الرد! تم الرفض تلقائياً.');
-            declineRide();
-        }
-        
-        // ==============================================
-        // ✅ دوال مساعدة
-        // ==============================================
-        function callCustomer() {
-            const phone = document.getElementById('customer-phone').textContent;
-            showNotification('📞 جاري الاتصال بالعميل...');
-            // في تطبيق حقيقي: window.open(`tel:${phone}`, '_self');
-        }
-
-        function viewMap() {
-            showNotification('🗺️ جاري فتح الخريطة...');
-            // يمكنك إضافة خريطة هنا
-        }
-
-        function goBack() {
-            showNotification('↩️ جاري العودة...');
-            setTimeout(() => {
-                window.close(); // أو window.history.back();
-            }, 500);
-        }
-
-        function toggleSound() {
-            if (!soundManager) return;
-
-            const enabled = soundManager.toggle();
-            const volumeSlider = document.getElementById('volume-slider');
-
-            // إظهار/إخفاء منزلق الصوت
-            if (enabled) {
-                volumeSlider.style.display = 'block';
-                setTimeout(() => {
-                    volumeSlider.style.display = 'none';
-                }, 5000);
-            } else {
-                volumeSlider.style.display = 'none';
-            }
-        }
-        
-        function changeVolume(value) {
-            if (!soundManager) return;
-            soundManager.setVolume(value);
-
-            // تحديث واجهة الصوت
-            updateSoundUI();
-        }
-        
-        function updateSoundUI() {
-            if (!soundManager) return;
-
-            const icon = document.getElementById('sound-icon');
-            const button = document.getElementById('sound-toggle');
-
-            if (soundManager.enabled) {
-                icon.name = 'volume-high-outline';
-                button.style.background = '#4f46e5';
-            } else {
-                icon.name = 'volume-mute-outline';
-                button.style.background = '#6b7280';
+                acceptBtn.innerHTML = '<ion-icon name="checkmark-circle"></ion-icon> قــبـول الـرحـلـة';
             }
         }
 
-        // ==============================================
-        // ✅ نظام الإشعارات
-        // ==============================================
-        function showNotification(message) {
-            const notification = document.createElement('div');
-            notification.className = 'notification';
-            notification.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <ion-icon name="information-circle-outline" style="color: #4f46e5; font-size: 20px;"></ion-icon>
-                    <div style="flex: 1;">${message}</div>
-                </div>
-            `;
-
-            document.body.appendChild(notification);
+        function showToast(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.style.display = 'block';
+            notification.style.backgroundColor = type === 'error' ? '#fee2e2' : '#dcfce7';
+            notification.style.color = type === 'error' ? '#dc2626' : '#15803d';
 
             setTimeout(() => {
-                notification.style.opacity = '0';
-                notification.style.transform = 'translateY(-20px)';
-                setTimeout(() => notification.remove(), 300);
+                notification.style.display = 'none';
             }, 3000);
         }
-
-        // ==============================================
-        // ✅ إضافة أنماط CSS للحركات
-        // ==============================================
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes fadeIn {
-                from { opacity: 0; }
-                to { opacity: 1; }
-            }
-
-            @keyframes slideUp {
-                from {
-                    transform: translateY(100%);
-                    opacity: 0;
-                }
-                to {
-                    transform: translateY(0);
-                    opacity: 1;
-                }
-            }
-
-            @keyframes spin {
-                to { transform: rotate(360deg); }
-            }
-        `;
-        document.head.appendChild(style);
-
-        console.log('🎯 صفحة قبول الرحية جاهزة للعمل!');
-
-// ==============================================
-// ✅ نظام تفعيل الصوت الإجباري
-// ==============================================
-function enableAudioSystem() {
-    console.log('🎵 محاولة تفعيل الصوت...');
-
-    // 1. إخفاء واجهة التفعيل
-    document.getElementById('audio-enabler').style.opacity = '0';
-    setTimeout(() => {
-        document.getElementById('audio-enabler').style.display = 'none';
-    }, 300);
-
-    // 2. محاولة تشغيل صوت صامت
-    const silentAudio = new Audio();
-    silentAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==';
-    silentAudio.volume = 0.001;
-
-    silentAudio.play().then(() => {
-        console.log('✅ تم تفعيل النظام الصوتي');
-
-        // 3. تخزين في localStorage
-        localStorage.setItem('tarhal_audio_activated', 'true');
-        localStorage.setItem('tarhal_audio_time', Date.now());
-
-        // 4. تشغيل صوت الاختبار
-        playTestSound();
-
-        // 5. تفعيل soundManager إذا موجود
-        if (window.soundManager) {
-            window.soundManager.enabled = true;
-            window.soundManager.initialized = true;
-
-            // تشغيل صوت الرحلة الجديدة
-            setTimeout(() => {
-                if (window.soundManager.play) {
-                    window.soundManager.play('new_ride', { volume: 0.7 });
-                }
-            }, 500);
-        }
-
-        // 6. إشعار النجاح
-        showAudioNotification('✅ تم تفعيل الأصوات بنجاح!');
-
-    }).catch(error => {
-        console.log('❌ فشل التفعيل التلقائي:', error);
-
-        // تجربة طريقة بديلة
-        tryManualAudioEnable();
-    });
-}
-
-function tryManualAudioEnable() {
-    // طريقة يدوية للتأكد
-    const testAudio = new Audio('https://assets.mixkit.co/sfx/download/mixkit-alarm-digital-clock-beep-989.mp3');
-    testAudio.volume = 0.3;
-
-    testAudio.play().then(() => {
-        console.log('✅ التفعيل اليدوي نجح');
-        localStorage.setItem('tarhal_audio_activated', 'true');
-
-        // إعادة تحميل الصفحة للتأكد
-        setTimeout(() => {
-            window.location.reload();
-        }, 1000);
-
-    }).catch(error => {
-        console.log('❌ فشل كامل:', error);
-
-        // إظهار رسالة إرشادية
-        showAudioNotification(`
-            ⚠️ تعذر تفعيل الصوت تلقائياً<br>
-            <small>الرجاء الضغط على أي مكان في الصفحة ثم المحاولة مرة أخرى</small>
-        `, 'warning');
-
-        // إعادة عرض زر التفعيل بعد 3 ثواني
-        setTimeout(() => {
-            document.getElementById('audio-enabler').style.display = 'flex';
-            document.getElementById('audio-enabler').style.opacity = '1';
-        }, 3000);
-    });
-}
-
-function skipAudio() {
-    document.getElementById('audio-enabler').style.opacity = '0';
-    setTimeout(() => {
-        document.getElementById('audio-enabler').style.display = 'none';
-    }, 300);
-
-    localStorage.setItem('tarhal_audio_skipped', 'true');
-    showAudioNotification('🔇 تم إلغاء تفعيل الصوت');
-}
-
-function playTestSound() {
-    try {
-        const audio = new Audio('https://assets.mixkit.co/sfx/download/mixkit-alarm-digital-clock-beep-989.mp3');
-        audio.volume = 0.5;
-        audio.play();
-    } catch (error) {
-        console.log('تعذر تشغيل صوت الاختبار:', error);
-    }
-}
-
-function showAudioNotification(message, type = 'success') {
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        left: 20px;
-        background: ${type === 'warning' ? '#f59e0b' : '#10b981'};
-        color: white;
-        padding: 15px;
-        border-radius: 12px;
-        text-align: center;
-        font-weight: bold;
-        z-index: 100000;
-        animation: slideDown 0.3s ease;
-        max-width: 400px;
-        margin: 0 auto;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-    `;
-
-    notification.innerHTML = message;
-    document.body.appendChild(notification);
-
-    setTimeout(() => {
-        notification.style.opacity = '0';
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
-}
-
-// التحقق من التفعيل السابق عند تحميل الصفحة
-document.addEventListener('DOMContentLoaded', function() {
-    const audioActivated = localStorage.getItem('tarhal_audio_activated');
-    const audioSkipped = localStorage.getItem('tarhal_audio_skipped');
-
-    if (audioActivated === 'true' || audioSkipped === 'true') {
-        // إذا كان الصوت مفعلاً مسبقاً، إخفاء واجهة التفعيل
-        document.getElementById('audio-enabler').style.display = 'none';
-    } else {
-        // إظهار واجهة التفعيل بعد تأخير قصير
-        setTimeout(() => {
-            document.getElementById('audio-enabler').style.opacity = '1';
-        }, 500);
-    }
-});
-
-// ==============================================
-// ✅ تعديل soundManager ليعمل مع النظام الجديد
-// ==============================================
-// في class TarhalSoundManager، أضف في constructor:
-// بعد this.soundLibrary = { ... };
-if (!localStorage.getItem('tarhal_audio_activated')) {
-    this.enabled = false;
-    this.initialized = false;
-}
- </script>
+    </script>
 </body>
 </html>
