@@ -81,13 +81,11 @@ export default async function handler(req, res) {
             },
             android: {
                 priority: 'high',
-                ttl: '60s',
-                sticky: true,
+                ttl: 60 * 1000,
                 notification: {
                     sound: 'ride_request_sound',
                     channelId: 'ride_requests',
-                    clickAction: 'FLUTTER_NOTIFICATION_CLICK',
-                    sticky: true
+                    clickAction: 'FLUTTER_NOTIFICATION_CLICK'
                 }
             },
             apns: {
