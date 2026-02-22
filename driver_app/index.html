@@ -881,27 +881,39 @@
      * يتم مناداة هذه الدالة من طرف Flutter Wrapper عند الحصول على توكن جديد
      */
     window.setFCMToken = async function(token) {
-        console.log('📲 Received FCM Token from Flutter:', token);
-        if (!token) return;
+        console.log('FCM Token received from Flutter:', token);
+        if (!token || token === 'false') {
+            console.warn('⚠️ Received invalid FCM Token:', token);
+            return;
+        }
 
         // حفظ التوكن مؤقتاً في localStorage
         localStorage.setItem('pending_fcm_token', token);
 
         // إذا كان السائق مسجلاً دخوله، نقوم بتحديث قاعدة البيانات فوراً
         if (currentDriver && currentDriver.id) {
+            console.log('🔄 Syncing FCM Token to Supabase for driver:', currentDriver.id);
             try {
                 const { error } = await tarhalDB
                     .from('drivers')
-                    .update({ fcm_token: token })
+                    .update({
+                        fcm_token: token,
+                        last_fcm_sync: new Date().toISOString()
+                    })
                     .eq('id', currentDriver.id);
 
                 if (error) throw error;
-                console.log('✅ FCM Token updated in Supabase');
-                // لا نمسح التوكن من localStorage لضمان بقائه في الجلسات القادمة إذا لزم الأمر
-                // ولكن يمكننا اعتباره تمت معالجته
+                console.log('✅ FCM Token updated successfully in Supabase');
+
+                // تحديث البيانات المحلية أيضاً لضمان التزامن
+                currentDriver.fcm_token = token;
+                localStorage.setItem('tarhal_driver', JSON.stringify(currentDriver));
+
             } catch (err) {
                 console.error('❌ Failed to update FCM Token in DB:', err);
             }
+        } else {
+            console.log('⏳ Driver not logged in yet. Token stored in localStorage.');
         }
     };
 
