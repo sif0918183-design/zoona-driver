@@ -78,21 +78,22 @@ export default async function handler(req, res) {
                 body: `عميل: ${customerName || 'عميل'}\nالنوع: ${getVehicleTypeArabic(vehicleType) || 'سيارة'}\nالمبلغ: ${amount || '0'} SDG`,
             },
             data: {
-                ride_id: String(rideId || ''),
+                ride_id: String(rideId || ''), // لضمان وصوله كـ String
                 request_id: String(requestId || ''),
                 customer_name: String(customerName || ''),
                 amount: String(amount || '0'),
                 distance: String(distance || ''),
                 vehicle_type: String(vehicleType || ''),
                 type: 'RIDE_REQUEST',
-                click_action: 'FLUTTER_NOTIFICATION_CLICK'
+                click_action: 'FLUTTER_NOTIFICATION_CLICK' // لضمان التوافق مع Flutter
             },
             android: {
                 priority: 'high',
                 ttl: 60 * 1000,
                 notification: {
                     sound: 'ride_request_sound',
-                    channelId: 'ride_requests',
+                    channelId: 'urgent_alerts_v5',
+                    priority: 'max',
                     clickAction: 'FLUTTER_NOTIFICATION_CLICK'
                 }
             },

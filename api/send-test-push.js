@@ -70,21 +70,22 @@ export default async function handler(req, res) {
                 body: `هذا إشعار تجريبي\nالعميل: ${customerName || 'تجريبي'}\nالنوع: ${getVehicleTypeArabic(vehicleType || 'economy')}\nالأجرة: ${amount || '0'} SDG`,
             },
             data: {
-                ride_id: String('test-' + Date.now()),
+                ride_id: String('test-' + Date.now()), // String format for FCM
                 request_id: String('test-' + Date.now()),
                 customer_name: String(customerName || 'عميل تجريبي'),
                 amount: String(amount || '0'),
                 distance: String(distance || '0 كم'),
                 vehicle_type: String(vehicleType || 'economy'),
                 type: 'RIDE_REQUEST',
-                click_action: 'FLUTTER_NOTIFICATION_CLICK'
+                click_action: 'FLUTTER_NOTIFICATION_CLICK' // لضمان التوافق مع Flutter
             },
             android: {
                 priority: 'high',
                 ttl: 60 * 1000,
                 notification: {
                     sound: 'ride_request_sound',
-                    channelId: 'ride_requests',
+                    channelId: 'urgent_alerts_v5',
+                    priority: 'max',
                     clickAction: 'FLUTTER_NOTIFICATION_CLICK'
                 }
             },
