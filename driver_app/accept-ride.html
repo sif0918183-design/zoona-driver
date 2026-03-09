@@ -53,19 +53,22 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            padding: 24px;
+            padding: 16px 16px 8px 16px;
             position: relative;
+            height: 100vh;
+            overflow: hidden;
         }
 
         /* ✅ Header */
         .app-header {
             text-align: center;
-            margin-bottom: 20px;
-            padding-top: 10px;
+            margin-bottom: 12px;
+            padding-top: 4px;
+            flex-shrink: 0;
         }
         
         .app-header h1 {
-            font-size: 28px;
+            font-size: 24px;
             font-weight: 800;
             color: var(--primary);
             text-shadow: 0 2px 4px rgba(0,0,0,0.3);
@@ -76,16 +79,18 @@
             background: rgba(239, 68, 68, 0.1);
             border: 2px solid var(--danger);
             border-radius: var(--radius);
-            padding: 15px;
+            padding: 8px 12px;
             text-align: center;
-            margin-bottom: 25px;
+            margin-bottom: 12px;
+            flex-shrink: 0;
         }
 
         .timer-value {
-            font-size: 48px;
+            font-size: 40px;
             font-weight: 900;
             color: var(--danger);
             font-family: monospace;
+            line-height: 1;
         }
 
         /* ✅ Ride Details */
@@ -94,27 +99,29 @@
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: var(--radius);
-            padding: 20px;
+            padding: 12px 16px;
             flex: 1;
-            margin-bottom: 30px;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 8px;
             overflow-y: auto;
+            min-height: 0;
+            margin-bottom: 8px;
         }
 
         .detail-row {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding-bottom: 12px;
+            gap: 10px;
+            padding-bottom: 8px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            flex-shrink: 0;
         }
 
         .detail-icon {
-            font-size: 24px;
+            font-size: 20px;
             color: var(--primary);
-            width: 30px;
+            width: 24px;
         }
 
         .detail-info {
@@ -122,73 +129,78 @@
         }
 
         .detail-label {
-            font-size: 12px;
+            font-size: 11px;
             color: var(--gray);
             margin-bottom: 2px;
         }
 
         .detail-value {
-            font-size: 18px;
+            font-size: 15px;
             font-weight: 700;
+            line-height: 1.3;
+            word-break: break-word;
         }
 
         .price-box {
             background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            padding: 20px;
+            padding: 12px;
             border-radius: var(--radius);
             text-align: center;
-            margin-top: auto;
+            margin-top: 4px;
+            flex-shrink: 0;
         }
 
         .price-label {
-            font-size: 14px;
+            font-size: 13px;
             opacity: 0.9;
         }
 
         .price-value {
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 900;
+            line-height: 1.2;
         }
 
         /* ✅ Action Buttons */
         .action-buttons {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 16px;
-            padding-bottom: 20px;
+            gap: 10px;
+            padding-bottom: 0;
+            flex-shrink: 0;
         }
         
         .btn {
-            height: 70px;
+            height: 56px;
             border-radius: var(--radius);
             border: none;
             font-family: 'Tajawal', sans-serif;
-            font-size: 22px;
+            font-size: 20px;
             font-weight: 800;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
+            gap: 10px;
             transition: all 0.2s ease;
             width: 100%;
         }
         
         .btn:active {
-            transform: scale(0.95);
+            transform: scale(0.98);
         }
         
         .btn-accept {
             background: var(--primary);
             color: white;
-            box-shadow: 0 4px 15px rgba(22, 163, 74, 0.4);
+            box-shadow: 0 4px 12px rgba(22, 163, 74, 0.4);
         }
         
         .btn-decline {
             background: rgba(255, 255, 255, 0.1);
             color: white;
             font-size: 18px;
-            height: 60px;
+            height: 50px;
         }
 
         /* ✅ Notification */
@@ -199,7 +211,7 @@
             right: 20px;
             background: white;
             color: var(--dark);
-            padding: 16px;
+            padding: 14px;
             border-radius: 12px;
             box-shadow: var(--shadow-lg);
             z-index: 1000;
@@ -213,8 +225,8 @@
         }
 
         .spinner {
-            width: 24px;
-            height: 24px;
+            width: 22px;
+            height: 22px;
             border: 3px solid rgba(255,255,255,0.3);
             border-top-color: white;
             border-radius: 50%;
@@ -223,6 +235,29 @@
 
         @keyframes spin {
             to { transform: rotate(360deg); }
+        }
+
+        /* تحسين للشاشات الصغيرة */
+        @media (max-height: 700px) {
+            .app-header h1 {
+                font-size: 22px;
+            }
+            .timer-value {
+                font-size: 36px;
+            }
+            .countdown-container {
+                padding: 6px 10px;
+            }
+            .btn {
+                height: 50px;
+                font-size: 18px;
+            }
+            .btn-decline {
+                height: 45px;
+            }
+            .price-value {
+                font-size: 24px;
+            }
         }
     </style>
 </head>
@@ -236,7 +271,7 @@
         
         <!-- ✅ Countdown -->
         <div class="countdown-container">
-            <div style="font-size: 14px; margin-bottom: 5px;">الوقت المتبقي للرد</div>
+            <div style="font-size: 13px; margin-bottom: 2px;">الوقت المتبقي للرد</div>
             <div class="timer-value" id="countdown">60</div>
         </div>
 
@@ -268,7 +303,7 @@
 
             <div class="price-box">
                 <div class="price-label">الأجرة المقدرة</div>
-                <div class="price-value"><span id="amount">0</span> <small style="font-size: 16px;">SDG</small></div>
+                <div class="price-value"><span id="amount">0</span> <small style="font-size: 14px;">SDG</small></div>
             </div>
         </div>
 
