@@ -309,7 +309,7 @@
 
         <!-- ✅ Action Buttons -->
         <div class="action-buttons">
-            <button class="btn btn-accept" onclick="handleAccept()" id="accept-btn">
+            <button class="btn btn-accept" onclick="handleAccept()" id="accept-btn" disabled>
                 <ion-icon name="checkmark-circle"></ion-icon>
                 قــبـول الـرحـلـة
             </button>
@@ -376,9 +376,13 @@
                         pickup_address: data.pickup_address,
                         ride_id: data.id
                     });
+
+                    // Enable acceptance button after data is loaded
+                    document.getElementById('accept-btn').disabled = false;
                 }
             } catch (err) {
                 console.error('Error fetching ride details:', err);
+                showToast('❌ فشل تحميل بيانات الرحلة', 'error');
             }
         }
 

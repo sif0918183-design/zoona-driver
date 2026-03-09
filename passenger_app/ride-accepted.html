@@ -246,6 +246,7 @@
         let driverMarker = null;
         let pickupMarker = null;
         let trackingInterval = null;
+        let hasFocusedOnDriver = false;
 
         document.addEventListener('DOMContentLoaded', async function() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -359,6 +360,13 @@
                             },
                             title: 'السائق'
                         });
+                    }
+
+                    // Focus map on driver location for the first time
+                    if (!hasFocusedOnDriver && map) {
+                        map.setCenter(pos);
+                        map.setZoom(16);
+                        hasFocusedOnDriver = true;
                     }
 
                     // Calculate ETA (rough estimate)
