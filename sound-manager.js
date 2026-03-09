@@ -82,6 +82,30 @@ class TarhalSoundManager {
         // اهتزاز مستمر للموبايل
         this.startVibration();
     }
+
+    // صوت نجاح العملية (عند القبول مثلاً) - نغمة قصيرة ومبهجة
+    playSuccessSound() {
+        if (!this.enabled) return;
+
+        console.log('🎉 تشغيل صوت النجاح');
+
+        if (!this.audioContext) {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        try {
+            // نغمتين متصاعدتين سريعاً
+            this.playTone(600, 0.1);
+            setTimeout(() => this.playTone(900, 0.2), 100);
+
+            // اهتزاز خفيف
+            if ('vibrate' in navigator) {
+                navigator.vibrate([100, 50, 100]);
+            }
+        } catch (error) {
+            console.error('❌ خطأ في تشغيل صوت النجاح:', error);
+        }
+    }
     
     // دالة تشغيل نغمة
     playTone(frequency, duration) {

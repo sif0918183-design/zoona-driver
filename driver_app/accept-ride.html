@@ -13,6 +13,8 @@
 
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../shared/supabase-config.js"></script>
+    <script src="../sound-manager.js"></script>
 
     <style>
         :root {
@@ -289,9 +291,7 @@
         // ==============================================
         // ✅ Supabase Configuration
         // ==============================================
-        const SB_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
-        const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
-        const tarhalDB = supabase.createClient(SB_URL, SB_KEY);
+        const tarhalDB = supabase.createClient(window.SB_URL, window.SB_KEY);
 
         let currentRideId = null;
         let countdownValue = 60;
@@ -397,6 +397,7 @@
                 if (error) throw error;
 
                 showToast('✅ تم قبول الرحلة بنجاح!', 'success');
+                if (window.soundManager) window.soundManager.playSuccessSound();
                 
                 // إبلاغ Flutter
                 if (window.flutter_inappwebview) {
@@ -404,8 +405,8 @@
                 }
 
                 setTimeout(() => {
-                    // التوجه لصفحة تتبع الرحلة أو العودة للرئيسية
-                    window.location.href = 'index.html';
+                    // التوجه لصفحة تتبع الرحلة
+                    window.location.href = `active-ride.html?rideId=${currentRideId}`;
                 }, 1500);
 
             } catch (err) {

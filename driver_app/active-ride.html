@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>الرحلة النشطة - ترحال زونا</title>
+
+    <!-- ✅ مكتبات التصميم -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../shared/supabase-config.js"></script>
+    <script src="../sound-manager.js"></script>
+
+    <style>
+        :root {
+            --primary: #16a34a;
+            --primary-dark: #15803d;
+            --primary-light: #dcfce7;
+            --danger: #ef4444;
+            --danger-dark: #dc2626;
+            --warning: #f59e0b;
+            --light: #f9fafb;
+            --dark: #111827;
+            --gray: #6b7280;
+            --gray-light: #e5e7eb;
+            --radius: 16px;
+            --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background: #f3f4f6;
+            height: 100vh;
+            width: 100vw;
+            color: var(--dark);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #map {
+            flex: 1;
+            width: 100%;
+            background: #e5e7eb;
+        }
+
+        .bottom-panel {
+            background: white;
+            padding: 20px;
+            border-radius: var(--radius) var(--radius) 0 0;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+
+        .passenger-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--gray-light);
+        }
+
+        .avatar {
+            width: 50px;
+            height: 50px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .info-text h3 {
+            font-size: 18px;
+            margin-bottom: 2px;
+        }
+
+        .info-text p {
+            color: var(--gray);
+            font-size: 14px;
+        }
+
+        .ride-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .detail-item {
+            background: var(--light);
+            padding: 10px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .detail-label {
+            font-size: 12px;
+            color: var(--gray);
+        }
+
+        .detail-value {
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .actions {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        .btn {
+            height: 55px;
+            border-radius: 12px;
+            border: none;
+            font-family: 'Tajawal', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-outline {
+            background: white;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .header {
+            background: white;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            z-index: 100;
+        }
+
+        .status-badge {
+            background: var(--primary-light);
+            color: var(--primary-dark);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <div style="font-weight: 800; font-size: 18px; color: var(--primary);">ترحال زونا</div>
+        <div class="status-badge" id="ride-status-text">جاري الذهاب للراكب</div>
+    </header>
+
+    <div id="map"></div>
+
+    <div class="bottom-panel">
+        <div class="passenger-info">
+            <div class="avatar" id="passenger-avatar">?</div>
+            <div class="info-text">
+                <h3 id="passenger-name">جاري التحميل...</h3>
+                <p id="passenger-phone">---</p>
+            </div>
+            <a href="#" id="call-btn" class="btn btn-primary" style="margin-right: auto; width: 50px; height: 50px; border-radius: 50%; font-size: 20px;">
+                <ion-icon name="call"></ion-icon>
+            </a>
+        </div>
+
+        <div class="ride-details">
+            <div class="detail-item">
+                <div class="detail-label">المسافة</div>
+                <div class="detail-value" id="ride-distance">-- كم</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">الأجرة</div>
+                <div class="detail-value"><span id="ride-amount">0</span> SDG</div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button id="main-action-btn" class="btn btn-primary" onclick="handleMainAction()">
+                تأكيد الوصول للراكب
+            </button>
+            <button id="cancel-btn" class="btn btn-danger" onclick="cancelRide()" style="display: none;">
+                إلغاء الرحلة
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const tarhalDB = supabase.createClient(window.SB_URL, window.SB_KEY);
+
+        let currentRideId = null;
+        let currentDriverId = null;
+        let currentStatus = 'accepted';
+        let map = null;
+        let directionsService = null;
+        let directionsRenderer = null;
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            currentRideId = urlParams.get('rideId');
+
+            const driverData = localStorage.getItem('tarhal_driver');
+            if (driverData) {
+                currentDriverId = JSON.parse(driverData).id;
+            }
+
+            if (currentRideId) {
+                loadGoogleMaps();
+                fetchRideDetails();
+                initRealtime();
+                startLocationBroadcasting();
+            }
+        });
+
+        function loadGoogleMaps() {
+            const script = document.createElement('script');
+            script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyClnU4c2RbCOtMLxxZNBxAZrAkIdX5BBv4&libraries=places&language=ar&callback=initMap';
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        }
+
+        window.initMap = function() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 14,
+                center: { lat: 15.5007, lng: 32.5599 }, // الخرطوم
+                mapTypeControl: false,
+                streetViewControl: false,
+                fullscreenControl: false
+            });
+
+            directionsService = new google.maps.DirectionsService();
+            directionsRenderer = new google.maps.DirectionsRenderer({
+                map: map,
+                suppressMarkers: false
+            });
+        }
+
+        async function fetchRideDetails() {
+            const { data, error } = await tarhalDB
+                .from('rides')
+                .select('*')
+                .eq('id', currentRideId)
+                .single();
+
+            if (data) {
+                document.getElementById('passenger-name').textContent = data.passenger_name || 'عميل';
+                document.getElementById('passenger-avatar').textContent = (data.passenger_name || 'ع').charAt(0);
+                document.getElementById('passenger-phone').textContent = data.passenger_phone || '';
+                document.getElementById('call-btn').href = `tel:${data.passenger_phone}`;
+                document.getElementById('ride-distance').textContent = `${data.distance_km || 0} كم`;
+                document.getElementById('ride-amount').textContent = data.amount || 0;
+
+                updateUIStatus(data.status);
+                drawRoute(data);
+            }
+        }
+
+        function drawRoute(ride) {
+            if (!ride.pickup_lat || !ride.pickup_lng || !ride.destination_lat || !ride.destination_lng) return;
+
+            const request = {
+                origin: { lat: parseFloat(ride.pickup_lat), lng: parseFloat(ride.pickup_lng) },
+                destination: { lat: parseFloat(ride.destination_lat), lng: parseFloat(ride.destination_lng) },
+                travelMode: google.maps.TravelMode.DRIVING
+            };
+
+            directionsService.route(request, (result, status) => {
+                if (status === 'OK') {
+                    directionsRenderer.setDirections(result);
+                }
+            });
+        }
+
+        function updateUIStatus(status) {
+            currentStatus = status;
+            const btn = document.getElementById('main-action-btn');
+            const statusText = document.getElementById('ride-status-text');
+
+            if (status === 'accepted') {
+                statusText.textContent = 'في الطريق للراكب';
+                btn.textContent = 'تأكيد الوصول للراكب';
+                btn.className = 'btn btn-primary';
+            } else if (status === 'arrived') {
+                statusText.textContent = 'وصلت لموقع الراكب';
+                btn.textContent = 'بدء الرحلة';
+                btn.className = 'btn btn-primary';
+            } else if (status === 'ongoing') {
+                statusText.textContent = 'الرحلة مستمرة';
+                btn.textContent = 'إنهاء الرحلة';
+                btn.className = 'btn btn-danger';
+            } else if (status === 'completed') {
+                window.location.href = 'index.html';
+            }
+        }
+
+        function startLocationBroadcasting() {
+            if (!currentDriverId) return;
+
+            console.log('📡 Starting location broadcast...');
+
+            // Broadcast every 10 seconds
+            setInterval(async () => {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(async (position) => {
+                        const { latitude, longitude } = position.coords;
+
+                        try {
+                            const { error } = await tarhalDB
+                                .from('driver_locations')
+                                .upsert({
+                                    driver_id: currentDriverId,
+                                    lat: latitude,
+                                    lng: longitude,
+                                    last_updated: new Date().toISOString()
+                                }, { onConflict: 'driver_id' });
+
+                            if (error) console.error('Error broadcasting location:', error);
+                        } catch (e) {
+                            console.error('Broadcast exception:', e);
+                        }
+                    }, (err) => {
+                        console.warn('Geolocation error:', err.message);
+                    }, { enableHighAccuracy: true });
+                }
+            }, 10000);
+        }
+
+        async function handleMainAction() {
+            let nextStatus = '';
+            let updateData = { updated_at: new Date().toISOString() };
+
+            if (currentStatus === 'accepted') {
+                nextStatus = 'arrived';
+            } else if (currentStatus === 'arrived') {
+                nextStatus = 'ongoing';
+                updateData.started_at = new Date().toISOString();
+            } else if (currentStatus === 'ongoing') {
+                if (!confirm('هل أنت متأكد من إنهاء الرحلة وتحصيل المبلغ؟')) return;
+                nextStatus = 'completed';
+                updateData.completed_at = new Date().toISOString();
+            }
+
+            if (nextStatus) {
+                updateData.status = nextStatus;
+
+                const { error } = await tarhalDB
+                    .from('rides')
+                    .update(updateData)
+                    .eq('id', currentRideId);
+
+                if (!error) {
+                    updateUIStatus(nextStatus);
+                    if (nextStatus === 'ongoing') {
+                        if (window.soundManager) window.soundManager.playSuccessSound();
+                    }
+                } else {
+                    alert('خطأ في تحديث الحالة: ' + error.message);
+                }
+            }
+        }
+
+        function initRealtime() {
+            tarhalDB
+                .channel('active-ride')
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'rides',
+                    filter: `id=eq.${currentRideId}`
+                }, (payload) => {
+                    console.log('Ride update in active-ride:', payload.new.status);
+                    if (payload.new.status !== currentStatus) {
+                        updateUIStatus(payload.new.status);
+                    }
+                })
+                .subscribe();
+        }
+
+        async function cancelRide() {
+            if (confirm('هل أنت متأكد من إلغاء الرحلة؟')) {
+                const { error } = await tarhalDB
+                    .from('rides')
+                    .update({
+                        status: 'cancelled_by_driver',
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', currentRideId);
+
+                if (!error) {
+                    window.location.href = 'index.html';
+                } else {
+                    alert('خطأ في الإلغاء: ' + error.message);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
