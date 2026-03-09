@@ -2832,12 +2832,45 @@ function initRealtime() {
         .subscribe();
 }
 
-function checkAuth() {
+async function checkForActiveRide() {
+    if (!currentUser) return;
+
+    console.log('🔍 Checking for active rides...');
+    try {
+        const { data, error } = await tarhalDB
+            .from('rides')
+            .select('id, status')
+            .eq('passenger_id', currentUser.id)
+            .in('status', ['accepted', 'arrived', 'ongoing'])
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (error) throw error;
+
+        if (data) {
+            console.log('🚀 Active ride found:', data.id);
+            // Force redirect to tracking page
+            window.location.href = `ride-accepted.html?rideId=${data.id}`;
+            return true;
+        }
+    } catch (err) {
+        console.error('Error checking active ride:', err);
+    }
+    return false;
+}
+
+async function checkAuth() {
     const savedUser = localStorage.getItem('tarhal_customer');
     
     if (savedUser) {
         try {
             currentUser = JSON.parse(savedUser);
+
+            // Check for active rides before showing home screen
+            const hasActiveRide = await checkForActiveRide();
+            if (hasActiveRide) return; // Stop initialization if redirecting
+
             showScreen('home-screen');
             updateUserProfile();
             initRealtime();

@@ -231,6 +231,7 @@
         let map = null;
         let directionsService = null;
         let directionsRenderer = null;
+        let initialPosition = null;
 
         document.addEventListener('DOMContentLoaded', async function() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -239,6 +240,17 @@
             const driverData = localStorage.getItem('tarhal_driver');
             if (driverData) {
                 currentDriverId = JSON.parse(driverData).id;
+            }
+
+            // Get initial location immediately
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((position) => {
+                    initialPosition = { lat: position.coords.latitude, lng: position.coords.longitude };
+                    if (map) {
+                        map.setCenter(initialPosition);
+                        map.setZoom(16);
+                    }
+                }, (err) => console.warn("Initial geolocation failed", err), { enableHighAccuracy: true });
             }
 
             if (currentRideId) {
@@ -258,9 +270,10 @@
         }
 
         window.initMap = function() {
+            const center = initialPosition || { lat: 15.5007, lng: 32.5599 };
             map = new google.maps.Map(document.getElementById('map'), {
-                zoom: 14,
-                center: { lat: 15.5007, lng: 32.5599 }, // الخرطوم
+                zoom: initialPosition ? 16 : 14,
+                center: center,
                 mapTypeControl: false,
                 streetViewControl: false,
                 fullscreenControl: false
@@ -331,32 +344,38 @@
             }
         }
 
+        async function updateDriverLocationDB(position) {
+            const { latitude, longitude } = position.coords;
+            try {
+                const { error } = await tarhalDB
+                    .from('driver_locations')
+                    .upsert({
+                        driver_id: currentDriverId,
+                        lat: latitude,
+                        lng: longitude,
+                        last_updated: new Date().toISOString()
+                    }, { onConflict: 'driver_id' });
+
+                if (error) console.error('Error broadcasting location:', error);
+            } catch (e) {
+                console.error('Broadcast exception:', e);
+            }
+        }
+
         function startLocationBroadcasting() {
             if (!currentDriverId) return;
 
             console.log('📡 Starting location broadcast...');
 
+            // Initial broadcast
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(updateDriverLocationDB, null, { enableHighAccuracy: true });
+            }
+
             // Broadcast every 10 seconds
             setInterval(async () => {
                 if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(async (position) => {
-                        const { latitude, longitude } = position.coords;
-
-                        try {
-                            const { error } = await tarhalDB
-                                .from('driver_locations')
-                                .upsert({
-                                    driver_id: currentDriverId,
-                                    lat: latitude,
-                                    lng: longitude,
-                                    last_updated: new Date().toISOString()
-                                }, { onConflict: 'driver_id' });
-
-                            if (error) console.error('Error broadcasting location:', error);
-                        } catch (e) {
-                            console.error('Broadcast exception:', e);
-                        }
-                    }, (err) => {
+                    navigator.geolocation.getCurrentPosition(updateDriverLocationDB, (err) => {
                         console.warn('Geolocation error:', err.message);
                     }, { enableHighAccuracy: true });
                 }
