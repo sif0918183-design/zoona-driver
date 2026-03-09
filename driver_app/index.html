@@ -24,7 +24,9 @@
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Shared Utils -->
+    <script src="../shared/supabase-config.js"></script>
     <script src="../shared/notification-utils.js"></script>
+    <script src="../sound-manager.js"></script>
 
     <style>
         /* الأنماط الأساسية */
@@ -821,15 +823,8 @@
     //  تهيئة التطبيق للسائقين فقط
     // ============================================
 
-    // Supabase Configuration
-    const SB_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
-    const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
-
-    // Attach to window for Shared Utils
-    window.SB_URL = SB_URL;
-    window.SB_KEY = SB_KEY;
-
-    const tarhalDB = supabase.createClient(SB_URL, SB_KEY);
+    // Supabase Configuration (from shared config)
+    const tarhalDB = supabase.createClient(window.SB_URL, window.SB_KEY);
 
     // Application State
     let currentDriver = null;
@@ -920,189 +915,6 @@
     let locationUpdateInterval = null;
 
     // ============================================
-    //  Sound Manager Class (دمجت في index.html)
-    // ============================================
-
-    class SoundManager {
-        constructor() {
-            this.enabled = true;
-            this.volume = 0.8;
-            this.audioContext = null;
-            this.isPlaying = false;
-            this.loopInterval = null;
-            console.log(' Sound Manager initialized');
-            
-            this.setupAudioContext();
-        }
-        
-        setupAudioContext() {
-            const initAudio = () => {
-                if (!this.audioContext && (window.AudioContext || window.webkitAudioContext)) {
-                    try {
-                        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                        console.log('✅ AudioContext created');
-                    } catch (error) {
-                        console.warn('⚠️ Cannot create AudioContext:', error);
-                    }
-                }
-            };
-            
-            ['click', 'touchstart', 'keydown'].forEach(event => {
-                document.addEventListener(event, initAudio, { once: true });
-            });
-        }
-        
-        playRideRequestSound() {
-            if (!this.enabled || this.isPlaying) {
-                console.log('⚠️ الصوت معطّل أو يعمل بالفعل');
-                return;
-            }
-            
-            console.log(' بدء صوت طلب الرحلة');
-            this.isPlaying = true;
-            
-            if (this.audioContext && this.audioContext.state !== 'suspended') {
-                this.playWithAudioContext();
-            } else {
-                this.playSimpleBeep();
-            }
-            
-            this.startVibration();
-        }
-        
-        playWithAudioContext() {
-            const playAlertPattern = () => {
-                if (!this.isPlaying) return;
-                
-                try {
-                    this.playTone(800, 0.2);
-                    
-                    setTimeout(() => {
-                        if (!this.isPlaying) return;
-                        this.playTone(1000, 0.2);
-                    }, 300);
-                    
-                    setTimeout(() => {
-                        if (!this.isPlaying) return;
-                        this.playTone(1200, 0.3);
-                    }, 600);
-                    
-                } catch (error) {
-                    console.error('❌ AudioContext error:', error);
-                    this.playSimpleBeep();
-                }
-            };
-            
-            playAlertPattern();
-            
-            this.loopInterval = setInterval(() => {
-                if (this.isPlaying) {
-                    playAlertPattern();
-                } else {
-                    clearInterval(this.loopInterval);
-                }
-            }, 2500);
-        }
-        
-        playTone(frequency, duration) {
-            try {
-                const oscillator = this.audioContext.createOscillator();
-                const gainNode = this.audioContext.createGain();
-                
-                oscillator.type = 'sine';
-                oscillator.frequency.value = frequency;
-                
-                gainNode.gain.setValueAtTime(this.volume, this.audioContext.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
-                
-                oscillator.connect(gainNode);
-                gainNode.connect(this.audioContext.destination);
-                
-                oscillator.start(this.audioContext.currentTime);
-                oscillator.stop(this.audioContext.currentTime + duration);
-                
-            } catch (error) {
-                console.error('❌ Error in playTone:', error);
-                throw error;
-            }
-        }
-        
-        playSimpleBeep() {
-            const beep = () => {
-                if (!this.isPlaying) return;
-                try {
-                    if ('vibrate' in navigator) {
-                        navigator.vibrate(200);
-                    }
-                } catch (error) {
-                    console.log('Beep error:', error);
-                }
-            };
-            
-            beep();
-            this.loopInterval = setInterval(beep, 2000);
-        }
-        
-        startVibration() {
-            if (!('vibrate' in navigator)) {
-                console.log('⚠️ Vibration API not supported');
-                return;
-            }
-            
-            const vibratePattern = () => {
-                if (this.isPlaying) {
-                    try {
-                        navigator.vibrate([200, 100, 200]);
-                        setTimeout(vibratePattern, 1500);
-                    } catch (error) {
-                        console.log('Vibration failed:', error);
-                    }
-                }
-            };
-            
-            vibratePattern();
-        }
-        
-        stopRideRequestSound() {
-            console.log(' إيقاف صوت طلب الرحلة...');
-            this.isPlaying = false;
-            
-            if (this.loopInterval) {
-                clearInterval(this.loopInterval);
-                this.loopInterval = null;
-            }
-            
-            if ('vibrate' in navigator) {
-                try {
-                    navigator.vibrate(0);
-                } catch (error) {
-                    console.log('Stop vibration error:', error);
-                }
-            }
-        }
-        
-        enable() {
-            this.enabled = true;
-            console.log('✅ الصوت مفعّل');
-        }
-        
-        disable() {
-            this.enabled = false;
-            this.stopRideRequestSound();
-            console.log(' الصوت معطّل');
-        }
-        
-        toggle() {
-            if (this.enabled) {
-                this.disable();
-            } else {
-                this.enable();
-            }
-            return this.enabled;
-        }
-    }
-
-    // ============================================
     //  دوال التطبيق الرئيسية
     // ============================================
 
@@ -1112,9 +924,6 @@
         
         // انتظار جاهزية التخزين
         await FlutterBridge.waitForStorage();
-
-        // Initialize sound manager
-        window.soundManager = new SoundManager();
 
         // Hide splash screen
         setTimeout(() => {
@@ -1559,50 +1368,14 @@
 
     // معالجة طلبات الرحلات القادمة (من Supabase أو Flutter)
     function handleRideRequest(data) {
-        console.log('🚗 Processing ride request:', data);
+        console.log('🚗 Incoming ride request:', data);
         if (!data) return;
 
-        window.currentIncomingRide = data;
+        const rideId = data.ride_id || data.id;
+        if (!rideId) return;
 
-        const modal = document.getElementById('incoming-ride-modal');
-        const details = document.getElementById('ride-details');
-        
-        details.innerHTML = `
-            <div style="margin-bottom: 12px; font-size: 1.1rem;">
-                <strong>الراكب:</strong> ${data.customer_name || data.passenger_name || 'عميل'}
-            </div>
-            <div style="margin-bottom: 12px; font-size: 1.1rem;">
-                <strong>المسافة:</strong> ${data.distance || 'غير محدد'}
-            </div>
-            <div style="margin-bottom: 12px; font-size: 1.1rem;">
-                <strong>المبلغ:</strong> ${data.amount || '0'} SDG
-            </div>
-            <div style="font-size: 0.95rem; color: var(--gray);">
-                <strong>من:</strong> ${data.pickup_address || 'موقعه الحالي'}
-            </div>
-        `;
-
-        modal.classList.remove('hidden');
-
-        // تشغيل صوت التنبيه
-        if (window.soundManager) window.soundManager.playRideRequestSound();
-
-        // Start countdown
-        if (window.incomingRideTimer) clearInterval(window.incomingRideTimer);
-
-        let count = 40;
-        const countdownEl = modal.querySelector('.countdown');
-        countdownEl.textContent = count;
-
-        window.incomingRideTimer = setInterval(() => {
-            count--;
-            countdownEl.textContent = count;
-            if (count <= 0) {
-                clearInterval(window.incomingRideTimer);
-                modal.classList.add('hidden');
-                if (window.soundManager) window.soundManager.stopRideRequestSound();
-            }
-        }, 1000);
+        // Redirect to dedicated accept-ride page
+        window.location.href = `accept-ride.html?rideId=${rideId}`;
     }
 
     async function acceptRide() {
@@ -1627,12 +1400,19 @@
                 clearInterval(window.incomingRideTimer);
                 window.incomingRideTimer = null;
             }
-            if (window.soundManager) window.soundManager.stopRideRequestSound();
+            if (window.soundManager) {
+                window.soundManager.stopRideRequestSound();
+                if (typeof window.soundManager.playSuccessSound === 'function') {
+                    window.soundManager.playSuccessSound();
+                }
+            }
             
             showNotification('✅ تم قبول الرحلة بنجاح!', 'success');
             
-            // Redirect to accept-ride page
-            window.location.href = `accept-ride.html?rideId=${data.ride_id}&requestId=${data.request_id}`;
+            // Redirect to active-ride page
+            setTimeout(() => {
+                window.location.href = `active-ride.html?rideId=${data.ride_id}`;
+            }, 1000);
 
         } catch (error) {
             console.error('Accept ride error:', error);

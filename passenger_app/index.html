@@ -21,6 +21,9 @@
     
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Shared Utils -->
+    <script src="../shared/supabase-config.js"></script>
+    <script src="../sound-manager.js"></script>
     
    <style>
         /* ============================================
@@ -2281,11 +2284,8 @@
    TARHAL ZOONA - PASSENGER APP - FIXED VERSION
    ============================================ */
 
-// Supabase Configuration
-const SB_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
-
-const tarhalDB = supabase.createClient(SB_URL, SB_KEY);
+// Supabase Configuration (from shared config)
+const tarhalDB = supabase.createClient(window.SB_URL, window.SB_KEY);
 
 // Application State
 let currentUser = null;
@@ -2471,8 +2471,8 @@ function initializeMap() {
         suppressMarkers: true,
         polylineOptions: {
             strokeColor: '#4f46e5',
-            strokeWeight: 3,
-            strokeOpacity: 0.7
+            strokeWeight: 5,
+            strokeOpacity: 0.8
         }
     });
     
@@ -2803,21 +2803,30 @@ function initRealtime() {
     tarhalDB
         .channel('passenger-rides')
         .on('postgres_changes', {
-            event: '*',
+            event: 'UPDATE',
             schema: 'public',
             table: 'rides',
             filter: `passenger_id=eq.${currentUser.id}`
         }, (payload) => {
             console.log('🚗 Ride update received:', payload);
-            if (payload.eventType === 'UPDATE') {
-                const ride = payload.new;
-                if (ride.driver_accepted) {
-                    showNotification(`✅ تم قبول الرحلة من السائق ${ride.driver_name || 'سائق'}!`, 'success');
-                    // Refresh UI if on relevant screen
-                    if (currentRideId === ride.id) {
-                        // Logic to update active ride UI
-                    }
-                }
+            const ride = payload.new;
+
+            // تحقق من قبول السائق للرحلة
+            if (ride.status === 'accepted' && !window.rideAcceptedProcessed) {
+                window.rideAcceptedProcessed = true; // منع التكرار
+
+                if (window.soundManager) window.soundManager.playSuccessSound();
+                showNotification(`✅ تم قبول الرحلة من السائق ${ride.driver_name || 'سائق'}!`, 'success');
+
+                // إخفاء أي واجهات انتظار
+                document.getElementById('ride-loading-overlay').classList.add('hidden');
+
+                setTimeout(() => {
+                    window.location.href = `ride-accepted.html?rideId=${ride.id}`;
+                }, 1500);
+            } else if (ride.status === 'cancelled_by_driver') {
+                showNotification('⚠️ نأسف، السائق قام بإلغاء الطلب. جاري البحث عن بديل...', 'warning');
+                handleDriverRejection(ride.id);
             }
         })
         .subscribe();
@@ -3840,9 +3849,6 @@ async function confirmRide() {
                 document.getElementById('current-driver-name').textContent = `السائق: ${selectedDriver.name}`;
                 document.getElementById('current-driver-vehicle').textContent = `نوع المركبة: ${vehicle.name}`;
                 
-                // بدء مراقبة حالة الرحلة لمعرفة استجابة السائق
-                startRideStatusMonitoring(rideId, requestId, selectedDriver.name);
-                
                 confirmBtn.innerHTML = `
                     <div style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
                         <i class="fas fa-clock" style="font-size: 14px;"></i>
@@ -3887,102 +3893,6 @@ async function confirmRide() {
     }
 }
 // دالة جديدة لمراقبة حالة الرحلة
-async function startRideStatusMonitoring(rideId, requestId, driverName) {
-    if (rideStatusInterval) clearInterval(rideStatusInterval);
-
-    let checkCount = 0;
-    const maxChecks = 60; // 5 دقائق (60 × 5 ثواني)
-    
-    rideStatusInterval = setInterval(async () => {
-        checkCount++;
-        
-        if (checkCount > maxChecks) {
-            clearInterval(rideStatusInterval);
-            rideStatusInterval = null;
-            showNotification('⏰ انتهى وقت الانتظار. الرحلة ملغاة تلقائياً', 'warning');
-            
-            // تحديث حالة الرحلة
-            await tarhalDB
-                .from('rides')
-                .update({ 
-                    status: 'timeout',
-                    driver_rejected: true,
-                    search_ended_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', rideId);
-            
-            // إعادة تعيين الواجهة
-            resetRideRequestUI();
-            return;
-        }
-        
-        try {
-            const { data: ride, error } = await tarhalDB
-                .from('rides')
-                .select('status, driver_accepted, driver_rejected, driver_id, driver_name')
-                .eq('id', rideId)
-                .single();
-            
-            if (error) throw error;
-            
-            if (ride.driver_accepted) {
-                clearInterval(rideStatusInterval);
-                rideStatusInterval = null;
-                showNotification(`✅ تم قبول الرحلة من السائق ${ride.driver_name || driverName}!`, 'success');
-
-                // تحديث حالة الرحلة
-                await tarhalDB
-                    .from('rides')
-                    .update({
-                        status: 'accepted',
-                        accepted_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', rideId);
-                
-                // إخفاء شاشة الانتظار
-                document.getElementById('ride-loading-overlay').classList.add('hidden');
-                
-                // توجيه المستخدم إلى صفحة تفاصيل الرحلة المقبولة
-                setTimeout(() => {
-                    window.location.href = `/ride-accepted.html?rideId=${rideId}&requestId=${requestId}&driverId=${ride.driver_id}`;
-                }, 2000);
-                
-            } else if (ride.driver_rejected) {
-                clearInterval(rideStatusInterval);
-                rideStatusInterval = null;
-                showNotification('❌ رفض السائق الرحلة. جاري البحث عن سائق آخر...', 'warning');
-                
-                // تحديث حالة الرحلة
-                await tarhalDB
-                    .from('rides')
-                    .update({
-                        status: 'driver_rejected',
-                        rejected_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', rideId);
-
-                // إخفاء شاشة الانتظار وإعادة البحث
-                document.getElementById('ride-loading-overlay').classList.add('hidden');
-                
-                // إعادة تفعيل زر البحث
-                resetRideRequestUI();
-
-                // يمكنك هنا إضافة منطق للبحث عن سائق جديد تلقائياً
-                showNotification('جاري البحث عن سائق بديل...', 'info');
-                setTimeout(() => {
-                    // إعادة إرسال الإشعار لسائق آخر
-                    handleDriverRejection(rideId);
-                }, 3000);
-            }
-            
-        } catch (error) {
-            console.error('Status check error:', error);
-        }
-    }, 5000); // التحقق كل 5 ثواني
-}
 
 // دالة لإعادة تعيين واجهة طلب الرحلة
 function resetRideRequestUI() {
@@ -4075,8 +3985,6 @@ async function handleDriverRejection(rideId) {
                 document.getElementById('current-driver-name').textContent = `السائق: ${selectedDriver.name}`;
                 document.getElementById('current-driver-vehicle').textContent = `نوع المركبة: ${VEHICLE_PRICES[ride.vehicle_category].name}`;
 
-                // بدء مراقبة حالة الرحلة من جديد
-                startRideStatusMonitoring(rideId, ride.request_id, selectedDriver.name);
             }
         } else {
             showNotification('لم نجد سائقاً بديلاً حالياً. يرجى المحاولة لاحقاً', 'warning');
