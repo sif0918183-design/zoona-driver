@@ -285,33 +285,74 @@
         }
 
         async function fetchRideDetails() {
+            console.log('🔍 Fetching ride details for:', currentRideId);
+            // الاستعلام عن الرحلة مع محاولة جلب بيانات السائق من driver_profiles كما طلب المستخدم
             const { data: ride, error } = await tarhalDB
                 .from('rides')
-                .select('*, drivers(*)')
+                .select('*, driver_profiles!driver_id(*)')
                 .eq('id', currentRideId)
                 .single();
 
-            if (ride) {
-                currentDriverId = ride.driver_id;
-                document.getElementById('driver-name').textContent = ride.driver_name || 'سائق زونا';
-                document.getElementById('driver-avatar').textContent = (ride.driver_name || 'س').charAt(0);
-                document.getElementById('ride-price').textContent = `${ride.amount || 0} SDG`;
-                document.getElementById('ride-distance').textContent = `${ride.distance_km || 0} كم`;
+            if (error) {
+                console.error('❌ Error fetching ride details with driver_profiles join:', error);
+                // محاولة بديلة باستخدام drivers في حال عدم وجود driver_profiles كعلاقة
+                const { data: fallbackRide, error: fallbackError } = await tarhalDB
+                    .from('rides')
+                    .select('*, drivers(*)')
+                    .eq('id', currentRideId)
+                    .single();
 
-                if (ride.drivers) {
-                    document.getElementById('vehicle-info').textContent = `${ride.drivers.car_model} - ${ride.drivers.car_color}`;
-                    document.getElementById('plate-number').textContent = ride.drivers.plate_number || 'بدون لوحة';
-                    document.getElementById('call-btn').href = `tel:${ride.drivers.whatsapp_number}`;
+                if (fallbackRide) {
+                    renderRideData(fallbackRide);
+                } else {
+                    console.error('❌ Error in fallback fetch:', fallbackError);
+                    // محاولة أخيرة لجلب بيانات الرحلة الأساسية فقط
+                    const { data: basicRide } = await tarhalDB.from('rides').select('*').eq('id', currentRideId).single();
+                    if (basicRide) renderRideData(basicRide);
                 }
+                return;
+            }
 
-                updateStatusUI(ride.status);
+            if (ride) {
+                renderRideData(ride);
+            }
+        }
 
-                // Subscribe to driver location if not already
+        function renderRideData(ride) {
+            console.log('📦 Rendering ride data:', ride);
+            currentDriverId = ride.driver_id;
+
+            // تحديث بيانات السائق الأساسية
+            document.getElementById('driver-name').textContent = ride.driver_name || 'سائق زونا';
+            document.getElementById('driver-avatar').textContent = (ride.driver_name || 'س').charAt(0);
+            document.getElementById('ride-price').textContent = `${ride.amount || 0} SDG`;
+            document.getElementById('ride-distance').textContent = `${ride.distance_km || 0} كم`;
+
+            // التعامل مع بيانات المركبة من العلاقة المتاحة (driver_profiles أو drivers)
+            const profile = ride.driver_profiles || ride.drivers;
+            if (profile) {
+                const vehicleText = `${profile.car_model || ''} - ${profile.car_color || ''}`.replace(/^ - | - $/g, '');
+                document.getElementById('vehicle-info').textContent = vehicleText || 'مركبة زونا';
+                document.getElementById('plate-number').textContent = profile.plate_number || 'بدون لوحة';
+
+                const phone = profile.whatsapp_number || ride.driver_phone;
+                if (phone) {
+                    document.getElementById('call-btn').href = `tel:${phone}`;
+                }
+            }
+
+            updateStatusUI(ride.status);
+
+            // الاشتراك في تحديثات الموقع فور الحصول على معرف السائق
+            if (currentDriverId) {
                 subscribeToDriverLocation(currentDriverId);
+                startDriverTracking();
+            }
 
-                // إضافة علامة موقع الراكب (Pickup)
-                if (ride.pickup_lat && ride.pickup_lng) {
-                    const pickupPos = { lat: parseFloat(ride.pickup_lat), lng: parseFloat(ride.pickup_lng) };
+            // إضافة علامة موقع الراكب (Pickup)
+            if (ride.pickup_lat && ride.pickup_lng && map) {
+                const pickupPos = { lat: parseFloat(ride.pickup_lat), lng: parseFloat(ride.pickup_lng) };
+                if (!pickupMarker) {
                     pickupMarker = new google.maps.Marker({
                         position: pickupPos,
                         map: map,
@@ -320,11 +361,10 @@
                         },
                         title: 'موقعك'
                     });
-                    map.setCenter(pickupPos);
+                } else {
+                    pickupMarker.setPosition(pickupPos);
                 }
-
-                // بدء تتبع السائق
-                startDriverTracking();
+                map.setCenter(pickupPos);
             }
         }
 
