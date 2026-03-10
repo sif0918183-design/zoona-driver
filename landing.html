@@ -322,9 +322,26 @@
         }
 
         // Auto-redirect if returning within same session or specifically desired
-        // Removed auto-redirect to let user choose, but check if they are already logged in
         window.onload = () => {
             console.log('Landing page ready.');
+
+            const userAppChoice = localStorage.getItem('user_app_choice');
+            const driverData = localStorage.getItem('tarhal_driver');
+            const customerData = localStorage.getItem('tarhal_customer');
+
+            // Redirect logged-in drivers
+            if (userAppChoice === 'driver' && driverData) {
+                console.log('Driver already logged in, redirecting to driver_app...');
+                window.location.href = 'driver_app/index.html';
+                return;
+            }
+
+            // Redirect logged-in passengers
+            if (userAppChoice === 'passenger' && customerData) {
+                console.log('Passenger already logged in, redirecting to passenger_app...');
+                window.location.href = 'passenger_app/index.html';
+                return;
+            }
         };
     </script>
 </body>

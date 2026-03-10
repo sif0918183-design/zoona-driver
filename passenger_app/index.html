@@ -2841,7 +2841,7 @@ async function checkForActiveRide() {
             .from('rides')
             .select('id, status')
             .eq('passenger_id', currentUser.id)
-            .in('status', ['accepted', 'arrived', 'ongoing'])
+            .in('status', ['searching', 'awaiting_driver_acceptance', 'accepted', 'arrived', 'ongoing'])
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
@@ -2849,10 +2849,34 @@ async function checkForActiveRide() {
         if (error) throw error;
 
         if (data) {
-            console.log('🚀 Active ride found:', data.id);
-            // Force redirect to tracking page
-            window.location.href = `ride-accepted.html?rideId=${data.id}`;
-            return true;
+            console.log('🚀 Active ride found:', data.id, 'Status:', data.status);
+
+            if (['accepted', 'arrived', 'ongoing'].includes(data.status)) {
+                localStorage.setItem('tarhal_current_ride_id', data.id);
+                window.location.href = `ride-accepted.html?rideId=${data.id}`;
+                return true;
+            } else if (['searching', 'awaiting_driver_acceptance'].includes(data.status)) {
+                // Resume search UI
+                console.log('🔄 Resuming search UI for ride:', data.id);
+                currentRideId = data.id;
+                localStorage.setItem('tarhal_current_ride_id', data.id);
+                showScreen('ride-request-screen');
+                document.getElementById('ride-loading-overlay').classList.remove('hidden');
+
+                // If we have driver info in the ride record, show it
+                if (data.driver_name) {
+                    document.getElementById('driver-info-section').classList.remove('hidden');
+                    document.getElementById('current-driver-name').textContent = `السائق: ${data.driver_name}`;
+                    const vName = VEHICLE_PRICES[data.vehicle_category]?.name || data.vehicle_category;
+                    document.getElementById('current-driver-vehicle').textContent = `نوع المركبة: ${vName}`;
+                }
+
+                startRideStatusPolling(data.id);
+                return true; // Return true to stop checkAuth from showing home screen
+            }
+        } else {
+            // No active ride in DB, clear localStorage if any
+            localStorage.removeItem('tarhal_current_ride_id');
         }
     } catch (err) {
         console.error('Error checking active ride:', err);
@@ -3741,6 +3765,10 @@ async function confirmRide() {
         
         const rideId = ride.id;
         currentRideId = rideId; // حفظ المعرف للاستخدام اللاحق
+        localStorage.setItem('tarhal_current_ride_id', rideId);
+
+        // Start polling fallback
+        startRideStatusPolling(rideId);
         
         // ============================================
         // نظام البحث الجغرافي التدريجي (3 -> 6 -> 10 كم)
@@ -3926,6 +3954,33 @@ async function confirmRide() {
     }
 }
 // دالة جديدة لمراقبة حالة الرحلة
+function startRideStatusPolling(rideId) {
+    if (rideStatusInterval) clearInterval(rideStatusInterval);
+
+    rideStatusInterval = setInterval(async () => {
+        if (!rideId) return;
+
+        try {
+            const { data, error } = await tarhalDB
+                .from('rides')
+                .select('status')
+                .eq('id', rideId)
+                .single();
+
+            if (error) throw error;
+
+            console.log(`🔍 Polling status for ride ${rideId}: ${data.status}`);
+
+            if (data && ['accepted', 'arrived', 'ongoing'].includes(data.status)) {
+                console.log('✅ Polling: Ride accepted/active, redirecting...');
+                clearInterval(rideStatusInterval);
+                window.location.href = `ride-accepted.html?rideId=${rideId}`;
+            }
+        } catch (err) {
+            console.error('Polling error:', err);
+        }
+    }, 5000);
+}
 
 // دالة لإعادة تعيين واجهة طلب الرحلة
 function resetRideRequestUI() {
