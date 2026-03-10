@@ -346,40 +346,76 @@
 
         async function updateDriverLocationDB(position) {
             const { latitude, longitude } = position.coords;
-            try {
-                const { error } = await tarhalDB
-                    .from('driver_locations')
-                    .upsert({
-                        driver_id: currentDriverId,
-                        lat: latitude,
-                        lng: longitude,
-                        last_updated: new Date().toISOString()
-                    }, { onConflict: 'driver_id' });
+            const now = new Date().toISOString();
 
-                if (error) console.error('Error broadcasting location:', error);
+            try {
+                // Check if record exists first to handle potential lack of unique constraint
+                const { data: existing, error: selectError } = await tarhalDB
+                    .from('driver_locations')
+                    .select('driver_id')
+                    .eq('driver_id', currentDriverId)
+                    .maybeSingle();
+
+                if (selectError) throw selectError;
+
+                if (existing) {
+                    const { error } = await tarhalDB
+                        .from('driver_locations')
+                        .update({
+                            lat: latitude,
+                            lng: longitude,
+                            last_updated: now,
+                            last_seen: now,
+                            updated_at: now
+                        })
+                        .eq('driver_id', currentDriverId);
+                    if (error) throw error;
+                } else {
+                    const { error } = await tarhalDB
+                        .from('driver_locations')
+                        .insert({
+                            driver_id: currentDriverId,
+                            lat: latitude,
+                            lng: longitude,
+                            last_updated: now,
+                            last_seen: now,
+                            updated_at: now,
+                            is_online: true,
+                            is_available: false // Busy with ride
+                        });
+                    if (error) throw error;
+                }
+                console.log(`📍 Location broadcasted: ${latitude}, ${longitude}`);
             } catch (e) {
-                console.error('Broadcast exception:', e);
+                console.error('❌ Broadcast exception:', e);
             }
         }
 
+        let watchId = null;
         function startLocationBroadcasting() {
             if (!currentDriverId) return;
 
-            console.log('📡 Starting location broadcast...');
+            console.log('📡 Starting high-accuracy location tracking...');
 
-            // Initial broadcast
+            const geoOptions = {
+                enableHighAccuracy: true,
+                maximumAge: 0,
+                timeout: 30000
+            };
+
             if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(updateDriverLocationDB, null, { enableHighAccuracy: true });
-            }
+                // Watch position for continuous updates
+                watchId = navigator.geolocation.watchPosition(
+                    updateDriverLocationDB,
+                    (err) => console.warn('⚠️ watchPosition error:', err.message),
+                    geoOptions
+                );
 
-            // Broadcast every 10 seconds
-            setInterval(async () => {
-                if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(updateDriverLocationDB, (err) => {
-                        console.warn('Geolocation error:', err.message);
-                    }, { enableHighAccuracy: true });
-                }
-            }, 10000);
+                // Fallback interval to ensure at least some updates if watchPosition is throttled
+                setInterval(() => {
+                    navigator.geolocation.getCurrentPosition(updateDriverLocationDB, null, geoOptions);
+                }, 15000);
+            }
         }
 
         async function handleMainAction() {

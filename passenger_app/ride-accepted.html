@@ -250,12 +250,18 @@
 
         document.addEventListener('DOMContentLoaded', async function() {
             const urlParams = new URLSearchParams(window.location.search);
-            currentRideId = urlParams.get('rideId');
+            currentRideId = urlParams.get('rideId') || localStorage.getItem('tarhal_current_ride_id');
 
             if (currentRideId) {
+                // Ensure it's in localStorage
+                localStorage.setItem('tarhal_current_ride_id', currentRideId);
+
                 loadGoogleMaps();
                 fetchRideDetails();
                 initRealtime();
+            } else {
+                console.warn('No rideId found in URL or localStorage');
+                window.location.href = 'index.html';
             }
         });
 
@@ -300,6 +306,9 @@
 
                 updateStatusUI(ride.status);
 
+                // Subscribe to driver location if not already
+                subscribeToDriverLocation(currentDriverId);
+
                 // إضافة علامة موقع الراكب (Pickup)
                 if (ride.pickup_lat && ride.pickup_lng) {
                     const pickupPos = { lat: parseFloat(ride.pickup_lat), lng: parseFloat(ride.pickup_lng) };
@@ -339,43 +348,11 @@
                     .eq('driver_id', currentDriverId)
                     .single();
 
-                if (loc) {
-                    const pos = { lat: parseFloat(loc.lat), lng: parseFloat(loc.lng) };
-
-                    if (driverMarker) {
-                        // Smooth animation using a library or simple interpolation
-                        animateMarker(driverMarker, pos);
-                    } else {
-                        driverMarker = new google.maps.Marker({
-                            position: pos,
-                            map: map,
-                            icon: {
-                                path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-                                scale: 6,
-                                fillColor: '#4f46e5',
-                                fillOpacity: 1,
-                                strokeWeight: 2,
-                                strokeColor: '#ffffff',
-                                rotation: 0
-                            },
-                            title: 'السائق'
-                        });
-                    }
-
-                    // Focus map on driver location for the first time
-                    if (!hasFocusedOnDriver && map) {
-                        map.setCenter(pos);
-                        map.setZoom(16);
-                        hasFocusedOnDriver = true;
-                    }
-
-                    // Calculate ETA (rough estimate)
-                    if (pickupMarker) {
-                        const pickupPos = pickupMarker.getPosition();
-                        const distance = google.maps.geometry.spherical.computeDistanceBetween(pickupPos, new google.maps.LatLng(pos.lat, pos.lng));
-                        const etaMinutes = Math.ceil((distance / 1000) / 0.5); // Assume 30km/h = 0.5km/min
-                        document.getElementById('status-display').innerHTML = `<span class="pulse"></span> السائق في الطريق (وصول خلال ${etaMinutes} دق)`;
-                    }
+                if (loc && loc.lat && loc.lng) {
+                    handleLocationUpdate({
+                        lat: parseFloat(loc.lat),
+                        lng: parseFloat(loc.lng)
+                    });
                 }
             } catch (e) {
                 console.error('Error tracking driver:', e);
@@ -406,13 +383,48 @@
             if (status === 'accepted') display.innerHTML = '<span class="pulse"></span> السائق في الطريق إليك';
             else if (status === 'arrived') display.innerHTML = '<span class="pulse" style="background: var(--primary)"></span> السائق وصل لموقعك';
             else if (status === 'ongoing') display.innerHTML = '<span class="pulse" style="background: var(--primary-dark)"></span> أنت الآن في الرحلة';
-            else if (status === 'completed') {
-                alert('تمت الرحلة بنجاح! شكراً لاستخدامك زونا.');
+            else if (['completed', 'cancelled_by_driver', 'cancelled_by_customer'].includes(status)) {
+                localStorage.removeItem('tarhal_current_ride_id');
+
+                if (status === 'completed') {
+                    alert('تمت الرحلة بنجاح! شكراً لاستخدامك زونا.');
+                } else if (status === 'cancelled_by_driver') {
+                    alert('⚠️ السائق قام بإلغاء الرحلة.');
+                }
+
                 window.location.href = 'index.html';
             }
         }
 
+        let driverLocChannel = null;
+        function subscribeToDriverLocation(driverId) {
+            if (!driverId) return;
+            if (driverLocChannel) {
+                tarhalDB.removeChannel(driverLocChannel);
+            }
+
+            console.log('📡 Subscribing to driver location real-time updates:', driverId);
+            driverLocChannel = tarhalDB
+                .channel(`driver-loc-${driverId}`)
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'driver_locations',
+                    filter: `driver_id=eq.${driverId}`
+                }, (payload) => {
+                    console.log('📍 Real-time location received:', payload.new);
+                    if (payload.new && payload.new.lat && payload.new.lng) {
+                        handleLocationUpdate({
+                            lat: parseFloat(payload.new.lat),
+                            lng: parseFloat(payload.new.lng)
+                        });
+                    }
+                })
+                .subscribe();
+        }
+
         function initRealtime() {
+            // Subscribe to ride status updates
             tarhalDB
                 .channel('passenger-tracking')
                 .on('postgres_changes', {
@@ -421,9 +433,59 @@
                     table: 'rides',
                     filter: `id=eq.${currentRideId}`
                 }, (payload) => {
+                    console.log('🔔 Ride status update:', payload.new.status);
                     updateStatusUI(payload.new.status);
+
+                    // If driver assigned/changed, restart tracking
+                    if (payload.new.driver_id && payload.new.driver_id !== currentDriverId) {
+                        currentDriverId = payload.new.driver_id;
+                        startDriverTracking();
+                        subscribeToDriverLocation(currentDriverId);
+                    }
                 })
                 .subscribe();
+
+            // Initial subscription if ID already exists
+            if (currentDriverId) {
+                subscribeToDriverLocation(currentDriverId);
+            }
+        }
+
+        function handleLocationUpdate(pos) {
+            if (!map) return;
+
+            if (driverMarker) {
+                animateMarker(driverMarker, pos);
+            } else {
+                driverMarker = new google.maps.Marker({
+                    position: pos,
+                    map: map,
+                    icon: {
+                        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                        scale: 6,
+                        fillColor: '#4f46e5',
+                        fillOpacity: 1,
+                        strokeWeight: 2,
+                        strokeColor: '#ffffff',
+                        rotation: 0
+                    },
+                    title: 'السائق'
+                });
+            }
+
+            if (!hasFocusedOnDriver && map) {
+                map.setCenter(pos);
+                map.setZoom(16);
+                hasFocusedOnDriver = true;
+            }
+
+            // Calculate ETA
+            if (pickupMarker) {
+                const pickupPos = pickupMarker.getPosition();
+                const distance = google.maps.geometry.spherical.computeDistanceBetween(pickupPos, new google.maps.LatLng(pos.lat, pos.lng));
+                const etaMinutes = Math.ceil((distance / 1000) / 0.5);
+                document.getElementById('status-display').innerHTML = `<span class="pulse"></span> السائق في الطريق (وصول خلال ${etaMinutes} دق)`;
+            }
         }
 
         async function cancelRide() {
@@ -433,7 +495,10 @@
                     .update({ status: 'cancelled_by_customer', updated_at: new Date().toISOString() })
                     .eq('id', currentRideId);
 
-                if (!error) window.location.href = 'index.html';
+                if (!error) {
+                    localStorage.removeItem('tarhal_current_ride_id');
+                    window.location.href = 'index.html';
+                }
             }
         }
     </script>
