@@ -279,7 +279,12 @@
             directionsService = new google.maps.DirectionsService();
             directionsRenderer = new google.maps.DirectionsRenderer({
                 map: map,
-                suppressMarkers: false
+                suppressMarkers: true,
+                polylineOptions: {
+                    strokeColor: '#16a34a',
+                    strokeWeight: 5,
+                    strokeOpacity: 0.6
+                }
             });
         }
 
@@ -312,18 +317,45 @@
             }
         }
 
+        let pickupMarkerMap = null;
+        let destinationMarkerMap = null;
+
         function drawRoute(ride) {
             if (!ride.pickup_lat || !ride.pickup_lng || !ride.destination_lat || !ride.destination_lng) return;
+            if (!directionsService || !directionsRenderer) return;
+
+            const pickup = { lat: parseFloat(ride.pickup_lat), lng: parseFloat(ride.pickup_lng) };
+            const destination = { lat: parseFloat(ride.destination_lat), lng: parseFloat(ride.destination_lng) };
+
+            // إضافة ماركرات مخصصة لنقطة الانطلاق والوجهة
+            if (!pickupMarkerMap) {
+                pickupMarkerMap = new google.maps.Marker({
+                    position: pickup,
+                    map: map,
+                    label: 'A',
+                    title: 'نقطة الانطلاق'
+                });
+            }
+            if (!destinationMarkerMap) {
+                destinationMarkerMap = new google.maps.Marker({
+                    position: destination,
+                    map: map,
+                    label: 'B',
+                    title: 'الوجهة'
+                });
+            }
 
             const request = {
-                origin: { lat: parseFloat(ride.pickup_lat), lng: parseFloat(ride.pickup_lng) },
-                destination: { lat: parseFloat(ride.destination_lat), lng: parseFloat(ride.destination_lng) },
+                origin: pickup,
+                destination: destination,
                 travelMode: google.maps.TravelMode.DRIVING
             };
 
             directionsService.route(request, (result, status) => {
                 if (status === 'OK') {
                     directionsRenderer.setDirections(result);
+                } else {
+                    console.error('Directions request failed due to ' + status);
                 }
             });
         }
@@ -442,18 +474,26 @@
             if (nextStatus) {
                 updateData.status = nextStatus;
 
-                const { error } = await tarhalDB
-                    .from('rides')
-                    .update(updateData)
-                    .eq('id', currentRideId);
+                let success = false;
+                if (nextStatus === 'completed') {
+                    // استخدام RPC لإنهاء الرحلة وخصم العمولة بأمان
+                    const { error } = await tarhalDB.rpc('complete_ride', { p_ride_id: currentRideId });
+                    if (!error) success = true;
+                    else alert('خطأ في إنهاء الرحلة: ' + error.message);
+                } else {
+                    const { error } = await tarhalDB
+                        .from('rides')
+                        .update(updateData)
+                        .eq('id', currentRideId);
+                    if (!error) success = true;
+                    else alert('خطأ في تحديث الحالة: ' + error.message);
+                }
 
-                if (!error) {
+                if (success) {
                     updateUIStatus(nextStatus);
                     if (nextStatus === 'ongoing') {
                         if (window.soundManager) window.soundManager.playSuccessSound();
                     }
-                } else {
-                    alert('خطأ في تحديث الحالة: ' + error.message);
                 }
             }
         }
