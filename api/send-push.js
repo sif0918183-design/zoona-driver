@@ -70,26 +70,24 @@ export default async function handler(req, res) {
             return res.status(404).json({ success: false, error: 'fcm_token_not_found' });
         }
 
-        // 2. إعداد رسالة FCM
+        // 2. إعداد رسالة FCM المصححة
         const message = {
             token: driver.fcm_token,
             notification: {
                 title: '🚖 طلب رحلة جديدة - زونا',
                 body: `عميل: ${customerName || 'عميل'}\nالنوع: ${getVehicleTypeArabic(vehicleType) || 'سيارة'}\nالمبلغ: ${amount || '0'} SDG`,
             },
-            // Align with requested payload structure
-            click_action: 'FLUTTER_NOTIFICATION_CLICK',
+            // تم حذف click_action من هنا (المستوى الأعلى) لأنه يسبب خطأ 500
             data: {
                 ride_id: String(rideId || ''),
                 customer_name: String(customerName || ''),
                 amount: String(amount || '0'),
                 priority: 'high',
-                // Keep additional fields for PWA and other logic
                 request_id: String(requestId || ''),
                 distance: String(distance || ''),
                 vehicle_type: String(vehicleType || ''),
                 type: 'RIDE_REQUEST',
-                click_action: 'FLUTTER_NOTIFICATION_CLICK'
+                click_action: 'FLUTTER_NOTIFICATION_CLICK' // يبقى داخل الـ data ليقرأه التطبيق
             },
             android: {
                 priority: 'high',
@@ -97,8 +95,8 @@ export default async function handler(req, res) {
                 notification: {
                     sound: 'ride_request_sound',
                     channelId: 'urgent_alerts_v5',
-                    priority: 'max',
-                    clickAction: 'FLUTTER_NOTIFICATION_CLICK'
+                    // الـ SDK يستخدم camelCase هنا
+                    clickAction: 'FLUTTER_NOTIFICATION_CLICK', 
                 }
             },
             apns: {
