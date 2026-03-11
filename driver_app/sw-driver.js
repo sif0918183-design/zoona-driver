@@ -96,18 +96,25 @@ self.addEventListener('push', (event) => {
     }
 
     const title = data.title || 'طلب رحلة جديد 🚗';
+
+    // Extract ride_id from payload (FCM structure usually puts it in data)
+    const rideId = data.ride_id || (data.data && data.data.ride_id);
+    const redirectUrl = rideId ? `./accept-ride.html?id=${rideId}` : './index.html';
+
     const options = {
         body: data.body || 'لديك طلب رحلة جديد في منطقتك',
         icon: '../icons/icon-192x192.png',
         badge: '../icons/icon-72x72.png',
-        vibrate: [500, 110, 500, 110, 450, 110, 200, 110, 170, 40, 450, 110, 200, 110, 170, 40],
-        data: data.url || './index.html',
+        vibrate: [500, 110, 500, 110, 800, 110, 800, 110],
+        data: redirectUrl,
         actions: [
             { action: 'accept', title: '✅ قبول الرحلة', icon: '../icons/check-icon.png' },
             { action: 'decline', title: '❌ رفض', icon: '../icons/close-icon.png' }
         ],
-        tag: 'ride-request',
+        tag: 'urgent-ride-request',
         renotify: true,
+        requireInteraction: true,
+        silent: false,
         priority: 2 // High priority
     };
 
@@ -119,13 +126,29 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
 
+    // If 'decline' was clicked, just close (notification is already closed)
+    if (event.action === 'decline') return;
+
+    let targetUrl = event.notification.data;
+
+    // Add action parameter if accepted via button
     if (event.action === 'accept') {
-        event.waitUntil(
-            clients.openWindow(event.notification.data + '?action=accept')
-        );
-    } else {
-        event.waitUntil(
-            clients.openWindow(event.notification.data)
-        );
+        targetUrl += (targetUrl.includes('?') ? '&' : '?') + 'action=accept';
     }
+
+    event.waitUntil(
+        clients.matchAll({ type: 'window' }).then((windowClients) => {
+            // Check if there is already a window open with this URL
+            for (let i = 0; i < windowClients.length; i++) {
+                const client = windowClients[i];
+                if (client.url === targetUrl && 'focus' in client) {
+                    return client.focus();
+                }
+            }
+            // If no window found, open a new one
+            if (clients.openWindow) {
+                return clients.openWindow(targetUrl);
+            }
+        })
+    );
 });

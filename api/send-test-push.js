@@ -69,15 +69,19 @@ export default async function handler(req, res) {
                 title: '🔔 اختبار إشعار - زونا',
                 body: `هذا إشعار تجريبي\nالعميل: ${customerName || 'تجريبي'}\nالنوع: ${getVehicleTypeArabic(vehicleType || 'economy')}\nالأجرة: ${amount || '0'} SDG`,
             },
+            // Align with requested payload structure
+            click_action: 'FLUTTER_NOTIFICATION_CLICK',
             data: {
-                ride_id: String('test-' + Date.now()), // String format for FCM
-                request_id: String('test-' + Date.now()),
+                ride_id: String('test-' + Date.now()),
                 customer_name: String(customerName || 'عميل تجريبي'),
                 amount: String(amount || '0'),
+                priority: 'high',
+                // Keep additional fields for PWA and other logic
+                request_id: String('test-' + Date.now()),
                 distance: String(distance || '0 كم'),
                 vehicle_type: String(vehicleType || 'economy'),
                 type: 'RIDE_REQUEST',
-                click_action: 'FLUTTER_NOTIFICATION_CLICK' // لضمان التوافق مع Flutter
+                click_action: 'FLUTTER_NOTIFICATION_CLICK'
             },
             android: {
                 priority: 'high',

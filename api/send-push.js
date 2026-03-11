@@ -77,15 +77,19 @@ export default async function handler(req, res) {
                 title: '🚖 طلب رحلة جديدة - زونا',
                 body: `عميل: ${customerName || 'عميل'}\nالنوع: ${getVehicleTypeArabic(vehicleType) || 'سيارة'}\nالمبلغ: ${amount || '0'} SDG`,
             },
+            // Align with requested payload structure
+            click_action: 'FLUTTER_NOTIFICATION_CLICK',
             data: {
-                ride_id: String(rideId || ''), // لضمان وصوله كـ String
-                request_id: String(requestId || ''),
+                ride_id: String(rideId || ''),
                 customer_name: String(customerName || ''),
                 amount: String(amount || '0'),
+                priority: 'high',
+                // Keep additional fields for PWA and other logic
+                request_id: String(requestId || ''),
                 distance: String(distance || ''),
                 vehicle_type: String(vehicleType || ''),
                 type: 'RIDE_REQUEST',
-                click_action: 'FLUTTER_NOTIFICATION_CLICK' // لضمان التوافق مع Flutter
+                click_action: 'FLUTTER_NOTIFICATION_CLICK'
             },
             android: {
                 priority: 'high',
