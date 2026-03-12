@@ -19,8 +19,8 @@
 
         body {
             font-family: 'Tajawal', sans-serif;
-            background: var(--cosmic-bg);
-            color: #e2e8f0;
+            background: var(--tech-bg);
+            color: var(--tech-text);
             line-height: 1.5;
             padding-bottom: 80px;
             min-height: 100vh;
@@ -73,7 +73,7 @@
             position: absolute;
             top: 20px;
             right: 20px;
-            background: rgba(13, 17, 23, 0.4);
+            background: rgba(255, 255, 255, 0.2);
             color: white;
             text-decoration: none;
             padding: 8px 16px;
@@ -103,7 +103,7 @@
         }
 
         .complaint-form {
-            background: var(--cosmic-card);
+            background: var(--tech-card);
             padding: 40px 30px;
             border-radius: 20px;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
@@ -159,15 +159,15 @@
             font-size: 1rem;
             font-family: 'Tajawal', sans-serif;
             transition: all 0.3s ease;
-            background: rgba(13, 17, 23, 0.6);
-            color: white;
+            background: var(--tech-card);
+            color: var(--tech-text);
         }
 
         .form-control:focus {
             outline: none;
             border-color: var(--neon-blue);
             box-shadow: 0 0 15px rgba(30, 144, 255, 0.2);
-            background: rgba(13, 17, 23, 0.8);
+            background: var(--tech-card);
         }
 
         textarea.form-control {
@@ -192,7 +192,7 @@
         .account-type-option label {
             display: block;
             padding: 15px;
-            background: rgba(13, 17, 23, 0.4);
+            background: var(--tech-card);
             border: 1.5px solid var(--gray-light);
             border-radius: 12px;
             text-align: center;
@@ -202,7 +202,7 @@
         }
 
         .account-type-option label:hover {
-            background: rgba(13, 17, 23, 0.6);
+            background: var(--tech-bg);
             border-color: var(--neon-blue);
         }
 
@@ -240,7 +240,7 @@
             transform: translateY(-50%);
             color: #10B981;
             font-size: 1.2rem;
-            background: rgba(13, 17, 23, 0.8);
+            background: var(--tech-bg);
             padding: 5px;
             border-radius: 50%;
         }
@@ -261,7 +261,7 @@
             transform: translateY(-50%);
             color: var(--neon-blue);
             font-size: 1.2rem;
-            background: rgba(13, 17, 23, 0.8);
+            background: var(--tech-bg);
             padding: 5px;
             border-radius: 50%;
         }
@@ -275,7 +275,7 @@
             text-align: center;
             margin: 30px 0;
             padding: 20px;
-            background: rgba(13, 17, 23, 0.3);
+            background: var(--tech-bg);
             border-radius: 15px;
             border: 2px dashed var(--gray-light);
         }
@@ -381,7 +381,7 @@
         }
 
         .response-info {
-            background: var(--cosmic-card);
+            background: var(--tech-card);
             padding: 35px 25px;
             border-radius: 20px;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
@@ -416,11 +416,11 @@
 
         .response-item {
             padding: 20px 15px;
-            background: rgba(13, 17, 23, 0.4);
+            background: var(--tech-card);
             border-radius: 15px;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            border: 1px solid var(--gray-light);
+            box-shadow: var(--tech-shadow);
+            border: 1px solid var(--tech-border);
         }
 
         .response-item:hover {
@@ -444,7 +444,7 @@
         }
 
         .response-item h3 {
-            color: white;
+            color: var(--tech-text);
             font-size: 1.1rem;
             margin-bottom: 8px;
             font-weight: 600;
@@ -608,7 +608,7 @@
     <div class="complaints-container">
         <div class="complaints-header">
             <a href="index.html" class="back-btn">
-                <i class="ph-bold ph-arrow-right"></i>
+                <i class="ph-light ph-arrow-right"></i>
                 العودة للتطبيق
             </a>
             <h1>الشكاوى وآراء العملاء</h1>
@@ -632,14 +632,14 @@
                         <div class="account-type-option">
                             <input type="radio" id="passenger" name="accountType" value="passenger" required>
                             <label for="passenger">
-                                <span class="account-type-icon"><i class="ph-bold ph-user"></i></span>
+                                <span class="account-type-icon"><i class="ph-light ph-user"></i></span>
                                 <span>راكب</span>
                             </label>
                         </div>
                         <div class="account-type-option">
                             <input type="radio" id="driver" name="accountType" value="driver" required>
                             <label for="driver">
-                                <span class="account-type-icon"><i class="ph-bold ph-car"></i></span>
+                                <span class="account-type-icon"><i class="ph-light ph-car"></i></span>
                                 <span>سائق</span>
                             </label>
                         </div>
@@ -652,7 +652,7 @@
                         <div class="whatsapp-field">
                             <label for="whatsapp">رقم واتساب</label>
                             <div class="whatsapp-icon">
-                                <i class="ph-bold ph-whatsapp-logo"></i>
+                                <i class="ph-light ph-whatsapp-logo"></i>
                             </div>
                             <input type="tel" id="whatsapp" name="whatsapp" class="form-control" placeholder="0XXXXXXXXX">
                             <small style="color: #94a3b8; font-size: 0.85rem; display: block; margin-top: 5px;">للتواصل عبر الواتساب إذا أردت</small>
@@ -661,7 +661,7 @@
                         <div class="phone-field">
                             <label for="phone">رقم الهاتف *</label>
                             <div class="phone-icon">
-                                <i class="ph-bold ph-phone"></i>
+                                <i class="ph-light ph-phone"></i>
                             </div>
                             <input type="tel" id="phone" name="phone" class="form-control" required placeholder="0XXXXXXXXX">
                             <small style="color: #94a3b8; font-size: 0.85rem; display: block; margin-top: 5px;">للتواصل المباشر</small>
@@ -704,7 +704,7 @@
                 </div>
 
                 <button type="submit" class="submit-btn" id="submitBtn">
-                    <i class="ph-bold ph-paper-plane-tilt"></i>
+                    <i class="ph-light ph-paper-plane-tilt"></i>
                     إرسال الشكوى
                 </button>
             </div>
@@ -714,22 +714,22 @@
             <h2>ماذا يحدث بعد إرسال الشكوى؟</h2>
             <div class="response-grid">
                 <div class="response-item">
-                    <i class="ph-bold ph-envelope-open"></i>
+                    <i class="ph-light ph-envelope-open"></i>
                     <h3>استلام الشكوى</h3>
                     <p>نستلم شكواك فوراً ونسجلها في نظام المتابعة الخاص بنا</p>
                 </div>
                 <div class="response-item">
-                    <i class="ph-bold ph-magnifying-glass"></i>
+                    <i class="ph-light ph-magnifying-glass"></i>
                     <h3>التحقيق والمتابعة</h3>
                     <p>نقوم بالتحقيق في الشكوى ومتابعتها مع الأقسام المعنية</p>
                 </div>
                 <div class="response-item">
-                    <i class="ph-bold ph-arrow-counter-clockwise"></i>
+                    <i class="ph-light ph-arrow-counter-clockwise"></i>
                     <h3>رد سريع</h3>
                     <p>نرد على جميع الشكاوى خلال 24-48 ساعة عمل</p>
                 </div>
                 <div class="response-item">
-                    <i class="ph-bold ph-check-circle"></i>
+                    <i class="ph-light ph-check-circle"></i>
                     <h3>حل المشكلة</h3>
                     <p>نعمل على إيجاد حل مناسب ونتابع معك حتى الرضا التام</p>
                 </div>
@@ -795,7 +795,7 @@
             const alertDiv = document.createElement('div');
             alertDiv.className = `alert alert-${type}`;
             alertDiv.innerHTML = `
-                <i class="ph-bold ph-${type === 'success' ? 'check-circle' : 'warning'}"></i>
+                <i class="ph-light ph-${type === 'success' ? 'check-circle' : 'warning'}"></i>
                 ${message}
             `;
             alertsContainer.appendChild(alertDiv);
