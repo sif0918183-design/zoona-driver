@@ -31,24 +31,24 @@
             --warning: #f59e0b;
             --danger: #ef4444;
             --danger-light: rgba(239, 68, 68, 0.1);
-            --light: #f9fafb;
-            --dark: var(--cosmic-bg);
-            --gray-50: rgba(255, 255, 255, 0.05);
-            --gray-100: rgba(255, 255, 255, 0.1);
-            --gray-200: #334155;
-            --gray-300: #475569;
+            --light: var(--tech-bg);
+            --dark: var(--tech-text);
+            --gray-50: var(--tech-bg);
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
             --gray-400: #94a3b8;
-            --gray-500: #94a3b8;
-            --gray-600: #cbd5e1;
-            --gray-700: #e2e8f0;
-            --gray-800: #f1f5f9;
-            --gray-900: #ffffff;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: var(--tech-text);
+            --gray-900: #000000;
             
-            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
-            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-            --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
-            --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-            --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+            --shadow: var(--tech-shadow);
+            --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+            --shadow-lg: var(--tech-shadow-lg);
+            --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
             
             --radius-sm: 0.5rem;
             --radius: 0.75rem;
@@ -74,8 +74,8 @@
 
         body {
             font-family: 'Tajawal', sans-serif;
-            background: var(--cosmic-bg);
-            color: #e2e8f0;
+            background: var(--tech-bg);
+            color: var(--tech-text);
             line-height: 1.6;
             min-height: 100vh;
             overflow-x: hidden;
@@ -85,25 +85,25 @@
         .app-container {
             max-width: 100%;
             margin: 0 auto;
-            background: var(--cosmic-bg);
+            background: var(--tech-bg);
             min-height: 100vh;
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            box-shadow: none;
         }
 
         /* Header */
         .app-header {
-            background: var(--cosmic-card);
-            color: white;
+            background: #ffffff;
+            color: var(--tech-text);
             padding: 1rem 1.5rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            box-shadow: var(--tech-shadow);
             position: sticky;
             top: 0;
             z-index: 100;
             min-height: 70px;
-            border-bottom: 1px solid var(--gray-light);
+            border-bottom: 1px solid var(--tech-border);
         }
 
         .logo-container {
@@ -185,7 +185,7 @@
         .main-content {
             padding: 1.5rem;
             min-height: calc(100vh - 70px);
-            background: var(--cosmic-bg);
+            background: var(--tech-bg);
         }
 
         /* Loading State */
@@ -226,7 +226,7 @@
         /* Tabs Navigation */
         .tabs-container {
             margin-bottom: 2rem;
-            background: var(--cosmic-card);
+            background: var(--tech-card);
             border-radius: var(--radius-lg);
             padding: 0.5rem;
             display: flex;
@@ -280,19 +280,18 @@
 
         /* Cards */
         .card {
-            background: var(--cosmic-card);
+            background: #ffffff;
             border-radius: var(--radius-lg);
             padding: 1.5rem;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--gray-light);
+            box-shadow: var(--tech-shadow);
+            border: 1px solid var(--tech-border);
             margin-bottom: 1.5rem;
             transition: var(--transition);
-            backdrop-filter: blur(10px);
         }
 
         .card:hover {
-            box-shadow: 0 0 20px rgba(16, 185, 129, 0.1);
-            border-color: var(--neon-emerald);
+            box-shadow: var(--tech-shadow-lg);
+            border-color: var(--primary);
         }
 
         .card-header {
@@ -301,7 +300,7 @@
             align-items: center;
             margin-bottom: 1.5rem;
             padding-bottom: 1rem;
-            border-bottom: 1px solid var(--gray-light);
+            border-bottom: 1px solid var(--tech-border);
         }
 
         .card-title {
@@ -331,20 +330,19 @@
         .form-control {
             width: 100%;
             padding: 0.875rem 1rem;
-            border: 1.5px solid var(--gray-light);
+            border: 1.5px solid var(--tech-border);
             border-radius: var(--radius);
             font-family: 'Tajawal', sans-serif;
             font-size: 1rem;
             transition: var(--transition);
-            background: rgba(13, 17, 23, 0.6);
-            color: white;
+            background: #ffffff;
+            color: var(--tech-text);
         }
 
         .form-control:focus {
             outline: none;
-            border-color: var(--neon-emerald);
-            box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
-            background: rgba(13, 17, 23, 0.8);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
         }
 
         .form-select {
@@ -478,7 +476,7 @@
             flex-direction: column;
             align-items: center;
             gap: 0.75rem;
-            background: rgba(13, 17, 23, 0.4);
+            background: rgba(255, 255, 255, 0.4);
         }
 
         .vehicle-category:hover {
@@ -525,20 +523,19 @@
         }
 
         .ride-card {
-            background: var(--cosmic-card);
+            background: #ffffff;
             border-radius: var(--radius-lg);
             padding: 1.5rem;
-            border: 1px solid var(--gray-light);
-            box-shadow: var(--shadow);
+            border: 1px solid var(--tech-border);
+            box-shadow: var(--tech-shadow);
             transition: var(--transition);
             cursor: pointer;
-            backdrop-filter: blur(5px);
         }
 
         .ride-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
-            border-color: var(--neon-emerald);
+            box-shadow: var(--tech-shadow-lg);
+            border-color: var(--primary);
         }
 
         .ride-header {
@@ -623,7 +620,7 @@
 
         /* Price Preview */
         .price-preview {
-            background: rgba(13, 17, 23, 0.3);
+            background: rgba(255, 255, 255, 0.3);
             border-radius: var(--radius-lg);
             padding: 1.5rem;
             border: 1.5px solid var(--gray-light);
@@ -683,14 +680,14 @@
             display: flex;
             flex-direction: column;
             height: 500px;
-            border: 1px solid var(--gray-light);
+            border: 1px solid var(--tech-border);
             border-radius: var(--radius-lg);
             overflow: hidden;
-            background: var(--cosmic-bg);
+            background: #f8fafc;
         }
 
         .chat-header {
-            background: linear-gradient(135deg, var(--neon-emerald) 0%, var(--primary-dark) 100%);
+            background: var(--primary);
             color: white;
             padding: 1.25rem;
             font-weight: 600;
@@ -698,14 +695,14 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            box-shadow: var(--tech-shadow);
         }
 
         .chat-messages {
             flex: 1;
             padding: 1.5rem;
             overflow-y: auto;
-            background: rgba(13, 17, 23, 0.4);
+            background: #ffffff;
             display: flex;
             flex-direction: column;
             gap: 1rem;
@@ -727,18 +724,18 @@
         .message-content {
             padding: 1rem 1.25rem;
             border-radius: var(--radius-lg);
-            background: var(--cosmic-card);
-            border: 1px solid var(--gray-light);
+            background: #f1f5f9;
+            border: 1px solid var(--tech-border);
             box-shadow: var(--shadow-sm);
             font-size: 0.95rem;
             line-height: 1.5;
-            color: white;
+            color: var(--tech-text);
         }
 
         .message-outgoing .message-content {
-            background: rgba(16, 185, 129, 0.15);
-            border-color: var(--neon-emerald);
-            color: white;
+            background: #dcfce7;
+            border-color: #bbf7d0;
+            color: var(--tech-text);
         }
 
         .message-time {
@@ -751,7 +748,7 @@
         .chat-input-container {
             padding: 1rem;
             border-top: 1px solid var(--gray-light);
-            background: var(--cosmic-card);
+            background: var(--tech-card);
             display: flex;
             gap: 0.75rem;
         }
@@ -764,7 +761,7 @@
             font-family: 'Tajawal', sans-serif;
             font-size: 1rem;
             transition: var(--transition);
-            background: rgba(13, 17, 23, 0.6);
+            background: rgba(255, 255, 255, 0.6);
             color: white;
         }
 
@@ -791,17 +788,17 @@
         }
 
         .modal-content {
-            background: var(--cosmic-card);
+            background: #ffffff;
             border-radius: var(--radius-xl);
             padding: 2rem;
             max-width: 500px;
             width: 100%;
             max-height: 90vh;
             overflow-y: auto;
-            box-shadow: var(--shadow-xl);
+            box-shadow: var(--tech-shadow-lg);
             animation: slideUp 0.3s ease;
-            border: 1px solid var(--gray-light);
-            color: white;
+            border: 1px solid var(--tech-border);
+            color: var(--tech-text);
         }
 
         @keyframes slideUp {
@@ -860,7 +857,7 @@
         }
 
         .notification {
-            background: white;
+            background: #ffffff;
             border-radius: var(--radius-lg);
             padding: 1.25rem;
             box-shadow: var(--shadow-xl);
@@ -1063,7 +1060,7 @@
                 <div id="new-ride" class="tab-content active">
                     <div class="card">
                         <div class="card-header">
-                            <h2 class="card-title"><i class="ph-bold ph-path"></i> طلب رحلة سفر جديدة</h2>
+                            <h2 class="card-title"><i class="ph-light ph-path"></i> طلب رحلة سفر جديدة</h2>
                         </div>
                         
                         <form id="ride-request-form">
@@ -1103,7 +1100,7 @@
                             </div>
                             
                             <button type="submit" class="btn btn-primary btn-lg btn-block">
-                                <i class="ph-bold ph-paper-plane-tilt"></i> نشر طلب الرحلة
+                                <i class="ph-light ph-paper-plane-tilt"></i> نشر طلب الرحلة
                             </button>
                         </form>
                     </div>
@@ -1113,9 +1110,9 @@
                 <div id="my-rides" class="tab-content">
                     <div class="card">
                         <div class="card-header">
-                            <h2 class="card-title"><i class="ph-bold ph-clock-counter-clockwise"></i> رحلاتي</h2>
+                            <h2 class="card-title"><i class="ph-light ph-clock-counter-clockwise"></i> رحلاتي</h2>
                             <button class="btn btn-sm btn-outline" onclick="loadPassengerRides()">
-                                <i class="ph-bold ph-arrows-clockwise"></i> تحديث
+                                <i class="ph-light ph-arrows-clockwise"></i> تحديث
                             </button>
                         </div>
                         
@@ -1129,7 +1126,7 @@
                 <div id="active-chats" class="tab-content">
                     <div class="card">
                         <div class="card-header">
-                            <h2 class="card-title"><i class="ph-bold ph-chats-teardrop"></i> محادثاتي</h2>
+                            <h2 class="card-title"><i class="ph-light ph-chats-teardrop"></i> محادثاتي</h2>
                         </div>
                         
                         <div id="chats-list" class="ride-cards">
@@ -1155,7 +1152,7 @@
                 <div id="available-rides" class="tab-content active">
                     <div class="card">
                         <div class="card-header">
-                            <h2 class="card-title"><i class="ph-bold ph-list-bullets"></i> الرحلات المتاحة</h2>
+                            <h2 class="card-title"><i class="ph-light ph-list-bullets"></i> الرحلات المتاحة</h2>
                             <div class="filter-container">
                                 <select class="form-control form-select" id="filter-city" style="min-width: 180px;">
                                     <option value="">جميع المدن</option>
@@ -1173,7 +1170,7 @@
                 <div id="driver-my-rides" class="tab-content">
                     <div class="card">
                         <div class="card-header">
-                            <h2 class="card-title"><i class="ph-bold ph-car"></i> رحلاتي</h2>
+                            <h2 class="card-title"><i class="ph-light ph-car"></i> رحلاتي</h2>
                         </div>
                         
                         <div id="driver-rides-list" class="ride-cards">
@@ -1186,9 +1183,9 @@
                 <div id="driver-chats" class="tab-content">
                     <div class="card">
                         <div class="card-header">
-                            <h2 class="card-title"><i class="ph-bold ph-chats"></i> محادثاتي</h2>
+                            <h2 class="card-title"><i class="ph-light ph-chats"></i> محادثاتي</h2>
                             <button class="btn btn-sm btn-outline" onclick="refreshDriverChats()">
-                                <i class="ph-bold ph-arrows-clockwise"></i> تحديث
+                                <i class="ph-light ph-arrows-clockwise"></i> تحديث
                             </button>
                         </div>
                         
@@ -1202,7 +1199,7 @@
                 <div id="accepted-rides" class="tab-content">
                     <div class="card">
                         <div class="card-header">
-                            <h2 class="card-title"><i class="ph-bold ph-check-circle"></i> رحلاتي المقبولة</h2>
+                            <h2 class="card-title"><i class="ph-light ph-check-circle"></i> رحلاتي المقبولة</h2>
                         </div>
                         <div id="accepted-rides-list" class="ride-cards">
                             <!-- سيتم تعبئته بـ JavaScript -->
@@ -1234,7 +1231,7 @@
                 <div class="chat-input-container">
                     <input type="text" class="chat-input" id="chat-input" placeholder="اكتب رسالتك هنا...">
                     <button class="btn btn-primary" onclick="sendMessage()" style="box-shadow: 0 0 15px var(--neon-emerald);">
-                        <i class="ph-bold ph-paper-plane-tilt"></i>
+                        <i class="ph-light ph-paper-plane-tilt"></i>
                     </button>
                 </div>
             </div>
@@ -1284,7 +1281,7 @@
         animation: slideInUp 0.3s ease;
     ">
         <div style="display: flex; align-items: center; gap: 0.75rem;">
-            <i class="ph-bold ph-warning" style="font-size: 1.5rem;"></i>
+            <i class="ph-light ph-warning" style="font-size: 1.5rem;"></i>
             <div>
                 <div style="font-weight: 700; margin-bottom: 0.25rem;">تحذير: رصيد منخفض</div>
                 <div id="warning-message" style="font-size: 0.95rem; opacity: 0.9;"></div>
@@ -1638,7 +1635,7 @@
 
                     const chatTitle = document.getElementById('chat-with-name');
                     if (chatTitle) {
-                        chatTitle.innerHTML = `${ride.passenger_name} <i class="ph-bold ph-user-check text-green-500"></i>`;
+                        chatTitle.innerHTML = `${ride.passenger_name} <i class="ph-light ph-user-check text-green-500"></i>`;
                     }
 
                     showNotification('تم كشف هوية الراكب الآن بعد اختيارك للرحلة', 'success');
@@ -2150,7 +2147,7 @@
                 priceDetails.innerHTML = `
                     <div style="background: var(--danger-light); padding: 1rem; border-radius: var(--radius); border: 1px solid var(--danger);">
                         <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                            <i class="ph-bold ph-warning" style="color: var(--danger);"></i>
+                            <i class="ph-light ph-warning" style="color: var(--danger);"></i>
                             <span style="font-weight: 600; color: var(--danger);">رحلة غير متوفرة</span>
                         </div>
                         <p style="color: var(--gray-600); margin: 0; font-size: 0.95rem;">
@@ -2297,7 +2294,7 @@
                         <div class="empty-title">لا توجد رحلات</div>
                         <div class="empty-description">لم تقم بطلب أي رحلات حتى الآن</div>
                         <button class="btn btn-primary" style="margin-top: 1rem;" onclick="showTab('new-ride', document.querySelector('#passenger-interface .tab:first-child'))">
-                            <i class="ph-bold ph-plus"></i> طلب رحلة جديدة
+                            <i class="ph-light ph-plus"></i> طلب رحلة جديدة
                         </button>
                     </div>
                 `;
@@ -2322,24 +2319,24 @@
                         <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--gray-300);">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                                 <div style="font-weight: 600; color: var(--primary);">
-                                    <i class="ph-bold ph-user-check"></i>
+                                    <i class="ph-light ph-user-check"></i>
                                     ${ride.accepted_count} سائق/ين قبلوا العرض
                                 </div>
                                 <button class="btn btn-outline btn-sm"
                                         onclick="showDriverOffers('${ride.id}')">
-                                    <i class="ph-bold ph-eye"></i> عرض التفاصيل
+                                    <i class="ph-light ph-eye"></i> عرض التفاصيل
                                 </button>
                             </div>
                             <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                                 ${Array.from({ length: ride.accepted_count }).map((_, index) => {
                                     const driverId = ride.accepted_drivers[index]?.driver_id;
                                     return `
-                                    <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--cosmic-card); padding: 0.5rem 0.75rem; border-radius: var(--radius); border: 1px solid var(--gray-light);">
-                                        <i class="ph-bold ph-user-circle" style="color: var(--primary);"></i>
+                                    <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--tech-card); padding: 0.5rem 0.75rem; border-radius: var(--radius); border: 1px solid var(--gray-light);">
+                                        <i class="ph-light ph-user-circle" style="color: var(--primary);"></i>
                                         <span style="font-weight: 600;">سائق رقم ${index + 1}</span>
                                         <button class="btn btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; background: var(--primary-light);"
                                                 onclick="startChatWithDriverFromCard('${ride.id}', 'سائق رقم ${index + 1}', '${driverId}')">
-                                            <i class="ph-bold ph-chat-centered-dots" style="color: var(--primary);"></i>
+                                            <i class="ph-light ph-chat-centered-dots" style="color: var(--primary);"></i>
                                         </button>
                                     </div>
                                 `;}).join('')}
@@ -2351,29 +2348,29 @@
                 rideElement.innerHTML = `
                     <div class="ride-header">
                         <div class="ride-route">
-                            <i class="ph-bold ph-map-trifold"></i>
+                            <i class="ph-light ph-map-trifold"></i>
                             ${fromCity} → ${toCity}
                         </div>
                         <div class="ride-price">${ride.final_price ? ride.final_price.toLocaleString() : '0'} ج</div>
                     </div>
                     <div class="ride-details">
                         <div class="ride-detail">
-                            <i class="ph-bold ph-car"></i>
+                            <i class="ph-light ph-car"></i>
                             <span>${ride.vehicle_category || 'غير محدد'}</span>
                         </div>
                         <div class="ride-detail">
-                            <i class="ph-bold ph-calendar-blank"></i>
+                            <i class="ph-light ph-calendar-blank"></i>
                             <span>${formatDate(ride.created_at)}</span>
                         </div>
                         ${ride.driver_name ? `
                             <div class="ride-detail">
-                                <i class="ph-bold ph-user-circle"></i>
+                                <i class="ph-light ph-user-circle"></i>
                                 <span>السائق المختار: ${ride.driver_name}</span>
                             </div>
                         ` : ''}
                     </div>
                     <div class="ride-status ${statusClass}">
-                        <i class="ph-bold ph-circle"></i>
+                        <i class="ph-light ph-circle"></i>
                         ${statusText}
                     </div>
 
@@ -2382,12 +2379,12 @@
                     <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--gray-light); display: flex; gap: 0.5rem;">
                         <button class="btn btn-outline" style="flex: 1;"
                                 onclick="showRideDetails(${JSON.stringify(ride).replace(/"/g, '&quot;')})">
-                            <i class="ph-bold ph-eye"></i> التفاصيل
+                            <i class="ph-light ph-eye"></i> التفاصيل
                         </button>
                         ${ride.status === 'pending' ? `
                             <button class="btn btn-danger" style="flex: 1;"
                                     onclick="cancelRide('${ride.id}')">
-                                <i class="ph-bold ph-x"></i> إلغاء
+                                <i class="ph-light ph-x"></i> إلغاء
                             </button>
                         ` : ''}
                     </div>
@@ -2611,9 +2608,9 @@
                         card.innerHTML = `
                             <div class="ride-header">
                                 <div class="ride-route" style="font-size: 1.1rem;">
-                                    <i class="ph-bold ph-user-circle"></i>
+                                    <i class="ph-light ph-user-circle"></i>
                                     ${displayLabel}
-                                    ${isFinalSelection ? '<i class="ph-bold ph-check-circle text-success" title="تم الاختيار"></i>' : ''}
+                                    ${isFinalSelection ? '<i class="ph-light ph-check-circle text-success" title="تم الاختيار"></i>' : ''}
                                 </div>
                                 <div class="ride-price" style="font-size: 1.1rem;">
                                     ${driver.rating ? driver.rating.toFixed(1) + ' ⭐' : 'جديد'}
@@ -2621,27 +2618,27 @@
                             </div>
                             <div class="ride-details">
                                 <div class="ride-detail">
-                                    <i class="ph-bold ph-car"></i>
+                                    <i class="ph-light ph-car"></i>
                                     <span>${driver.car_type || 'غير محدد'} - ${driver.car_model || 'غير محدد'}</span>
                                 </div>
                                 <div class="ride-detail">
-                                    <i class="ph-bold ph-clock"></i>
+                                    <i class="ph-light ph-clock"></i>
                                     <span>قبل في: ${formatTime(acc.accepted_at)}</span>
                                 </div>
                                 <div class="ride-detail">
-                                    <i class="ph-bold ph-shield-check"></i>
+                                    <i class="ph-light ph-shield-check"></i>
                                     <span style="color: var(--success);">سائق معتمد</span>
                                 </div>
                             </div>
                             <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
                                 <button class="btn btn-outline" style="flex: 1;"
                                         onclick="startChatWithDriverFromCard('${rideId}', '${displayLabel.replace(/'/g, "\\'")}', '${acc.driver_id}')">
-                                    <i class="ph-bold ph-chat-centered-dots"></i> محادثة
+                                    <i class="ph-light ph-chat-centered-dots"></i> محادثة
                                 </button>
                                 ${!isFinalSelection ? `
                                 <button class="btn btn-primary" style="flex: 2;"
                                         onclick="passengerSelectsDriver('${rideId}', '${acc.driver_id}')">
-                                    <i class="ph-bold ph-check-circle"></i> اختيار هذا السائق
+                                    <i class="ph-light ph-check-circle"></i> اختيار هذا السائق
                                 </button>
                                 ` : `
                                 <div style="flex: 2; display: flex; align-items: center; justify-content: center; background: var(--success-light); color: var(--success); border-radius: var(--radius); font-weight: 700;">
@@ -2889,7 +2886,7 @@
                 chatElement.innerHTML = `
                     <div class="ride-header">
                         <div class="ride-route">
-                            <i class="ph-bold ph-chat-centered-dots"></i>
+                            <i class="ph-light ph-chat-centered-dots"></i>
                             ${escapedUserName}
                             ${chat.is_unread ? '<span class="badge badge-primary" style="font-size: 0.7rem; margin-right: 5px; background: var(--primary); color: white; padding: 2px 6px; border-radius: 10px;">جديد</span>' : ''}
                         </div>
@@ -2899,12 +2896,12 @@
                     </div>
                     <div class="ride-details">
                         <div class="ride-detail">
-                            <i class="ph-bold ph-chat-teardrop-text"></i>
+                            <i class="ph-light ph-chat-teardrop-text"></i>
                             <span style="${chat.is_unread ? 'font-weight: 700; color: var(--dark);' : ''}">${escapedMessage}</span>
                         </div>
                     </div>
                     <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openChatSimple('${chat.id}', '${escapedUserName.replace(/'/g, "\\'")}', '${chat.ride_id || chat.id}')">
-                        <i class="ph-bold ph-arrow-bend-up-left"></i> ${chat.last_message_time ? 'رد' : 'بدء'}
+                        <i class="ph-light ph-arrow-bend-up-left"></i> ${chat.last_message_time ? 'رد' : 'بدء'}
                     </button>
                 `;
                 
@@ -2987,27 +2984,27 @@
                 rideElement.innerHTML = `
                     <div class="ride-header">
                         <div class="ride-route">
-                            <i class="ph-bold ph-map-trifold"></i>
+                            <i class="ph-light ph-map-trifold"></i>
                             ${ride.from_city} → ${ride.to_city}
                         </div>
                         <div class="ride-price">${ride.estimated_price.toLocaleString()} ج</div>
                     </div>
                     <div class="ride-details">
                         <div class="ride-detail">
-                            <i class="ph-bold ph-user"></i>
+                            <i class="ph-light ph-user"></i>
                             <span>راكب ترحال (مخفي)</span>
                         </div>
                         <div class="ride-detail">
-                            <i class="ph-bold ph-car"></i>
+                            <i class="ph-light ph-car"></i>
                             <span>${ride.vehicle_category}</span>
                         </div>
                         <div class="ride-detail">
-                            <i class="ph-bold ph-users"></i>
+                            <i class="ph-light ph-users"></i>
                             <span>${ride.accepted_count} / ${MAX_DRIVERS_PER_RIDE} سائقين قبلوا</span>
                         </div>
                     </div>
                     <button class="btn btn-primary btn-block" onclick="driverAcceptsRide('${ride.id}')">
-                        <i class="ph-bold ph-check"></i> قبول الرحلة
+                        <i class="ph-light ph-check"></i> قبول الرحلة
                     </button>
                 `;
                 
@@ -3234,7 +3231,7 @@
                         <div class="ride-price">${ride.estimated_price.toLocaleString()} ج</div>
                     </div>
                     <div class="ride-details">
-                        <div class="ride-detail"><i class="ph-bold ph-info"></i> حالة العرض: ${acc.status}</div>
+                        <div class="ride-detail"><i class="ph-light ph-info"></i> حالة العرض: ${acc.status}</div>
                     </div>
                 `;
                 container.appendChild(div);
@@ -3335,33 +3332,33 @@
                 rideElement.innerHTML = `
                     <div class="ride-header">
                         <div class="ride-route">
-                            <i class="ph-bold ph-map-trifold"></i>
+                            <i class="ph-light ph-map-trifold"></i>
                             ${fromCity} → ${toCity}
                         </div>
                         <div class="ride-price">${ride.final_price ? ride.final_price.toLocaleString() : ride.base_price ? ride.base_price.toLocaleString() : '0'} ج</div>
                     </div>
                     <div class="ride-details">
                         <div class="ride-detail">
-                            <i class="ph-bold ph-user"></i>
+                            <i class="ph-light ph-user"></i>
                             <span>${ride.passenger_name || 'راكب'}</span>
                         </div>
                         <div class="ride-detail">
-                            <i class="ph-bold ph-car"></i>
+                            <i class="ph-light ph-car"></i>
                             <span>${vehicleCategory}</span>
                         </div>
                         <div class="ride-detail">
-                            <i class="ph-bold ph-calendar-blank"></i>
+                            <i class="ph-light ph-calendar-blank"></i>
                             <span>${formatDate(ride.created_at)}</span>
                         </div>
                     </div>
                     <div class="ride-status ${statusClass}">
-                        <i class="ph-bold ph-circle"></i>
+                        <i class="ph-light ph-circle"></i>
                         ${statusText}
                     </div>
                     ${['driver_selected', 'confirmed', 'in_progress'].includes(ride.status) ? `
                         <button class="btn btn-outline btn-sm btn-block" style="margin-top: 1rem;"
                                 onclick="event.stopPropagation(); startChatWithPassenger('${ride.id}', '${escapeHtml(ride.passenger_name || 'راكب').replace(/'/g, "\\'")}')">
-                            <i class="ph-bold ph-chat-centered-dots"></i> بدء محادثة جديدة
+                            <i class="ph-light ph-chat-centered-dots"></i> بدء محادثة جديدة
                         </button>
                     ` : ''}
                 `;
@@ -3817,7 +3814,7 @@
                 chatElement.innerHTML = `
                     <div class="ride-header">
                         <div class="ride-route">
-                            <i class="ph-bold ${privacyIcon} ${privacyClass}"></i>
+                            <i class="ph-light ${privacyIcon} ${privacyClass}"></i>
                             ${displayName}
                             ${!chat.show_full_name ? '<span class="badge badge-gray" style="font-size: 0.7rem; margin-right: 5px;">هوية مخفية</span>' : ''}
                         </div>
@@ -3827,13 +3824,13 @@
                     </div>
                     <div class="ride-details">
                         <div class="ride-detail">
-                            <i class="ph-bold ph-chat-teardrop-text"></i>
+                            <i class="ph-light ph-chat-teardrop-text"></i>
                             <span class="${!chat.show_full_name ? 'italic text-gray-500' : ''}">${messagePrefix}${lastMessage}</span>
                         </div>
                     </div>
                     <button class="btn btn-primary btn-sm"
                             onclick="openDriverChat('${chat.ride_id}', '${displayName.replace(/'/g, "\\'")}', '${chat.other_user_id || ''}', ${chat.show_full_name})">
-                        <i class="ph-bold ph-arrow-bend-up-left"></i> ${chat.last_message_time ? 'فتح' : 'بدء'}
+                        <i class="ph-light ph-arrow-bend-up-left"></i> ${chat.last_message_time ? 'فتح' : 'بدء'}
                     </button>
                 `;
                 
@@ -3853,7 +3850,7 @@
             const chatTitle = document.getElementById('chat-with-name');
             chatTitle.innerHTML = `
                 ${passengerName}
-                ${!showFullName ? '<i class="ph-bold ph-user-circle text-gray-400" title="هوية الراكب مخفية حتى يتم اختيارك"></i>' : '<i class="ph-bold ph-user-check text-green-500"></i>'}
+                ${!showFullName ? '<i class="ph-light ph-user-circle text-gray-400" title="هوية الراكب مخفية حتى يتم اختيارك"></i>' : '<i class="ph-light ph-user-check text-green-500"></i>'}
             `;
 
             // إضافة تنبيه الخصوصية في بداية المحادثة
@@ -3900,10 +3897,10 @@
                 if (ride.status === 'accepted' && ride.driver_name) {
                     actions = `
                         <button class="btn btn-primary" onclick="startChatWithDriver('${ride.id}', '${escapeHtml(ride.driver_name).replace(/'/g, "\\'")}')">
-                            <i class="ph-bold ph-chat-centered-dots"></i> محادثة مع السائق
+                            <i class="ph-light ph-chat-centered-dots"></i> محادثة مع السائق
                         </button>
                         <button class="btn btn-success" onclick="confirmAgreement('${ride.id}')">
-                            <i class="ph-bold ph-handshake"></i> تأكيد الاتفاق
+                            <i class="ph-light ph-handshake"></i> تأكيد الاتفاق
                         </button>
                     `;
                 }
@@ -3911,10 +3908,10 @@
                 if (ride.status === 'pending') {
                     actions = `
                         <button class="btn btn-primary" onclick="acceptRide('${ride.id}')">
-                            <i class="ph-bold ph-check"></i> قبول الرحلة
+                            <i class="ph-light ph-check"></i> قبول الرحلة
                         </button>
                         <button class="btn btn-outline" onclick="startChatWithPassenger('${ride.id}', '${escapeHtml(ride.passenger_name).replace(/'/g, "\\'")}')">
-                            <i class="ph-bold ph-chat-centered-dots"></i> محادثة مع الراكب
+                            <i class="ph-light ph-chat-centered-dots"></i> محادثة مع الراكب
                         </button>
                     `;
                 }
@@ -3924,7 +3921,7 @@
                 <div class="card">
                     <div class="ride-header">
                         <div class="ride-route" style="font-size: 1.5rem;">
-                            <i class="ph-bold ph-map-trifold"></i>
+                            <i class="ph-light ph-map-trifold"></i>
                             ${ride.from_city} → ${ride.to_city}
                         </div>
                         <div class="ride-price" style="font-size: 1.5rem;">
@@ -4306,7 +4303,7 @@
             }
             
             notification.innerHTML = `
-                <div class="notification-icon"><i class="ph-bold ${icon} neon-icon-emerald"></i></div>
+                <div class="notification-icon"><i class="ph-light ${icon} neon-icon-emerald"></i></div>
                 <div class="notification-content">
                     <div class="notification-title" style="color: var(--neon-emerald);">${notificationTitle}</div>
                     <div class="notification-message" style="font-weight: 600;">${escapeHtml(message)}</div>
@@ -4353,7 +4350,7 @@
             };
 
             toast.innerHTML = `
-                <div class="notification-icon"><i class="ph-bold ${icons[type] || 'ph-sparkle'} neon-icon-emerald"></i></div>
+                <div class="notification-icon"><i class="ph-light ${icons[type] || 'ph-sparkle'} neon-icon-emerald"></i></div>
                 <div class="notification-content">
                     <div class="notification-title" style="color: var(--neon-emerald);">تنبيه منصة ترحال</div>
                     <div class="notification-message" style="font-weight:700;">${escapeHtml(message)}</div>

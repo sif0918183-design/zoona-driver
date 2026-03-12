@@ -4,10 +4,18 @@
 */
 
 :root {
-    /* Base Cosmic Palette */
+    /* Base Cosmic Palette (Dark Mode) */
     --cosmic-bg: #0D1117;
     --cosmic-card: rgba(22, 27, 34, 0.8);
     --cosmic-border: rgba(48, 54, 61, 0.8);
+
+    /* Modern Light Tech Palette */
+    --tech-bg: #F9FAFB;
+    --tech-card: #FFFFFF;
+    --tech-text: #111827;
+    --tech-border: #E5E7EB;
+    --tech-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    --tech-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.08);
 
     /* Neon Accents - Passenger (Blue) */
     --neon-blue: #1E90FF;
@@ -73,6 +81,13 @@
             drop-shadow(0 0 12px var(--neon-emerald-glow)) !important;
 }
 
+/* Light Mode Adaptations */
+.light-mode .neon-icon-blue,
+.light-mode .neon-glow-blue {
+    filter: none; /* Reduce glow on light background for cleaner Apple look */
+    text-shadow: none;
+}
+
 /* Sophisticated icon weights per user request */
 i.ph-bold, i.ph-fill {
     font-weight: 700;
@@ -100,6 +115,15 @@ i.ph, i[class*="ph-"] {
     border: 1px solid var(--cosmic-border);
     backdrop-filter: blur(12px);
     border-radius: var(--radius-standard);
+}
+
+/* Light tech card */
+.card-tech-light {
+    background: var(--tech-card);
+    border: 1px solid var(--tech-border);
+    box-shadow: var(--tech-shadow);
+    border-radius: var(--radius-standard);
+    color: var(--tech-text);
 }
 
 .btn-neon-blue {

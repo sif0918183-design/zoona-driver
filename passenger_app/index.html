@@ -7,7 +7,7 @@
     
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#0D1117">
+    <meta name="theme-color" content="#FFFFFF">
     <link rel="icon" href="../assets/branding/icon-192x192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -43,14 +43,14 @@
             --warning: #f59e0b;
             --danger: #ef4444;
             --danger-dark: #dc2626;
-            --light: #f9fafb;
-            --dark: var(--cosmic-bg);
-            --gray: #94a3b8;
-            --gray-light: #334155;
+            --light: var(--tech-bg);
+            --dark: var(--tech-text);
+            --gray: #64748b;
+            --gray-light: var(--tech-border);
             
-            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
-            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            --shadow: var(--tech-shadow);
+            --shadow-lg: var(--tech-shadow-lg);
+            --shadow-xl: 0 10px 25px rgba(0, 0, 0, 0.1);
             
             --radius: 12px;
             --radius-lg: 16px;
@@ -69,15 +69,15 @@
             margin: 0;
             padding: 0;
             overflow-x: hidden;
-            background-color: var(--cosmic-bg);
+            background-color: var(--tech-bg);
         }
 
         /* Body */
         body {
             font-family: 'Tajawal', sans-serif;
-            background: var(--cosmic-bg);
+            background: var(--tech-bg);
             min-height: 100vh;
-            color: #e2e8f0;
+            color: var(--tech-text);
             -webkit-font-smoothing: antialiased;
         }
 
@@ -86,24 +86,24 @@
             max-width: 500px;
             margin: 0 auto;
             height: 100vh;
-            background: var(--cosmic-bg);
+            background: var(--tech-bg);
             position: relative;
             overflow: hidden;
-            border-left: 1px solid var(--cosmic-card);
-            border-right: 1px solid var(--cosmic-card);
+            border-left: 1px solid var(--tech-border);
+            border-right: 1px solid var(--tech-border);
         }
 
         /* Header */
         .app-header {
-            background: var(--cosmic-card);
-            color: white;
+            background: white;
+            color: var(--primary);
             padding: 12px 0;
             text-align: center;
-            box-shadow: var(--shadow);
+            box-shadow: var(--tech-shadow);
             position: sticky;
             top: 0;
             z-index: 1000;
-            border-bottom: 1px solid var(--gray-light);
+            border-bottom: 1px solid var(--tech-border);
         }
 
         .app-header h1 {
@@ -145,26 +145,24 @@
 
         /* Cards */
         .card {
-            background: var(--cosmic-card);
+            background: white;
             border-radius: var(--radius-lg);
             padding: 20px 16px;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--gray-light);
+            box-shadow: var(--tech-shadow);
+            border: 1px solid var(--tech-border);
             margin: 12px;
-            backdrop-filter: blur(10px);
         }
 
         .card-title {
             font-size: 20px;
             font-weight: 800;
-            color: var(--neon-blue);
+            color: var(--primary);
             margin-bottom: 24px;
             text-align: center;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
-            text-shadow: 0 0 10px rgba(30, 144, 255, 0.3);
         }
 
         /* Buttons */
@@ -245,22 +243,21 @@
         .form-input {
             width: 100%;
             padding: 14px 16px;
-            border: 1.5px solid var(--gray-light);
+            border: 1.5px solid var(--tech-border);
             border-radius: var(--radius);
             font-family: 'Tajawal', sans-serif;
             font-size: 15px;
             transition: all 0.3s ease;
-            background: rgba(13, 17, 23, 0.6);
-            color: white;
+            background: #ffffff;
+            color: var(--tech-text);
             direction: rtl;
             text-align: right;
         }
 
         .form-input:focus {
             outline: none;
-            border-color: var(--neon-blue);
-            box-shadow: 0 0 15px rgba(30, 144, 255, 0.2);
-            background: rgba(13, 17, 23, 0.8);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(30, 144, 255, 0.1);
         }
 
         .password-input-container {
@@ -386,9 +383,9 @@
             gap: 16px;
             margin-bottom: 24px;
             padding: 16px;
-            background: rgba(30, 144, 255, 0.05);
+            background: var(--tech-bg);
             border-radius: var(--radius-xl);
-            border: 1px solid rgba(30, 144, 255, 0.15);
+            border: 1px solid var(--tech-border);
         }
 
         .user-avatar {
@@ -403,7 +400,7 @@
             font-size: 28px;
             font-weight: 800;
             box-shadow: 0 0 20px rgba(30, 144, 255, 0.4);
-            border: 3px solid var(--cosmic-card);
+            border: 3px solid var(--tech-card);
         }
 
         .user-info h3 {
@@ -442,14 +439,14 @@
         }
 
         .action-card {
-            background: var(--cosmic-card);
+            background: white;
             border-radius: var(--radius-xl);
             padding: 15px 10px;
             text-align: center;
             cursor: pointer;
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            border: 1px solid var(--gray-light);
-            box-shadow: var(--shadow);
+            border: 1px solid var(--tech-border);
+            box-shadow: var(--tech-shadow);
             position: relative;
             overflow: hidden;
             display: flex;
@@ -734,15 +731,15 @@
         /* Bottom Section - مساحة أكبر (37%) */
         .ride-bottom-section {
             flex: 1;
-            background: var(--cosmic-card);
+            background: white;
             padding: 16px 14px;
             overflow-y: auto;
             height: 38vh;
             min-height: 180px;
             border-top-left-radius: 24px;
             border-top-right-radius: 24px;
-            box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.3);
-            border-top: 1px solid var(--gray-light);
+            box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.05);
+            border-top: 1px solid var(--tech-border);
             display: flex;
             flex-direction: column;
         }
@@ -844,16 +841,16 @@
 
         /* Vehicle Selection Card - أصغر */
         .vehicle-selection-card {
-            background: var(--cosmic-card);
+            background: white;
             border-radius: var(--radius-lg);
             padding: 14px;
             margin-bottom: 14px;
-            border: 1px solid var(--gray-light);
-            box-shadow: var(--shadow);
+            border: 1px solid var(--tech-border);
+            box-shadow: var(--tech-shadow);
         }
 
         .section-title {
-            color: #334155;
+            color: var(--tech-text);
             font-weight: 700;
             font-size: 13px;
             margin-bottom: 12px;
@@ -871,13 +868,13 @@
         }
 
         .vehicle-option {
-            border: 1.5px solid var(--gray-light);
+            border: 1.5px solid var(--tech-border);
             border-radius: var(--radius);
             padding: 10px 6px;
             cursor: pointer;
             transition: all 0.2s ease;
             text-align: center;
-            background: rgba(13, 17, 23, 0.4);
+            background: #f8fafc;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -887,14 +884,13 @@
 
         .vehicle-option:hover {
             transform: translateY(-2px);
-            box-shadow: var(--shadow);
-            border-color: var(--neon-blue);
+            box-shadow: var(--tech-shadow);
+            border-color: var(--primary);
         }
 
         .vehicle-option.selected {
-            border-color: var(--neon-blue);
-            background: rgba(30, 144, 255, 0.1);
-            box-shadow: 0 0 15px rgba(30, 144, 255, 0.2);
+            border-color: var(--primary);
+            background: var(--primary-light);
         }
 
         .vehicle-icon {
@@ -916,7 +912,7 @@
         .vehicle-name {
             font-weight: 700;
             font-size: 12px;
-            color: white;
+            color: var(--tech-text);
             line-height: 1.2;
         }
 
@@ -1006,7 +1002,7 @@
 
         /* GPS Permission Modal - أصغر */
         .gps-modal {
-            background: var(--cosmic-card);
+            background: var(--tech-card);
             border-radius: var(--radius-lg);
             padding: 24px 20px;
             max-width: 400px;
@@ -1080,7 +1076,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: var(--cosmic-bg);
+            background: var(--tech-bg);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1200,7 +1196,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(13, 17, 23, 0.8);
+            background: rgba(255, 255, 255, 0.8);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -1308,7 +1304,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(13, 17, 23, 0.9);
+            background: rgba(255, 255, 255, 0.9);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1318,7 +1314,7 @@
         }
 
         .ride-loading-content {
-            background: var(--cosmic-card);
+            background: var(--tech-card);
             border-radius: var(--radius-lg);
             padding: 35px;
             text-align: center;
@@ -1677,7 +1673,7 @@
         }
 
         .agreement-modal {
-            background: var(--cosmic-card);
+            background: var(--tech-card);
             width: 95%;
             max-width: 400px;
             max-height: 85vh;
@@ -1697,7 +1693,7 @@
         }
 
         .agreement-header {
-            background: linear-gradient(135deg, var(--cosmic-card), var(--cosmic-bg));
+            background: linear-gradient(135deg, var(--tech-card), var(--tech-bg));
             color: white;
             padding: 24px 15px;
             text-align: center;
@@ -1886,7 +1882,7 @@
                     </div>
                     
                     <button type="button" class="btn btn-primary btn-large" onclick="loginCustomer()">
-                        <i class="ph-bold ph-sign-in"></i>
+                        <i class="ph-light ph-sign-in"></i>
                         تسجيل الدخول
                     </button>
                     
@@ -1964,19 +1960,19 @@
                 </div>
                 
                 <button type="button" class="btn btn-primary btn-large" onclick="registerCustomer()">
-                    <i class="ph-bold ph-user-check"></i>
+                    <i class="ph-light ph-user-check"></i>
                     تسجيل الحساب
                 </button>
             </form>
             
             <div id="verification-section" class="hidden verification-box">
                 <div class="verification-content">
-                    <i class="ph-bold ph-check-circle verification-icon neon-icon-emerald"></i>
+                    <i class="ph-light ph-check-circle verification-icon neon-icon-emerald"></i>
                     <h3>تم التسجيل بنجاح!</h3>
                     <p>لتفعيل حسابك، يرجى الضغط على الزر أدناه لإرسال رسالة تأكيد:</p>
                     
                     <button type="button" class="btn btn-secondary" onclick="sendVerificationWhatsApp()">
-                        <i class="ph-bold ph-whatsapp-logo"></i>
+                        <i class="ph-light ph-whatsapp-logo"></i>
                         تأكيد الحساب عبر واتساب
                     </button>
                     
@@ -1988,7 +1984,7 @@
             
             <div class="form-footer">
                 <a href="#" onclick="showCustomerLogin()" class="back-link">
-                    <i class="ph-bold ph-arrow-right neon-icon-blue"></i>
+                    <i class="ph-light ph-arrow-right neon-icon-blue"></i>
                     العودة لتسجيل الدخول
                 </a>
             </div>
@@ -2005,7 +2001,7 @@
                     <p id="user-phone-display"></p>
                     <div id="verification-status" class="hidden">
                         <span class="verified-badge">
-                            <i class="ph-bold ph-check-circle"></i>
+                            <i class="ph-light ph-check-circle"></i>
                             حساب موثق
                         </span>
                     </div>
@@ -2051,25 +2047,25 @@
         <!-- Map Overlay Header -->
         <div class="map-overlay-header">
             <button class="cancel-btn" onclick="goHome()">
-                <i class="ph-bold ph-x"></i>
+                <i class="ph-light ph-x"></i>
                 إلغاء
             </button>
             
             <!-- زر التحويل بين تلقائي/يدوي -->
             <button id="location-mode-btn" class="location-mode-btn auto-mode" onclick="toggleLocationMode()">
                 <span id="mode-text">تلقائي</span>
-                <i class="ph-bold ph-map-pin"></i>
+                <i class="ph-light ph-map-pin"></i>
             </button>
             
             <div class="map-type-selector">
                 <div class="map-type-buttons">
                     <button id="map-roadmap-btn" class="map-type-btn active" onclick="setMapType('roadmap')">
                         <span class="btn-text">خريطة</span>
-                        <i class="ph-bold ph-map-trifold"></i>
+                        <i class="ph-light ph-map-trifold"></i>
                     </button>
                     <button id="map-satellite-btn" class="map-type-btn" onclick="setMapType('satellite')">
                         <span class="btn-text">قمر صناعي</span>
-                        <i class="ph-bold ph-globe"></i>
+                        <i class="ph-light ph-globe"></i>
                     </button>
                 </div>
             </div>
@@ -2086,16 +2082,16 @@
         <!-- Map Controls -->
         <div class="map-controls hidden" id="map-controls">
             <button class="map-control-btn" onclick="recenterMap()" title="تحديد موقعك">
-                <i class="ph-bold ph-target neon-icon-blue"></i>
+                <i class="ph-light ph-target neon-icon-blue"></i>
             </button>
             <button class="map-control-btn" onclick="refreshLocation()" title="تحديث الموقع">
-                <i class="ph-bold ph-arrows-clockwise neon-icon-blue"></i>
+                <i class="ph-light ph-arrows-clockwise neon-icon-blue"></i>
             </button>
         </div>
 
         <!-- Delete Destination Button -->
         <button id="destination-clear-btn" class="destination-clear-btn hidden" onclick="clearDestination()">
-            <i class="ph-bold ph-x-circle neon-icon-blue"></i>
+            <i class="ph-light ph-x-circle neon-icon-blue"></i>
             حذف الوجهة
         </button>
 
@@ -2104,9 +2100,9 @@
             <!-- Route Details -->
             <div id="route-details-section" class="route-details-card hidden">
                 <div class="route-header">
-                    <h4><i class="ph-bold ph-map-trifold neon-icon-blue"></i> تفاصيل المسار</h4>
+                    <h4><i class="ph-light ph-map-trifold neon-icon-blue"></i> تفاصيل المسار</h4>
                     <span class="route-duration">
-                        <i class="ph-bold ph-timer neon-icon-blue"></i>
+                        <i class="ph-light ph-timer neon-icon-blue"></i>
                         <span id="route-duration">0</span> دقيقة
                     </span>
                 </div>
@@ -2116,7 +2112,7 @@
             <!-- Vehicle Selection -->
             <div class="vehicle-selection-card">
                 <h4 class="section-title">
-                    <i class="ph-bold ph-car neon-icon-blue"></i>
+                    <i class="ph-light ph-car neon-icon-blue"></i>
                     اختر نوع المركبة
                 </h4>
                 <div class="vehicle-options-grid">
@@ -2173,7 +2169,7 @@
             <!-- Search Driver Button Container -->
             <div class="search-driver-container">
                 <button id="confirm-ride-btn" class="btn btn-primary search-driver-btn" onclick="confirmRide()" disabled>
-                    <i class="ph-bold ph-magnifying-glass"></i>
+                    <i class="ph-light ph-magnifying-glass"></i>
                     بحث عن سائق
                 </button>
             </div>
@@ -2185,7 +2181,7 @@
 <div id="agreement-modal" class="modal-overlay hidden">
   <div class="agreement-modal">
     <div class="agreement-header">
-      <i class="ph-bold ph-warning neon-icon-blue"></i>
+      <i class="ph-light ph-warning neon-icon-blue"></i>
       <h3>إتفاقية الاستخدام وإخلاء المسؤولية</h3>
       <p class="modal-subtitle">(النسخة التجريبية - زونا)</p>
     </div>
@@ -2212,11 +2208,11 @@
 
     <div class="agreement-actions">
       <button class="btn-agree" onclick="acceptAgreement()">
-        <i class="ph-bold ph-check-circle"></i>
+        <i class="ph-light ph-check-circle"></i>
         أوافق
       </button>
       <button class="btn-disagree" onclick="declineAgreement()">
-        <i class="ph-bold ph-x-circle"></i>
+        <i class="ph-light ph-x-circle"></i>
         لا أوافق
       </button>
     </div>
@@ -2230,7 +2226,7 @@
 <!-- GPS Permission Modal -->
 <div id="gps-permission-modal" class="overlay hidden">
     <div class="gps-modal">
-        <i class="ph-bold ph-map-pin gps-icon neon-icon-blue"></i>
+        <i class="ph-light ph-map-pin gps-icon neon-icon-blue"></i>
         <h2 class="gps-title">تفعيل تحديد الموقع</h2>
         <p class="gps-text">
             نحتاج إلى إذن الوصول إلى موقعك لتحديد نقطة الانطلاق تلقائياً.<br>
@@ -2238,11 +2234,11 @@
         </p>
         <div class="gps-actions">
             <button class="btn btn-primary" onclick="enableGPS()">
-                <i class="ph-bold ph-navigation-arrow"></i>
+                <i class="ph-light ph-navigation-arrow"></i>
                 تفعيل الموقع
             </button>
             <button class="btn btn-outline" onclick="useManualMode()">
-                <i class="ph-bold ph-map-pin"></i>
+                <i class="ph-light ph-map-pin"></i>
                 تحديد يدوي
             </button>
         </div>
@@ -2253,7 +2249,7 @@
 <div id="ride-loading-overlay" class="ride-loading-overlay hidden">
     <div class="ride-loading-content">
         <div class="ride-loading-icon">
-            <i class="ph-bold ph-car neon-icon-blue"></i>
+            <i class="ph-light ph-car neon-icon-blue"></i>
         </div>
         <h3 class="ride-loading-text">جاري البحث عن سائق</h3>
         <p class="ride-loading-subtext">
@@ -2266,7 +2262,7 @@
         </div>
         <div class="loading-spinner" style="margin: 20px auto;"></div>
         <button class="btn btn-outline" onclick="cancelRideSearch()" style="margin-top: 20px;">
-            <i class="ph-bold ph-x"></i>
+            <i class="ph-light ph-x"></i>
             إلغاء البحث
         </button>
     </div>
@@ -2279,7 +2275,7 @@
 <div id="active-trip-modal" class="overlay hidden">
     <div class="modal">
         <div class="modal-header">
-            <i class="ph-bold ph-car modal-icon neon-icon-blue"></i>
+            <i class="ph-light ph-car modal-icon neon-icon-blue"></i>
             <h2 class="modal-title">الرحلة سارية الآن</h2>
         </div>
         <div id="trip-details"></div>
@@ -2701,7 +2697,7 @@ async function loginCustomer() {
     setTimeout(() => {
         loginBtn.innerHTML = `
             <div style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
-                <i class="ph-bold ph-spinner-gap ph-spin" style="font-size: 14px;"></i>
+                <i class="ph-light ph-spinner-gap ph-spin" style="font-size: 14px;"></i>
                 <span style="font-family: 'Tajawal', sans-serif; font-size: 14px; font-weight: 600;">
                     جاري تسجيل الدخول...
                 </span>
@@ -3563,9 +3559,9 @@ async function handleNoDriversFound(rideId, userPosition, vehicleType) {
     overlay.style.zIndex = '6000';
 
     overlay.innerHTML = `
-        <div class="card" style="width: 90%; max-width: 400px; padding: 25px; border-radius: 20px; text-align: center; border: 2px solid var(--neon-warning); background: var(--cosmic-card); backdrop-filter: blur(15px);">
+        <div class="card" style="width: 90%; max-width: 400px; padding: 25px; border-radius: 20px; text-align: center; border: 2px solid var(--neon-warning); background: var(--tech-card); backdrop-filter: blur(15px);">
             <div style="font-size: 50px; color: var(--neon-warning); margin-bottom: 20px;">
-                <i class="ph-bold ph-warning ph-glow-blue"></i>
+                <i class="ph-light ph-warning ph-glow-blue"></i>
             </div>
             <h2 style="color: white; margin-bottom: 12px; font-weight: 800; font-size: 22px;">عذراً، لم نجد سائقين حالياً</h2>
             <p style="color: var(--gray); margin-bottom: 25px; font-size: 14px; line-height: 1.6;">
@@ -3573,16 +3569,16 @@ async function handleNoDriversFound(rideId, userPosition, vehicleType) {
             </p>
             <div style="display: grid; gap: 12px;">
                 <button class="btn btn-primary" onclick="retryRideSearch()">
-                    <i class="ph-bold ph-clock"></i> الانتظار والمحاولة مجدداً
+                    <i class="ph-light ph-clock"></i> الانتظار والمحاولة مجدداً
                 </button>
                 <button class="btn btn-secondary" onclick="changeVehicleType()">
-                    <i class="ph-bold ph-car-simple"></i> تغيير نوع المركبة
+                    <i class="ph-light ph-car-simple"></i> تغيير نوع المركبة
                 </button>
                 <button class="btn btn-outline" onclick="goHomeFromNoDrivers()">
-                    <i class="ph-bold ph-house"></i> العودة للرئيسية
+                    <i class="ph-light ph-house"></i> العودة للرئيسية
                 </button>
                 <button class="btn btn-danger" onclick="cancelRideSearchFromNoDrivers()">
-                    <i class="ph-bold ph-x"></i> إلغاء الطلب نهائياً
+                    <i class="ph-light ph-x"></i> إلغاء الطلب نهائياً
                 </button>
             </div>
         </div>
@@ -3706,7 +3702,7 @@ async function confirmRide() {
     // تغيير حالة الزر للإشارة إلى التحميل
     confirmBtn.innerHTML = `
         <div style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
-            <i class="ph-bold ph-spinner-gap ph-spin" style="font-size: 14px;"></i>
+            <i class="ph-light ph-spinner-gap ph-spin" style="font-size: 14px;"></i>
             <span style="font-family: 'Tajawal', sans-serif; font-size: 14px; font-weight: 600;">
                 جاري البحث عن سائق...
             </span>
@@ -3800,7 +3796,7 @@ async function confirmRide() {
 
         for (const radius of searchRadii) {
             searchRadiusUsed = radius;
-            loadingText.innerHTML = `<i class="ph-bold ph-magnifying-glass"></i> جاري البحث في نطاق ${radius} كم...`;
+            loadingText.innerHTML = `<i class="ph-light ph-magnifying-glass"></i> جاري البحث في نطاق ${radius} كم...`;
             loadingSubtext.innerHTML = `نبحث عن أفضل سائق متاح لنوع ${vehicle.name}...`;
 
             nearbyDrivers = await findNearbyDrivers(userPosition, selectedVehicleType, radius);
@@ -3927,7 +3923,7 @@ async function confirmRide() {
                 
                 confirmBtn.innerHTML = `
                     <div style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
-                        <i class="ph-bold ph-clock" style="font-size: 14px;"></i>
+                        <i class="ph-light ph-clock" style="font-size: 14px;"></i>
                         <span style="font-family: 'Tajawal', sans-serif; font-size: 14px; font-weight: 600;">
                             في انتظار قبول السائق...
                         </span>
@@ -4003,7 +3999,7 @@ function resetRideRequestUI() {
     document.getElementById('driver-info-section').classList.add('hidden');
     document.getElementById('confirm-ride-btn').innerHTML = `
         <div style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
-            <i class="ph-bold ph-car"></i>
+            <i class="ph-light ph-car"></i>
             <span style="font-family: 'Tajawal', sans-serif; font-size: 14px; font-weight: 600;">
                 بحث عن سائق
             </span>
@@ -4174,7 +4170,7 @@ function showNotification(message, type = 'info') {
     else if (type === 'warning') icon = 'ph-warning';
     
     notification.innerHTML = `
-        <div style="font-size: 24px;"><i class="ph-bold ${icon} neon-icon-blue"></i></div>
+        <div style="font-size: 24px;"><i class="ph-light ${icon} neon-icon-blue"></i></div>
         <div style="flex: 1; font-size: 15px; font-weight: 600;">${message}</div>
     `;
     
