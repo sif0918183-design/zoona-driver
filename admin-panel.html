@@ -5,9 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>لوحة تحكم - ترحال زونا</title>
     
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
+    <!-- Global Tech Tech Redesign Theme -->
+    <link rel="stylesheet" href="shared/theme.css">
+
     <!-- Tajawal Font -->
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
     
@@ -19,23 +22,23 @@
     
     <style>
         /* ============================================
-           ADMIN PANEL STYLES - FIXED VERSION
+           ADMIN PANEL STYLES - GLOBAL TECH REDESIGN
            ============================================ */
         :root {
-            --primary: #4f46e5;
-            --primary-dark: #3730a3;
-            --primary-light: #e0e7ff;
-            --secondary: #059669;
-            --secondary-light: #d1fae5;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --warning-light: #fef3c7;
-            --danger: #ef4444;
-            --danger-light: #fee2e2;
-            --info: #3b82f6;
-            --info-light: #dbeafe;
+            --primary: var(--neon-blue);
+            --primary-dark: #104E8B;
+            --primary-light: rgba(30, 144, 255, 0.1);
+            --secondary: var(--neon-emerald);
+            --secondary-light: rgba(16, 185, 129, 0.1);
+            --success: var(--neon-emerald);
+            --warning: var(--neon-warning);
+            --warning-light: rgba(255, 173, 51, 0.1);
+            --danger: var(--neon-danger);
+            --danger-light: rgba(255, 77, 77, 0.1);
+            --info: var(--neon-blue);
+            --info-light: rgba(30, 144, 255, 0.1);
             --light: #f9fafb;
-            --dark: #111827;
+            --dark: var(--cosmic-bg);
             --gray-50: #f9fafb;
             --gray-100: #f3f4f6;
             --gray-200: #e5e7eb;
@@ -45,7 +48,7 @@
             --gray-600: #4b5563;
             --gray-700: #374151;
             --gray-800: #1f2937;
-            --gray-900: #111827;
+            --gray-900: var(--cosmic-bg);
             
             --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
             --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
@@ -79,11 +82,41 @@
 
         body {
             font-family: 'Tajawal', sans-serif;
-            background: var(--gray-50);
-            color: var(--gray-900);
+            background: var(--cosmic-bg);
+            color: #e2e8f0;
             line-height: 1.6;
             min-height: 100vh;
             overflow-x: hidden;
+        }
+
+        .main-header, .stat-card, .chart-card, .tables-container, .modal-content, .table-header, .table thead {
+            background: var(--cosmic-card) !important;
+            border-color: var(--cosmic-border) !important;
+            color: #e2e8f0 !important;
+        }
+
+        .table td, .table th {
+            border-bottom-color: var(--cosmic-border) !important;
+            color: #e2e8f0 !important;
+        }
+
+        .table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.05) !important;
+        }
+
+        .form-control, .page-link {
+            background: rgba(13, 17, 23, 0.8) !important;
+            border-color: var(--cosmic-border) !important;
+            color: white !important;
+        }
+
+        .page-title, .table-title, .chart-title, .admin-name, .stat-value {
+            color: white !important;
+        }
+
+        .sidebar {
+            background: #05070a !important;
+            border-left: 1px solid var(--cosmic-border);
         }
 
         /* Admin Container */
@@ -1067,37 +1100,37 @@
             
             <nav class="sidebar-nav">
                 <a class="nav-item active" onclick="showSection('dashboard')">
-                    <i class="fas fa-tachometer-alt"></i>
+                    <i class="ph-light ph-gauge"></i>
                     <span>لوحة التحكم</span>
                 </a>
                 
                 <a class="nav-item" onclick="showSection('rides')">
-                    <i class="fas fa-road"></i>
+                    <i class="ph-light ph-path"></i>
                     <span>إدارة الرحلات</span>
                 </a>
                 
                 <a class="nav-item" onclick="showSection('prices')">
-                    <i class="fas fa-tags"></i>
+                    <i class="ph-light ph-tag"></i>
                     <span>أسعار الرحلات</span>
                 </a>
                 
                 <a class="nav-item" onclick="showSection('drivers')">
-                    <i class="fas fa-car"></i>
+                    <i class="ph-light ph-steering-wheel"></i>
                     <span>السائقون</span>
                 </a>
                 
                 <a class="nav-item" onclick="showSection('passengers')">
-                    <i class="fas fa-users"></i>
+                    <i class="ph-light ph-users-three"></i>
                     <span>الركاب</span>
                 </a>
                 
                 <a class="nav-item" onclick="showSection('reports')">
-                    <i class="fas fa-chart-bar"></i>
+                    <i class="ph-light ph-chart-bar"></i>
                     <span>التقارير</span>
                 </a>
                 
                 <a class="nav-item" onclick="showSection('settings')">
-                    <i class="fas fa-cog"></i>
+                    <i class="ph-light ph-gear"></i>
                     <span>الإعدادات</span>
                 </a>
             </nav>
@@ -1114,17 +1147,17 @@
             <header class="main-header">
                 <div style="display: flex; align-items: center; gap: 1rem;">
                     <button class="mobile-menu-toggle" onclick="toggleSidebar()">
-                        <i class="fas fa-bars"></i>
+                        <i class="ph-bold ph-list"></i>
                     </button>
                     <h1 class="page-title" id="page-title">
-                        <i class="fas fa-tachometer-alt"></i>
+                        <i class="ph-bold ph-gauge"></i>
                         لوحة التحكم
                     </h1>
                 </div>
                 
                 <div class="admin-info">
                     <button class="dark-mode-toggle" onclick="toggleDarkMode()">
-                        <i class="fas fa-moon"></i>
+                        <i class="ph-bold ph-moon"></i>
                     </button>
                     <div class="admin-avatar" id="admin-avatar">م</div>
                     <div class="admin-details">
@@ -1165,12 +1198,12 @@
                                     margin-bottom: 1rem;
                                     display: none;
                                 ">
-                                    <i class="fas fa-exclamation-circle"></i>
+                                    <i class="ph-bold ph-warning-circle"></i>
                                     <span id="error-message">كود المرور غير صحيح</span>
                                 </div>
                                 
                                 <button type="submit" class="btn btn-primary btn-block" style="margin-top: 1rem; padding: 1rem;">
-                                    <i class="fas fa-sign-in-alt"></i> دخول إلى لوحة التحكم
+                                    <i class="ph-bold ph-sign-in"></i> دخول إلى لوحة التحكم
                                 </button>
                             </form>
                         </div>
@@ -1182,8 +1215,8 @@
                     <!-- Stats Cards -->
                     <div class="stats-grid" id="main-stats-grid">
                         <div class="stat-card" id="total-commission-card">
-                            <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white;">
-                                <i class="fas fa-hand-holding-usd"></i>
+                            <div class="stat-icon" style="background: var(--grad-blue); color: white; box-shadow: 0 0 15px var(--neon-blue-glow);">
+                                <i class="ph-light ph-hand-coins ph-light-bloom-blue"></i>
                             </div>
                             <div class="stat-content">
                                 <div class="stat-value" id="total-commission">0 ج</div>
@@ -1192,8 +1225,8 @@
                         </div>
 
                         <div class="stat-card" id="low-balance-card">
-                            <div class="stat-icon" style="background: linear-gradient(135deg, #f97316, #ea580c); color: white;">
-                                <i class="fas fa-exclamation-circle"></i>
+                            <div class="stat-icon" style="background: var(--grad-emerald); color: white; box-shadow: 0 0 15px var(--neon-emerald-glow);">
+                                <i class="ph-light ph-warning-circle ph-light-bloom-emerald"></i>
                             </div>
                             <div class="stat-content">
                                 <div class="stat-value" id="low-balance-drivers">0</div>
@@ -1201,56 +1234,56 @@
                             </div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-icon" style="background: linear-gradient(135deg, #4f46e5, #3730a3); color: white;">
-                                <i class="fas fa-road"></i>
+                            <div class="stat-icon" style="background: var(--grad-blue); color: white; box-shadow: 0 0 15px var(--neon-blue-glow);">
+                                <i class="ph-light ph-path ph-light-bloom-blue"></i>
                             </div>
                             <div class="stat-content">
                                 <div class="stat-value" id="total-rides">0</div>
                                 <div class="stat-label">إجمالي الرحلات</div>
                                 <div class="stat-change positive">
-                                    <i class="fas fa-arrow-up"></i>
+                                    <i class="ph-bold ph-arrow-up"></i>
                                     <span>12% عن الشهر الماضي</span>
                                 </div>
                             </div>
                         </div>
                         
                         <div class="stat-card">
-                            <div class="stat-icon" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
-                                <i class="fas fa-money-bill-wave"></i>
+                            <div class="stat-icon" style="background: var(--grad-emerald); color: white; box-shadow: 0 0 15px var(--neon-emerald-glow);">
+                                <i class="ph-light ph-money ph-light-bloom-emerald"></i>
                             </div>
                             <div class="stat-content">
                                 <div class="stat-value" id="total-revenue">0 ج</div>
                                 <div class="stat-label">إجمالي الإيرادات</div>
                                 <div class="stat-change positive">
-                                    <i class="fas fa-arrow-up"></i>
+                                    <i class="ph-bold ph-arrow-up"></i>
                                     <span>18% عن الشهر الماضي</span>
                                 </div>
                             </div>
                         </div>
                         
                         <div class="stat-card">
-                            <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b, #eab308); color: white;">
-                                <i class="fas fa-users"></i>
+                            <div class="stat-icon" style="background: var(--grad-blue); color: white; box-shadow: 0 0 15px var(--neon-blue-glow);">
+                                <i class="ph-light ph-users-three ph-light-bloom-blue"></i>
                             </div>
                             <div class="stat-content">
                                 <div class="stat-value" id="active-drivers">0</div>
                                 <div class="stat-label">سائقون نشطون</div>
                                 <div class="stat-change positive">
-                                    <i class="fas fa-arrow-up"></i>
+                                    <i class="ph-bold ph-arrow-up"></i>
                                     <span>5% عن الشهر الماضي</span>
                                 </div>
                             </div>
                         </div>
                         
                         <div class="stat-card">
-                            <div class="stat-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white;">
-                                <i class="fas fa-exclamation-triangle"></i>
+                            <div class="stat-icon" style="background: var(--grad-blue); color: white; box-shadow: 0 0 15px var(--neon-blue-glow);">
+                                <i class="ph-light ph-warning ph-light-bloom-blue"></i>
                             </div>
                             <div class="stat-content">
                                 <div class="stat-value" id="pending-rides">0</div>
                                 <div class="stat-label">طلبات قيد الانتظار</div>
                                 <div class="stat-change negative">
-                                    <i class="fas fa-arrow-down"></i>
+                                    <i class="ph-bold ph-arrow-down"></i>
                                     <span>8% عن الأسبوع الماضي</span>
                                 </div>
                             </div>
@@ -1278,12 +1311,12 @@
                     <div class="tables-container">
                         <div class="table-header">
                             <h3 class="table-title">
-                                <i class="fas fa-history"></i>
+                                <i class="ph-bold ph-clock-counter-clockwise"></i>
                                 آخر الرحلات
                             </h3>
                             <div class="table-actions">
                                 <button class="btn btn-outline btn-sm" onclick="refreshData()">
-                                    <i class="fas fa-sync-alt"></i> تحديث
+                                    <i class="ph-bold ph-arrows-clockwise"></i> تحديث
                                 </button>
                             </div>
                         </div>
@@ -1320,7 +1353,7 @@
                         <div class="tables-container">
                             <div class="table-header">
                                 <h3 class="table-title">
-                                    <i class="fas fa-users"></i>
+                                    <i class="ph-bold ph-users-three"></i>
                                     نظام القبول المتعدد للسائقين
                                 </h3>
                             </div>
@@ -1347,7 +1380,7 @@
                     <div class="tables-container">
                         <div class="table-header">
                             <h3 class="table-title">
-                                <i class="fas fa-road"></i>
+                                <i class="ph-bold ph-path"></i>
                                 إدارة الرحلات
                             </h3>
                             <div class="table-actions">
@@ -1404,12 +1437,12 @@
                     <div class="tables-container">
                         <div class="table-header">
                             <h3 class="table-title">
-                                <i class="fas fa-tags"></i>
+                                <i class="ph-bold ph-tag"></i>
                                 أسعار الرحلات
                             </h3>
                             <div class="table-actions">
                                 <button class="btn btn-primary" onclick="showAddPriceModal()">
-                                    <i class="fas fa-plus"></i> إضافة سعر جديد
+                                    <i class="ph-bold ph-plus"></i> إضافة سعر جديد
                                 </button>
                             </div>
                         </div>
@@ -1437,15 +1470,15 @@
                     <div class="tables-container" style="margin-top: 2rem;">
                         <div class="table-header">
                             <h3 class="table-title">
-                                <i class="fas fa-car"></i>
+                                <i class="ph-bold ph-car"></i>
                                 فئات السيارات ومعاملات السعر
                             </h3>
                             <div class="table-actions">
                                 <button class="btn btn-primary" onclick="showEditCategoriesModal()">
-                                    <i class="fas fa-edit"></i> إدارة الفئات
+                                    <i class="ph-bold ph-pencil-simple"></i> إدارة الفئات
                                 </button>
                                 <button class="btn btn-outline" onclick="loadVehicleCategoriesFromDB()">
-                                    <i class="fas fa-sync-alt"></i> تحديث
+                                    <i class="ph-bold ph-arrows-clockwise"></i> تحديث
                                 </button>
                             </div>
                         </div>
@@ -1473,7 +1506,7 @@
                     <div class="tables-container">
                         <div class="table-header">
                             <h3 class="table-title">
-                                <i class="fas fa-car"></i>
+                                <i class="ph-bold ph-steering-wheel"></i>
                                 إدارة السائقين
                             </h3>
                             <div class="table-actions">
@@ -1517,7 +1550,7 @@
                     <div class="tables-container">
                         <div class="table-header">
                             <h3 class="table-title">
-                                <i class="fas fa-users"></i>
+                                <i class="ph-bold ph-users-three"></i>
                                 إدارة الركاب
                             </h3>
                             <div class="table-actions">
@@ -1585,12 +1618,12 @@
                     <div class="tables-container" style="margin-top: 2rem;">
                         <div class="table-header">
                             <h3 class="table-title">
-                                <i class="fas fa-chart-bar"></i>
+                                <i class="ph-bold ph-chart-bar"></i>
                                 تقرير مفصل
                             </h3>
                             <div class="table-actions">
                                 <button class="btn btn-secondary" onclick="exportReport()">
-                                    <i class="fas fa-download"></i> تصدير التقرير
+                                    <i class="ph-bold ph-download-simple"></i> تصدير التقرير
                                 </button>
                             </div>
                         </div>
@@ -1630,12 +1663,12 @@
                         <div class="tables-container">
                             <div class="table-header">
                                 <h3 class="table-title">
-                                    <i class="fas fa-money-bill-wave"></i>
+                                    <i class="ph-bold ph-money"></i>
                                     تقرير العمولات (5%)
                                 </h3>
                                 <div class="table-actions">
                                     <button class="btn btn-outline btn-sm" onclick="loadCommissionReports()">
-                                        <i class="fas fa-sync-alt"></i> تحديث
+                                        <i class="ph-bold ph-arrows-clockwise"></i> تحديث
                                     </button>
                                 </div>
                             </div>
@@ -1661,12 +1694,12 @@
                         <div class="tables-container">
                             <div class="table-header">
                                 <h3 class="table-title">
-                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <i class="ph-bold ph-warning"></i>
                                     تحذيرات الرصيد
                                 </h3>
                                 <div class="table-actions">
                                     <button class="btn btn-outline btn-sm" onclick="loadLowBalanceDrivers()">
-                                        <i class="fas fa-sync-alt"></i> تحديث
+                                        <i class="ph-bold ph-arrows-clockwise"></i> تحديث
                                     </button>
                                 </div>
                             </div>
@@ -1694,7 +1727,7 @@
                     <div class="tables-container" style="margin-top: 2rem;">
                         <div class="table-header">
                             <h3 class="table-title">
-                                <i class="fas fa-edit"></i>
+                                <i class="ph-bold ph-pencil-simple"></i>
                                 إدارة رصيد السائق
                             </h3>
                         </div>
@@ -1731,7 +1764,7 @@
 
                                 <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
                                     <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-save"></i> تنفيذ العملية
+                                        <i class="ph-bold ph-floppy-disk"></i> تنفيذ العملية
                                     </button>
                                 </div>
                             </form>
@@ -1742,12 +1775,12 @@
                     <div class="tables-container" style="margin-top: 2rem;">
                         <div class="table-header">
                             <h3 class="table-title">
-                                <i class="fas fa-user-slash"></i>
+                                <i class="ph-bold ph-user-minus"></i>
                                 الإلغاءات المشبوهة
                             </h3>
                             <div class="table-actions">
                                 <button class="btn btn-outline btn-sm" onclick="loadSuspiciousCancellations()">
-                                    <i class="fas fa-sync-alt"></i> تحديث
+                                    <i class="ph-bold ph-arrows-clockwise"></i> تحديث
                                 </button>
                             </div>
                         </div>
@@ -1776,7 +1809,7 @@
                         <div class="tables-container">
                             <div class="table-header">
                                 <h3 class="table-title">
-                                    <i class="fas fa-cog"></i>
+                                    <i class="ph-bold ph-gear"></i>
                                     إعدادات المنصة
                                 </h3>
                             </div>
@@ -1819,7 +1852,7 @@
                                     </div>
                                     
                                     <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-save"></i> حفظ الإعدادات
+                                        <i class="ph-bold ph-floppy-disk"></i> حفظ الإعدادات
                                     </button>
                                 </form>
                             </div>
@@ -1829,7 +1862,7 @@
                         <div class="tables-container">
                             <div class="table-header">
                                 <h3 class="table-title">
-                                    <i class="fas fa-car"></i>
+                                    <i class="ph-bold ph-car"></i>
                                     فئات السيارات
                                 </h3>
                             </div>
@@ -1852,10 +1885,10 @@
                             
                             <div style="padding: 1.5rem; border-top: 1px solid var(--gray-200);">
                                 <button class="btn btn-primary" onclick="showEditCategoriesModal()">
-                                    <i class="fas fa-car"></i> إدارة فئات السيارات
+                                    <i class="ph-bold ph-car"></i> إدارة فئات السيارات
                                 </button>
                                 <button class="btn btn-outline" onclick="loadVehicleCategoriesFromDB()" style="margin-right: 1rem;">
-                                    <i class="fas fa-sync-alt"></i> تحديث
+                                    <i class="ph-bold ph-arrows-clockwise"></i> تحديث
                                 </button>
                             </div>
                         </div>
@@ -1906,10 +1939,10 @@
                 
                 <div style="display: flex; gap: 1rem; margin-top: 2rem;">
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i> حفظ
+                        <i class="ph-bold ph-floppy-disk"></i> حفظ
                     </button>
                     <button type="button" class="btn btn-outline" onclick="closePriceModal()">
-                        <i class="fas fa-times"></i> إلغاء
+                        <i class="ph-bold ph-x"></i> إلغاء
                     </button>
                 </div>
             </form>
@@ -1929,7 +1962,7 @@
                 
                 <div style="display: flex; gap: 1rem; margin-top: 2rem;">
                     <button type="button" class="btn btn-outline" onclick="closeCategoriesModal()">
-                        <i class="fas fa-times"></i> إغلاق
+                        <i class="ph-bold ph-x"></i> إغلاق
                     </button>
                 </div>
             </form>
@@ -1968,7 +2001,7 @@
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <span id="acceptances-count">0 سائق</span>
                     <button class="btn btn-outline" onclick="closeRideAcceptancesModal()">
-                        <i class="fas fa-times"></i> إغلاق
+                        <i class="ph-bold ph-x"></i> إغلاق
                     </button>
                 </div>
             </div>
@@ -2139,7 +2172,7 @@
             if (adminInfo && !document.querySelector('.logout-btn')) {
                 const logoutBtn = document.createElement('button');
                 logoutBtn.className = 'btn btn-danger btn-sm logout-btn';
-                logoutBtn.innerHTML = '<i class="fas fa-sign-out-alt"></i> تسجيل الخروج';
+                logoutBtn.innerHTML = '<i class="ph-bold ph-sign-out"></i> تسجيل الخروج';
                 logoutBtn.style.marginRight = '1rem';
                 logoutBtn.onclick = logoutAdmin;
                 adminInfo.insertBefore(logoutBtn, adminInfo.firstChild);
@@ -2240,18 +2273,18 @@
             };
             
             const icons = {
-                'dashboard': 'fa-tachometer-alt',
-                'rides': 'fa-road',
-                'prices': 'fa-tags',
-                'drivers': 'fa-car',
-                'passengers': 'fa-users',
-                'reports': 'fa-chart-bar',
-                'balance': 'fa-wallet',
-                'settings': 'fa-cog'
+                'dashboard': 'ph-gauge',
+                'rides': 'ph-path',
+                'prices': 'ph-tag',
+                'drivers': 'ph-steering-wheel',
+                'passengers': 'ph-users-three',
+                'reports': 'ph-chart-bar',
+                'balance': 'ph-wallet',
+                'settings': 'ph-gear'
             };
             
             document.getElementById('page-title').innerHTML = `
-                <i class="fas ${icons[sectionId]}"></i>
+                <i class="ph-bold ${icons[sectionId]}"></i>
                 ${titles[sectionId]}
             `;
             
@@ -2324,7 +2357,7 @@
                     <td>${formatDateShort(ride.created_at)}</td>
                     <td>
                         <button class="btn btn-outline btn-sm" onclick="viewRideDetails('${ride.id}')">
-                            <i class="fas fa-eye"></i>
+                            <i class="ph-bold ph-eye"></i>
                         </button>
                     </td>
                 `;
@@ -2422,7 +2455,7 @@
                     <td>${driver.last_balance_alert ? formatDateShort(driver.last_balance_alert) : 'لا يوجد'}</td>
                     <td>
                         <button class="btn btn-primary btn-sm" onclick="prepareBalanceAction('${driver.id}')">
-                            <i class="fas fa-plus"></i> شحن
+                            <i class="ph-bold ph-plus"></i> شحن
                         </button>
                     </td>
                 `;
@@ -2468,7 +2501,7 @@
                     <td>${formatDateShort(can.created_at)}</td>
                     <td>
                         <button class="btn btn-outline btn-sm" onclick="viewRideDetails('${can.ride_id}')">
-                            <i class="fas fa-eye"></i>
+                            <i class="ph-bold ph-eye"></i>
                         </button>
                     </td>
                 `;
@@ -2523,7 +2556,7 @@
                     <td>${formatDateShort(ride.created_at)}</td>
                     <td>
                         <button class="btn btn-outline btn-sm" onclick="viewRideAcceptances('${ride.id}')">
-                            <i class="fas fa-users"></i>
+                            <i class="ph-bold ph-users-three"></i>
                         </button>
                     </td>
                 `;
@@ -2559,7 +2592,7 @@
                             <td>${formatDateShort(acc.accepted_at)}</td>
                             <td>
                                 <button class="btn btn-outline btn-sm" onclick="viewDriverDetails('${acc.driver_id}')">
-                                    <i class="fas fa-user"></i>
+                                    <i class="ph-bold ph-user-circle"></i>
                                 </button>
                             </td>
                         `;
@@ -2682,10 +2715,10 @@
             document.body.classList.toggle('dark-mode');
             const icon = document.querySelector('.dark-mode-toggle i');
             if (document.body.classList.contains('dark-mode')) {
-                icon.className = 'fas fa-sun';
+                icon.className = 'ph-bold ph-sun';
                 showNotification('تم تفعيل الوضع الليلي', 'success');
             } else {
-                icon.className = 'fas fa-moon';
+                icon.className = 'ph-bold ph-moon';
                 showNotification('تم تفعيل الوضع النهاري', 'success');
             }
         }
@@ -3102,7 +3135,7 @@
                     <td>${formatDateShort(ride.created_at)}</td>
                     <td>
                         <button class="btn btn-outline btn-sm" onclick="viewRideDetails('${ride.id}')">
-                            <i class="fas fa-eye"></i>
+                            <i class="ph-bold ph-eye"></i>
                         </button>
                     </td>
                 `;
@@ -3190,10 +3223,10 @@
                     <td>
                         <div style="display: flex; gap: 0.5rem;">
                             <button class="btn btn-outline btn-sm" onclick="viewRideDetails('${ride.id}')">
-                                <i class="fas fa-eye"></i>
+                                <i class="ph-bold ph-eye"></i>
                             </button>
                             <button class="btn btn-danger btn-sm" onclick="deleteRide('${ride.id}')" ${ride.status === 'completed' ? 'disabled' : ''}>
-                                <i class="fas fa-trash"></i>
+                                <i class="ph-bold ph-trash"></i>
                             </button>
                         </div>
                     </td>
@@ -3289,10 +3322,10 @@
                     <td>
                         <div style="display: flex; gap: 0.5rem;">
                             <button class="btn btn-outline btn-sm" onclick="editPrice(${price.id})">
-                                <i class="fas fa-edit"></i>
+                                <i class="ph-bold ph-pencil-simple"></i>
                             </button>
                             <button class="btn btn-danger btn-sm" onclick="deletePrice(${price.id})">
-                                <i class="fas fa-trash"></i>
+                                <i class="ph-bold ph-trash"></i>
                             </button>
                         </div>
                     </td>
@@ -3338,11 +3371,11 @@
                         <td>
                             <div style="display: flex; gap: 0.25rem;">
                                 <button class="btn btn-outline btn-sm" onclick="editSingleCategory(${category.id})">
-                                    <i class="fas fa-edit"></i>
+                                    <i class="ph-bold ph-pencil-simple"></i>
                                 </button>
                                 <button class="btn btn-${category.is_active ? 'danger' : 'success'} btn-sm" 
                                         onclick="toggleCategoryStatus(${category.id}, ${!category.is_active})">
-                                    <i class="fas fa-${category.is_active ? 'ban' : 'check'}"></i>
+                                    <i class="ph-bold ${category.is_active ? 'ph-prohibit' : 'ph-check'}"></i>
                                 </button>
                             </div>
                         </td>
@@ -3581,11 +3614,11 @@
                         <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
                             <button type="button" class="btn btn-primary btn-sm" 
                                     onclick="saveCategoryChanges(${category.id})">
-                                <i class="fas fa-save"></i> حفظ
+                                <i class="ph-bold ph-floppy-disk"></i> حفظ
                             </button>
                             <button type="button" class="btn btn-${category.is_active ? 'danger' : 'success'} btn-sm" 
                                     onclick="toggleCategoryStatus(${category.id}, ${!category.is_active})">
-                                <i class="fas fa-${category.is_active ? 'ban' : 'check'}"></i>
+                                <i class="ph-bold ${category.is_active ? 'ph-prohibit' : 'ph-check'}"></i>
                                 ${category.is_active ? 'تعطيل' : 'تفعيل'}
                             </button>
                         </div>
@@ -3600,7 +3633,7 @@
             newCategoryDiv.innerHTML = `
                 <div style="margin-top: 2rem; padding-top: 1rem; border-top: 2px solid var(--gray-200);">
                     <h4 style="color: var(--primary); margin-bottom: 1rem;">
-                        <i class="fas fa-plus"></i> إضافة فئة جديدة
+                        <i class="ph-bold ph-plus"></i> إضافة فئة جديدة
                     </h4>
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
@@ -3624,7 +3657,7 @@
                     
                     <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
                         <button type="button" class="btn btn-primary" onclick="addNewCategory()">
-                            <i class="fas fa-plus"></i> إضافة فئة جديدة
+                            <i class="ph-bold ph-plus"></i> إضافة فئة جديدة
                         </button>
                     </div>
                 </div>
@@ -3694,10 +3727,10 @@
                 
                 <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
                     <button type="button" class="btn btn-primary" onclick="saveSingleCategory(${categoryId})">
-                        <i class="fas fa-save"></i> حفظ
+                        <i class="ph-bold ph-floppy-disk"></i> حفظ
                     </button>
                     <button type="button" class="btn btn-outline" onclick="closeCategoriesModal()">
-                        <i class="fas fa-times"></i> إلغاء
+                        <i class="ph-bold ph-x"></i> إلغاء
                     </button>
                 </div>
             `;
@@ -3789,10 +3822,10 @@
                     <td>
                         <div style="display: flex; gap: 0.5rem;">
                             <button class="btn btn-outline btn-sm" onclick="viewDriverDetails('${driver.id}')">
-                                <i class="fas fa-eye"></i>
+                                <i class="ph-bold ph-eye"></i>
                             </button>
                             <button class="btn btn-primary btn-sm" onclick="toggleDriverStatus('${driver.id}', ${!driver.is_active})">
-                                <i class="fas ${driver.is_active ? 'fa-ban' : 'fa-check'}"></i>
+                                <i class="ph-bold ${driver.is_active ? 'ph-prohibit' : 'ph-check'}"></i>
                             </button>
                         </div>
                     </td>
@@ -3875,10 +3908,10 @@
                     <td>
                         <div style="display: flex; gap: 0.5rem;">
                             <button class="btn btn-outline btn-sm" onclick="viewPassengerDetails('${passenger.id}')">
-                                <i class="fas fa-eye"></i>
+                                <i class="ph-bold ph-eye"></i>
                             </button>
                             <button class="btn btn-primary btn-sm" onclick="toggleVerification('${passenger.id}', ${!passenger.is_verified})">
-                                <i class="fas ${passenger.is_verified ? 'fa-times' : 'fa-check'}"></i>
+                                <i class="ph-bold ${passenger.is_verified ? 'ph-x' : 'ph-check'}"></i>
                             </button>
                         </div>
                     </td>
@@ -3934,7 +3967,7 @@
                     </td>
                     <td>
                         <button class="btn btn-outline btn-sm" onclick="viewPassengerDetails(${passenger.id})">
-                            <i class="fas fa-eye"></i>
+                            <i class="ph-bold ph-eye"></i>
                         </button>
                     </td>
                 `;
@@ -3949,7 +3982,7 @@
             passenger.is_verified = newStatus;
             displayPassengersTable();
             
-            showNotification(`تم ${newStatus ? 'توثيق' : 'إلغاء توثيق'} الراكب بنساح`, 'success');
+            showNotification(`تم ${newStatus ? 'توثيق' : 'إلغاء توثيق'} الراكب بنجاح`, 'success');
         }
 
         function viewPassengerDetails(passengerId) {
@@ -4302,13 +4335,13 @@
             const notification = document.createElement('div');
             notification.className = `notification notification-${type}`;
             
-            let icon = 'ℹ️';
-            if (type === 'success') icon = '✅';
-            else if (type === 'error') icon = '❌';
-            else if (type === 'warning') icon = '⚠️';
+            let icon = 'ph-info';
+            if (type === 'success') icon = 'ph-check-circle';
+            else if (type === 'error') icon = 'ph-x-circle';
+            else if (type === 'warning') icon = 'ph-warning';
             
             notification.innerHTML = `
-                <div class="notification-icon">${icon}</div>
+                <div class="notification-icon"><i class="ph-bold ${icon}"></i></div>
                 <div class="notification-content">
                     <div class="notification-title">${type === 'success' ? 'نجاح' : type === 'error' ? 'خطأ' : type === 'warning' ? 'تحذير' : 'معلومة'}</div>
                     <div class="notification-message">${message}</div>

@@ -1,0 +1,145 @@
+/*
+   Shared Cosmic Neon Theme - Global Tech Tech Redesign
+   Standardized variables for all apps
+*/
+
+:root {
+    /* Base Cosmic Palette */
+    --cosmic-bg: #0D1117;
+    --cosmic-card: rgba(22, 27, 34, 0.8);
+    --cosmic-border: rgba(48, 54, 61, 0.8);
+
+    /* Neon Accents - Passenger (Blue) */
+    --neon-blue: #1E90FF;
+    --neon-blue-glow: rgba(30, 144, 255, 0.4);
+
+    /* Neon Accents - Driver (Emerald) */
+    --neon-emerald: #10B981;
+    --neon-emerald-glow: rgba(16, 185, 129, 0.4);
+
+    /* Semantic Colors */
+    --neon-danger: #FF4D4D;
+    --neon-warning: #FFAD33;
+
+    /* Gradients */
+    --grad-blue: linear-gradient(135deg, #1E90FF 0%, #104E8B 100%);
+    --grad-emerald: linear-gradient(135deg, #10B981 0%, #065F46 100%);
+
+    /* Shared Spacing/Radius */
+    --radius-standard: 12px;
+    --radius-large: 20px;
+}
+
+/* Global Tech Utilities */
+.ph-light-bloom-blue {
+    filter: drop-shadow(0 0 2px var(--neon-blue))
+            drop-shadow(0 0 8px var(--neon-blue-glow))
+            drop-shadow(0 0 15px var(--neon-blue-glow))
+            drop-shadow(0 0 30px rgba(30, 144, 255, 0.15));
+}
+
+.ph-light-bloom-emerald {
+    filter: drop-shadow(0 0 2px var(--neon-emerald))
+            drop-shadow(0 0 8px var(--neon-emerald-glow))
+            drop-shadow(0 0 15px var(--neon-emerald-glow))
+            drop-shadow(0 0 30px rgba(16, 185, 129, 0.15));
+}
+
+.neon-glow-blue {
+    color: var(--neon-blue);
+    filter: drop-shadow(0 0 2px var(--neon-blue))
+            drop-shadow(0 0 5px var(--neon-blue-glow))
+            drop-shadow(0 0 12px var(--neon-blue-glow));
+}
+
+.neon-glow-emerald {
+    color: var(--neon-emerald);
+    filter: drop-shadow(0 0 2px var(--neon-emerald))
+            drop-shadow(0 0 5px var(--neon-emerald-glow))
+            drop-shadow(0 0 12px var(--neon-emerald-glow));
+}
+
+.neon-icon-blue {
+    color: var(--neon-blue) !important;
+    filter: drop-shadow(0 0 1px var(--neon-blue))
+            drop-shadow(0 0 4px var(--neon-blue-glow))
+            drop-shadow(0 0 12px var(--neon-blue-glow)) !important;
+}
+
+.neon-icon-emerald {
+    color: var(--neon-emerald) !important;
+    filter: drop-shadow(0 0 1px var(--neon-emerald))
+            drop-shadow(0 0 4px var(--neon-emerald-glow))
+            drop-shadow(0 0 12px var(--neon-emerald-glow)) !important;
+}
+
+/* Sophisticated icon weights per user request */
+i.ph-bold, i.ph-fill {
+    font-weight: 700;
+}
+
+i.ph-light {
+    font-weight: 300;
+}
+
+i.ph-thin {
+    font-weight: 100;
+}
+
+i.ph {
+    font-weight: 400;
+}
+
+/* Default icon weight to Light for sophistication */
+i.ph, i[class*="ph-"] {
+    vertical-align: middle;
+}
+
+.card-tech {
+    background: var(--cosmic-card);
+    border: 1px solid var(--cosmic-border);
+    backdrop-filter: blur(12px);
+    border-radius: var(--radius-standard);
+}
+
+.btn-neon-blue {
+    background: var(--grad-blue);
+    color: white !important;
+    font-weight: 700;
+    box-shadow: 0 4px 12px var(--neon-blue-glow);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-neon-blue:hover:not(:disabled) {
+    box-shadow: 0 0 20px var(--neon-blue-glow);
+    transform: translateY(-2px);
+}
+
+.btn-neon-emerald {
+    background: var(--grad-emerald);
+    color: white !important;
+    font-weight: 700;
+    box-shadow: 0 4px 12px var(--neon-emerald-glow);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-neon-emerald:hover:not(:disabled) {
+    box-shadow: 0 0 20px var(--neon-emerald-glow);
+    transform: translateY(-2px);
+}
+
+/* Polished Glow for Icons */
+.ph-glow-blue {
+    filter: drop-shadow(0 0 4px var(--neon-blue-glow));
+}
+
+.ph-glow-emerald {
+    filter: drop-shadow(0 0 4px var(--neon-emerald-glow));
+}
+
+/* Global RTL Support Utility */
+[dir="rtl"] {
+    font-family: 'Tajawal', sans-serif;
+}

@@ -6,10 +6,11 @@
     <title>طلب رحلة جديد - ترحال زونا</title>
 
     <!-- ✅ مكتبات التصميم -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
-    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
-    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+
+    <!-- Global Tech Tech Redesign Theme -->
+    <link rel="stylesheet" href="../shared/theme.css">
 
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -191,9 +192,15 @@
         }
         
         .btn-accept {
-            background: var(--primary);
+            background: var(--grad-emerald);
             color: white;
-            box-shadow: 0 4px 12px rgba(22, 163, 74, 0.4);
+            box-shadow: 0 4px 12px var(--neon-emerald-glow);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-accept:hover:not(:disabled) {
+            box-shadow: 0 0 20px var(--neon-emerald-glow);
+            transform: translateY(-2px);
         }
         
         .btn-decline {
@@ -278,7 +285,7 @@
         <!-- ✅ Ride Details Card -->
         <div class="ride-card">
             <div class="detail-row">
-                <div class="detail-icon"><ion-icon name="person-circle-outline"></ion-icon></div>
+                <div class="detail-icon"><i class="ph-light ph-user-circle"></i></div>
                 <div class="detail-info">
                     <div class="detail-label">العميل</div>
                     <div class="detail-value" id="customer-name">جاري التحميل...</div>
@@ -286,7 +293,7 @@
             </div>
 
             <div class="detail-row">
-                <div class="detail-icon"><ion-icon name="navigate-outline"></ion-icon></div>
+                <div class="detail-icon"><i class="ph-light ph-navigation-arrow"></i></div>
                 <div class="detail-info">
                     <div class="detail-label">المسافة</div>
                     <div class="detail-value" id="distance">-- كم</div>
@@ -294,7 +301,7 @@
             </div>
 
             <div class="detail-row">
-                <div class="detail-icon"><ion-icon name="location-outline"></ion-icon></div>
+                <div class="detail-icon"><i class="ph-light ph-map-pin"></i></div>
                 <div class="detail-info">
                     <div class="detail-label">موقع الانطلاق</div>
                     <div class="detail-value" id="pickup-location" style="font-size: 14px;">جاري تحديد الموقع...</div>
@@ -310,7 +317,7 @@
         <!-- ✅ Action Buttons -->
         <div class="action-buttons">
             <button class="btn btn-accept" onclick="handleAccept()" id="accept-btn" disabled>
-                <ion-icon name="checkmark-circle"></ion-icon>
+                <i class="ph-bold ph-check-circle"></i>
                 قــبـول الـرحـلـة
             </button>
             <button class="btn btn-decline" onclick="handleDecline()" id="decline-btn">
@@ -510,7 +517,7 @@
             } else {
                 acceptBtn.disabled = false;
                 declineBtn.disabled = false;
-                acceptBtn.innerHTML = '<ion-icon name="checkmark-circle"></ion-icon> قــبـول الـرحـلـة';
+                acceptBtn.innerHTML = '<i class="ph-bold ph-check-circle"></i> قــبـول الـرحـلـة';
             }
         }
 

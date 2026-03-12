@@ -2,24 +2,25 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ترحال زونا - تطبيق السائقين</title>
 
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#16a34a">
-    <link rel="icon" href="../icons/icon-192x192.png">
+    <link rel="icon" href="../assets/branding/icon-192x192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="../icons/icon-192x192.png">
+    <link rel="apple-touch-icon" href="../assets/branding/icon-192x192.png">
 
     <!-- Tajawal Font -->
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
 
-    <!-- Ionicons Icons -->
-    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
-    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Global Tech Tech Redesign Theme -->
+    <link rel="stylesheet" href="../shared/theme.css">
 
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -152,13 +153,15 @@
         }
 
         .btn-driver {
-            background: var(--driver);
+            background: var(--grad-emerald);
             color: white;
+            box-shadow: 0 4px 12px var(--neon-emerald-glow);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .btn-driver:hover {
-            background: var(--driver-dark);
-            box-shadow: 0 6px 20px rgba(22, 163, 74, 0.3);
+        .btn-driver:hover:not(:disabled) {
+            box-shadow: 0 0 20px var(--neon-emerald-glow);
+            transform: translateY(-2px);
         }
 
         .btn-danger {
@@ -628,7 +631,7 @@
 <!-- Splash Screen -->
 <div id="splash-screen">
     <div class="splash-content">
-        <img src="icons/icon-384x384.png" alt="Tarhal Zoona Logo" class="splash-logo">
+        <img src="../assets/branding/icon-384x384.png" alt="Tarhal Zoona Logo" class="splash-logo">
         <div class="loader"></div>
         <p class="splash-text">جاري تشغيل زونا للسائقين...</p>
     </div>
@@ -638,7 +641,7 @@
     <!-- Header -->
     <header class="app-header">
         <h1 class="app-title">
-            <img src="icons/icon-512x512.png" alt="ترحال زونا" class="logo-img">
+            <img src="../assets/branding/icon-512x512.png" alt="ترحال زونا" class="logo-img">
             زونــا - السائقين
         </h1>
     </header>
@@ -647,7 +650,7 @@
     <section id="driver-login-screen" class="screen">
         <div class="card">
             <h2 class="card-title">
-                <ion-icon name="car-sport-outline"></ion-icon>
+                <i class="ph-light ph-steering-wheel neon-icon-emerald"></i>
                 دخول السائقين
             </h2>
 
@@ -665,7 +668,7 @@
                 </div>
 
                 <button type="button" class="btn btn-driver" onclick="loginDriver()">
-                    <ion-icon name="log-in-outline"></ion-icon>
+                    <i class="ph-bold ph-sign-in"></i>
                     دخول السائق
                 </button>
             </form>
@@ -682,7 +685,7 @@
     <section id="driver-register-info-screen" class="screen hidden">
         <div class="card">
             <h2 class="card-title">
-                <ion-icon name="information-circle-outline"></ion-icon>
+                <i class="ph-light ph-info neon-icon-emerald"></i>
                 التسجيل كسائق
             </h2>
 
@@ -702,13 +705,13 @@
             </div>
 
             <button type="button" class="btn btn-driver" onclick="contactAdminForDriverRegistration()">
-                <ion-icon name="logo-whatsapp"></ion-icon>
+                <i class="ph-bold ph-whatsapp-logo"></i>
                 التواصل مع الإدارة على واتساب
             </button>
 
             <div class="form-footer mt-3">
                 <a href="#" onclick="showDriverLogin()" class="back-link">
-                    <ion-icon name="arrow-back-outline"></ion-icon>
+                    <i class="ph-bold ph-arrow-right"></i>
                     العودة لتسجيل الدخول
                 </a>
             </div>
@@ -733,7 +736,7 @@
                 </div>
 
                 <button id="toggle-online-btn" class="btn btn-driver" onclick="toggleDriverStatus()">
-                    <ion-icon name="power-outline"></ion-icon>
+                    <i class="ph-bold ph-power"></i>
                     تفعيل وضع العمل
                 </button>
             </div>
@@ -761,22 +764,22 @@
             </div>
 
             <button class="btn btn-driver mt-2" onclick="showDriverProfile()">
-                <ion-icon name="person-circle-outline"></ion-icon>
+                <i class="ph-light ph-user-circle"></i>
                 الملف الشخصي
             </button>
 
             <button id="fix-notifications-btn" class="btn btn-outline mt-2" onclick="manualFixNotifications()">
-                <ion-icon name="notifications-outline"></ion-icon>
+                <i class="ph-light ph-bell-ringing"></i>
                 إصلاح استلام الإشعارات
             </button>
 
             <button class="btn btn-driver mt-2" onclick="window.location.href='travel-platform.html'">
-                <ion-icon name="airplane-outline"></ion-icon>
+                <i class="ph-light ph-airplane-tilt"></i>
                 دخول منصة سفريات زونا
             </button>
 
             <button class="btn btn-driver mt-2" onclick="logoutDriver()">
-                <ion-icon name="exit-outline"></ion-icon>
+                <i class="ph-light ph-sign-out"></i>
                 تسجيل خروج السائق
             </button>
         </div>
@@ -788,14 +791,14 @@
 
 <!-- Incoming Ride Modal -->
 <div id="incoming-ride-modal" class="overlay hidden">
-    <div class="modal">
+        <div class="modal" style="background: var(--cosmic-card); border: 2px solid var(--neon-emerald); backdrop-filter: blur(15px); color: white;">
         <div class="modal-header">
-            <div style="font-size: 48px; margin-bottom: 16px;"></div>
-            <h2 class="modal-title">طلب رحلة جديد!</h2>
-            <p class="modal-subtitle">لديك 40 ثانية للرد</p>
+                <div style="font-size: 48px; margin-bottom: 16px;"><i class="ph-bold ph-bell-ringing neon-icon-emerald"></i></div>
+                <h2 class="modal-title" style="color: var(--neon-emerald);">طلب رحلة جديد!</h2>
+                <p class="modal-subtitle" style="color: var(--gray-light);">لديك 40 ثانية للرد</p>
         </div>
 
-        <div class="card" style="background: #fef2f2;">
+            <div class="card" style="background: rgba(16, 185, 129, 0.1); border: 1px solid var(--neon-emerald);">
             <div id="ride-details">
                 <!-- سيتم تعبئة تفاصيل الرحلة هنا -->
             </div>
@@ -803,11 +806,11 @@
 
         <div style="display: flex; gap: 12px; margin-top: 24px;">
             <button class="btn btn-driver" onclick="acceptRide()" style="flex: 1;">
-                <ion-icon name="checkmark-outline"></ion-icon>
+                <i class="ph-bold ph-check"></i>
                 قبول الرحلة
             </button>
             <button class="btn btn-danger" onclick="declineRide()" style="flex: 1;">
-                <ion-icon name="close-outline"></ion-icon>
+                <i class="ph-bold ph-x"></i>
                 رفض
             </button>
         </div>
@@ -1077,7 +1080,7 @@
 
             <div style="background: #f0f9ff; padding: 12px; border-radius: 8px; margin-top: 20px; text-align: center; border: 1px solid #bae6fd;">
                 <p style="color: var(--driver-dark); font-weight: 600; margin: 0; font-size: 13px;">
-                    <ion-icon name="information-circle-outline" style="vertical-align: middle;"></ion-icon>
+                    <i class="ph-bold ph-info" style="vertical-align: middle;"></i>
                     يرجى قراءة جميع البنود بعناية قبل الموافقة
                 </p>
             </div>
@@ -1455,14 +1458,14 @@
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
 
-        let icon = 'ℹ️';
-        if (type === 'success') icon = '✅';
-        else if (type === 'error') icon = '❌';
-        else if (type === 'warning') icon = '⚠️';
+        let icon = 'ph-info';
+        if (type === 'success') icon = 'ph-check-circle';
+        else if (type === 'error') icon = 'ph-x-circle';
+        else if (type === 'warning') icon = 'ph-warning';
 
         notification.innerHTML = `
-            <div class="notification-icon">${icon}</div>
-            <div style="flex: 1;">${message}</div>
+            <div class="notification-icon"><i class="ph-bold ${icon} neon-icon-emerald"></i></div>
+            <div style="flex: 1; font-weight: 600;">${message}</div>
         `;
 
         notificationArea.appendChild(notification);
@@ -1517,7 +1520,7 @@
     <div class="modal agreement-modal" style="max-height: 90vh; width: 95%;">
         <div class="modal-header" style="background: linear-gradient(135deg, var(--driver), var(--driver-dark)); color: white; padding: 16px 20px; border-radius: var(--radius-lg) var(--radius-lg) 0 0;">
             <h2 style="font-size: 20px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
-                <ion-icon name="document-text-outline"></ion-icon>
+                <i class="ph-bold ph-file-text"></i>
                 إقرار وموافقة السائق
             </h2>
             <p style="color: rgba(255,255,255,0.9); margin-top: 4px; font-size: 14px;">
@@ -1530,17 +1533,17 @@
         </div>
 
         <div class="scroll-indicator" style="text-align: center; padding: 8px; color: var(--gray); font-size: 13px; display: flex; flex-direction: column; align-items: center; gap: 4px;">
-            <ion-icon name="chevron-down-outline" style="animation: bounce 2s infinite;"></ion-icon>
+            <i class="ph-bold ph-caret-double-down" style="animation: bounce 2s infinite;"></i>
             <span>مرر لأسفل لقراءة البنود كاملة</span>
         </div>
 
         <div style="display: flex; gap: 10px; margin-top: 16px; padding: 16px; padding-top: 12px; border-top: 1px solid var(--gray-light);">
             <button class="btn btn-driver" onclick="acceptAgreement()" style="flex: 1; padding: 12px; font-size: 14px;">
-                <ion-icon name="checkmark-circle-outline"></ion-icon>
+                <i class="ph-bold ph-check-circle"></i>
                 أوافق على جميع البنود
             </button>
             <button class="btn btn-danger" onclick="rejectAgreement()" style="flex: 1; padding: 12px; font-size: 14px;">
-                <ion-icon name="close-circle-outline"></ion-icon>
+                <i class="ph-bold ph-x-circle"></i>
                 لا أوافق
             </button>
         </div>
@@ -1973,7 +1976,7 @@ async function toggleDriverStatus() {
             // 4. تحديث الواجهة
             statusIndicator.className = 'status-indicator status-online';
             statusText.textContent = 'متصل وجاهز';
-            toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> متصل الآن';
+            toggleBtn.innerHTML = '<i class="ph-bold ph-power"></i> متصل الآن';
             toggleBtn.classList.add('btn-danger');
             toggleBtn.classList.remove('btn-driver');
             
@@ -2015,7 +2018,7 @@ async function toggleDriverStatus() {
             // التراجع للحالة السابقة (Offline)
             isDriverOnline = false;
             foreverOnlineManager = null;
-            toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> تفعيل وضع العمل';
+            toggleBtn.innerHTML = '<i class="ph-bold ph-power"></i> تفعيل وضع العمل';
             toggleBtn.classList.remove('btn-danger');
             toggleBtn.classList.add('btn-driver');
 
@@ -2047,7 +2050,7 @@ async function toggleDriverStatus() {
             // 3. تحديث الواجهة
             statusIndicator.className = 'status-indicator status-offline';
             statusText.textContent = 'غير متصل';
-            toggleBtn.innerHTML = '<ion-icon name="power-outline"></ion-icon> تفعيل وضع العمل';
+            toggleBtn.innerHTML = '<i class="ph-bold ph-power"></i> تفعيل وضع العمل';
             toggleBtn.classList.remove('btn-danger');
             toggleBtn.classList.add('btn-driver');
             
@@ -2110,7 +2113,7 @@ async function restoreDriverStatus() {
         // تحديث الواجهة أولاً
         document.getElementById('driver-status-indicator').className = 'status-indicator status-online';
         document.getElementById('driver-status-text').textContent = 'متصل وجاهز';
-        document.getElementById('toggle-online-btn').innerHTML = '<ion-icon name="power-outline"></ion-icon> متصل الآن';
+        document.getElementById('toggle-online-btn').innerHTML = '<i class="ph-bold ph-power"></i> متصل الآن';
         document.getElementById('toggle-online-btn').classList.add('btn-danger');
         document.getElementById('toggle-online-btn').classList.remove('btn-driver');
         
@@ -2137,7 +2140,7 @@ async function restoreDriverStatus() {
                 
                 document.getElementById('driver-status-indicator').className = 'status-indicator status-offline';
                 document.getElementById('driver-status-text').textContent = 'غير متصل';
-                document.getElementById('toggle-online-btn').innerHTML = '<ion-icon name="power-outline"></ion-icon> تفعيل وضع العمل';
+                document.getElementById('toggle-online-btn').innerHTML = '<i class="ph-bold ph-power"></i> تفعيل وضع العمل';
                 document.getElementById('toggle-online-btn').classList.remove('btn-danger');
                 document.getElementById('toggle-online-btn').classList.add('btn-driver');
                 
