@@ -4,8 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>الشكاوى وآراء العملاء - متجر زونا</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Tajawal Font -->
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Global Tech Redesign Theme -->
+    <link rel="stylesheet" href="../shared/theme.css">
     <style>
         * {
             margin: 0;
@@ -15,8 +19,8 @@
 
         body {
             font-family: 'Tajawal', sans-serif;
-            background: linear-gradient(135deg, #f1f4ff 0%, #f9f9f9 100%);
-            color: #333;
+            background: var(--cosmic-bg);
+            color: #e2e8f0;
             line-height: 1.5;
             padding-bottom: 80px;
             min-height: 100vh;
@@ -29,7 +33,7 @@
         }
 
         .complaints-header {
-            background: linear-gradient(135deg, #4f46e5, #4338ca);
+            background: linear-gradient(135deg, var(--neon-blue), var(--primary-dark));
             color: white;
             padding: 40px 20px;
             text-align: center;
@@ -37,6 +41,8 @@
             border-radius: 0 0 25px 25px;
             position: relative;
             overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border-bottom: 2px solid var(--neon-blue);
         }
 
         .complaints-header::before {
@@ -67,7 +73,7 @@
             position: absolute;
             top: 20px;
             right: 20px;
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(13, 17, 23, 0.4);
             color: white;
             text-decoration: none;
             padding: 8px 16px;
@@ -79,7 +85,7 @@
             gap: 8px;
             transition: all 0.3s ease;
             backdrop-filter: blur(5px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             z-index: 10;
         }
 
@@ -97,16 +103,14 @@
         }
 
         .complaint-form {
-            background: linear-gradient(145deg, #ffffff, #f8f9fa);
+            background: var(--cosmic-card);
             padding: 40px 30px;
             border-radius: 20px;
-            box-shadow: 
-                0 8px 25px rgba(108, 99, 255, 0.15),
-                0 4px 15px rgba(0,0,0,0.05),
-                inset 0 1px 0 rgba(255,255,255,0.8);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
             margin-bottom: 40px;
             position: relative;
             overflow: hidden;
+            border: 1px solid var(--gray-light);
         }
 
         .complaint-form::before {
@@ -116,7 +120,7 @@
             left: 0;
             width: 100%;
             height: 4px;
-            background: linear-gradient(90deg, #4f46e5, #4338ca, #4f46e5);
+            background: linear-gradient(90deg, var(--neon-blue), var(--primary-dark), var(--neon-blue));
             background-size: 200% 100%;
             animation: gradientMove 3s ease infinite;
         }
@@ -127,11 +131,12 @@
         }
 
         .form-title {
-            color: #4338ca;
+            color: var(--neon-blue);
             text-align: center;
             margin-bottom: 30px;
             font-size: 1.6rem;
             font-weight: 700;
+            text-shadow: 0 0 10px rgba(30, 144, 255, 0.3);
         }
 
         .form-group {
@@ -141,7 +146,7 @@
         .form-group label {
             display: block;
             margin-bottom: 8px;
-            color: #4338ca;
+            color: var(--neon-blue);
             font-weight: 600;
             font-size: 1rem;
         }
@@ -149,18 +154,20 @@
         .form-control {
             width: 100%;
             padding: 12px 15px;
-            border: 2px solid #e0e7ff;
+            border: 1.5px solid var(--gray-light);
             border-radius: 12px;
             font-size: 1rem;
             font-family: 'Tajawal', sans-serif;
             transition: all 0.3s ease;
-            background: white;
+            background: rgba(13, 17, 23, 0.6);
+            color: white;
         }
 
         .form-control:focus {
             outline: none;
-            border-color: #4f46e5;
-            box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.1);
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 15px rgba(30, 144, 255, 0.2);
+            background: rgba(13, 17, 23, 0.8);
         }
 
         textarea.form-control {
@@ -185,24 +192,25 @@
         .account-type-option label {
             display: block;
             padding: 15px;
-            background: #f8f9fa;
-            border: 2px solid #e0e7ff;
+            background: rgba(13, 17, 23, 0.4);
+            border: 1.5px solid var(--gray-light);
             border-radius: 12px;
             text-align: center;
             cursor: pointer;
             transition: all 0.3s ease;
+            color: var(--gray);
         }
 
         .account-type-option label:hover {
-            background: #f0f0ff;
-            border-color: #4f46e5;
+            background: rgba(13, 17, 23, 0.6);
+            border-color: var(--neon-blue);
         }
 
         .account-type-option input:checked + label {
-            background: linear-gradient(135deg, #4f46e5, #4338ca);
+            background: linear-gradient(135deg, var(--neon-blue), var(--primary-dark));
             color: white;
-            border-color: #4338ca;
-            box-shadow: 0 4px 12px rgba(108, 99, 255, 0.2);
+            border-color: var(--neon-blue);
+            box-shadow: 0 4px 12px rgba(30, 144, 255, 0.3);
         }
 
         .account-type-icon {
@@ -230,9 +238,9 @@
             left: 15px;
             top: 50%;
             transform: translateY(-50%);
-            color: #25D366;
+            color: #10B981;
             font-size: 1.2rem;
-            background: white;
+            background: rgba(13, 17, 23, 0.8);
             padding: 5px;
             border-radius: 50%;
         }
@@ -251,9 +259,9 @@
             left: 15px;
             top: 50%;
             transform: translateY(-50%);
-            color: #4338ca;
+            color: var(--neon-blue);
             font-size: 1.2rem;
-            background: white;
+            background: rgba(13, 17, 23, 0.8);
             padding: 5px;
             border-radius: 50%;
         }
@@ -267,13 +275,13 @@
             text-align: center;
             margin: 30px 0;
             padding: 20px;
-            background: #f8faff;
+            background: rgba(13, 17, 23, 0.3);
             border-radius: 15px;
-            border: 2px dashed #e0e7ff;
+            border: 2px dashed var(--gray-light);
         }
 
         .rating-title {
-            color: #4338ca;
+            color: var(--neon-blue);
             margin-bottom: 20px;
             font-size: 1.2rem;
             font-weight: 600;
@@ -313,7 +321,7 @@
             max-width: 300px;
             margin: 30px auto 0;
             padding: 15px 30px;
-            background: linear-gradient(135deg, #4f46e5, #4338ca);
+            background: linear-gradient(135deg, var(--neon-blue), var(--primary-dark));
             color: white;
             border: none;
             border-radius: 12px;
@@ -321,7 +329,7 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3);
+            box-shadow: 0 0 20px rgba(30, 144, 255, 0.4);
             position: relative;
             overflow: hidden;
         }
@@ -333,13 +341,13 @@
             left: -100%;
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
             transition: left 0.5s ease;
         }
 
         .submit-btn:hover {
             transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(108, 99, 255, 0.4);
+            box-shadow: 0 0 30px rgba(30, 144, 255, 0.6);
         }
 
         .submit-btn:hover::before {
@@ -373,15 +381,14 @@
         }
 
         .response-info {
-            background: linear-gradient(145deg, #ffffff, #f8f9fa);
+            background: var(--cosmic-card);
             padding: 35px 25px;
             border-radius: 20px;
-            box-shadow: 
-                0 8px 25px rgba(108, 99, 255, 0.1),
-                0 4px 15px rgba(0,0,0,0.05);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
             text-align: center;
             position: relative;
             overflow: hidden;
+            border: 1px solid var(--gray-light);
         }
 
         .response-info::before {
@@ -391,11 +398,11 @@
             left: 0;
             width: 100%;
             height: 4px;
-            background: linear-gradient(90deg, #4f46e5, #4338ca);
+            background: linear-gradient(90deg, var(--neon-blue), var(--primary-dark));
         }
 
         .response-info h2 {
-            color: #4338ca;
+            color: var(--neon-blue);
             margin-bottom: 25px;
             font-size: 1.6rem;
             font-weight: 700;
@@ -409,24 +416,24 @@
 
         .response-item {
             padding: 20px 15px;
-            background: white;
+            background: rgba(13, 17, 23, 0.4);
             border-radius: 15px;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            border: 1px solid #e0e7ff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            border: 1px solid var(--gray-light);
         }
 
         .response-item:hover {
             transform: translateY(-5px);
-            box-shadow: 0 8px 20px rgba(108, 99, 255, 0.15);
-            border-color: #4f46e5;
+            box-shadow: 0 8px 20px rgba(30, 144, 255, 0.2);
+            border-color: var(--neon-blue);
         }
 
         .response-item i {
-            color: #4338ca;
+            color: var(--neon-blue);
             font-size: 1.8rem;
             margin-bottom: 12px;
-            background: #e0e7ff;
+            background: rgba(30, 144, 255, 0.1);
             width: 50px;
             height: 50px;
             border-radius: 12px;
@@ -437,7 +444,7 @@
         }
 
         .response-item h3 {
-            color: #4338ca;
+            color: white;
             font-size: 1.1rem;
             margin-bottom: 8px;
             font-weight: 600;
@@ -450,7 +457,7 @@
         }
 
         .complaints-footer {
-            background: linear-gradient(135deg, #4f46e5, #4338ca);
+            background: linear-gradient(135deg, var(--neon-blue), var(--primary-dark));
             color: white;
             text-align: center;
             padding: 25px 20px;
@@ -458,6 +465,8 @@
             border-radius: 25px 25px 0 0;
             position: relative;
             overflow: hidden;
+            box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+            border-top: 2px solid var(--neon-blue);
         }
 
         .complaints-footer::before {
@@ -599,7 +608,7 @@
     <div class="complaints-container">
         <div class="complaints-header">
             <a href="index.html" class="back-btn">
-                <i class="fas fa-arrow-right"></i>
+                <i class="ph-bold ph-arrow-right"></i>
                 العودة للتطبيق
             </a>
             <h1>الشكاوى وآراء العملاء</h1>
@@ -623,14 +632,14 @@
                         <div class="account-type-option">
                             <input type="radio" id="passenger" name="accountType" value="passenger" required>
                             <label for="passenger">
-                                <span class="account-type-icon"><i class="fas fa-user"></i></span>
+                                <span class="account-type-icon"><i class="ph-bold ph-user"></i></span>
                                 <span>راكب</span>
                             </label>
                         </div>
                         <div class="account-type-option">
                             <input type="radio" id="driver" name="accountType" value="driver" required>
                             <label for="driver">
-                                <span class="account-type-icon"><i class="fas fa-car"></i></span>
+                                <span class="account-type-icon"><i class="ph-bold ph-car"></i></span>
                                 <span>سائق</span>
                             </label>
                         </div>
@@ -643,19 +652,19 @@
                         <div class="whatsapp-field">
                             <label for="whatsapp">رقم واتساب</label>
                             <div class="whatsapp-icon">
-                                <i class="fab fa-whatsapp"></i>
+                                <i class="ph-bold ph-whatsapp-logo"></i>
                             </div>
                             <input type="tel" id="whatsapp" name="whatsapp" class="form-control" placeholder="0XXXXXXXXX">
-                            <small style="color: #666; font-size: 0.85rem; display: block; margin-top: 5px;">للتواصل عبر الواتساب إذا أردت</small>
+                            <small style="color: #94a3b8; font-size: 0.85rem; display: block; margin-top: 5px;">للتواصل عبر الواتساب إذا أردت</small>
                         </div>
                         
                         <div class="phone-field">
                             <label for="phone">رقم الهاتف *</label>
                             <div class="phone-icon">
-                                <i class="fas fa-phone"></i>
+                                <i class="ph-bold ph-phone"></i>
                             </div>
                             <input type="tel" id="phone" name="phone" class="form-control" required placeholder="0XXXXXXXXX">
-                            <small style="color: #666; font-size: 0.85rem; display: block; margin-top: 5px;">للتواصل المباشر</small>
+                            <small style="color: #94a3b8; font-size: 0.85rem; display: block; margin-top: 5px;">للتواصل المباشر</small>
                         </div>
                     </div>
                 </div>
@@ -695,7 +704,7 @@
                 </div>
 
                 <button type="submit" class="submit-btn" id="submitBtn">
-                    <i class="fas fa-paper-plane"></i>
+                    <i class="ph-bold ph-paper-plane-tilt"></i>
                     إرسال الشكوى
                 </button>
             </div>
@@ -705,22 +714,22 @@
             <h2>ماذا يحدث بعد إرسال الشكوى؟</h2>
             <div class="response-grid">
                 <div class="response-item">
-                    <i class="fas fa-envelope-open-text"></i>
+                    <i class="ph-bold ph-envelope-open"></i>
                     <h3>استلام الشكوى</h3>
                     <p>نستلم شكواك فوراً ونسجلها في نظام المتابعة الخاص بنا</p>
                 </div>
                 <div class="response-item">
-                    <i class="fas fa-search"></i>
+                    <i class="ph-bold ph-magnifying-glass"></i>
                     <h3>التحقيق والمتابعة</h3>
                     <p>نقوم بالتحقيق في الشكوى ومتابعتها مع الأقسام المعنية</p>
                 </div>
                 <div class="response-item">
-                    <i class="fas fa-reply"></i>
+                    <i class="ph-bold ph-arrow-counter-clockwise"></i>
                     <h3>رد سريع</h3>
                     <p>نرد على جميع الشكاوى خلال 24-48 ساعة عمل</p>
                 </div>
                 <div class="response-item">
-                    <i class="fas fa-check-circle"></i>
+                    <i class="ph-bold ph-check-circle"></i>
                     <h3>حل المشكلة</h3>
                     <p>نعمل على إيجاد حل مناسب ونتابع معك حتى الرضا التام</p>
                 </div>
@@ -786,7 +795,7 @@
             const alertDiv = document.createElement('div');
             alertDiv.className = `alert alert-${type}`;
             alertDiv.innerHTML = `
-                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
+                <i class="ph-bold ph-${type === 'success' ? 'check-circle' : 'warning'}"></i>
                 ${message}
             `;
             alertsContainer.appendChild(alertDiv);

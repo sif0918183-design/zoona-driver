@@ -13,8 +13,11 @@
     <!-- Tajawal Font -->
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Global Tech Tech Redesign Theme -->
+    <link rel="stylesheet" href="shared/theme.css">
 
     <style>
         :root {
@@ -67,10 +70,10 @@
         }
 
         .brand-logo {
-            width: 100px;
-            height: 100px;
+            width: 120px;
+            height: 120px;
             margin-bottom: 20px;
-            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.1));
+            filter: drop-shadow(0 0 15px var(--neon-blue-glow));
             animation: logoFloat 3s ease-in-out infinite;
         }
 
@@ -85,6 +88,9 @@
             color: var(--dark);
             letter-spacing: -1px;
             margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--passenger) 0%, var(--driver) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         .brand-tagline {
@@ -240,7 +246,7 @@
 
     <div class="splash-screen">
         <div class="brand-container">
-            <img src="icons/icon-512x512.png" alt="زونا" class="brand-logo">
+            <img src="assets/branding/icon-512x512.png" alt="زونا" class="brand-logo">
             <h1 class="brand-name">ترحال زونــا</h1>
             <p class="brand-tagline">مشوارك بذكاء.. وأمان أكثر</p>
         </div>
@@ -249,28 +255,28 @@
             <!-- Passenger Option -->
             <div class="option-card passenger" onclick="selectApp('passenger')">
                 <div class="icon-box">
-                    <i class="fas fa-street-view"></i>
+                    <i class="ph-light ph-user"></i>
                 </div>
                 <div class="option-info">
                     <h2 class="option-title">أنا راكب</h2>
                     <p class="option-desc">اطلب رحلة الآن وسافر براحة تامة</p>
                 </div>
                 <div class="arrow-icon">
-                    <i class="fas fa-chevron-left"></i>
+                    <i class="ph-light ph-caret-left"></i>
                 </div>
             </div>
 
             <!-- Driver Option -->
             <div class="option-card driver" onclick="selectApp('driver')">
                 <div class="icon-box">
-                    <i class="fas fa-car-side"></i>
+                    <i class="ph-light ph-steering-wheel"></i>
                 </div>
                 <div class="option-info">
                     <h2 class="option-title">أنا سائق</h2>
                     <p class="option-desc">انضم إلينا وابدأ بزيادة دخلك اليوم</p>
                 </div>
                 <div class="arrow-icon">
-                    <i class="fas fa-chevron-left"></i>
+                    <i class="ph-light ph-caret-left"></i>
                 </div>
             </div>
         </div>

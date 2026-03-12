@@ -13,8 +13,12 @@ const EXCLUDED_DOMAINS = [
     'maps.googleapis.com',
     'maps.gstatic.com',
     'cdn.onesignal.com',
-    'unpkg.com',
-    'cdnjs.cloudflare.com',
+    'supabase.co'
+];
+
+// Assets to cache aggressively (CDN icons, etc.)
+const CDN_ASSETS = [
+    'unpkg.com/@phosphor-icons/web',
     'fonts.googleapis.com',
     'fonts.gstatic.com'
 ];
@@ -49,36 +53,49 @@ self.addEventListener('activate', (event) => {
     self.clients.claim();
 });
 
-// Network First with strict Cache Fallback
+// Advanced Cache Strategy: Stale-While-Revalidate for UI, Cache-First for Icons
 self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') return;
 
     const url = new URL(event.request.url);
 
-    // Skip caching for excluded domains or Supabase API
-    if (EXCLUDED_DOMAINS.some(domain => url.hostname.includes(domain)) ||
-        url.hostname.includes('supabase.co')) {
+    // Skip caching for system critical domains
+    if (EXCLUDED_DOMAINS.some(domain => url.hostname.includes(domain))) {
         event.respondWith(fetch(event.request));
         return;
     }
 
-    event.respondWith(
-        fetch(event.request)
-            .then((networkResponse) => {
-                if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-                    return networkResponse;
-                }
-
-                const responseClone = networkResponse.clone();
-                caches.open(CACHE_NAME).then((cache) => {
-                    cache.put(event.request, responseClone);
-                    limitCacheSize(CACHE_NAME, MAX_CACHE_ITEMS);
+    // Aggressive Caching for Phosphor Icons and Google Fonts
+    if (CDN_ASSETS.some(asset => url.href.includes(asset))) {
+        event.respondWith(
+            caches.match(event.request).then((cached) => {
+                if (cached) return cached;
+                return fetch(event.request).then((response) => {
+                    const responseClone = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+                    return response;
                 });
+            })
+        );
+        return;
+    }
+
+    // Default: Stale-While-Revalidate for app logic
+    event.respondWith(
+        caches.match(event.request).then((cached) => {
+            const fetched = fetch(event.request).then((networkResponse) => {
+                if (networkResponse && networkResponse.status === 200) {
+                    const responseClone = networkResponse.clone();
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, responseClone);
+                        limitCacheSize(CACHE_NAME, MAX_CACHE_ITEMS);
+                    });
+                }
                 return networkResponse;
-            })
-            .catch(() => {
-                return caches.match(event.request);
-            })
+            }).catch(() => null);
+
+            return cached || fetched;
+        })
     );
 });
 
@@ -96,8 +113,8 @@ self.addEventListener('push', (event) => {
     const title = data.title || 'تحديث لرحلتك 🚘';
     const options = {
         body: data.body || 'هناك تحديث جديد بخصوص طلب رحلتك.',
-        icon: '../icons/icon-192x192.png',
-        badge: '../icons/icon-72x72.png',
+        icon: '../assets/branding/icon-192x192.png',
+        badge: '../assets/branding/icon-72x72.png',
         data: data.url || './index.html',
         tag: 'ride-update',
         renotify: true
