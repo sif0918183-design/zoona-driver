@@ -19,16 +19,16 @@
 
     <style>
         :root {
-            --primary: #16a34a;
-            --primary-dark: #15803d;
-            --primary-light: #dcfce7;
-            --danger: #ef4444;
+            --primary: var(--zoona-primary);
+            --primary-dark: var(--zoona-primary-dark);
+            --primary-light: var(--zoona-primary-light);
+            --danger: var(--danger);
             --danger-dark: #dc2626;
-            --warning: #f59e0b;
-            --light: #f9fafb;
-            --dark: #111827;
+            --warning: var(--warning);
+            --light: var(--tech-bg);
+            --dark: var(--tech-text);
             --gray: #6b7280;
-            --gray-light: #e5e7eb;
+            --gray-light: var(--tech-border);
             --radius: 16px;
             --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.2);
         }
@@ -41,10 +41,10 @@
         
         body {
             font-family: 'Tajawal', sans-serif;
-            background: #111827;
+            background: var(--tech-bg);
             height: 100vh;
             width: 100vw;
-            color: white;
+            color: var(--tech-text);
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -96,9 +96,9 @@
 
         /* ✅ Ride Details */
         .ride-card {
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--tech-card);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--tech-border);
             border-radius: var(--radius);
             padding: 12px 16px;
             flex: 1;
@@ -115,7 +115,7 @@
             align-items: center;
             gap: 10px;
             padding-bottom: 8px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--tech-border);
             flex-shrink: 0;
         }
 
@@ -204,8 +204,8 @@
         }
         
         .btn-decline {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
+            background: var(--gray-light);
+            color: var(--tech-text);
             font-size: 18px;
             height: 50px;
         }

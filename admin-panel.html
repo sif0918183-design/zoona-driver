@@ -25,18 +25,18 @@
            ADMIN PANEL STYLES - GLOBAL TECH REDESIGN
            ============================================ */
         :root {
-            --primary: var(--neon-blue);
-            --primary-dark: #104E8B;
-            --primary-light: rgba(30, 144, 255, 0.1);
-            --secondary: var(--neon-emerald);
-            --secondary-light: rgba(16, 185, 129, 0.1);
-            --success: var(--neon-emerald);
-            --warning: var(--neon-warning);
+            --primary: var(--zoona-primary);
+            --primary-dark: var(--zoona-primary-dark);
+            --primary-light: var(--zoona-primary-light);
+            --secondary: var(--zoona-primary);
+            --secondary-light: var(--zoona-primary-light);
+            --success: var(--zoona-primary);
+            --warning: var(--warning);
             --warning-light: rgba(255, 173, 51, 0.1);
-            --danger: var(--neon-danger);
+            --danger: var(--danger);
             --danger-light: rgba(255, 77, 77, 0.1);
-            --info: var(--neon-blue);
-            --info-light: rgba(30, 144, 255, 0.1);
+            --info: var(--zoona-primary);
+            --info-light: var(--zoona-primary-light);
             --light: var(--tech-bg);
             --dark: var(--tech-card);
             --gray-50: var(--tech-bg);
@@ -263,7 +263,7 @@
         .admin-avatar {
             width: 45px;
             height: 45px;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            background: var(--grad-emerald);
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -273,6 +273,7 @@
             font-size: 1.125rem;
             box-shadow: var(--shadow);
             border: 2px solid white;
+            flex-shrink: 0;
         }
 
         .admin-details {
@@ -1221,77 +1222,44 @@
                     <!-- Stats Cards -->
                     <div class="stats-grid" id="main-stats-grid">
                         <div class="stat-card" id="total-commission-card">
-                            <div class="stat-icon" style="background: var(--grad-blue); color: white !important; box-shadow: 0 0 15px var(--neon-blue-glow);">
-                                <i class="ph-light ph-hand-coins ph-light-bloom-blue"></i>
-                            </div>
-                            <div class="stat-content">
-                                <div class="stat-value" id="total-commission">0 ج</div>
-                                <div class="stat-label">إجمالي العمولات</div>
+                            <div class="stat-content" style="text-align: center;">
+                                <div class="stat-value" id="total-commission" style="color: var(--zoona-primary); font-size: 2.2rem;">0 ج</div>
+                                <div class="stat-label" style="font-size: 1rem; margin-top: 5px;">إجمالي العمولات</div>
                             </div>
                         </div>
 
                         <div class="stat-card" id="low-balance-card">
-                            <div class="stat-icon" style="background: var(--grad-emerald); color: white !important; box-shadow: 0 0 15px var(--neon-emerald-glow);">
-                                <i class="ph-light ph-warning-circle ph-light-bloom-emerald"></i>
-                            </div>
-                            <div class="stat-content">
-                                <div class="stat-value" id="low-balance-drivers">0</div>
-                                <div class="stat-label">سائقون برصيد منخفض</div>
+                            <div class="stat-content" style="text-align: center;">
+                                <div class="stat-value" id="low-balance-drivers" style="color: var(--zoona-primary); font-size: 2.2rem;">0</div>
+                                <div class="stat-label" style="font-size: 1rem; margin-top: 5px;">سائقون برصيد منخفض</div>
                             </div>
                         </div>
+
                         <div class="stat-card">
-                            <div class="stat-icon" style="background: var(--grad-blue); color: white !important; box-shadow: 0 0 15px var(--neon-blue-glow);">
-                                <i class="ph-light ph-path ph-light-bloom-blue"></i>
-                            </div>
-                            <div class="stat-content">
-                                <div class="stat-value" id="total-rides">0</div>
-                                <div class="stat-label">إجمالي الرحلات</div>
-                                <div class="stat-change positive">
-                                    <i class="ph-light ph-arrow-up"></i>
-                                    <span>12% عن الشهر الماضي</span>
-                                </div>
+                            <div class="stat-content" style="text-align: center;">
+                                <div class="stat-value" id="total-rides" style="color: var(--zoona-primary); font-size: 2.2rem;">0</div>
+                                <div class="stat-label" style="font-size: 1rem; margin-top: 5px;">إجمالي الرحلات</div>
                             </div>
                         </div>
                         
                         <div class="stat-card">
-                            <div class="stat-icon" style="background: var(--grad-emerald); color: white !important; box-shadow: 0 0 15px var(--neon-emerald-glow);">
-                                <i class="ph-light ph-money ph-light-bloom-emerald"></i>
-                            </div>
-                            <div class="stat-content">
-                                <div class="stat-value" id="total-revenue">0 ج</div>
-                                <div class="stat-label">إجمالي الإيرادات</div>
-                                <div class="stat-change positive">
-                                    <i class="ph-light ph-arrow-up"></i>
-                                    <span>18% عن الشهر الماضي</span>
-                                </div>
+                            <div class="stat-content" style="text-align: center;">
+                                <div class="stat-value" id="total-revenue" style="color: var(--zoona-primary); font-size: 2.2rem;">0 ج</div>
+                                <div class="stat-label" style="font-size: 1rem; margin-top: 5px;">إجمالي الإيرادات</div>
                             </div>
                         </div>
                         
                         <div class="stat-card">
-                            <div class="stat-icon" style="background: var(--grad-blue); color: white !important; box-shadow: 0 0 15px var(--neon-blue-glow);">
-                                <i class="ph-light ph-users-three ph-light-bloom-blue"></i>
-                            </div>
-                            <div class="stat-content">
-                                <div class="stat-value" id="active-drivers">0</div>
-                                <div class="stat-label">سائقون نشطون</div>
-                                <div class="stat-change positive">
-                                    <i class="ph-light ph-arrow-up"></i>
-                                    <span>5% عن الشهر الماضي</span>
-                                </div>
+                            <div class="stat-content" style="text-align: center;">
+                                <div class="stat-value" id="active-drivers" style="color: var(--zoona-primary); font-size: 2.2rem;">0</div>
+                                <div class="stat-label" style="font-size: 1rem; margin-top: 5px;">سائقون نشطون</div>
                             </div>
                         </div>
                         
                         <div class="stat-card">
-                            <div class="stat-icon" style="background: var(--grad-blue); color: white !important; box-shadow: 0 0 15px var(--neon-blue-glow);">
-                                <i class="ph-light ph-warning ph-light-bloom-blue"></i>
-                            </div>
-                            <div class="stat-content">
-                                <div class="stat-value" id="pending-rides">0</div>
-                                <div class="stat-label">طلبات قيد الانتظار</div>
-                                <div class="stat-change negative">
-                                    <i class="ph-light ph-arrow-down"></i>
-                                    <span>8% عن الأسبوع الماضي</span>
-                                </div>
+                            <div class="stat-content" style="text-align: center;">
+                                <div class="stat-value" id="pending-rides" style="color: var(--zoona-primary); font-size: 2.2rem;">0</div>
+                                <div class="stat-label" style="font-size: 1rem; margin-top: 5px;">طلبات قيد الانتظار</div>
                             </div>
                         </div>
                     </div>
@@ -2859,12 +2827,12 @@
                     datasets: [{
                         label: 'عدد الرحلات',
                         data: [12, 19, 8, 15, 22, 18, 14, 25, 20, 17, 23, 19, 15, 21, 18, 24, 22, 19, 16, 23, 25, 21, 19, 22, 24, 20, 18, 23, 25, 22],
-                        borderColor: '#4f46e5',
-                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        borderColor: '#16a34a',
+                        backgroundColor: 'rgba(22, 163, 74, 0.1)',
                         borderWidth: 3,
                         fill: true,
                         tension: 0.4,
-                        pointBackgroundColor: '#4f46e5',
+                        pointBackgroundColor: '#16a34a',
                         pointBorderColor: '#ffffff',
                         pointBorderWidth: 2,
                         pointRadius: 5,
@@ -2923,7 +2891,7 @@
                     labels: ['اقتصادي', 'مريح', 'عالي / SUV'],
                     datasets: [{
                         data: [45, 35, 20],
-                        backgroundColor: ['#4f46e5', '#10b981', '#f59e0b'],
+                        backgroundColor: ['#16a34a', '#10b981', '#f59e0b'],
                         borderWidth: 1,
                         borderColor: '#ffffff'
                     }]
@@ -2969,7 +2937,7 @@
                         datasets: [{
                             label: 'الإيرادات (ألف جنيه)',
                             data: [120, 190, 150, 220, 180, 240, 200, 260, 230, 280, 250, 300],
-                            backgroundColor: '#4f46e5',
+                            backgroundColor: '#16a34a',
                             borderRadius: 5
                         }]
                     },
@@ -3030,7 +2998,7 @@
                         datasets: [{
                             data: [120, 80, 60, 45, 40],
                             backgroundColor: [
-                                '#4f46e5',
+                            '#16a34a',
                                 '#10b981',
                                 '#f59e0b',
                                 '#ef4444',

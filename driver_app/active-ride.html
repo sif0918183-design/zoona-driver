@@ -19,16 +19,16 @@
 
     <style>
         :root {
-            --primary: #16a34a;
-            --primary-dark: #15803d;
-            --primary-light: #dcfce7;
-            --danger: #ef4444;
+            --primary: var(--zoona-primary);
+            --primary-dark: var(--zoona-primary-dark);
+            --primary-light: var(--zoona-primary-light);
+            --danger: var(--danger);
             --danger-dark: #dc2626;
-            --warning: #f59e0b;
-            --light: #f9fafb;
-            --dark: #111827;
+            --warning: var(--warning);
+            --light: var(--tech-bg);
+            --dark: var(--tech-text);
             --gray: #6b7280;
-            --gray-light: #e5e7eb;
+            --gray-light: var(--tech-border);
             --radius: 16px;
             --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.2);
         }
@@ -41,10 +41,10 @@
 
         body {
             font-family: 'Tajawal', sans-serif;
-            background: #f3f4f6;
+            background: var(--tech-bg);
             height: 100vh;
             width: 100vw;
-            color: var(--dark);
+            color: var(--tech-text);
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -76,7 +76,7 @@
         .avatar {
             width: 50px;
             height: 50px;
-            background: var(--primary);
+            background: var(--grad-emerald);
             color: white;
             border-radius: 50%;
             display: flex;
@@ -84,6 +84,7 @@
             justify-content: center;
             font-size: 24px;
             font-weight: bold;
+            box-shadow: 0 4px 10px var(--zoona-emerald-glow);
         }
 
         .info-text h3 {

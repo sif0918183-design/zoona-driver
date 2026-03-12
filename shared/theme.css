@@ -17,21 +17,28 @@
     --tech-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     --tech-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.08);
 
-    /* Neon Accents - Passenger (Blue) */
-    --neon-blue: #1E90FF;
-    --neon-blue-glow: rgba(30, 144, 255, 0.4);
+    /* Zoona Brand Colors (Unified Emerald Theme) */
+    --zoona-primary: #16a34a;
+    --zoona-primary-dark: #15803d;
+    --zoona-primary-light: rgba(22, 163, 74, 0.1);
+    --zoona-emerald-glow: rgba(22, 163, 74, 0.4);
 
-    /* Neon Accents - Driver (Emerald) */
-    --neon-emerald: #10B981;
-    --neon-emerald-glow: rgba(16, 185, 129, 0.4);
+    /* Brand Colors for Legacy Compat */
+    --neon-blue: var(--zoona-primary);
+    --neon-blue-glow: var(--zoona-emerald-glow);
+    --neon-emerald: var(--zoona-primary);
+    --neon-emerald-glow: var(--zoona-emerald-glow);
+    --neon-blue-glow-emerald: var(--zoona-emerald-glow);
 
     /* Semantic Colors */
-    --neon-danger: #FF4D4D;
-    --neon-warning: #FFAD33;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --success: #16a34a;
 
     /* Gradients */
-    --grad-blue: linear-gradient(135deg, #1E90FF 0%, #104E8B 100%);
-    --grad-emerald: linear-gradient(135deg, #10B981 0%, #065F46 100%);
+    --grad-emerald: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+    --grad-emerald-tech: linear-gradient(135deg, #16a34a 0%, #059669 100%);
+    --grad-blue: var(--grad-emerald);
 
     /* Shared Spacing/Radius */
     --radius-standard: 12px;
@@ -39,46 +46,25 @@
 }
 
 /* Global Tech Utilities */
-.ph-light-bloom-blue {
-    filter: drop-shadow(0 0 2px var(--neon-blue))
-            drop-shadow(0 0 8px var(--neon-blue-glow))
-            drop-shadow(0 0 15px var(--neon-blue-glow))
-            drop-shadow(0 0 30px rgba(30, 144, 255, 0.15));
+.ph-light-bloom-blue, .ph-light-bloom-emerald {
+    filter: drop-shadow(0 0 2px var(--zoona-primary))
+            drop-shadow(0 0 8px var(--zoona-emerald-glow))
+            drop-shadow(0 0 15px var(--zoona-emerald-glow))
+            drop-shadow(0 0 30px rgba(22, 163, 74, 0.15));
 }
 
-.ph-light-bloom-emerald {
-    filter: drop-shadow(0 0 2px var(--neon-emerald))
-            drop-shadow(0 0 8px var(--neon-emerald-glow))
-            drop-shadow(0 0 15px var(--neon-emerald-glow))
-            drop-shadow(0 0 30px rgba(16, 185, 129, 0.15));
+.neon-glow-blue, .neon-glow-emerald {
+    color: var(--zoona-primary);
+    filter: drop-shadow(0 0 2px var(--zoona-primary))
+            drop-shadow(0 0 5px var(--zoona-emerald-glow))
+            drop-shadow(0 0 12px var(--zoona-emerald-glow));
 }
 
-.neon-glow-blue {
-    color: var(--neon-blue);
-    filter: drop-shadow(0 0 2px var(--neon-blue))
-            drop-shadow(0 0 5px var(--neon-blue-glow))
-            drop-shadow(0 0 12px var(--neon-blue-glow));
-}
-
-.neon-glow-emerald {
-    color: var(--neon-emerald);
-    filter: drop-shadow(0 0 2px var(--neon-emerald))
-            drop-shadow(0 0 5px var(--neon-emerald-glow))
-            drop-shadow(0 0 12px var(--neon-emerald-glow));
-}
-
-.neon-icon-blue {
-    color: var(--neon-blue) !important;
-    filter: drop-shadow(0 0 1px var(--neon-blue))
-            drop-shadow(0 0 4px var(--neon-blue-glow))
-            drop-shadow(0 0 12px var(--neon-blue-glow)) !important;
-}
-
-.neon-icon-emerald {
-    color: var(--neon-emerald) !important;
-    filter: drop-shadow(0 0 1px var(--neon-emerald))
-            drop-shadow(0 0 4px var(--neon-emerald-glow))
-            drop-shadow(0 0 12px var(--neon-emerald-glow)) !important;
+.neon-icon-blue, .neon-icon-emerald {
+    color: var(--zoona-primary) !important;
+    filter: drop-shadow(0 0 1px var(--zoona-primary))
+            drop-shadow(0 0 4px var(--zoona-emerald-glow))
+            drop-shadow(0 0 12px var(--zoona-emerald-glow)) !important;
 }
 
 /* Light Mode Adaptations */
@@ -126,31 +112,24 @@ i.ph, i[class*="ph-"] {
     color: var(--tech-text);
 }
 
-.btn-neon-blue {
-    background: var(--grad-blue);
-    color: white !important;
-    font-weight: 700;
-    box-shadow: 0 4px 12px var(--neon-blue-glow);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.btn-neon-blue:hover:not(:disabled) {
-    box-shadow: 0 0 20px var(--neon-blue-glow);
-    transform: translateY(-2px);
-}
-
-.btn-neon-emerald {
+.btn-neon-blue, .btn-neon-emerald, .btn-zoona {
     background: var(--grad-emerald);
     color: white !important;
     font-weight: 700;
-    box-shadow: 0 4px 12px var(--neon-emerald-glow);
+    box-shadow: 0 4px 12px var(--zoona-emerald-glow);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-standard);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
 }
 
-.btn-neon-emerald:hover:not(:disabled) {
-    box-shadow: 0 0 20px var(--neon-emerald-glow);
+.btn-neon-blue:hover, .btn-neon-emerald:hover, .btn-zoona:hover {
+    box-shadow: 0 0 20px var(--zoona-emerald-glow);
     transform: translateY(-2px);
 }
 

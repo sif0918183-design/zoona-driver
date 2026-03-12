@@ -35,10 +35,10 @@
 
         /* CSS Variables */
         :root {
-            --primary: var(--neon-blue);
-            --primary-dark: #2563eb;
-            --primary-light: rgba(30, 144, 255, 0.15);
-            --secondary: var(--neon-emerald);
+            --primary: var(--zoona-primary);
+            --primary-dark: var(--zoona-primary-dark);
+            --primary-light: var(--zoona-primary-light);
+            --secondary: var(--zoona-primary);
             --secondary-dark: #059669;
             --warning: #f59e0b;
             --danger: #ef4444;
@@ -187,14 +187,14 @@
         }
 
         .btn-primary {
-            background: var(--grad-blue);
+            background: var(--grad-emerald);
             color: white;
-            box-shadow: 0 4px 12px var(--neon-blue-glow);
+            box-shadow: 0 4px 12px var(--zoona-emerald-glow);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .btn-primary:hover:not(:disabled) {
-            box-shadow: 0 0 20px var(--neon-blue-glow);
+            box-shadow: 0 0 20px var(--zoona-emerald-glow);
             transform: translateY(-2px);
         }
 
@@ -285,6 +285,11 @@
             padding: 10px;
             gap: 8px;
             overflow-y: auto;
+            background: white;
+        }
+
+        .login-screen {
+            background: white;
         }
 
         .welcome-text {
@@ -391,7 +396,7 @@
         .user-avatar {
             width: 70px;
             height: 70px;
-            background: linear-gradient(135deg, var(--neon-blue), var(--primary-dark));
+            background: var(--grad-emerald);
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -440,11 +445,11 @@
 
         .action-card {
             background: white;
-            border-radius: var(--radius-xl);
-            padding: 15px 10px;
+            border-radius: 20px;
+            padding: 18px 12px;
             text-align: center;
             cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: all 0.3s ease;
             border: 1px solid var(--tech-border);
             box-shadow: var(--tech-shadow);
             position: relative;
@@ -453,7 +458,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 125px;
+            min-height: 140px;
         }
 
         .action-card::after {
@@ -470,8 +475,8 @@
 
         .action-card:hover {
             transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 12px 24px rgba(30, 144, 255, 0.15);
-            border-color: var(--neon-blue);
+            box-shadow: 0 12px 24px var(--zoona-primary-light);
+            border-color: var(--zoona-primary);
         }
 
         .action-card:hover::after {
@@ -479,25 +484,23 @@
         }
 
         .action-icon {
-            font-size: 36px;
+            font-size: 32px;
             margin-bottom: 12px;
-            color: var(--neon-blue);
-            height: 60px;
-            width: 60px;
-            background: rgba(30, 144, 255, 0.1);
-            border-radius: 18px;
+            color: var(--zoona-primary);
+            height: 56px;
+            width: 56px;
+            background: var(--zoona-primary-light);
+            border-radius: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: all 0.3s ease;
-            filter: drop-shadow(0 0 5px rgba(30, 144, 255, 0.3));
         }
 
         .action-card:hover .action-icon {
-            background: var(--neon-blue);
+            background: var(--zoona-primary);
             color: white;
-            transform: rotate(-10deg);
-            filter: drop-shadow(0 0 15px var(--neon-blue));
+            transform: scale(1.1);
         }
 
         .action-card h4 {
@@ -768,13 +771,13 @@
 
         /* Route Details Card - أصغر */
         .route-details-card {
-            background: rgba(30, 144, 255, 0.05);
+            background: var(--zoona-primary-light);
             border-radius: var(--radius-lg);
             padding: 14px;
             margin-bottom: 14px;
-            border-left: 4px solid var(--neon-blue);
+            border-left: 4px solid var(--zoona-primary);
             box-shadow: var(--shadow);
-            border: 1px solid rgba(30, 144, 255, 0.1);
+            border: 1px solid var(--zoona-primary-light);
         }
 
         .route-header {
@@ -917,7 +920,7 @@
         }
 
         .vehicle-price {
-            color: var(--neon-blue);
+            color: var(--zoona-primary);
             font-weight: 700;
             font-size: 12px;
             direction: ltr;
@@ -1117,7 +1120,7 @@
             position: relative;
             z-index: 2;
             animation: logoIn 0.9s ease;
-            filter: drop-shadow(0 0 15px var(--neon-blue));
+            filter: drop-shadow(0 0 15px var(--zoona-emerald-glow));
             margin-bottom: 24px;
         }
 
@@ -1345,12 +1348,12 @@
         }
 
         .ride-driver-info {
-            background: rgba(30, 144, 255, 0.1);
+            background: var(--zoona-primary-light);
             padding: 15px;
             border-radius: var(--radius);
             margin-top: 15px;
-            border-left: 4px solid var(--neon-blue);
-            border: 1px solid rgba(30, 144, 255, 0.2);
+            border-left: 4px solid var(--zoona-primary);
+            border: 1px solid var(--zoona-primary-light);
         }
 
         .ride-driver-name {
@@ -1848,7 +1851,7 @@
         <div class="login-container">
             <div class="card">
                 <h2 class="card-title">
-                    <i class="ph-light ph-user-circle neon-icon-blue"></i>
+                    <i class="ph-light ph-user-circle neon-icon-emerald"></i>
                     تسجيل الدخول
                 </h2>
                 
@@ -1859,7 +1862,7 @@
                 <form class="login-form" id="customerLoginForm">
                     <div class="form-group">
                         <label class="form-label" for="customer-phone">
-                            <i class="ph-light ph-phone neon-icon-blue"></i>
+                            <i class="ph-light ph-phone neon-icon-emerald"></i>
                             رقم الواتساب
                         </label>
                         <input type="tel" id="customer-phone" class="form-input" 
@@ -1869,7 +1872,7 @@
                     
                     <div class="form-group">
                         <label class="form-label" for="customer-password">
-                            <i class="ph-light ph-lock neon-icon-blue"></i>
+                            <i class="ph-light ph-lock neon-icon-emerald"></i>
                             كلمة المرور
                         </label>
                         <div class="password-input-container">
@@ -1896,13 +1899,13 @@
             <div class="card register-card">
                 <p class="register-text">ليس لديك حساب؟</p>
                 <button type="button" class="btn btn-outline" onclick="showCustomerRegister()">
-                    <i class="ph-light ph-user-plus neon-icon-blue"></i>
+                    <i class="ph-light ph-user-plus neon-icon-emerald"></i>
                     سجل حساب جديد الآن
                 </button>
             </div>
             
             <div class="security-badge">
-                <i class="ph-light ph-shield-check neon-icon-blue"></i>
+                <i class="ph-light ph-shield-check neon-icon-emerald"></i>
                 <span>نضمن خصوصية وأمان بياناتك</span>
             </div>
         </div>
@@ -1912,14 +1915,14 @@
     <section id="customer-register-screen" class="screen hidden">
         <div class="card">
             <h2 class="card-title">
-                <i class="ph-light ph-user-plus neon-icon-blue"></i>
+                <i class="ph-light ph-user-plus neon-icon-emerald"></i>
                 تسجيل حساب جديد
             </h2>
             
             <form class="login-form" id="customerRegisterForm">
                 <div class="form-group">
                     <label class="form-label" for="register-fullname">
-                        <i class="ph-light ph-user neon-icon-blue"></i>
+                        <i class="ph-light ph-user neon-icon-emerald"></i>
                         الاسم الرباعي
                     </label>
                     <input type="text" id="register-fullname" class="form-input" 
@@ -1928,7 +1931,7 @@
 
                 <div class="form-group">
                     <label class="form-label" for="register-phone">
-                        <i class="ph-light ph-phone neon-icon-blue"></i>
+                        <i class="ph-light ph-phone neon-icon-emerald"></i>
                         رقم الواتساب
                     </label>
                     <input type="tel" id="register-phone" class="form-input" 
@@ -1938,7 +1941,7 @@
 
                 <div class="form-group">
                     <label class="form-label" for="register-phone2">
-                        <i class="ph-light ph-phone neon-icon-blue"></i>
+                        <i class="ph-light ph-phone neon-icon-emerald"></i>
                         رقم إتصال (اختياري)
                     </label>
                     <input type="tel" id="register-phone2" class="form-input" 
@@ -1947,7 +1950,7 @@
 
                 <div class="form-group">
                     <label class="form-label" for="register-password">
-                        <i class="ph-light ph-lock neon-icon-blue"></i>
+                        <i class="ph-light ph-lock neon-icon-emerald"></i>
                         كلمة المرور
                     </label>
                     <div class="password-input-container">
@@ -1984,7 +1987,7 @@
             
             <div class="form-footer">
                 <a href="#" onclick="showCustomerLogin()" class="back-link">
-                    <i class="ph-light ph-arrow-right neon-icon-blue"></i>
+                    <i class="ph-light ph-arrow-right neon-icon-emerald"></i>
                     العودة لتسجيل الدخول
                 </a>
             </div>
@@ -2010,32 +2013,32 @@
             
             <div class="home-actions">
                 <div class="action-card" onclick="requestRide()">
-                    <div class="action-icon"><i class="ph-light ph-car neon-icon-blue"></i></div>
+                    <div class="action-icon"><i class="ph-light ph-car neon-icon-emerald"></i></div>
                     <h4>طلب رحلة</h4>
                 </div>
                 
                 <div class="action-card" onclick="showMyRides()">
-                    <div class="action-icon"><i class="ph-light ph-clock-counter-clockwise neon-icon-blue"></i></div>
+                    <div class="action-icon"><i class="ph-light ph-clock-counter-clockwise neon-icon-emerald"></i></div>
                     <h4>رحلاتي</h4>
                 </div>
                 
                 <div class="action-card" onclick="showSettings()">
-                    <div class="action-icon"><i class="ph-light ph-gear neon-icon-blue"></i></div>
+                    <div class="action-icon"><i class="ph-light ph-gear neon-icon-emerald"></i></div>
                     <h4>الإعدادات</h4>
                 </div>
                 
                 <div class="action-card" onclick="openTravelPlatform()">
-                    <div class="action-icon"><i class="ph-light ph-airplane-tilt neon-icon-blue"></i></div>
+                    <div class="action-icon"><i class="ph-light ph-airplane-tilt neon-icon-emerald"></i></div>
                     <h4>دخول منصة رحلة سفر</h4>
                 </div>
 
                 <div class="action-card" onclick="showComplaints()">
-                    <div class="action-icon"><i class="ph-light ph-megaphone neon-icon-blue"></i></div>
+                    <div class="action-icon"><i class="ph-light ph-megaphone neon-icon-emerald"></i></div>
                     <h4>الشكاوى والآراء</h4>
                 </div>
 
                 <div class="action-card" onclick="logout()">
-                    <div class="action-icon"><i class="ph-light ph-sign-out neon-icon-blue"></i></div>
+                    <div class="action-icon"><i class="ph-light ph-sign-out neon-icon-emerald"></i></div>
                     <h4>تسجيل الخروج</h4>
                 </div>
             </div>
@@ -2082,16 +2085,16 @@
         <!-- Map Controls -->
         <div class="map-controls hidden" id="map-controls">
             <button class="map-control-btn" onclick="recenterMap()" title="تحديد موقعك">
-                <i class="ph-light ph-target neon-icon-blue"></i>
+                <i class="ph-light ph-target neon-icon-emerald"></i>
             </button>
             <button class="map-control-btn" onclick="refreshLocation()" title="تحديث الموقع">
-                <i class="ph-light ph-arrows-clockwise neon-icon-blue"></i>
+                <i class="ph-light ph-arrows-clockwise neon-icon-emerald"></i>
             </button>
         </div>
 
         <!-- Delete Destination Button -->
         <button id="destination-clear-btn" class="destination-clear-btn hidden" onclick="clearDestination()">
-            <i class="ph-light ph-x-circle neon-icon-blue"></i>
+            <i class="ph-light ph-x-circle neon-icon-emerald"></i>
             حذف الوجهة
         </button>
 
@@ -2100,9 +2103,9 @@
             <!-- Route Details -->
             <div id="route-details-section" class="route-details-card hidden">
                 <div class="route-header">
-                    <h4><i class="ph-light ph-map-trifold neon-icon-blue"></i> تفاصيل المسار</h4>
+                    <h4><i class="ph-light ph-map-trifold neon-icon-emerald"></i> تفاصيل المسار</h4>
                     <span class="route-duration">
-                        <i class="ph-light ph-timer neon-icon-blue"></i>
+                        <i class="ph-light ph-timer neon-icon-emerald"></i>
                         <span id="route-duration">0</span> دقيقة
                     </span>
                 </div>
@@ -2112,7 +2115,7 @@
             <!-- Vehicle Selection -->
             <div class="vehicle-selection-card">
                 <h4 class="section-title">
-                    <i class="ph-light ph-car neon-icon-blue"></i>
+                    <i class="ph-light ph-car neon-icon-emerald"></i>
                     اختر نوع المركبة
                 </h4>
                 <div class="vehicle-options-grid">
@@ -2181,7 +2184,7 @@
 <div id="agreement-modal" class="modal-overlay hidden">
   <div class="agreement-modal">
     <div class="agreement-header">
-      <i class="ph-light ph-warning neon-icon-blue"></i>
+      <i class="ph-light ph-warning neon-icon-emerald"></i>
       <h3>إتفاقية الاستخدام وإخلاء المسؤولية</h3>
       <p class="modal-subtitle">(النسخة التجريبية - زونا)</p>
     </div>
@@ -2226,7 +2229,7 @@
 <!-- GPS Permission Modal -->
 <div id="gps-permission-modal" class="overlay hidden">
     <div class="gps-modal">
-        <i class="ph-light ph-map-pin gps-icon neon-icon-blue"></i>
+        <i class="ph-light ph-map-pin gps-icon neon-icon-emerald"></i>
         <h2 class="gps-title">تفعيل تحديد الموقع</h2>
         <p class="gps-text">
             نحتاج إلى إذن الوصول إلى موقعك لتحديد نقطة الانطلاق تلقائياً.<br>
@@ -2249,7 +2252,7 @@
 <div id="ride-loading-overlay" class="ride-loading-overlay hidden">
     <div class="ride-loading-content">
         <div class="ride-loading-icon">
-            <i class="ph-light ph-car neon-icon-blue"></i>
+            <i class="ph-light ph-car neon-icon-emerald"></i>
         </div>
         <h3 class="ride-loading-text">جاري البحث عن سائق</h3>
         <p class="ride-loading-subtext">
@@ -2275,7 +2278,7 @@
 <div id="active-trip-modal" class="overlay hidden">
     <div class="modal">
         <div class="modal-header">
-            <i class="ph-light ph-car modal-icon neon-icon-blue"></i>
+            <i class="ph-light ph-car modal-icon neon-icon-emerald"></i>
             <h2 class="modal-title">الرحلة سارية الآن</h2>
         </div>
         <div id="trip-details"></div>
@@ -2481,7 +2484,7 @@ function initializeMap() {
         map: googleMap,
         suppressMarkers: true,
         polylineOptions: {
-            strokeColor: '#4f46e5',
+            strokeColor: '#16a34a',
             strokeWeight: 5,
             strokeOpacity: 0.8
         }
@@ -3127,7 +3130,7 @@ function addStartMarker(position) {
         icon: {
             path: google.maps.SymbolPath.CIRCLE,
             scale: 10,
-            fillColor: '#4f46e5',
+            fillColor: '#16a34a',
             fillOpacity: 0.9,
             strokeColor: '#ffffff',
             strokeWeight: 2
@@ -3561,7 +3564,7 @@ async function handleNoDriversFound(rideId, userPosition, vehicleType) {
     overlay.innerHTML = `
         <div class="card" style="width: 90%; max-width: 400px; padding: 25px; border-radius: 20px; text-align: center; border: 2px solid var(--neon-warning); background: var(--tech-card); backdrop-filter: blur(15px);">
             <div style="font-size: 50px; color: var(--neon-warning); margin-bottom: 20px;">
-                <i class="ph-light ph-warning ph-glow-blue"></i>
+                <i class="ph-light ph-warning ph-glow-emerald"></i>
             </div>
             <h2 style="color: white; margin-bottom: 12px; font-weight: 800; font-size: 22px;">عذراً، لم نجد سائقين حالياً</h2>
             <p style="color: var(--gray); margin-bottom: 25px; font-size: 14px; line-height: 1.6;">
@@ -4170,7 +4173,7 @@ function showNotification(message, type = 'info') {
     else if (type === 'warning') icon = 'ph-warning';
     
     notification.innerHTML = `
-        <div style="font-size: 24px;"><i class="ph-light ${icon} neon-icon-blue"></i></div>
+        <div style="font-size: 24px;"><i class="ph-light ${icon} neon-icon-emerald"></i></div>
         <div style="flex: 1; font-size: 15px; font-weight: 600;">${message}</div>
     `;
     

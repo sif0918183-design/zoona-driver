@@ -33,7 +33,7 @@
         }
 
         .complaints-header {
-            background: linear-gradient(135deg, var(--neon-blue), var(--primary-dark));
+            background: var(--grad-emerald);
             color: white;
             padding: 40px 20px;
             text-align: center;
@@ -41,8 +41,8 @@
             border-radius: 0 0 25px 25px;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            border-bottom: 2px solid var(--neon-blue);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            border-bottom: 2px solid var(--zoona-primary);
         }
 
         .complaints-header::before {
@@ -120,7 +120,7 @@
             left: 0;
             width: 100%;
             height: 4px;
-            background: linear-gradient(90deg, var(--neon-blue), var(--primary-dark), var(--neon-blue));
+            background: var(--grad-emerald);
             background-size: 200% 100%;
             animation: gradientMove 3s ease infinite;
         }
@@ -131,12 +131,11 @@
         }
 
         .form-title {
-            color: var(--neon-blue);
+            color: var(--zoona-primary);
             text-align: center;
             margin-bottom: 30px;
             font-size: 1.6rem;
             font-weight: 700;
-            text-shadow: 0 0 10px rgba(30, 144, 255, 0.3);
         }
 
         .form-group {
@@ -146,7 +145,7 @@
         .form-group label {
             display: block;
             margin-bottom: 8px;
-            color: var(--neon-blue);
+            color: var(--zoona-primary);
             font-weight: 600;
             font-size: 1rem;
         }
@@ -165,8 +164,8 @@
 
         .form-control:focus {
             outline: none;
-            border-color: var(--neon-blue);
-            box-shadow: 0 0 15px rgba(30, 144, 255, 0.2);
+            border-color: var(--zoona-primary);
+            box-shadow: 0 0 15px var(--zoona-primary-light);
             background: var(--tech-card);
         }
 
@@ -203,14 +202,14 @@
 
         .account-type-option label:hover {
             background: var(--tech-bg);
-            border-color: var(--neon-blue);
+            border-color: var(--zoona-primary);
         }
 
         .account-type-option input:checked + label {
-            background: linear-gradient(135deg, var(--neon-blue), var(--primary-dark));
+            background: var(--grad-emerald);
             color: white;
-            border-color: var(--neon-blue);
-            box-shadow: 0 4px 12px rgba(30, 144, 255, 0.3);
+            border-color: var(--zoona-primary);
+            box-shadow: 0 4px 12px var(--zoona-emerald-glow);
         }
 
         .account-type-icon {
@@ -259,7 +258,7 @@
             left: 15px;
             top: 50%;
             transform: translateY(-50%);
-            color: var(--neon-blue);
+            color: var(--zoona-primary);
             font-size: 1.2rem;
             background: var(--tech-bg);
             padding: 5px;
@@ -281,7 +280,7 @@
         }
 
         .rating-title {
-            color: var(--neon-blue);
+            color: var(--zoona-primary);
             margin-bottom: 20px;
             font-size: 1.2rem;
             font-weight: 600;
@@ -321,7 +320,7 @@
             max-width: 300px;
             margin: 30px auto 0;
             padding: 15px 30px;
-            background: linear-gradient(135deg, var(--neon-blue), var(--primary-dark));
+            background: var(--grad-emerald);
             color: white;
             border: none;
             border-radius: 12px;
@@ -329,7 +328,7 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 0 20px rgba(30, 144, 255, 0.4);
+            box-shadow: 0 0 20px var(--zoona-emerald-glow);
             position: relative;
             overflow: hidden;
         }
@@ -347,7 +346,7 @@
 
         .submit-btn:hover {
             transform: translateY(-3px);
-            box-shadow: 0 0 30px rgba(30, 144, 255, 0.6);
+            box-shadow: 0 0 30px var(--zoona-emerald-glow);
         }
 
         .submit-btn:hover::before {
@@ -398,11 +397,11 @@
             left: 0;
             width: 100%;
             height: 4px;
-            background: linear-gradient(90deg, var(--neon-blue), var(--primary-dark));
+            background: var(--grad-emerald);
         }
 
         .response-info h2 {
-            color: var(--neon-blue);
+            color: var(--zoona-primary);
             margin-bottom: 25px;
             font-size: 1.6rem;
             font-weight: 700;
@@ -425,15 +424,15 @@
 
         .response-item:hover {
             transform: translateY(-5px);
-            box-shadow: 0 8px 20px rgba(30, 144, 255, 0.2);
-            border-color: var(--neon-blue);
+            box-shadow: 0 8px 20px var(--zoona-primary-light);
+            border-color: var(--zoona-primary);
         }
 
         .response-item i {
-            color: var(--neon-blue);
+            color: var(--zoona-primary);
             font-size: 1.8rem;
             margin-bottom: 12px;
-            background: rgba(30, 144, 255, 0.1);
+            background: var(--zoona-primary-light);
             width: 50px;
             height: 50px;
             border-radius: 12px;
@@ -457,7 +456,7 @@
         }
 
         .complaints-footer {
-            background: linear-gradient(135deg, var(--neon-blue), var(--primary-dark));
+            background: var(--grad-emerald);
             color: white;
             text-align: center;
             padding: 25px 20px;
@@ -465,8 +464,8 @@
             border-radius: 25px 25px 0 0;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
-            border-top: 2px solid var(--neon-blue);
+            box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.2);
+            border-top: 2px solid var(--zoona-primary);
         }
 
         .complaints-footer::before {

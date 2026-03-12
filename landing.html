@@ -21,12 +21,12 @@
 
     <style>
         :root {
-            --passenger: #4f46e5;
-            --passenger-dark: #4338ca;
-            --driver: #16a34a;
-            --driver-dark: #15803d;
-            --dark: #0f172a;
-            --light: #f8fafc;
+            --passenger: var(--zoona-primary);
+            --passenger-dark: var(--zoona-primary-dark);
+            --driver: var(--zoona-primary);
+            --driver-dark: var(--zoona-primary-dark);
+            --dark: var(--tech-text);
+            --light: var(--tech-bg);
             --white: #ffffff;
             --gray: #64748b;
             --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -73,7 +73,7 @@
             width: 120px;
             height: 120px;
             margin-bottom: 20px;
-            filter: drop-shadow(0 0 15px var(--neon-blue-glow));
+            filter: drop-shadow(0 0 15px var(--zoona-emerald-glow));
             animation: logoFloat 3s ease-in-out infinite;
         }
 
@@ -88,7 +88,7 @@
             color: var(--dark);
             letter-spacing: -1px;
             margin-bottom: 8px;
-            background: linear-gradient(135deg, var(--passenger) 0%, var(--driver) 100%);
+            background: var(--grad-emerald);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -147,13 +147,13 @@
         }
 
         .passenger .icon-box {
-            background: rgba(79, 70, 229, 0.1);
-            color: var(--passenger);
+            background: var(--zoona-primary-light);
+            color: var(--zoona-primary);
         }
 
         .driver .icon-box {
-            background: rgba(22, 163, 74, 0.1);
-            color: var(--driver);
+            background: var(--zoona-primary-light);
+            color: var(--zoona-primary);
         }
 
         .option-card:hover .icon-box {
@@ -223,7 +223,7 @@
             width: 48px;
             height: 48px;
             border: 5px solid #f3f3f3;
-            border-top: 5px solid var(--passenger);
+            border-top: 5px solid var(--zoona-primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
