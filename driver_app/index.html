@@ -32,16 +32,16 @@
     <style>
         /* الأنماط الأساسية */
         :root {
-            --driver: #16a34a;
-            --driver-dark: #15803d;
-            --driver-light: #dcfce7;
-            --danger: #ef4444;
+            --driver: var(--zoona-primary);
+            --driver-dark: var(--zoona-primary-dark);
+            --driver-light: var(--zoona-primary-light);
+            --danger: var(--danger);
             --danger-dark: #dc2626;
-            --light: #f9fafb;
-            --dark: #111827;
+            --light: var(--tech-bg);
+            --dark: var(--tech-text);
             --gray: #6b7280;
-            --gray-light: #e5e7eb;
-            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --gray-light: var(--tech-border);
+            --shadow: var(--tech-shadow);
             --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
             --radius: 12px;
             --radius-lg: 16px;
@@ -55,7 +55,7 @@
 
         body {
             font-family: 'Tajawal', sans-serif;
-            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+            background: var(--grad-emerald);
             height: 100vh;
             overflow: hidden;
             color: var(--dark);
@@ -253,7 +253,7 @@
         .user-avatar {
             width: 48px;
             height: 48px;
-            background: linear-gradient(135deg, var(--driver), var(--driver-dark));
+            background: var(--grad-emerald);
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -261,6 +261,7 @@
             color: white;
             font-size: 20px;
             font-weight: 700;
+            box-shadow: 0 4px 10px var(--zoona-emerald-glow);
         }
 
         .user-info h3 {
@@ -455,7 +456,7 @@
         #splash-screen {
             position: fixed;
             inset: 0;
-            background: linear-gradient(135deg, #15803d, #16a34a, #22c55e);
+            background: var(--grad-emerald);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -791,14 +792,14 @@
 
 <!-- Incoming Ride Modal -->
 <div id="incoming-ride-modal" class="overlay hidden">
-        <div class="modal" style="background: var(--cosmic-card); border: 2px solid var(--neon-emerald); backdrop-filter: blur(15px); color: white;">
+        <div class="modal" style="background: var(--tech-card); border: 2px solid var(--zoona-primary); backdrop-filter: blur(15px);">
         <div class="modal-header">
-                <div style="font-size: 48px; margin-bottom: 16px;"><i class="ph-bold ph-bell-ringing neon-icon-emerald"></i></div>
-                <h2 class="modal-title" style="color: var(--neon-emerald);">طلب رحلة جديد!</h2>
-                <p class="modal-subtitle" style="color: var(--gray-light);">لديك 40 ثانية للرد</p>
+                <div style="font-size: 48px; margin-bottom: 16px;"><i class="ph-bold ph-bell-ringing" style="color: var(--zoona-primary);"></i></div>
+                <h2 class="modal-title" style="color: var(--zoona-primary);">طلب رحلة جديد!</h2>
+                <p class="modal-subtitle" style="color: var(--gray);">لديك 40 ثانية للرد</p>
         </div>
 
-            <div class="card" style="background: rgba(16, 185, 129, 0.1); border: 1px solid var(--neon-emerald);">
+            <div class="card" style="background: var(--zoona-primary-light); border: 1px solid var(--zoona-primary);">
             <div id="ride-details">
                 <!-- سيتم تعبئة تفاصيل الرحلة هنا -->
             </div>
@@ -1518,7 +1519,7 @@
 <!-- Driver Agreement Modal -->
 <div id="driver-agreement-modal" class="overlay agreement-overlay hidden">
     <div class="modal agreement-modal" style="max-height: 90vh; width: 95%;">
-        <div class="modal-header" style="background: linear-gradient(135deg, var(--driver), var(--driver-dark)); color: white; padding: 16px 20px; border-radius: var(--radius-lg) var(--radius-lg) 0 0;">
+        <div class="modal-header" style="background: var(--grad-emerald); color: white; padding: 16px 20px; border-radius: var(--radius-lg) var(--radius-lg) 0 0;">
             <h2 style="font-size: 20px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
                 <i class="ph-bold ph-file-text"></i>
                 إقرار وموافقة السائق

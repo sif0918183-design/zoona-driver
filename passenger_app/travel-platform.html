@@ -22,14 +22,14 @@
            GLOBAL STYLES - COSMIC NEON REDESIGN
            ============================================ */
         :root {
-            --primary: var(--neon-blue);
-            --primary-dark: #2563eb;
-            --primary-light: rgba(30, 144, 255, 0.15);
-            --secondary: var(--neon-emerald);
-            --secondary-light: rgba(16, 185, 129, 0.15);
-            --success: var(--neon-emerald);
-            --warning: #f59e0b;
-            --danger: #ef4444;
+            --primary: var(--zoona-primary);
+            --primary-dark: var(--zoona-primary-dark);
+            --primary-light: var(--zoona-primary-light);
+            --secondary: var(--zoona-primary);
+            --secondary-light: var(--zoona-primary-light);
+            --success: var(--success);
+            --warning: var(--warning);
+            --danger: var(--danger);
             --danger-light: rgba(239, 68, 68, 0.1);
             --light: var(--tech-bg);
             --dark: var(--tech-text);
@@ -121,7 +121,7 @@
             border-radius: 12px;
             background: transparent;
             padding: 0;
-            box-shadow: 0 0 15px var(--neon-blue);
+            box-shadow: 0 0 15px var(--zoona-emerald-glow);
             margin: 0;
             object-fit: contain;
         }
@@ -252,15 +252,15 @@
         }
 
         .tab:hover {
-            color: var(--neon-blue);
-            background: rgba(30, 144, 255, 0.05);
+            color: var(--zoona-primary);
+            background: var(--zoona-primary-light);
         }
 
         .tab.active {
-            color: var(--neon-blue);
-            background: rgba(30, 144, 255, 0.1);
-            box-shadow: 0 0 15px rgba(30, 144, 255, 0.2);
-            border: 1px solid var(--neon-blue);
+            color: var(--zoona-primary);
+            background: var(--zoona-primary-light);
+            box-shadow: 0 0 15px var(--zoona-emerald-glow);
+            border: 1px solid var(--zoona-primary);
         }
 
         .tab-content {
@@ -305,12 +305,12 @@
         .card-title {
             font-size: 1.25rem;
             font-weight: 700;
-            color: var(--neon-blue);
+            color: var(--zoona-primary);
             display: flex;
             align-items: center;
             gap: 0.75rem;
             margin: 0;
-            text-shadow: 0 0 10px rgba(30, 144, 255, 0.3);
+            text-shadow: 0 0 10px var(--zoona-emerald-glow);
         }
 
         /* Forms */
@@ -341,7 +341,7 @@
         .form-control:focus {
             outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(30, 144, 255, 0.1);
+            box-shadow: 0 0 0 3px var(--zoona-primary-light);
         }
 
         .form-select {
@@ -397,15 +397,15 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, var(--neon-blue) 0%, var(--primary-dark) 100%);
+            background: var(--grad-emerald);
             color: white;
             border: none;
-            box-shadow: 0 4px 15px rgba(30, 144, 255, 0.3);
+            box-shadow: 0 4px 15px var(--zoona-emerald-glow);
         }
 
         .btn-primary:hover {
-            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--neon-blue) 100%);
-            box-shadow: 0 0 25px rgba(30, 144, 255, 0.5);
+            background: var(--grad-emerald-tech);
+            box-shadow: 0 0 25px var(--zoona-emerald-glow);
             transform: translateY(-2px);
         }
 
@@ -428,7 +428,7 @@
 
         .btn-outline:hover {
             background: var(--primary-light);
-            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
+            box-shadow: 0 4px 12px var(--zoona-emerald-glow);
         }
 
         .btn-danger {
@@ -480,14 +480,14 @@
 
         .vehicle-category:hover {
             transform: translateY(-2px);
-            box-shadow: 0 0 15px rgba(30, 144, 255, 0.15);
-            border-color: var(--neon-blue);
+            box-shadow: 0 0 15px var(--zoona-emerald-glow);
+            border-color: var(--zoona-primary);
         }
 
         .vehicle-category.selected {
-            border-color: var(--neon-blue);
-            background: rgba(30, 144, 255, 0.1);
-            box-shadow: 0 0 20px rgba(30, 144, 255, 0.3);
+            border-color: var(--zoona-primary);
+            background: var(--zoona-primary-light);
+            box-shadow: 0 0 20px var(--zoona-emerald-glow);
         }
 
         .vehicle-icon {
@@ -732,8 +732,8 @@
         }
 
         .message-outgoing .message-content {
-            background: #e0f2fe;
-            border-color: #bae6fd;
+            background: var(--zoona-primary-light);
+            border-color: var(--zoona-primary);
             color: var(--tech-text);
         }
 
@@ -903,7 +903,7 @@
         .notification-title {
             font-weight: 700;
             margin-bottom: 0.25rem;
-            color: var(--gray-800);
+            color: var(--zoona-primary);
         }
 
         .notification-message {
@@ -998,7 +998,7 @@
             /* Animation removed by request */
         }
         .unread-chat {
-            background-color: rgba(67, 97, 238, 0.05) !important;
+            background-color: var(--zoona-primary-light) !important;
             border-right: 4px solid var(--primary) !important;
         }
     </style>
@@ -4302,9 +4302,9 @@
             }
             
             notification.innerHTML = `
-                <div class="notification-icon"><i class="ph-light ${icon} neon-icon-blue"></i></div>
+                <div class="notification-icon"><i class="ph-light ${icon} neon-icon-emerald"></i></div>
                 <div class="notification-content">
-                    <div class="notification-title" style="color: var(--neon-blue);">${notificationTitle}</div>
+                    <div class="notification-title" style="color: var(--zoona-primary);">${notificationTitle}</div>
                     <div class="notification-message" style="font-weight: 600;">${escapeHtml(message)}</div>
                 </div>
                 <button onclick="this.parentElement.remove()" style="
@@ -4349,9 +4349,9 @@
             };
 
             toast.innerHTML = `
-                <div class="notification-icon"><i class="ph-light ${icons[type] || 'ph-sparkle'} neon-icon-blue"></i></div>
+                <div class="notification-icon"><i class="ph-light ${icons[type] || 'ph-sparkle'} neon-icon-emerald"></i></div>
                 <div class="notification-content">
-                    <div class="notification-title" style="color: var(--neon-blue);">تنبيه منصة ترحال</div>
+                    <div class="notification-title" style="color: var(--zoona-primary);">تنبيه منصة ترحال</div>
                     <div class="notification-message" style="font-weight:700;">${escapeHtml(message)}</div>
                 </div>
             `;

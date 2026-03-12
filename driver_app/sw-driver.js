@@ -23,15 +23,21 @@ const CDN_ASSETS = [
     'fonts.gstatic.com'
 ];
 
-const MAX_CACHE_ITEMS = 50;
+const MAX_CACHE_ITEMS = 25;
 
 // Helper to limit cache size
 async function limitCacheSize(name, size) {
-    const cache = await caches.open(name);
-    const keys = await cache.keys();
-    if (keys.length > size) {
-        await cache.delete(keys[0]);
-        await limitCacheSize(name, size);
+    try {
+        const cache = await caches.open(name);
+        const keys = await cache.keys();
+        if (keys.length > size) {
+            await cache.delete(keys[0]);
+            if (keys.length - 1 > size) {
+                await limitCacheSize(name, size);
+            }
+        }
+    } catch (e) {
+        console.error('Cache limit error:', e);
     }
 }
 
@@ -59,20 +65,25 @@ self.addEventListener('fetch', (event) => {
 
     const url = new URL(event.request.url);
 
-    // Skip caching for system critical domains
-    if (EXCLUDED_DOMAINS.some(domain => url.hostname.includes(domain))) {
-        event.respondWith(fetch(event.request));
+    // 1. Skip caching for excluded domains (Maps, Supabase, etc.)
+    if (EXCLUDED_DOMAINS.some(domain => url.hostname.includes(domain)) ||
+        url.hostname.includes('google.com') ||
+        url.hostname.includes('gstatic.com')) {
         return;
     }
 
-    // Aggressive Caching for Phosphor Icons and Google Fonts
+    // 2. Aggressive Caching for Phosphor Icons and Google Fonts
     if (CDN_ASSETS.some(asset => url.href.includes(asset))) {
         event.respondWith(
             caches.match(event.request).then((cached) => {
                 if (cached) return cached;
                 return fetch(event.request).then((response) => {
+                    if (!response || response.status !== 200) return response;
                     const responseClone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, responseClone);
+                        limitCacheSize(CACHE_NAME, MAX_CACHE_ITEMS);
+                    });
                     return response;
                 });
             })
@@ -80,23 +91,25 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Default: Stale-While-Revalidate for app logic
-    event.respondWith(
-        caches.match(event.request).then((cached) => {
-            const fetched = fetch(event.request).then((networkResponse) => {
-                if (networkResponse && networkResponse.status === 200) {
-                    const responseClone = networkResponse.clone();
-                    caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, responseClone);
-                        limitCacheSize(CACHE_NAME, MAX_CACHE_ITEMS);
-                    });
-                }
-                return networkResponse;
-            }).catch(() => null);
+    // 3. Stale-While-Revalidate for Same-Origin App Logic only
+    if (url.origin === self.location.origin) {
+        event.respondWith(
+            caches.match(event.request).then((cached) => {
+                const fetched = fetch(event.request).then((networkResponse) => {
+                    if (networkResponse && networkResponse.status === 200) {
+                        const responseClone = networkResponse.clone();
+                        caches.open(CACHE_NAME).then((cache) => {
+                            cache.put(event.request, responseClone);
+                            limitCacheSize(CACHE_NAME, MAX_CACHE_ITEMS);
+                        });
+                    }
+                    return networkResponse;
+                }).catch(() => null);
 
-            return cached || fetched;
-        })
-    );
+                return cached || fetched;
+            })
+        );
+    }
 });
 
 // Push Notification Handling
