@@ -1,6 +1,7 @@
 /*
    Shared Cosmic Neon Theme - Global Tech Tech Redesign
    Standardized variables for all apps
+   (Unified Emerald Theme - Driver App Colors)
 */
 
 :root {
@@ -17,13 +18,13 @@
     --tech-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     --tech-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.08);
 
-    /* Zoona Brand Colors (Unified Emerald Theme) */
+    /* Zoona Brand Colors - Unified Emerald Theme (Driver App Colors) */
     --zoona-primary: #16a34a;
     --zoona-primary-dark: #15803d;
     --zoona-primary-light: rgba(22, 163, 74, 0.1);
     --zoona-emerald-glow: rgba(22, 163, 74, 0.4);
-
-    /* Brand Colors for Legacy Compat */
+    
+    /* Brand Colors for Legacy Compat (Unified - جميع التطبيقات تستخدم نفس اللون) */
     --neon-blue: var(--zoona-primary);
     --neon-blue-glow: var(--zoona-emerald-glow);
     --neon-emerald: var(--zoona-primary);
@@ -31,18 +32,18 @@
     --neon-blue-glow-emerald: var(--zoona-emerald-glow);
 
     /* Semantic Colors */
-    --danger: #ef4444;
-    --warning: #f59e0b;
-    --success: #16a34a;
+    --neon-danger: #ef4444;
+    --neon-warning: #f59e0b;
+    --success: var(--zoona-primary);
 
-    /* Gradients */
+    /* Gradients - Driver App Gradients */
     --grad-emerald: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
     --grad-emerald-tech: linear-gradient(135deg, #16a34a 0%, #059669 100%);
-    --grad-blue: var(--grad-emerald);
+    --grad-blue: var(--grad-emerald); /* Unified gradient */
 
     /* Shared Spacing/Radius */
     --radius-standard: 12px;
-    --radius-large: 20px;
+    --radius-large: 16px;
 }
 
 /* Global Tech Utilities */
@@ -112,6 +113,7 @@ i.ph, i[class*="ph-"] {
     color: var(--tech-text);
 }
 
+/* Unified Button Style - Driver App Style */
 .btn-neon-blue, .btn-neon-emerald, .btn-zoona {
     background: var(--grad-emerald);
     color: white !important;
@@ -128,18 +130,16 @@ i.ph, i[class*="ph-"] {
     cursor: pointer;
 }
 
-.btn-neon-blue:hover, .btn-neon-emerald:hover, .btn-zoona:hover {
+.btn-neon-blue:hover:not(:disabled), 
+.btn-neon-emerald:hover:not(:disabled), 
+.btn-zoona:hover:not(:disabled) {
     box-shadow: 0 0 20px var(--zoona-emerald-glow);
     transform: translateY(-2px);
 }
 
 /* Polished Glow for Icons */
-.ph-glow-blue {
-    filter: drop-shadow(0 0 4px var(--neon-blue-glow));
-}
-
-.ph-glow-emerald {
-    filter: drop-shadow(0 0 4px var(--neon-emerald-glow));
+.ph-glow-blue, .ph-glow-emerald {
+    filter: drop-shadow(0 0 4px var(--zoona-emerald-glow));
 }
 
 /* Global RTL Support Utility */
