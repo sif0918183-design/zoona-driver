@@ -1,148 +1,143 @@
 /*
-   Shared Cosmic Neon Theme - Global Tech Tech Redesign
-   Standardized variables for all apps
+   Shared Zoona Emerald Theme - Global Tech Redesign
+   Standardized for Mobile-First Workflows
+   Ref: Based on Zuna Driver UI Analysis
 */
 
 :root {
-    /* Base Cosmic Palette (Dark Mode) */
-    --cosmic-bg: #0D1117;
-    --cosmic-card: rgba(22, 27, 34, 0.8);
-    --cosmic-border: rgba(48, 54, 61, 0.8);
+    /* --- Base Palette (Light Mode Focus) --- */
+    --tech-bg: #F3F4F6;           /* الخلفية الرمادية الفاتحة من الصورة */
+    --tech-card: #FFFFFF;         /* خلفية البطاقات البيضاء */
+    --tech-text: #111827;         /* لون النصوص الأساسي */
+    --tech-border: #E5E7EB;       /* حدود البطاقات الخفيفة */
+    
+    /* --- Zoona Brand Colors (Emerald Deep) --- */
+    --zoona-primary: #008B5E;     /* الأخضر الزمردي العلوي */
+    --zoona-primary-dark: #005F41; /* الأخضر الغاباتي السفلي */
+    --zoona-emerald-glow: rgba(0, 139, 94, 0.25);
+    --zoona-primary-light: rgba(0, 139, 94, 0.05);
 
-    /* Modern Light Tech Palette */
-    --tech-bg: #F9FAFB;
-    --tech-card: #FFFFFF;
-    --tech-text: #111827;
-    --tech-border: #E5E7EB;
-    --tech-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    --tech-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.08);
+    /* --- Semantic Colors --- */
+    --danger: #EF4444;            /* للرسائل التحذيرية وحالة "غير متصل" */
+    --warning: #F59E0B;
+    --success: #008B5E;
 
-    /* Zoona Brand Colors (Unified Emerald Theme) */
-    --zoona-primary: #16a34a;
-    --zoona-primary-dark: #15803d;
-    --zoona-primary-light: rgba(22, 163, 74, 0.1);
-    --zoona-emerald-glow: rgba(22, 163, 74, 0.4);
+    /* --- Gradients (Identical to UI image) --- */
+    --grad-emerald: linear-gradient(180deg, #008B5E 0%, #005F41 100%);
+    --grad-header: linear-gradient(180deg, #008B5E 0%, #005F41 100%);
 
-    /* Brand Colors for Legacy Compat */
-    --neon-blue: var(--zoona-primary);
-    --neon-blue-glow: var(--zoona-emerald-glow);
-    --neon-emerald: var(--zoona-primary);
-    --neon-emerald-glow: var(--zoona-emerald-glow);
-    --neon-blue-glow-emerald: var(--zoona-emerald-glow);
-
-    /* Semantic Colors */
-    --danger: #ef4444;
-    --warning: #f59e0b;
-    --success: #16a34a;
-
-    /* Gradients */
-    --grad-emerald: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-    --grad-emerald-tech: linear-gradient(135deg, #16a34a 0%, #059669 100%);
-    --grad-blue: var(--grad-emerald);
-
-    /* Shared Spacing/Radius */
-    --radius-standard: 12px;
+    /* --- Spacing & Radius --- */
+    --radius-standard: 14px;
     --radius-large: 20px;
+    --tech-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
-/* Global Tech Utilities */
-.ph-light-bloom-blue, .ph-light-bloom-emerald {
-    filter: drop-shadow(0 0 2px var(--zoona-primary))
-            drop-shadow(0 0 8px var(--zoona-emerald-glow))
-            drop-shadow(0 0 15px var(--zoona-emerald-glow))
-            drop-shadow(0 0 30px rgba(22, 163, 74, 0.15));
+/* --- Global Elements Redesign --- */
+
+body {
+    background-color: var(--tech-bg);
+    color: var(--tech-text);
+    margin: 0;
+    font-family: 'Tajawal', sans-serif;
 }
 
-.neon-glow-blue, .neon-glow-emerald {
-    color: var(--zoona-primary);
-    filter: drop-shadow(0 0 2px var(--zoona-primary))
-            drop-shadow(0 0 5px var(--zoona-emerald-glow))
-            drop-shadow(0 0 12px var(--zoona-emerald-glow));
+/* Header UI: المطلب الرئيسي بجعل الهيدر بنفس لون الأزرار */
+header, .app-header, .navbar-zoona {
+    background: var(--grad-header) !important;
+    color: white !important;
+    padding: 15px 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.neon-icon-blue, .neon-icon-emerald {
-    color: var(--zoona-primary) !important;
-    filter: drop-shadow(0 0 1px var(--zoona-primary))
-            drop-shadow(0 0 4px var(--zoona-emerald-glow))
-            drop-shadow(0 0 12px var(--zoona-emerald-glow)) !important;
-}
-
-/* Light Mode Adaptations */
-.light-mode .neon-icon-blue,
-.light-mode .neon-glow-blue {
-    filter: none; /* Reduce glow on light background for cleaner Apple look */
-    text-shadow: none;
-}
-
-/* Sophisticated icon weights per user request */
-i.ph-bold, i.ph-fill {
-    font-weight: 700;
-}
-
-i.ph-light {
-    font-weight: 300;
-}
-
-i.ph-thin {
-    font-weight: 100;
-}
-
-i.ph {
-    font-weight: 400;
-}
-
-/* Default icon weight to Light for sophistication */
-i.ph, i[class*="ph-"] {
-    vertical-align: middle;
-}
-
-.card-tech {
-    background: var(--cosmic-card);
-    border: 1px solid var(--cosmic-border);
-    backdrop-filter: blur(12px);
-    border-radius: var(--radius-standard);
-}
-
-/* Light tech card */
+/* Card Styling: محاكاة بطاقات البيانات في الصورة */
 .card-tech-light {
     background: var(--tech-card);
     border: 1px solid var(--tech-border);
-    box-shadow: var(--tech-shadow);
     border-radius: var(--radius-standard);
-    color: var(--tech-text);
+    box-shadow: var(--tech-shadow);
+    padding: 16px;
+    margin-bottom: 12px;
 }
 
-.btn-neon-blue, .btn-neon-emerald, .btn-zoona {
-    background: var(--grad-emerald);
+/* Primary Button: محاكاة زر "تفعيل وضع العمل" */
+.btn-zoona, .btn-neon-emerald {
+    background: var(--grad-emerald) !important;
     color: white !important;
-    font-weight: 700;
-    box-shadow: 0 4px 12px var(--zoona-emerald-glow);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: none;
     border-radius: var(--radius-standard);
-    padding: 12px 20px;
+    padding: 14px 20px;
+    font-weight: 700;
+    font-size: 1rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 10px;
     cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 95, 65, 0.2);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.btn-neon-blue:hover, .btn-neon-emerald:hover, .btn-zoona:hover {
-    box-shadow: 0 0 20px var(--zoona-emerald-glow);
-    transform: translateY(-2px);
+.btn-zoona:active {
+    transform: scale(0.97);
+    filter: brightness(0.9);
 }
 
-/* Polished Glow for Icons */
-.ph-glow-blue {
-    filter: drop-shadow(0 0 4px var(--neon-blue-glow));
+/* Outline Button: محاكاة زر "إصلاح استلام الإشعارات" */
+.btn-outline-zoona {
+    background: transparent !important;
+    border: 1.5px solid var(--zoona-primary) !important;
+    color: var(--zoona-primary) !important;
+    border-radius: var(--radius-standard);
+    padding: 12px 20px;
+    font-weight: 600;
+    transition: background 0.3s ease;
 }
 
-.ph-glow-emerald {
-    filter: drop-shadow(0 0 4px var(--neon-emerald-glow));
+.btn-outline-zoona:hover {
+    background: var(--zoona-primary-light) !important;
 }
 
-/* Global RTL Support Utility */
+/* Status Badges: محاكاة حالة "غير متصل" */
+.status-indicator {
+    padding: 6px 16px;
+    border-radius: 50px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.status-offline {
+    background: #FEE2E2;
+    color: #DC2626;
+}
+
+/* --- Phosphor Icon Refinement --- */
+i.ph {
+    font-size: 1.4rem;
+    vertical-align: middle;
+}
+
+.neon-icon-emerald {
+    color: var(--zoona-primary) !important;
+}
+
+/* RTL Support for Tajawal */
 [dir="rtl"] {
     font-family: 'Tajawal', sans-serif;
+    letter-spacing: 0;
+}
+
+/* Utility for stats (مثل الرصيد وإجمالي الرحلات) */
+.stat-value {
+    color: var(--zoona-primary);
+    font-weight: 800;
+    font-size: 1.2rem;
+}
+
+.stat-label {
+    color: #6B7280;
+    font-size: 0.85rem;
 }
