@@ -1,7 +1,7 @@
 /*
    Shared Cosmic Neon Theme - Global Tech Tech Redesign
    Standardized variables for all apps
-   (Driver App Colors - Fixed Header)
+   (Unified Emerald Theme - Driver App Colors)
 */
 
 :root {
@@ -18,51 +18,32 @@
     --tech-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     --tech-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.08);
 
-    /* Driver App Colors - Emerald Theme */
-    --driver: #16a34a;
-    --driver-dark: #15803d;
-    --driver-light: #dcfce7;
-    --driver-very-light: #f0fdf4;
-    
-    /* Zoona Brand Colors (Unified Emerald Theme) */
+    /* Zoona Brand Colors - Unified Emerald Theme (Driver App Colors) */
     --zoona-primary: #16a34a;
     --zoona-primary-dark: #15803d;
     --zoona-primary-light: rgba(22, 163, 74, 0.1);
     --zoona-emerald-glow: rgba(22, 163, 74, 0.4);
+    
+    /* Brand Colors for Legacy Compat (Unified - جميع التطبيقات تستخدم نفس اللون) */
+    --neon-blue: var(--zoona-primary);
+    --neon-blue-glow: var(--zoona-emerald-glow);
+    --neon-emerald: var(--zoona-primary);
+    --neon-emerald-glow: var(--zoona-emerald-glow);
+    --neon-blue-glow-emerald: var(--zoona-emerald-glow);
 
-    /* Brand Colors for Legacy Compat */
-    --neon-blue: #16a34a;
-    --neon-blue-glow: rgba(22, 163, 74, 0.4);
-    --neon-emerald: #16a34a;
-    --neon-emerald-glow: rgba(22, 163, 74, 0.4);
-    --neon-blue-glow-emerald: rgba(22, 163, 74, 0.4);
+    /* Semantic Colors */
+    --neon-danger: #ef4444;
+    --neon-warning: #f59e0b;
+    --success: var(--zoona-primary);
 
-    /* Status Colors */
-    --danger: #ef4444;
-    --danger-dark: #dc2626;
-    --warning: #f59e0b;
-    --warning-dark: #d97706;
-    --success: #16a34a;
-    
-    /* Neutral Colors */
-    --light: #F9FAFB;
-    --dark: #111827;
-    --gray: #6B7280;
-    --gray-light: #E5E7EB;
-    --gray-dark: #4B5563;
-    
-    /* Shadows */
-    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    
-    /* Border Radius */
-    --radius: 12px;
-    --radius-lg: 16px;
-    --radius-xl: 20px;
-    
-    /* Gradients */
+    /* Gradients - Driver App Gradients */
     --grad-emerald: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
     --grad-emerald-tech: linear-gradient(135deg, #16a34a 0%, #059669 100%);
+    --grad-blue: var(--grad-emerald); /* Unified gradient */
+
+    /* Shared Spacing/Radius */
+    --radius-standard: 12px;
+    --radius-large: 16px;
 }
 
 /* Global Tech Utilities */
@@ -87,389 +68,81 @@
             drop-shadow(0 0 12px var(--zoona-emerald-glow)) !important;
 }
 
-/* ============================================
-   HEADER STYLES - Fixed
-   ============================================ */
-
-.app-header {
-    flex-shrink: 0;
-    background: linear-gradient(135deg, var(--driver), var(--driver-dark));
-    color: white;
-    padding: 8px 15px;
-    text-align: center;
-    box-shadow: var(--shadow);
-    border-bottom: 4px solid var(--driver-dark);
+/* Light Mode Adaptations */
+.light-mode .neon-icon-blue,
+.light-mode .neon-glow-blue {
+    filter: none; /* Reduce glow on light background for cleaner Apple look */
+    text-shadow: none;
 }
 
-.app-header h1 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 800;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
+/* Sophisticated icon weights per user request */
+i.ph-bold, i.ph-fill {
+    font-weight: 700;
 }
 
-.logo-img {
-    width: 45px;
-    height: 45px;
-    object-fit: contain;
+i.ph-light {
+    font-weight: 300;
 }
 
-/* Map Overlay Header - For Ride Request Screen */
-.map-overlay-header {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(135deg, var(--driver), var(--driver-dark));
-    padding: 8px 12px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    z-index: 2100;
-    box-shadow: var(--shadow);
-    height: 48px;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+i.ph-thin {
+    font-weight: 100;
 }
 
-/* ============================================
-   GENERAL STYLES
-   ============================================ */
-
-body {
-    font-family: 'Tajawal', sans-serif;
-    background: linear-gradient(135deg, var(--driver) 0%, var(--driver-dark) 100%);
-    height: 100vh;
-    overflow: hidden;
-    color: var(--dark);
-    -webkit-font-smoothing: antialiased;
+i.ph {
+    font-weight: 400;
 }
 
-.app-container {
-    max-width: 500px;
-    margin: 0 auto;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    background: var(--light);
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.1);
+/* Default icon weight to Light for sophistication */
+i.ph, i[class*="ph-"] {
+    vertical-align: middle;
 }
 
-.screen {
-    padding: 10px;
-    flex: 1;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
+.card-tech {
+    background: var(--cosmic-card);
+    border: 1px solid var(--cosmic-border);
+    backdrop-filter: blur(12px);
+    border-radius: var(--radius-standard);
 }
 
-.hidden {
-    display: none !important;
+/* Light tech card */
+.card-tech-light {
+    background: var(--tech-card);
+    border: 1px solid var(--tech-border);
+    box-shadow: var(--tech-shadow);
+    border-radius: var(--radius-standard);
+    color: var(--tech-text);
 }
 
-.card {
-    background: white;
-    border-radius: var(--radius-lg);
-    padding: 20px 16px;
-    box-shadow: var(--shadow);
-    border: 1px solid var(--gray-light);
-    margin: 12px;
-}
-
-.card-title {
-    font-size: 20px;
-    font-weight: 800;
-    color: var(--driver);
-    margin-bottom: 24px;
-    text-align: center;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-}
-
-/* ============================================
-   BUTTON STYLES
-   ============================================ */
-
-.btn {
-    padding: 14px 18px;
-    border-radius: var(--radius);
-    border: none;
-    font-family: 'Tajawal', sans-serif;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
+/* Unified Button Style - Driver App Style */
+.btn-neon-blue, .btn-neon-emerald, .btn-zoona {
+    background: var(--grad-emerald);
+    color: white !important;
+    font-weight: 700;
+    box-shadow: 0 4px 12px var(--zoona-emerald-glow);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-standard);
+    padding: 12px 20px;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    width: 100%;
+    cursor: pointer;
 }
 
-.btn:active {
-    transform: translateY(1px);
-}
-
-.btn-primary, .btn-driver {
-    background: linear-gradient(135deg, var(--driver), var(--driver-dark));
-    color: white;
-    box-shadow: 0 4px 12px var(--zoona-emerald-glow);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.btn-primary:hover:not(:disabled), 
-.btn-driver:hover:not(:disabled) {
+.btn-neon-blue:hover:not(:disabled), 
+.btn-neon-emerald:hover:not(:disabled), 
+.btn-zoona:hover:not(:disabled) {
     box-shadow: 0 0 20px var(--zoona-emerald-glow);
     transform: translateY(-2px);
 }
 
-.btn-secondary {
-    background: linear-gradient(135deg, var(--driver), var(--driver-dark));
-    color: white;
-    box-shadow: 0 4px 12px var(--zoona-emerald-glow);
+/* Polished Glow for Icons */
+.ph-glow-blue, .ph-glow-emerald {
+    filter: drop-shadow(0 0 4px var(--zoona-emerald-glow));
 }
 
-.btn-danger {
-    background: linear-gradient(135deg, var(--danger), var(--danger-dark));
-    color: white;
-}
-
-.btn-outline {
-    background: transparent;
-    color: var(--driver);
-    border: 2px solid var(--driver);
-}
-
-.btn-outline:hover:not(:disabled) {
-    background: var(--driver-light);
-}
-
-/* ============================================
-   FORM STYLES
-   ============================================ */
-
-.form-group {
-    margin-bottom: 16px;
-}
-
-.form-label {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 6px;
-    color: var(--dark);
-    font-size: 13px;
-}
-
-.form-input {
-    width: 100%;
-    padding: 14px 16px;
-    border: 2px solid var(--gray-light);
-    border-radius: var(--radius);
-    font-family: 'Tajawal', sans-serif;
-    font-size: 16px;
-    transition: all 0.3s ease;
-    background: white;
-    direction: rtl;
-    text-align: right;
-}
-
-.form-input:focus {
-    outline: none;
-    border-color: var(--driver);
-    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
-}
-
-.form-footer {
-    text-align: center;
-    margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px solid var(--gray-light);
-}
-
-/* ============================================
-   SPLASH SCREEN
-   ============================================ */
-
-#splash-screen {
-    position: fixed;
-    inset: 0;
-    background: linear-gradient(135deg, var(--driver-dark), var(--driver), var(--driver-light));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 999999;
-    transition: opacity 0.6s ease, visibility 0.6s ease;
-}
-
-.splash-logo {
-    width: 150px;
-    height: auto;
-    animation: logoIn 0.9s ease;
-}
-
-.loader {
-    margin: 26px auto 10px;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: 4px solid rgba(255,255,255,0.35);
-    border-top-color: #ffffff;
-    animation: spin 0.9s linear infinite;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-@keyframes logoIn {
-    from {
-        transform: scale(0.85);
-        opacity: 0;
-    }
-    to {
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
-#splash-screen.hide {
-    opacity: 0;
-    visibility: hidden;
-}
-
-/* ============================================
-   NOTIFICATION STYLES
-   ============================================ */
-
-.notification {
-    position: fixed;
-    top: 20px;
-    left: 20px;
-    right: 20px;
-    background: white;
-    border-radius: var(--radius);
-    padding: 16px;
-    box-shadow: var(--shadow-lg);
-    z-index: 10000;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    border-right: 4px solid var(--driver);
-    animation: slideIn 0.3s ease;
-    max-width: 500px;
-    margin: 0 auto;
-}
-
-@keyframes slideIn {
-    from {
-        transform: translateY(-100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
-
-.notification-success {
-    border-right-color: var(--driver);
-}
-
-.notification-error {
-    border-right-color: var(--danger);
-}
-
-/* ============================================
-   OVERLAY & MODAL STYLES
-   ============================================ */
-
-.overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.8);
-    z-index: 10000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-.modal {
-    background: white;
-    border-radius: var(--radius-lg);
-    padding: 32px;
-    max-width: 500px;
-    width: 100%;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: var(--shadow-lg);
-    animation: slideUp 0.4s ease;
-}
-
-@keyframes slideUp {
-    from {
-        transform: translateY(40px);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
-
-/* ============================================
-   STATUS INDICATORS
-   ============================================ */
-
-.status-indicator {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-weight: 600;
-}
-
-.status-offline {
-    background: #fee2e2;
-    color: var(--danger);
-}
-
-.status-online {
-    background: #dcfce7;
-    color: var(--driver-dark);
-}
-
-.status-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-}
-
-/* ============================================
-   RTL SUPPORT
-   ============================================ */
-
+/* Global RTL Support Utility */
 [dir="rtl"] {
     font-family: 'Tajawal', sans-serif;
-}
-
-.form-input::placeholder {
-    direction: rtl;
-    text-align: right;
 }
