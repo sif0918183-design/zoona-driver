@@ -1,7 +1,7 @@
 /*
    Shared Cosmic Neon Theme - Global Tech Tech Redesign
    Standardized variables for all apps
-   (Driver App Colors - Full Version)
+   (Driver App Colors - Fixed Header)
 */
 
 :root {
@@ -14,7 +14,6 @@
     --tech-bg: #F9FAFB;
     --tech-card: #FFFFFF;
     --tech-text: #111827;
-    --tech-text-light: #6B7280;
     --tech-border: #E5E7EB;
     --tech-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     --tech-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.08);
@@ -26,24 +25,24 @@
     --driver-very-light: #f0fdf4;
     
     /* Zoona Brand Colors (Unified Emerald Theme) */
-    --zoona-primary: var(--driver);
-    --zoona-primary-dark: var(--driver-dark);
+    --zoona-primary: #16a34a;
+    --zoona-primary-dark: #15803d;
     --zoona-primary-light: rgba(22, 163, 74, 0.1);
     --zoona-emerald-glow: rgba(22, 163, 74, 0.4);
 
     /* Brand Colors for Legacy Compat */
-    --neon-blue: var(--zoona-primary);
-    --neon-blue-glow: var(--zoona-emerald-glow);
-    --neon-emerald: var(--zoona-primary);
-    --neon-emerald-glow: var(--zoona-emerald-glow);
-    --neon-blue-glow-emerald: var(--zoona-emerald-glow);
+    --neon-blue: #16a34a;
+    --neon-blue-glow: rgba(22, 163, 74, 0.4);
+    --neon-emerald: #16a34a;
+    --neon-emerald-glow: rgba(22, 163, 74, 0.4);
+    --neon-blue-glow-emerald: rgba(22, 163, 74, 0.4);
 
     /* Status Colors */
     --danger: #ef4444;
     --danger-dark: #dc2626;
     --warning: #f59e0b;
     --warning-dark: #d97706;
-    --success: var(--driver);
+    --success: #16a34a;
     
     /* Neutral Colors */
     --light: #F9FAFB;
@@ -88,140 +87,185 @@
             drop-shadow(0 0 12px var(--zoona-emerald-glow)) !important;
 }
 
-/* Light Mode Adaptations */
-.light-mode .neon-icon-blue,
-.light-mode .neon-glow-blue {
-    filter: none;
-    text-shadow: none;
+/* ============================================
+   HEADER STYLES - Fixed
+   ============================================ */
+
+.app-header {
+    flex-shrink: 0;
+    background: linear-gradient(135deg, var(--driver), var(--driver-dark));
+    color: white;
+    padding: 8px 15px;
+    text-align: center;
+    box-shadow: var(--shadow);
+    border-bottom: 4px solid var(--driver-dark);
 }
 
-/* Icon weights */
-i.ph-bold, i.ph-fill {
-    font-weight: 700;
+.app-header h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
 }
 
-i.ph-light {
-    font-weight: 300;
+.logo-img {
+    width: 45px;
+    height: 45px;
+    object-fit: contain;
 }
 
-i.ph-thin {
-    font-weight: 100;
-}
-
-i.ph {
-    font-weight: 400;
-}
-
-i.ph, i[class*="ph-"] {
-    vertical-align: middle;
-}
-
-/* Card Styles */
-.card-tech {
-    background: var(--cosmic-card);
-    border: 1px solid var(--cosmic-border);
-    backdrop-filter: blur(12px);
-    border-radius: var(--radius);
-}
-
-.card-tech-light {
-    background: var(--tech-card);
-    border: 1px solid var(--tech-border);
-    box-shadow: var(--tech-shadow);
-    border-radius: var(--radius);
-    color: var(--tech-text);
+/* Map Overlay Header - For Ride Request Screen */
+.map-overlay-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, var(--driver), var(--driver-dark));
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 2100;
+    box-shadow: var(--shadow);
+    height: 48px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* ============================================
-   DRIVER APP STYLES - Preserved from original
+   GENERAL STYLES
    ============================================ */
 
-/* Driver Button Styles */
-.btn-driver {
-    background: var(--grad-emerald);
-    color: white;
-    font-weight: 700;
-    box-shadow: 0 4px 12px var(--zoona-emerald-glow);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+body {
+    font-family: 'Tajawal', sans-serif;
+    background: linear-gradient(135deg, var(--driver) 0%, var(--driver-dark) 100%);
+    height: 100vh;
+    overflow: hidden;
+    color: var(--dark);
+    -webkit-font-smoothing: antialiased;
+}
+
+.app-container {
+    max-width: 500px;
+    margin: 0 auto;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--light);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.1);
+}
+
+.screen {
+    padding: 10px;
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.card {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: 20px 16px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--gray-light);
+    margin: 12px;
+}
+
+.card-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--driver);
+    margin-bottom: 24px;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+/* ============================================
+   BUTTON STYLES
+   ============================================ */
+
+.btn {
+    padding: 14px 18px;
     border-radius: var(--radius);
-    padding: 12px 20px;
+    border: none;
+    font-family: 'Tajawal', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    cursor: pointer;
     width: 100%;
 }
 
+.btn:active {
+    transform: translateY(1px);
+}
+
+.btn-primary, .btn-driver {
+    background: linear-gradient(135deg, var(--driver), var(--driver-dark));
+    color: white;
+    box-shadow: 0 4px 12px var(--zoona-emerald-glow);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-primary:hover:not(:disabled), 
 .btn-driver:hover:not(:disabled) {
     box-shadow: 0 0 20px var(--zoona-emerald-glow);
     transform: translateY(-2px);
 }
 
+.btn-secondary {
+    background: linear-gradient(135deg, var(--driver), var(--driver-dark));
+    color: white;
+    box-shadow: 0 4px 12px var(--zoona-emerald-glow);
+}
+
 .btn-danger {
     background: linear-gradient(135deg, var(--danger), var(--danger-dark));
     color: white;
-    font-weight: 700;
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
-    border-radius: var(--radius);
-    padding: 12px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    cursor: pointer;
-    width: 100%;
-    border: none;
 }
 
 .btn-outline {
     background: transparent;
     color: var(--driver);
     border: 2px solid var(--driver);
-    font-weight: 700;
-    border-radius: var(--radius);
-    padding: 12px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    cursor: pointer;
-    width: 100%;
-    transition: all 0.3s ease;
 }
 
 .btn-outline:hover:not(:disabled) {
     background: var(--driver-light);
 }
 
-/* Status Indicators */
-.status-indicator {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    border-radius: 20px;
+/* ============================================
+   FORM STYLES
+   ============================================ */
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-label {
+    display: block;
     font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--dark);
+    font-size: 13px;
 }
 
-.status-offline {
-    background: #fee2e2;
-    color: var(--danger);
-}
-
-.status-online {
-    background: #dcfce7;
-    color: var(--driver-dark);
-}
-
-.status-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-}
-
-/* Form Styles */
 .form-input {
     width: 100%;
     padding: 14px 16px;
@@ -231,6 +275,8 @@ i.ph, i[class*="ph-"] {
     font-size: 16px;
     transition: all 0.3s ease;
     background: white;
+    direction: rtl;
+    text-align: right;
 }
 
 .form-input:focus {
@@ -239,7 +285,68 @@ i.ph, i[class*="ph-"] {
     box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
 }
 
-/* Notification Styles */
+.form-footer {
+    text-align: center;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--gray-light);
+}
+
+/* ============================================
+   SPLASH SCREEN
+   ============================================ */
+
+#splash-screen {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(135deg, var(--driver-dark), var(--driver), var(--driver-light));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999999;
+    transition: opacity 0.6s ease, visibility 0.6s ease;
+}
+
+.splash-logo {
+    width: 150px;
+    height: auto;
+    animation: logoIn 0.9s ease;
+}
+
+.loader {
+    margin: 26px auto 10px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 4px solid rgba(255,255,255,0.35);
+    border-top-color: #ffffff;
+    animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes logoIn {
+    from {
+        transform: scale(0.85);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+#splash-screen.hide {
+    opacity: 0;
+    visibility: hidden;
+}
+
+/* ============================================
+   NOTIFICATION STYLES
+   ============================================ */
+
 .notification {
     position: fixed;
     top: 20px;
@@ -259,14 +366,6 @@ i.ph, i[class*="ph-"] {
     margin: 0 auto;
 }
 
-.notification-success {
-    border-right-color: var(--driver);
-}
-
-.notification-error {
-    border-right-color: var(--danger);
-}
-
 @keyframes slideIn {
     from {
         transform: translateY(-100%);
@@ -278,22 +377,18 @@ i.ph, i[class*="ph-"] {
     }
 }
 
-/* Loading Spinner */
-.loading {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    border: 3px solid rgba(255,255,255,.3);
-    border-radius: 50%;
-    border-top-color: white;
-    animation: spin 1s ease-in-out infinite;
+.notification-success {
+    border-right-color: var(--driver);
 }
 
-@keyframes spin {
-    to { transform: rotate(360deg); }
+.notification-error {
+    border-right-color: var(--danger);
 }
 
-/* Overlay & Modal Styles */
+/* ============================================
+   OVERLAY & MODAL STYLES
+   ============================================ */
+
 .overlay {
     position: fixed;
     top: 0;
@@ -337,71 +432,41 @@ i.ph, i[class*="ph-"] {
     }
 }
 
-/* Splash Screen */
-#splash-screen {
-    position: fixed;
-    inset: 0;
-    background: linear-gradient(135deg, #15803d, #16a34a, #22c55e);
-    display: flex;
+/* ============================================
+   STATUS INDICATORS
+   ============================================ */
+
+.status-indicator {
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
-    z-index: 999999;
-    transition: opacity 0.6s ease, visibility 0.6s ease;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: 600;
 }
 
-.splash-content {
-    text-align: center;
-    position: relative;
+.status-offline {
+    background: #fee2e2;
+    color: var(--danger);
 }
 
-.splash-logo {
-    width: 150px;
-    height: auto;
-    position: relative;
-    z-index: 2;
-    animation: logoIn 0.9s ease;
+.status-online {
+    background: #dcfce7;
+    color: var(--driver-dark);
 }
 
-.loader {
-    margin: 26px auto 10px;
-    width: 36px;
-    height: 36px;
+.status-dot {
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
-    border: 4px solid rgba(255,255,255,0.35);
-    border-top-color: #ffffff;
-    animation: spin 0.9s linear infinite;
 }
 
-.splash-text {
-    font-family: "Tajawal", sans-serif;
-    font-size: 14px;
-    color: #eef2ff;
-}
+/* ============================================
+   RTL SUPPORT
+   ============================================ */
 
-@keyframes logoIn {
-    from {
-        transform: scale(0.85);
-        opacity: 0;
-    }
-    to {
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
-#splash-screen.hide {
-    opacity: 0;
-    visibility: hidden;
-}
-
-/* RTL Support */
 [dir="rtl"] {
     font-family: 'Tajawal', sans-serif;
-}
-
-.form-input {
-    direction: rtl;
-    text-align: right;
 }
 
 .form-input::placeholder {
