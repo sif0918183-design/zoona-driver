@@ -28,236 +28,190 @@
     <script src="../shared/supabase-config.js"></script>
     <script src="../sound-manager.js"></script>
     
-   <style>
-        /* ============================================
-           MAIN CSS - Tarhal Zoona Passenger App
-           ============================================ */
-
-        /* CSS Variables */
+    <style>
+        /* الأنماط الأساسية - مطابقة تماماً لتطبيق السائق */
         :root {
-            --primary: var(--zoona-primary);
-            --primary-dark: var(--zoona-primary-dark);
-            --primary-light: var(--zoona-primary-light);
-            --secondary: var(--zoona-primary);
-            --secondary-dark: #059669;
-            --warning: #f59e0b;
-            --danger: #ef4444;
+            --driver: var(--zoona-primary);
+            --driver-dark: var(--zoona-primary-dark);
+            --driver-light: var(--zoona-primary-light);
+            --danger: var(--danger);
             --danger-dark: #dc2626;
             --light: var(--tech-bg);
             --dark: var(--tech-text);
-            --gray: #64748b;
+            --gray: #6b7280;
             --gray-light: var(--tech-border);
-            
             --shadow: var(--tech-shadow);
-            --shadow-lg: var(--tech-shadow-lg);
-            --shadow-xl: 0 10px 25px rgba(0, 0, 0, 0.1);
-            
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
             --radius: 12px;
             --radius-lg: 16px;
-            --radius-xl: 24px;
         }
 
-        /* Reset */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            overflow-x: hidden;
-            background-color: var(--tech-bg);
-        }
-
-        /* Body */
         body {
             font-family: 'Tajawal', sans-serif;
-            background: var(--tech-bg);
-            min-height: 100vh;
-            color: var(--tech-text);
+            background: var(--grad-emerald);
+            height: 100vh;
+            overflow: hidden;
+            color: var(--dark);
             -webkit-font-smoothing: antialiased;
         }
 
-        /* Container */
         .app-container {
             max-width: 500px;
             margin: 0 auto;
             height: 100vh;
-            background: var(--tech-bg);
-            position: relative;
-            overflow: hidden;
-            border-left: 1px solid var(--tech-border);
-            border-right: 1px solid var(--tech-border);
+            display: flex;
+            flex-direction: column;
+            background: var(--light);
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.1);
         }
 
-        /* Header */
         .app-header {
-            background: white;
-            color: var(--primary);
-            padding: 12px 0;
+            flex-shrink: 0;
+            background: linear-gradient(135deg, var(--driver), var(--driver-dark));
+            color: white;
+            padding: 8px 15px;
             text-align: center;
-            box-shadow: var(--tech-shadow);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-            border-bottom: 1px solid var(--tech-border);
+            box-shadow: var(--shadow);
+            border-bottom: 4px solid var(--driver-dark);
         }
 
         .app-header h1 {
             margin: 0;
-            padding: 0;
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 800;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            line-height: 1.2;
+            gap: 12px;
         }
 
         .logo-img {
-            height: 40px;
-            width: auto;
-            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+            width: 45px;
+            height: 45px;
+            object-fit: contain;
         }
 
-        /* Screens */
         .screen {
-            padding: 0;
-            min-height: calc(100vh - 62px);
+            padding: 10px;
+            flex: 1;
+            overflow-y: auto;
             display: flex;
             flex-direction: column;
-            position: relative;
-        }
-
-        .screen:not(#ride-request-screen) {
-            height: calc(100vh - 62px);
-            overflow: hidden;
         }
 
         .hidden {
             display: none !important;
-            visibility: hidden !important;
         }
 
-        /* Cards */
         .card {
             background: white;
             border-radius: var(--radius-lg);
-            padding: 20px 16px;
-            box-shadow: var(--tech-shadow);
-            border: 1px solid var(--tech-border);
-            margin: 12px;
+            padding: 15px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--gray-light);
+            margin-bottom: 12px;
         }
 
         .card-title {
-            font-size: 20px;
-            font-weight: 800;
-            color: var(--primary);
-            margin-bottom: 24px;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--driver);
+            margin-bottom: 12px;
             text-align: center;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
+            gap: 8px;
         }
 
-        /* Buttons */
         .btn {
-            padding: 14px 18px;
+            padding: 12px 16px;
             border-radius: var(--radius);
             border: none;
             font-family: 'Tajawal', sans-serif;
             font-size: 14px;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
             transition: all 0.3s ease;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 10px;
             width: 100%;
+            margin-bottom: 8px;
         }
 
         .btn:active {
-            transform: translateY(1px);
+            transform: translateY(2px);
         }
 
-        .btn-primary {
+        .btn-driver, .btn-primary {
             background: var(--grad-emerald);
             color: white;
-            box-shadow: 0 4px 12px var(--zoona-emerald-glow);
+            box-shadow: 0 4px 12px var(--neon-emerald-glow);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .btn-primary:hover:not(:disabled) {
-            box-shadow: 0 0 20px var(--zoona-emerald-glow);
+        .btn-driver:hover:not(:disabled), .btn-primary:hover:not(:disabled) {
+            box-shadow: 0 0 20px var(--neon-emerald-glow);
             transform: translateY(-2px);
         }
 
-        .btn-primary:disabled {
-            background: var(--gray);
-            cursor: not-allowed;
-            box-shadow: none;
+        .btn-danger {
+            background: var(--danger);
+            color: white;
         }
 
-        .btn-secondary {
-            background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));
-            color: white;
-            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+        .btn-danger:hover {
+            background: var(--danger-dark);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3);
         }
 
         .btn-outline {
             background: transparent;
-            color: var(--primary);
-            border: 1.5px solid var(--primary);
-            font-size: 13px;
+            color: var(--driver);
+            border: 2px solid var(--driver);
         }
 
-        .btn-danger {
-            background: linear-gradient(135deg, var(--danger), var(--danger-dark));
-            color: white;
+        .btn-outline:hover {
+            background: var(--driver-light);
         }
 
-        .btn-large {
-            padding: 16px 18px;
-            font-size: 15px;
-        }
-
-        /* Forms */
         .form-group {
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
 
         .form-label {
             display: block;
             font-weight: 600;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
             color: var(--dark);
-            font-size: 13px;
+            font-size: 14px;
         }
 
         .form-input {
             width: 100%;
             padding: 14px 16px;
-            border: 1.5px solid var(--tech-border);
+            border: 2px solid var(--gray-light);
             border-radius: var(--radius);
             font-family: 'Tajawal', sans-serif;
-            font-size: 15px;
+            font-size: 16px;
             transition: all 0.3s ease;
-            background: #ffffff;
-            color: var(--tech-text);
+            background: white;
             direction: rtl;
             text-align: right;
         }
 
         .form-input:focus {
             outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(30, 144, 255, 0.1);
+            border-color: var(--driver);
+            box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
         }
 
         .password-input-container {
@@ -282,59 +236,57 @@
             display: flex;
             flex-direction: column;
             justify-content: center;
-            padding: 10px;
-            gap: 8px;
+            padding: 15px;
+            gap: 12px;
             overflow-y: auto;
-            background: white;
-        }
-
-        .login-screen {
-            background: white;
+            background: var(--light);
         }
 
         .welcome-text {
             text-align: center;
-            color: var(--primary);
-            font-size: 18px;
+            color: var(--driver);
+            font-size: 16px;
             font-weight: 700;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
             line-height: 1.4;
         }
 
         .security-badge {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 10px;
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            background: var(--tech-card);
             padding: 10px 16px;
             border-radius: 12px;
             color: var(--gray);
             font-size: 13px;
             margin: 0 auto;
-            margin-top: 20px;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+            margin-top: 15px;
+            border: 1px solid var(--gray-light);
         }
 
         .security-badge i {
-            color: var(--primary);
+            color: var(--driver);
             font-size: 18px;
         }
 
         /* Form Footer */
         .form-footer {
             text-align: center;
-            margin-top: 20px;
-            padding-top: 16px;
+            margin-top: 15px;
+            padding-top: 15px;
             border-top: 1px solid var(--gray-light);
         }
 
         .form-footer a {
-            color: var(--primary);
+            color: var(--driver);
             text-decoration: none;
             font-weight: 600;
-            transition: all 0.3s;
             font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .form-footer a:hover {
@@ -342,75 +294,65 @@
         }
 
         .register-text {
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             color: var(--dark);
             font-size: 14px;
             font-weight: 600;
         }
 
         .register-card {
-            margin: 0 16px 16px 16px !important;
+            margin: 0 0 12px 0 !important;
             text-align: center;
-            background: linear-gradient(135deg, #ffffff, #f8faff);
-            border: 1px dashed var(--primary);
+            background: white;
+            border: 2px dashed var(--driver);
         }
 
         .terms-text {
             font-size: 11px;
-            color: #9ca3af;
-            margin-top: 16px;
+            color: var(--gray);
+            margin-top: 12px;
             line-height: 1.4;
         }
 
         .back-link {
             display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 14px;
+            justify-content: center;
+            margin-top: 8px;
+            padding: 10px 16px;
             border-radius: 12px;
             background: #f1f2ff;
-            font-size: 13px;
-            color: var(--primary);
+            font-size: 14px;
+            color: var(--driver);
             text-decoration: none;
             font-weight: 600;
-            transition: all 0.3s;
         }
 
-        .back-link:hover {
-            background: #e0e7ff;
-            transform: translateX(-3px);
-        }
-
-        /* Home Screen */
+        /* Home Screen - مطابقة لتصميم السائق */
         .user-profile {
             display: flex;
             align-items: center;
-            gap: 16px;
-            margin-bottom: 24px;
-            padding: 16px;
-            background: var(--tech-bg);
-            border-radius: var(--radius-xl);
-            border: 1px solid var(--tech-border);
+            gap: 12px;
+            margin-bottom: 16px;
         }
 
         .user-avatar {
-            width: 70px;
-            height: 70px;
+            width: 48px;
+            height: 48px;
             background: var(--grad-emerald);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 28px;
-            font-weight: 800;
-            box-shadow: 0 0 20px rgba(30, 144, 255, 0.4);
-            border: 3px solid var(--tech-card);
+            font-size: 20px;
+            font-weight: 700;
+            box-shadow: 0 4px 10px var(--zoona-emerald-glow);
+            border: 2px solid white;
         }
 
         .user-info h3 {
             font-size: 16px;
-            font-weight: 800;
+            font-weight: 700;
             margin-bottom: 4px;
             color: var(--dark);
         }
@@ -418,96 +360,70 @@
         .user-info p {
             color: var(--gray);
             font-size: 14px;
-            font-weight: 500;
         }
 
         .verified-badge {
-            background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));
-            color: white;
-            padding: 4px 12px;
+            background: #dcfce7;
+            color: var(--driver-dark);
+            padding: 4px 10px;
             border-radius: 20px;
             font-size: 11px;
             font-weight: 700;
             display: inline-flex;
             align-items: center;
-            gap: 5px;
-            margin-top: 8px;
-            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+            gap: 4px;
+            margin-top: 4px;
         }
 
         .home-actions {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-            padding: 4px;
-            overflow-y: auto;
+            gap: 10px;
+            padding: 5px;
         }
 
         .action-card {
             background: white;
-            border-radius: 20px;
-            padding: 18px 12px;
+            border-radius: var(--radius-lg);
+            padding: 15px;
             text-align: center;
             cursor: pointer;
             transition: all 0.3s ease;
-            border: 1px solid var(--tech-border);
-            box-shadow: var(--tech-shadow);
-            position: relative;
-            overflow: hidden;
+            border: 1px solid var(--gray-light);
+            box-shadow: var(--shadow);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 140px;
+            min-height: 100px;
         }
 
-        .action-card::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, rgba(30, 144, 255, 0.1), transparent);
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-
-        .action-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 12px 24px var(--zoona-primary-light);
-            border-color: var(--zoona-primary);
-        }
-
-        .action-card:hover::after {
-            opacity: 1;
+        .action-card:active {
+            transform: scale(0.95);
         }
 
         .action-icon {
-            font-size: 32px;
-            margin-bottom: 12px;
-            color: var(--zoona-primary);
-            height: 56px;
-            width: 56px;
-            background: var(--zoona-primary-light);
-            border-radius: 16px;
+            font-size: 24px;
+            margin-bottom: 8px;
+            color: var(--driver);
+            height: 48px;
+            width: 48px;
+            background: var(--driver-light);
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.3s ease;
         }
 
-        .action-card:hover .action-icon {
-            background: var(--zoona-primary);
-            color: white;
-            transform: scale(1.1);
+        .action-icon i {
+            color: var(--driver) !important;
+            filter: drop-shadow(0 0 5px var(--zoona-emerald-glow));
         }
 
         .action-card h4 {
-            font-size: 15px;
-            font-weight: 800;
+            font-size: 13px;
+            font-weight: 700;
             color: var(--dark);
-            line-height: 1.3;
         }
 
         /* ============================================
@@ -517,7 +433,7 @@
         .ride-request-screen {
             padding: 0 !important;
             min-height: 100vh !important;
-            display: flex !important;
+            display: flex;
             flex-direction: column !important;
             position: fixed !important;
             top: 0 !important;
@@ -528,38 +444,36 @@
             z-index: 2000 !important;
         }
 
-        /* Map Overlay Header - أصغر حجم */
+        /* Map Overlay Header - مطابقة لتصميم السائق */
         .map-overlay-header {
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
-            background: linear-gradient(135deg, rgba(79, 70, 229, 0.95), rgba(67, 56, 202, 0.95));
+            background: linear-gradient(135deg, var(--driver), var(--driver-dark));
             padding: 8px 12px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             z-index: 2100;
             box-shadow: var(--shadow);
-            height: 48px;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            height: 55px;
+            border-bottom: 3px solid var(--driver-dark);
             gap: 8px;
         }
 
         .cancel-btn {
-            background: rgba(255, 255, 255, 0.12);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
             color: white;
-            padding: 6px 12px;
-            border-radius: 16px;
+            padding: 8px 14px;
+            border-radius: 12px;
             font-family: 'Tajawal';
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
             font-size: 13px;
             transition: all 0.2s ease;
             white-space: nowrap;
@@ -572,22 +486,22 @@
 
         /* زر التحويل بين تلقائي/يدوي */
         .location-mode-btn {
-            background: rgba(255, 255, 255, 0.12);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
             color: white;
-            padding: 6px 12px;
-            border-radius: 16px;
+            padding: 8px 12px;
+            border-radius: 12px;
             font-family: 'Tajawal';
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 5px;
-            font-size: 11px;
+            gap: 6px;
+            font-size: 12px;
             transition: all 0.2s ease;
             white-space: nowrap;
             flex-shrink: 0;
-            min-width: 80px;
+            min-width: 90px;
             justify-content: center;
         }
 
@@ -644,7 +558,7 @@
 
         .map-type-btn.active {
             background: white;
-            color: var(--primary);
+            color: var(--driver);
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
         }
 
@@ -662,322 +576,261 @@
             display: none;
         }
 
-        /* Google Map Container - مساحة أكبر (63%) */
+        /* Google Map Container - مطابقة لتصميم السائق */
         .google-map-container {
             width: 100%;
-            height: 63vh !important; /* تعديل إلى 63% */
+            height: 63vh !important;
             min-height: 320px;
             position: relative;
             z-index: 2001;
-            margin-top: 48px; /* مسافة من الهيدر المصغر */
+            margin-top: 55px; /* مسافة الهيدر */
         }
 
-        /* Map Controls - أصغر حجم */
+        /* Map Controls - مطابقة لتصميم السائق */
         .map-controls {
             position: absolute;
-            top: 55px;
+            top: 65px;
             left: 12px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
             z-index: 2100;
         }
 
         .map-control-btn {
-            width: 40px;
-            height: 40px;
+            width: 44px;
+            height: 44px;
             background: white;
-            border: none;
+            border: 1px solid var(--gray-light);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             box-shadow: var(--shadow);
-            transition: all 0.2s ease;
-            color: var(--primary);
-            font-size: 16px;
+            transition: all 0.3s ease;
+            color: var(--driver);
+            font-size: 20px;
         }
 
-        .map-control-btn:hover {
-            background: var(--primary-light);
-            transform: scale(1.05);
+        .map-control-btn:active {
+            transform: scale(0.9);
         }
 
-        /* Delete Destination Button - أصغر */
+        /* Delete Destination Button - مطابقة لتصميم السائق */
         .destination-clear-btn {
             position: absolute;
-            top: 55px;
+            top: 65px;
             right: 12px;
             z-index: 2100;
             background: linear-gradient(135deg, var(--danger), var(--danger-dark));
             color: white;
             border: none;
-            padding: 8px 14px;
-            border-radius: 16px;
+            padding: 10px 16px;
+            border-radius: 12px;
             font-family: 'Tajawal';
-            font-size: 12px;
-            font-weight: 600;
+            font-size: 13px;
+            font-weight: 700;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
             box-shadow: var(--shadow);
-            transition: all 0.2s;
         }
 
-        .destination-clear-btn:hover {
-            background: linear-gradient(135deg, var(--danger-dark), #b91c1c);
-            transform: scale(1.03);
-        }
-
-        /* Bottom Section - مساحة أكبر (37%) */
+        /* Bottom Section - مطابقة لتصميم السائق (Tech Tech Look) */
         .ride-bottom-section {
             flex: 1;
-            background: white;
-            padding: 16px 14px;
+            background: var(--light);
+            padding: 15px;
             overflow-y: auto;
-            height: 38vh;
-            min-height: 180px;
-            border-top-left-radius: 24px;
-            border-top-right-radius: 24px;
-            box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.05);
-            border-top: 1px solid var(--tech-border);
+            height: 37vh;
+            border-top-left-radius: 25px;
+            border-top-right-radius: 25px;
+            box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.1);
+            border-top: 1px solid var(--gray-light);
             display: flex;
             flex-direction: column;
+            z-index: 2200;
         }
 
-        /* زر البحث الثابت في الأسفل */
         .search-driver-container {
             margin-top: auto;
-            padding-top: 12px;
-            border-top: 1px solid var(--gray-light);
+            padding-top: 10px;
         }
 
         .search-driver-btn {
-            padding: 14px 18px;
-            font-size: 15px;
-            height: 52px;
-            border-radius: var(--radius);
-            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
-            transition: all 0.3s ease;
-            transform: scale(0.95);
-            margin-bottom: 8px;
+            height: 55px;
+            font-size: 16px;
+            box-shadow: 0 4px 15px var(--neon-emerald-glow);
         }
 
-        .search-driver-btn:not(:disabled):hover {
-            transform: scale(0.98);
-        }
-
-        /* Route Details Card - أصغر */
+        /* Route Details Card */
         .route-details-card {
-            background: var(--zoona-primary-light);
+            background: white;
             border-radius: var(--radius-lg);
-            padding: 14px;
-            margin-bottom: 14px;
-            border-left: 4px solid var(--zoona-primary);
+            padding: 15px;
+            margin-bottom: 12px;
+            border: 1px solid var(--gray-light);
             box-shadow: var(--shadow);
-            border: 1px solid var(--zoona-primary-light);
         }
 
         .route-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
         }
 
         .route-header h4 {
-            color: var(--primary);
+            color: var(--driver);
             font-weight: 700;
-            font-size: 13px;
+            font-size: 14px;
             margin: 0;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
         }
 
         .route-duration {
-            font-size: 11px;
-            color: var(--gray);
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            background: white;
-            padding: 3px 8px;
-            border-radius: 16px;
-            font-weight: 600;
-            border: 1px solid #e2e8f0;
+            font-size: 12px;
+            color: var(--driver-dark);
+            background: var(--driver-light);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 700;
         }
 
         .route-info-grid {
             display: grid;
-            gap: 6px;
+            gap: 8px;
         }
 
         .route-info-item {
             display: flex;
             justify-content: space-between;
-            padding: 5px 0;
-            border-bottom: 1px solid #e5e7eb;
-            font-size: 11px;
-        }
-
-        .route-info-item:last-child {
-            border-bottom: none;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #f3f4f6;
         }
 
         .route-info-label {
             color: var(--gray);
-            font-size: 11px;
-            font-weight: 500;
+            font-size: 12px;
         }
 
         .route-info-value {
             color: var(--dark);
             font-weight: 600;
-            font-size: 11px;
-            text-align: left;
-            max-width: 60%;
-            word-break: break-word;
+            font-size: 12px;
         }
 
-        /* Vehicle Selection Card - أصغر */
+        /* Vehicle Selection Card - Redesigned 2x2 Grid for Tech Tech Look */
         .vehicle-selection-card {
             background: white;
             border-radius: var(--radius-lg);
-            padding: 14px;
-            margin-bottom: 14px;
-            border: 1px solid var(--tech-border);
-            box-shadow: var(--tech-shadow);
+            padding: 15px;
+            margin-bottom: 12px;
+            border: 1px solid var(--gray-light);
+            box-shadow: var(--shadow);
         }
 
         .section-title {
-            color: var(--tech-text);
+            color: var(--dark);
             font-weight: 700;
-            font-size: 13px;
+            font-size: 14px;
             margin-bottom: 12px;
             text-align: center;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
         }
 
         .vehicle-options-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 6px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
         }
 
         .vehicle-option {
-            border: 1.5px solid var(--tech-border);
-            border-radius: var(--radius);
-            padding: 10px 6px;
+            border: 1.5px solid var(--gray-light);
+            border-radius: var(--radius-lg);
+            padding: 12px 8px;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
             text-align: center;
-            background: #f8fafc;
+            background: #f9fafb;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 5px;
-            min-height: 75px;
-        }
-
-        .vehicle-option:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--tech-shadow);
-            border-color: var(--primary);
+            gap: 8px;
+            min-height: 90px;
         }
 
         .vehicle-option.selected {
-            border-color: var(--primary);
-            background: var(--primary-light);
+            border-color: var(--driver);
+            background: var(--driver-light);
+            box-shadow: 0 0 15px var(--neon-emerald-glow);
         }
 
         .vehicle-icon {
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            color: var(--primary);
-            transition: color 0.2s ease, transform 0.2s ease;
-        }
-
-        .vehicle-option.selected .vehicle-icon {
-            color: var(--primary-dark);
-            transform: scale(1.1);
+            font-size: 32px;
+            margin-bottom: 2px;
         }
 
         .vehicle-name {
             font-weight: 700;
-            font-size: 12px;
-            color: var(--tech-text);
-            line-height: 1.2;
+            font-size: 13px;
+            color: var(--dark);
         }
 
         .vehicle-price {
-            color: var(--zoona-primary);
-            font-weight: 700;
-            font-size: 12px;
-            direction: ltr;
+            color: var(--driver);
+            font-weight: 800;
+            font-size: 14px;
         }
 
-        /* Price Card - أصغر */
+        /* Price Card */
         .price-card {
-            background: rgba(30, 144, 255, 0.05);
+            background: var(--driver-dark);
+            color: white;
             border-radius: var(--radius-lg);
-            padding: 14px;
-            margin-bottom: 14px;
-            border: 1.5px solid var(--gray-light);
-            box-shadow: var(--shadow);
+            padding: 15px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow-lg);
         }
 
         .price-row {
             display: flex;
             justify-content: space-between;
-            padding: 6px 0;
-            border-bottom: 1px solid var(--gray-light);
-            font-size: 12px;
-        }
-
-        .price-row:last-child {
-            border-bottom: none;
+            padding: 5px 0;
+            font-size: 13px;
+            opacity: 0.9;
         }
 
         .price-row.total {
             font-weight: 800;
-            font-size: 14px;
-            color: var(--primary);
-            padding-top: 8px;
-            margin-top: 6px;
-            border-top: 2px solid var(--primary);
+            font-size: 18px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            padding-top: 10px;
+            margin-top: 5px;
+            opacity: 1;
         }
 
-        /* Notifications - أصغر */
+        /* Notifications */
         .notification {
             position: fixed;
-            top: 15px;
-            left: 15px;
-            right: 15px;
+            top: 20px;
+            left: 20px;
+            right: 20px;
             background: white;
             border-radius: var(--radius);
-            padding: 12px;
+            padding: 16px;
             box-shadow: var(--shadow-lg);
-            z-index: 3000;
+            z-index: 10000;
             display: flex;
             align-items: center;
-            gap: 10px;
-            border-right: 4px solid var(--primary);
+            gap: 12px;
+            border-right: 4px solid var(--driver);
             animation: slideIn 0.3s ease;
             max-width: 500px;
             margin: 0 auto;
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            font-size: 13px;
         }
 
         @keyframes slideIn {
@@ -992,7 +845,7 @@
         }
 
         .notification-success {
-            border-right-color: var(--secondary);
+            border-right-color: var(--driver);
         }
 
         .notification-error {
@@ -1003,36 +856,38 @@
             border-right-color: var(--warning);
         }
 
-        /* GPS Permission Modal - أصغر */
+        /* GPS Permission Modal */
         .gps-modal {
-            background: var(--tech-card);
+            background: white;
             border-radius: var(--radius-lg);
-            padding: 24px 20px;
-            max-width: 400px;
-            width: 90%;
+            padding: 32px 25px;
+            max-width: 450px;
+            width: 95%;
             text-align: center;
-            box-shadow: var(--shadow-xl);
+            box-shadow: var(--shadow-lg);
             border: 1px solid var(--gray-light);
+            animation: slideUp 0.4s ease;
         }
 
         .gps-icon {
-            font-size: 50px;
-            color: var(--primary);
-            margin-bottom: 15px;
+            font-size: 60px;
+            color: var(--driver);
+            margin-bottom: 20px;
+            filter: drop-shadow(0 0 10px var(--zoona-emerald-glow));
         }
 
         .gps-title {
-            font-size: 18px;
+            font-size: 22px;
             font-weight: 800;
-            color: var(--dark);
+            color: var(--driver);
             margin-bottom: 12px;
         }
 
         .gps-text {
             color: var(--gray);
-            margin-bottom: 20px;
-            line-height: 1.5;
-            font-size: 14px;
+            margin-bottom: 25px;
+            line-height: 1.6;
+            font-size: 15px;
         }
 
         .gps-actions {
@@ -1055,12 +910,12 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            z-index: 4000;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 15px;
+            padding: 20px;
             animation: fadeIn 0.3s ease;
         }
 
@@ -1069,17 +924,46 @@
             to { opacity: 1; }
         }
 
-        /* ============================================
-           SPLASH SCREEN - FIXED VERSION
-           ============================================ */
+        .modal {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+            animation: slideUp 0.4s ease;
+        }
 
+        @keyframes slideUp {
+            from {
+                transform: translateY(40px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--driver);
+            margin-bottom: 8px;
+        }
+
+        /* Splash Screen - مطابقة لتصميم السائق */
         #splash-screen {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: var(--tech-bg);
+            inset: 0;
+            background: var(--grad-emerald);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1088,99 +972,44 @@
         }
 
         .splash-content {
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            height: 100%;
             text-align: center;
+            position: relative;
         }
 
-        /* إصلاح الحلقة النابضة */
-        .pulse-ring {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 220px;
-            height: 220px;
-            border-radius: 50%;
-            background: rgba(30, 144, 255, 0.1);
-            transform: translate(-50%, -50%);
-            animation: pulse 2s infinite;
-            z-index: 1;
-        }
-
-        /* تأكد من أن الشعار في نفس مركز الحلقة */
         .splash-logo {
-            width: 160px;
-            max-width: 70vw;
+            width: 150px;
             height: auto;
             position: relative;
             z-index: 2;
             animation: logoIn 0.9s ease;
-            filter: drop-shadow(0 0 15px var(--zoona-emerald-glow));
-            margin-bottom: 24px;
         }
 
         .loader {
-            margin: 20px auto 10px;
-            width: 30px;
-            height: 30px;
+            margin: 26px auto 10px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
-            border: 4px solid rgba(255,255,255,0.3);
+            border: 4px solid rgba(255,255,255,0.35);
             border-top-color: #ffffff;
-            animation: spin 1s linear infinite;
-            z-index: 2;
-            position: relative;
+            animation: spin 0.9s linear infinite;
         }
 
         .splash-text {
             font-family: "Tajawal", sans-serif;
-            font-size: 13px;
+            font-size: 14px;
             color: #eef2ff;
-            letter-spacing: 0.4px;
-            font-weight: 500;
-            z-index: 2;
-            position: relative;
-            margin-top: 10px;
         }
 
-        /* إصلاح دقة الأنيميشن */
         @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        @keyframes pulse {
-            0% {
-                width: 180px;
-                height: 180px;
-                opacity: 0.7;
-            }
-            70% {
-                width: 240px;
-                height: 240px;
-                opacity: 0;
-            }
-            100% {
-                width: 240px;
-                height: 240px;
-                opacity: 0;
-            }
+            to { transform: rotate(360deg); }
         }
 
         @keyframes logoIn {
-            0% {
-                transform: scale(0.8);
+            from {
+                transform: scale(0.85);
                 opacity: 0;
             }
-            100% {
+            to {
                 transform: scale(1);
                 opacity: 1;
             }
@@ -1189,7 +1018,6 @@
         #splash-screen.hide {
             opacity: 0;
             visibility: hidden;
-            pointer-events: none;
         }
 
         /* Page Transition Loader */
@@ -1216,15 +1044,15 @@
         .loader-spinner {
             width: 50px;
             height: 50px;
-            border: 4px solid var(--primary-light);
-            border-top: 4px solid var(--primary);
+            border: 4px solid var(--driver-light);
+            border-top: 4px solid var(--driver);
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin: 0 auto 20px;
         }
 
         .loader-text {
-            color: var(--primary);
+            color: var(--driver);
             font-weight: 700;
             font-size: 16px;
         }
@@ -1247,8 +1075,8 @@
         .loading-spinner {
             width: 40px;
             height: 40px;
-            border: 3px solid var(--primary-light);
-            border-top-color: var(--primary);
+            border: 3px solid var(--driver-light);
+            border-top-color: var(--driver);
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -1329,7 +1157,7 @@
 
         .ride-loading-icon {
             font-size: 60px;
-            color: var(--primary);
+            color: var(--driver);
             margin-bottom: 20px;
             animation: pulse 1.5s infinite;
         }
@@ -1348,12 +1176,12 @@
         }
 
         .ride-driver-info {
-            background: var(--zoona-primary-light);
+            background: var(--driver-light);
             padding: 15px;
             border-radius: var(--radius);
             margin-top: 15px;
-            border-left: 4px solid var(--zoona-primary);
-            border: 1px solid var(--zoona-primary-light);
+            border-left: 4px solid var(--driver);
+            border: 1px solid var(--driver-light);
         }
 
         .ride-driver-name {
@@ -1656,7 +1484,7 @@
         }
 
         /* ============================================
-           AGREEMENT MODAL STYLES
+           MODAL & OVERLAY STYLES - Matching Driver App
            ============================================ */
         .modal-overlay {
             position: fixed;
@@ -1671,58 +1499,41 @@
             justify-content: center;
             padding: 20px;
             backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px);
             animation: fadeIn 0.3s ease;
         }
 
         .agreement-modal {
-            background: var(--tech-card);
+            background: white;
             width: 95%;
-            max-width: 400px;
+            max-width: 450px;
             max-height: 85vh;
             border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-xl);
+            box-shadow: var(--shadow-lg);
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            animation: slideInUp 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+            animation: slideUp 0.4s ease;
             border: 1px solid var(--gray-light);
-            direction: rtl;
-        }
-
-        @keyframes slideInUp {
-            from { transform: translateY(50px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
         }
 
         .agreement-header {
-            background: linear-gradient(135deg, var(--tech-card), var(--tech-bg));
+            background: var(--grad-emerald);
             color: white;
-            padding: 24px 15px;
+            padding: 20px;
             text-align: center;
-            border-bottom: 3px solid var(--neon-emerald);
+            border-bottom: 4px solid var(--driver-dark);
         }
 
         .agreement-header i {
-            font-size: 32px;
+            font-size: 40px;
             margin-bottom: 10px;
             display: block;
-            color: var(--warning);
         }
 
         .agreement-header h3 {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 800;
             margin: 0;
-            line-height: 1.4;
-            font-family: 'Tajawal', sans-serif;
-        }
-
-        .modal-subtitle {
-            font-size: 13px;
-            opacity: 0.9;
-            margin-top: 5px;
-            font-weight: 500;
         }
 
         .agreement-content {
@@ -1730,11 +1541,10 @@
             overflow-y: auto;
             flex: 1;
             font-size: 14px;
-            line-height: 1.8;
+            line-height: 1.7;
             color: var(--dark);
-            text-align: justify;
-            background: white;
-            font-family: 'Tajawal', sans-serif;
+            text-align: right;
+            background: #f9fafb;
         }
 
         .agreement-content p {
@@ -1742,7 +1552,7 @@
         }
 
         .agreement-content strong {
-            color: var(--primary);
+            color: var(--driver-dark);
             display: block;
             margin-bottom: 5px;
             font-size: 15px;
@@ -1753,19 +1563,18 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 12px;
-            background: #f3f4f6;
             border-top: 1px solid var(--gray-light);
+            background: white;
         }
 
         .btn-agree {
-            background: var(--secondary) !important;
+            background: var(--grad-emerald) !important;
             color: white !important;
             height: 48px;
             border-radius: var(--radius);
             font-weight: 700;
             cursor: pointer;
             border: none;
-            font-family: 'Tajawal', sans-serif;
             transition: all 0.3s;
             display: flex;
             align-items: center;
@@ -1774,8 +1583,8 @@
         }
 
         .btn-agree:hover {
-            background: var(--secondary-dark) !important;
             transform: translateY(-2px);
+            box-shadow: 0 5px 15px var(--zoona-emerald-glow);
         }
 
         .btn-disagree {
@@ -1786,7 +1595,6 @@
             font-weight: 700;
             cursor: pointer;
             border: none;
-            font-family: 'Tajawal', sans-serif;
             transition: all 0.3s;
             display: flex;
             align-items: center;
@@ -1800,13 +1608,13 @@
         }
 
         .agreement-footer {
-            padding: 10px;
+            padding: 12px;
             text-align: center;
-            background: #f3f4f6;
+            background: #f9fafb;
             color: var(--gray);
-            font-size: 11px;
-            border-top: 1px solid rgba(0,0,0,0.05);
-            font-weight: 500;
+            font-size: 12px;
+            border-top: 1px solid var(--gray-light);
+            font-weight: 600;
         }
 
         /* Custom scrollbar for agreement content */
@@ -1817,11 +1625,11 @@
             background: #f1f1f1;
         }
         .agreement-content::-webkit-scrollbar-thumb {
-            background: var(--primary-light);
+            background: var(--driver-light);
             border-radius: 10px;
         }
         .agreement-content::-webkit-scrollbar-thumb:hover {
-            background: var(--primary);
+            background: var(--driver);
         }
     </style>
 </head>
@@ -1994,53 +1802,62 @@
         </div>
     </section>
         
-    <!-- Home Screen (After Login) -->
+    <!-- Home Screen (After Login) - Matching Driver App Dashboard -->
     <section id="home-screen" class="screen hidden">
         <div class="card">
             <div class="user-profile">
                 <div class="user-avatar" id="user-avatar">?</div>
                 <div class="user-info">
-                    <h3 id="user-name">مرحباً</h3>
-                    <p id="user-phone-display"></p>
+                    <h3 id="user-name">مرحباً بك</h3>
+                    <p id="user-phone-display">جارِ التحميل...</p>
                     <div id="verification-status" class="hidden">
                         <span class="verified-badge">
-                            <i class="ph-light ph-check-circle"></i>
+                            <span class="status-dot" style="background: var(--driver); width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-left: 5px;"></span>
                             حساب موثق
                         </span>
                     </div>
                 </div>
             </div>
+
+            <div style="margin-bottom: 20px;">
+                <button class="btn btn-driver" onclick="requestRide()" style="height: 60px; font-size: 16px;">
+                    <i class="ph-bold ph-car"></i>
+                    اطلب رحلة الآن
+                </button>
+            </div>
             
             <div class="home-actions">
-                <div class="action-card" onclick="requestRide()">
-                    <div class="action-icon"><i class="ph-light ph-car neon-icon-emerald"></i></div>
-                    <h4>طلب رحلة</h4>
-                </div>
-                
                 <div class="action-card" onclick="showMyRides()">
-                    <div class="action-icon"><i class="ph-light ph-clock-counter-clockwise neon-icon-emerald"></i></div>
+                    <div class="action-icon"><i class="ph-light ph-clock-counter-clockwise"></i></div>
                     <h4>رحلاتي</h4>
                 </div>
                 
                 <div class="action-card" onclick="showSettings()">
-                    <div class="action-icon"><i class="ph-light ph-gear neon-icon-emerald"></i></div>
+                    <div class="action-icon"><i class="ph-light ph-gear"></i></div>
                     <h4>الإعدادات</h4>
                 </div>
                 
                 <div class="action-card" onclick="openTravelPlatform()">
-                    <div class="action-icon"><i class="ph-light ph-airplane-tilt neon-icon-emerald"></i></div>
-                    <h4>دخول منصة رحلة سفر</h4>
+                    <div class="action-icon"><i class="ph-light ph-airplane-tilt"></i></div>
+                    <h4>منصة السفر</h4>
                 </div>
 
                 <div class="action-card" onclick="showComplaints()">
-                    <div class="action-icon"><i class="ph-light ph-megaphone neon-icon-emerald"></i></div>
-                    <h4>الشكاوى والآراء</h4>
+                    <div class="action-icon"><i class="ph-light ph-megaphone"></i></div>
+                    <h4>الشكاوى</h4>
                 </div>
+            </div>
 
-                <div class="action-card" onclick="logout()">
-                    <div class="action-icon"><i class="ph-light ph-sign-out neon-icon-emerald"></i></div>
-                    <h4>تسجيل الخروج</h4>
-                </div>
+            <div style="margin-top: 20px; display: grid; gap: 8px;">
+                <button class="btn btn-outline" onclick="showNotification('قريباً: الملف الشخصي', 'info')">
+                    <i class="ph-light ph-user-circle"></i>
+                    الملف الشخصي
+                </button>
+
+                <button class="btn btn-outline" onclick="logout()" style="color: var(--danger); border-color: var(--danger);">
+                    <i class="ph-bold ph-sign-out"></i>
+                    تسجيل الخروج
+                </button>
             </div>
         </div>
     </section>
@@ -2121,30 +1938,30 @@
                 <div class="vehicle-options-grid">
                     <!-- أيقونة ركشة -->
                     <div class="vehicle-option" data-type="tuktuk" onclick="selectVehicle('tuktuk')">
-                        <div class="vehicle-icon">🛺</div>
+                        <div class="vehicle-icon"><i class="ph-bold ph-moped"></i></div>
                         <div class="vehicle-name">ركشة</div>
-                        <div class="vehicle-price">5,000</div>
+                        <div class="vehicle-price">5,000 SDG</div>
                     </div>
                     
                     <!-- أيقونة توفير -->
                     <div class="vehicle-option" data-type="economy" onclick="selectVehicle('economy')">
-                        <div class="vehicle-icon">🚗</div>
+                        <div class="vehicle-icon"><i class="ph-bold ph-car-simple"></i></div>
                         <div class="vehicle-name">توفير</div>
-                        <div class="vehicle-price">6,000</div>
+                        <div class="vehicle-price">6,000 SDG</div>
                     </div>
                     
                     <!-- أيقونة مريح -->
                     <div class="vehicle-option" data-type="comfort" onclick="selectVehicle('comfort')">
-                        <div class="vehicle-icon">🚙</div>
+                        <div class="vehicle-icon"><i class="ph-bold ph-car"></i></div>
                         <div class="vehicle-name">مريح</div>
-                        <div class="vehicle-price">7,000</div>
+                        <div class="vehicle-price">7,000 SDG</div>
                     </div>
                     
                     <!-- أيقونة VIP -->
                     <div class="vehicle-option" data-type="vip" onclick="selectVehicle('vip')">
-                        <div class="vehicle-icon">🚘</div>
+                        <div class="vehicle-icon"><i class="ph-bold ph-car-profile"></i></div>
                         <div class="vehicle-name">VIP</div>
-                        <div class="vehicle-price">10,000</div>
+                        <div class="vehicle-price">10,000 SDG</div>
                     </div>
                 </div>
             </div>
@@ -2184,7 +2001,7 @@
 <div id="agreement-modal" class="modal-overlay hidden">
   <div class="agreement-modal">
     <div class="agreement-header">
-      <i class="ph-light ph-warning neon-icon-emerald"></i>
+      <i class="ph-light ph-warning"></i>
       <h3>إتفاقية الاستخدام وإخلاء المسؤولية</h3>
       <p class="modal-subtitle">(النسخة التجريبية - زونا)</p>
     </div>
@@ -2211,11 +2028,11 @@
 
     <div class="agreement-actions">
       <button class="btn-agree" onclick="acceptAgreement()">
-        <i class="ph-light ph-check-circle"></i>
+        <i class="ph-bold ph-check-circle"></i>
         أوافق
       </button>
       <button class="btn-disagree" onclick="declineAgreement()">
-        <i class="ph-light ph-x-circle"></i>
+        <i class="ph-bold ph-x-circle"></i>
         لا أوافق
       </button>
     </div>
@@ -2227,21 +2044,21 @@
 </div>
 
 <!-- GPS Permission Modal -->
-<div id="gps-permission-modal" class="overlay hidden">
+<div id="gps-permission-modal" class="modal-overlay hidden">
     <div class="gps-modal">
-        <i class="ph-light ph-map-pin gps-icon neon-icon-emerald"></i>
-        <h2 class="gps-title">تفعيل تحديد الموقع</h2>
-        <p class="gps-text">
+        <i class="ph-bold ph-map-pin gps-icon" style="color: var(--driver); font-size: 50px; margin-bottom: 15px;"></i>
+        <h2 class="gps-title" style="color: var(--driver); font-weight: 800; font-size: 20px; margin-bottom: 12px;">تفعيل تحديد الموقع</h2>
+        <p class="gps-text" style="color: var(--gray); font-size: 14px; margin-bottom: 20px; line-height: 1.6;">
             نحتاج إلى إذن الوصول إلى موقعك لتحديد نقطة الانطلاق تلقائياً.<br>
             هذا سيسهل على السائقين الوصول إليك بشكل أسرع وأدق.
         </p>
         <div class="gps-actions">
-            <button class="btn btn-primary" onclick="enableGPS()">
-                <i class="ph-light ph-navigation-arrow"></i>
+            <button class="btn btn-driver" onclick="enableGPS()">
+                <i class="ph-bold ph-navigation-arrow"></i>
                 تفعيل الموقع
             </button>
             <button class="btn btn-outline" onclick="useManualMode()">
-                <i class="ph-light ph-map-pin"></i>
+                <i class="ph-bold ph-map-pin"></i>
                 تحديد يدوي
             </button>
         </div>
@@ -2249,23 +2066,23 @@
 </div>
 
 <!-- Ride Loading Overlay -->
-<div id="ride-loading-overlay" class="ride-loading-overlay hidden">
-    <div class="ride-loading-content">
-        <div class="ride-loading-icon">
-            <i class="ph-light ph-car neon-icon-emerald"></i>
+<div id="ride-loading-overlay" class="modal-overlay hidden">
+    <div class="card" style="width: 90%; max-width: 400px; padding: 30px; text-align: center; border-radius: 20px;">
+        <div style="font-size: 60px; color: var(--driver); margin-bottom: 20px;">
+            <i class="ph-bold ph-magnifying-glass ph-spin"></i>
         </div>
-        <h3 class="ride-loading-text">جاري البحث عن سائق</h3>
-        <p class="ride-loading-subtext">
+        <h3 class="ride-loading-text" style="color: var(--driver); font-weight: 800; font-size: 20px; margin-bottom: 10px;">جاري البحث عن سائق</h3>
+        <p class="ride-loading-subtext" style="color: var(--gray); font-size: 14px; margin-bottom: 20px; line-height: 1.5;">
             يتم حالياً إرسال طلبك للسائقين القريبين.<br>
             الرجاء الانتظار...
         </p>
-        <div id="driver-info-section" class="ride-driver-info hidden">
-            <div class="ride-driver-name" id="current-driver-name"></div>
-            <div class="ride-driver-vehicle" id="current-driver-vehicle"></div>
+        <div id="driver-info-section" class="hidden" style="background: var(--driver-light); padding: 15px; border-radius: 12px; margin-bottom: 20px; border-right: 4px solid var(--driver);">
+            <div class="ride-driver-name" id="current-driver-name" style="font-weight: 700; color: var(--driver-dark);"></div>
+            <div class="ride-driver-vehicle" id="current-driver-vehicle" style="font-size: 13px; color: var(--gray);"></div>
         </div>
-        <div class="loading-spinner" style="margin: 20px auto;"></div>
-        <button class="btn btn-outline" onclick="cancelRideSearch()" style="margin-top: 20px;">
-            <i class="ph-light ph-x"></i>
+        <div class="loading-spinner" style="margin: 0 auto 20px; border-top-color: var(--driver);"></div>
+        <button class="btn btn-outline" onclick="cancelRideSearch()">
+            <i class="ph-bold ph-x"></i>
             إلغاء البحث
         </button>
     </div>
@@ -2278,7 +2095,7 @@
 <div id="active-trip-modal" class="overlay hidden">
     <div class="modal">
         <div class="modal-header">
-            <i class="ph-light ph-car modal-icon neon-icon-emerald"></i>
+            <div style="font-size: 48px; margin-bottom: 16px;"><i class="ph-bold ph-car" style="color: var(--driver);"></i></div>
             <h2 class="modal-title">الرحلة سارية الآن</h2>
         </div>
         <div id="trip-details"></div>
@@ -2766,6 +2583,83 @@ async function loginCustomer() {
         showNotification('حدث خطأ أثناء تسجيل الدخول', 'error');
         loginBtn.innerHTML = originalHTML;
         loginBtn.disabled = false;
+    }
+}
+
+async function registerCustomer() {
+    const fullName = document.getElementById('register-fullname').value.trim();
+    const phone = document.getElementById('register-phone').value.trim();
+    const phone2 = document.getElementById('register-phone2').value.trim();
+    const password = document.getElementById('register-password').value;
+
+    if (!fullName || !phone || !password) {
+        showNotification('الرجاء إكمال جميع الحقول الإلزامية', 'error');
+        return;
+    }
+
+    if (!isValidSudanesePhone(phone)) {
+        showNotification('الرجاء إدخال رقم واتساب سوداني صحيح', 'error');
+        return;
+    }
+
+    if (password.length < 6) {
+        showNotification('كلمة المرور يجب أن تكون 6 خانات على الأقل', 'warning');
+        return;
+    }
+
+    const registerBtn = document.querySelector('#customerRegisterForm button');
+    const originalHTML = registerBtn.innerHTML;
+    registerBtn.disabled = true;
+    registerBtn.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
+            <i class="ph-light ph-spinner-gap ph-spin"></i>
+            <span>جاري إنشاء الحساب...</span>
+        </div>
+    `;
+
+    try {
+        // التحقق من وجود الحساب مسبقاً
+        const { data: existingUser, error: checkError } = await tarhalDB
+            .from('customers')
+            .select('id')
+            .eq('phone', phone)
+            .maybeSingle();
+
+        if (existingUser) {
+            showNotification('هذا الرقم مسجل مسبقاً، يمكنك تسجيل الدخول', 'warning');
+            registerBtn.innerHTML = originalHTML;
+            registerBtn.disabled = false;
+            return;
+        }
+
+        // إنشاء الحساب الجديد
+        const { data, error } = await tarhalDB
+            .from('customers')
+            .insert([{
+                full_name: fullName,
+                phone: phone,
+                phone2: phone2 || null,
+                password: password,
+                is_verified: false,
+                created_at: new Date().toISOString()
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        showNotification('تم إنشاء الحساب بنجاح! يرجى التفعيل عبر واتساب', 'success');
+
+        // إظهار قسم التفعيل
+        document.getElementById('customerRegisterForm').classList.add('hidden');
+        document.getElementById('verification-section').classList.remove('hidden');
+        window.registeredPhone = phone; // لحفظ الرقم لرسالة الواتساب
+
+    } catch (error) {
+        console.error('Registration error:', error);
+        showNotification('حدث خطأ أثناء التسجيل: ' + error.message, 'error');
+        registerBtn.innerHTML = originalHTML;
+        registerBtn.disabled = false;
     }
 }
 
@@ -3562,26 +3456,26 @@ async function handleNoDriversFound(rideId, userPosition, vehicleType) {
     overlay.style.zIndex = '6000';
 
     overlay.innerHTML = `
-        <div class="card" style="width: 90%; max-width: 400px; padding: 25px; border-radius: 20px; text-align: center; border: 2px solid var(--neon-warning); background: var(--tech-card); backdrop-filter: blur(15px);">
-            <div style="font-size: 50px; color: var(--neon-warning); margin-bottom: 20px;">
-                <i class="ph-light ph-warning ph-glow-emerald"></i>
+        <div class="card" style="width: 90%; max-width: 400px; padding: 25px; border-radius: 20px; text-align: center; border: 1px solid var(--warning); background: white;">
+            <div style="font-size: 50px; color: var(--warning); margin-bottom: 20px;">
+                <i class="ph-bold ph-warning"></i>
             </div>
-            <h2 style="color: white; margin-bottom: 12px; font-weight: 800; font-size: 22px;">عذراً، لم نجد سائقين حالياً</h2>
+            <h2 style="color: var(--driver-dark); margin-bottom: 12px; font-weight: 800; font-size: 20px;">عذراً، لم نجد سائقين حالياً</h2>
             <p style="color: var(--gray); margin-bottom: 25px; font-size: 14px; line-height: 1.6;">
                 بحثنا في نطاق 10 كم ولم نجد سائقين متاحين بنوع المركبة <b>(${VEHICLE_PRICES[vehicleType].name})</b>.
             </p>
-            <div style="display: grid; gap: 12px;">
-                <button class="btn btn-primary" onclick="retryRideSearch()">
-                    <i class="ph-light ph-clock"></i> الانتظار والمحاولة مجدداً
+            <div style="display: grid; gap: 10px;">
+                <button class="btn btn-driver" onclick="retryRideSearch()">
+                    <i class="ph-bold ph-clock"></i> الانتظار والمحاولة مجدداً
                 </button>
-                <button class="btn btn-secondary" onclick="changeVehicleType()">
-                    <i class="ph-light ph-car-simple"></i> تغيير نوع المركبة
+                <button class="btn btn-outline" onclick="changeVehicleType()">
+                    <i class="ph-bold ph-car-simple"></i> تغيير نوع المركبة
                 </button>
                 <button class="btn btn-outline" onclick="goHomeFromNoDrivers()">
-                    <i class="ph-light ph-house"></i> العودة للرئيسية
+                    <i class="ph-bold ph-house"></i> العودة للرئيسية
                 </button>
                 <button class="btn btn-danger" onclick="cancelRideSearchFromNoDrivers()">
-                    <i class="ph-light ph-x"></i> إلغاء الطلب نهائياً
+                    <i class="ph-bold ph-x"></i> إلغاء الطلب نهائياً
                 </button>
             </div>
         </div>
