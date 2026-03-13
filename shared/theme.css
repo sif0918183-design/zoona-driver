@@ -1,7 +1,7 @@
 /*
    Shared Cosmic Neon Theme - Global Tech Tech Redesign
    Standardized variables for all apps
-   (Unified Emerald Theme - Driver App Colors)
+   (Driver App Colors - Based on Screenshot)
 */
 
 :root {
@@ -11,71 +11,89 @@
     --cosmic-border: rgba(48, 54, 61, 0.8);
 
     /* Modern Light Tech Palette */
-    --tech-bg: #F9FAFB;
+    --tech-bg: #F3F4F6;
     --tech-card: #FFFFFF;
     --tech-text: #111827;
+    --tech-text-light: #6B7280;
     --tech-border: #E5E7EB;
-    --tech-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    --tech-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.08);
+    --tech-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --tech-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
 
-    /* Zoona Brand Colors - Unified Emerald Theme (Driver App Colors) */
-    --zoona-primary: #16a34a;
-    --zoona-primary-dark: #15803d;
-    --zoona-primary-light: rgba(22, 163, 74, 0.1);
-    --zoona-emerald-glow: rgba(22, 163, 74, 0.4);
+    /* Driver App Colors - Emerald Theme (Based on Screenshot) */
+    --driver: #16a34a;              /* اللون الرئيسي */
+    --driver-dark: #15803d;           /* اللون الداكن */
+    --driver-light: #dcfce7;          /* الخلفية الفاتحة */
+    --driver-very-light: #f0fdf4;      /* خلفية أخف */
     
-    /* Brand Colors for Legacy Compat (Unified - جميع التطبيقات تستخدم نفس اللون) */
-    --neon-blue: var(--zoona-primary);
-    --neon-blue-glow: var(--zoona-emerald-glow);
-    --neon-emerald: var(--zoona-primary);
-    --neon-emerald-glow: var(--zoona-emerald-glow);
-    --neon-blue-glow-emerald: var(--zoona-emerald-glow);
-
-    /* Semantic Colors */
-    --neon-danger: #ef4444;
-    --neon-warning: #f59e0b;
-    --success: var(--zoona-primary);
-
-    /* Gradients - Driver App Gradients */
+    /* Status Colors */
+    --success: var(--driver);
+    --danger: #ef4444;
+    --danger-dark: #dc2626;
+    --warning: #f59e0b;
+    --warning-dark: #d97706;
+    
+    /* Neutral Colors */
+    --light: #F9FAFB;
+    --dark: #111827;
+    --gray: #6B7280;
+    --gray-light: #E5E7EB;
+    --gray-dark: #4B5563;
+    
+    /* Shadows & Effects */
+    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    
+    /* Border Radius */
+    --radius: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    
+    /* Gradients */
     --grad-emerald: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-    --grad-emerald-tech: linear-gradient(135deg, #16a34a 0%, #059669 100%);
-    --grad-blue: var(--grad-emerald); /* Unified gradient */
-
-    /* Shared Spacing/Radius */
-    --radius-standard: 12px;
-    --radius-large: 16px;
+    --grad-emerald-light: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    
+    /* Legacy Support */
+    --zoona-primary: var(--driver);
+    --zoona-primary-dark: var(--driver-dark);
+    --zoona-primary-light: var(--driver-light);
+    --zoona-emerald-glow: rgba(22, 163, 74, 0.25);
+    
+    /* Neon Effects (for backward compatibility) */
+    --neon-blue: var(--driver);
+    --neon-blue-glow: var(--zoona-emerald-glow);
+    --neon-emerald: var(--driver);
+    --neon-emerald-glow: var(--zoona-emerald-glow);
 }
 
 /* Global Tech Utilities */
 .ph-light-bloom-blue, .ph-light-bloom-emerald {
-    filter: drop-shadow(0 0 2px var(--zoona-primary))
-            drop-shadow(0 0 8px var(--zoona-emerald-glow))
-            drop-shadow(0 0 15px var(--zoona-emerald-glow))
-            drop-shadow(0 0 30px rgba(22, 163, 74, 0.15));
+    filter: drop-shadow(0 0 2px var(--driver))
+            drop-shadow(0 0 8px rgba(22, 163, 74, 0.2))
+            drop-shadow(0 0 15px rgba(22, 163, 74, 0.1));
 }
 
 .neon-glow-blue, .neon-glow-emerald {
-    color: var(--zoona-primary);
-    filter: drop-shadow(0 0 2px var(--zoona-primary))
-            drop-shadow(0 0 5px var(--zoona-emerald-glow))
-            drop-shadow(0 0 12px var(--zoona-emerald-glow));
+    color: var(--driver);
+    filter: drop-shadow(0 0 2px var(--driver))
+            drop-shadow(0 0 5px rgba(22, 163, 74, 0.2));
 }
 
 .neon-icon-blue, .neon-icon-emerald {
-    color: var(--zoona-primary) !important;
-    filter: drop-shadow(0 0 1px var(--zoona-primary))
-            drop-shadow(0 0 4px var(--zoona-emerald-glow))
-            drop-shadow(0 0 12px var(--zoona-emerald-glow)) !important;
+    color: var(--driver) !important;
+    filter: drop-shadow(0 0 1px var(--driver))
+            drop-shadow(0 0 4px rgba(22, 163, 74, 0.2)) !important;
 }
 
 /* Light Mode Adaptations */
 .light-mode .neon-icon-blue,
 .light-mode .neon-glow-blue {
-    filter: none; /* Reduce glow on light background for cleaner Apple look */
+    filter: none;
     text-shadow: none;
 }
 
-/* Sophisticated icon weights per user request */
+/* Icon weights */
 i.ph-bold, i.ph-fill {
     font-weight: 700;
 }
@@ -92,57 +110,143 @@ i.ph {
     font-weight: 400;
 }
 
-/* Default icon weight to Light for sophistication */
 i.ph, i[class*="ph-"] {
     vertical-align: middle;
 }
 
+/* Card Styles */
 .card-tech {
     background: var(--cosmic-card);
     border: 1px solid var(--cosmic-border);
     backdrop-filter: blur(12px);
-    border-radius: var(--radius-standard);
+    border-radius: var(--radius);
 }
 
-/* Light tech card */
 .card-tech-light {
     background: var(--tech-card);
     border: 1px solid var(--tech-border);
-    box-shadow: var(--tech-shadow);
-    border-radius: var(--radius-standard);
+    box-shadow: var(--shadow);
+    border-radius: var(--radius);
     color: var(--tech-text);
 }
 
-/* Unified Button Style - Driver App Style */
-.btn-neon-blue, .btn-neon-emerald, .btn-zoona {
+/* Button Styles - Driver App */
+.btn-driver {
     background: var(--grad-emerald);
-    color: white !important;
+    color: white;
     font-weight: 700;
-    box-shadow: 0 4px 12px var(--zoona-emerald-glow);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
+    transition: all 0.3s ease;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: var(--radius-standard);
+    border-radius: var(--radius);
     padding: 12px 20px;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
     cursor: pointer;
+    width: 100%;
 }
 
-.btn-neon-blue:hover:not(:disabled), 
-.btn-neon-emerald:hover:not(:disabled), 
-.btn-zoona:hover:not(:disabled) {
-    box-shadow: 0 0 20px var(--zoona-emerald-glow);
+.btn-driver:hover:not(:disabled) {
+    box-shadow: 0 0 20px rgba(22, 163, 74, 0.4);
     transform: translateY(-2px);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+    border-radius: var(--radius);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    width: 100%;
+    border: none;
+}
+
+.btn-danger:hover:not(:disabled) {
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+    transform: translateY(-2px);
+}
+
+.btn-outline {
+    background: transparent;
+    color: var(--driver);
+    border: 2px solid var(--driver);
+    font-weight: 700;
+    border-radius: var(--radius);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.3s ease;
+}
+
+.btn-outline:hover:not(:disabled) {
+    background: var(--driver-light);
+}
+
+/* Status Indicators */
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.status-offline {
+    background: #fee2e2;
+    color: var(--danger);
+}
+
+.status-online {
+    background: #dcfce7;
+    color: var(--driver-dark);
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.status-offline .status-dot {
+    background: var(--danger);
+}
+
+.status-online .status-dot {
+    background: var(--driver);
 }
 
 /* Polished Glow for Icons */
 .ph-glow-blue, .ph-glow-emerald {
-    filter: drop-shadow(0 0 4px var(--zoona-emerald-glow));
+    filter: drop-shadow(0 0 4px rgba(22, 163, 74, 0.2));
 }
 
-/* Global RTL Support Utility */
+/* RTL Support */
 [dir="rtl"] {
     font-family: 'Tajawal', sans-serif;
+}
+
+/* Utility Classes */
+.text-driver {
+    color: var(--driver);
+}
+
+.bg-driver-light {
+    background-color: var(--driver-light);
+}
+
+.border-driver {
+    border-color: var(--driver);
 }
