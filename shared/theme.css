@@ -1,7 +1,7 @@
 /*
    Shared Cosmic Neon Theme - Global Tech Tech Redesign
    Standardized variables for all apps
-   (Driver App Colors - Based on Screenshot)
+   (Driver App Colors - Full Version)
 */
 
 :root {
@@ -11,26 +11,39 @@
     --cosmic-border: rgba(48, 54, 61, 0.8);
 
     /* Modern Light Tech Palette */
-    --tech-bg: #F3F4F6;
+    --tech-bg: #F9FAFB;
     --tech-card: #FFFFFF;
     --tech-text: #111827;
     --tech-text-light: #6B7280;
     --tech-border: #E5E7EB;
-    --tech-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    --tech-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
+    --tech-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    --tech-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.08);
 
-    /* Driver App Colors - Emerald Theme (Based on Screenshot) */
-    --driver: #16a34a;              /* اللون الرئيسي */
-    --driver-dark: #15803d;           /* اللون الداكن */
-    --driver-light: #dcfce7;          /* الخلفية الفاتحة */
-    --driver-very-light: #f0fdf4;      /* خلفية أخف */
+    /* Driver App Colors - Emerald Theme */
+    --driver: #16a34a;
+    --driver-dark: #15803d;
+    --driver-light: #dcfce7;
+    --driver-very-light: #f0fdf4;
     
+    /* Zoona Brand Colors (Unified Emerald Theme) */
+    --zoona-primary: var(--driver);
+    --zoona-primary-dark: var(--driver-dark);
+    --zoona-primary-light: rgba(22, 163, 74, 0.1);
+    --zoona-emerald-glow: rgba(22, 163, 74, 0.4);
+
+    /* Brand Colors for Legacy Compat */
+    --neon-blue: var(--zoona-primary);
+    --neon-blue-glow: var(--zoona-emerald-glow);
+    --neon-emerald: var(--zoona-primary);
+    --neon-emerald-glow: var(--zoona-emerald-glow);
+    --neon-blue-glow-emerald: var(--zoona-emerald-glow);
+
     /* Status Colors */
-    --success: var(--driver);
     --danger: #ef4444;
     --danger-dark: #dc2626;
     --warning: #f59e0b;
     --warning-dark: #d97706;
+    --success: var(--driver);
     
     /* Neutral Colors */
     --light: #F9FAFB;
@@ -39,11 +52,9 @@
     --gray-light: #E5E7EB;
     --gray-dark: #4B5563;
     
-    /* Shadows & Effects */
-    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    /* Shadows */
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
     
     /* Border Radius */
     --radius: 12px;
@@ -52,38 +63,29 @@
     
     /* Gradients */
     --grad-emerald: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-    --grad-emerald-light: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-    
-    /* Legacy Support */
-    --zoona-primary: var(--driver);
-    --zoona-primary-dark: var(--driver-dark);
-    --zoona-primary-light: var(--driver-light);
-    --zoona-emerald-glow: rgba(22, 163, 74, 0.25);
-    
-    /* Neon Effects (for backward compatibility) */
-    --neon-blue: var(--driver);
-    --neon-blue-glow: var(--zoona-emerald-glow);
-    --neon-emerald: var(--driver);
-    --neon-emerald-glow: var(--zoona-emerald-glow);
+    --grad-emerald-tech: linear-gradient(135deg, #16a34a 0%, #059669 100%);
 }
 
 /* Global Tech Utilities */
 .ph-light-bloom-blue, .ph-light-bloom-emerald {
-    filter: drop-shadow(0 0 2px var(--driver))
-            drop-shadow(0 0 8px rgba(22, 163, 74, 0.2))
-            drop-shadow(0 0 15px rgba(22, 163, 74, 0.1));
+    filter: drop-shadow(0 0 2px var(--zoona-primary))
+            drop-shadow(0 0 8px var(--zoona-emerald-glow))
+            drop-shadow(0 0 15px var(--zoona-emerald-glow))
+            drop-shadow(0 0 30px rgba(22, 163, 74, 0.15));
 }
 
 .neon-glow-blue, .neon-glow-emerald {
-    color: var(--driver);
-    filter: drop-shadow(0 0 2px var(--driver))
-            drop-shadow(0 0 5px rgba(22, 163, 74, 0.2));
+    color: var(--zoona-primary);
+    filter: drop-shadow(0 0 2px var(--zoona-primary))
+            drop-shadow(0 0 5px var(--zoona-emerald-glow))
+            drop-shadow(0 0 12px var(--zoona-emerald-glow));
 }
 
 .neon-icon-blue, .neon-icon-emerald {
-    color: var(--driver) !important;
-    filter: drop-shadow(0 0 1px var(--driver))
-            drop-shadow(0 0 4px rgba(22, 163, 74, 0.2)) !important;
+    color: var(--zoona-primary) !important;
+    filter: drop-shadow(0 0 1px var(--zoona-primary))
+            drop-shadow(0 0 4px var(--zoona-emerald-glow))
+            drop-shadow(0 0 12px var(--zoona-emerald-glow)) !important;
 }
 
 /* Light Mode Adaptations */
@@ -125,18 +127,22 @@ i.ph, i[class*="ph-"] {
 .card-tech-light {
     background: var(--tech-card);
     border: 1px solid var(--tech-border);
-    box-shadow: var(--shadow);
+    box-shadow: var(--tech-shadow);
     border-radius: var(--radius);
     color: var(--tech-text);
 }
 
-/* Button Styles - Driver App */
+/* ============================================
+   DRIVER APP STYLES - Preserved from original
+   ============================================ */
+
+/* Driver Button Styles */
 .btn-driver {
     background: var(--grad-emerald);
     color: white;
     font-weight: 700;
-    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
-    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px var(--zoona-emerald-glow);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: var(--radius);
     padding: 12px 20px;
@@ -149,12 +155,12 @@ i.ph, i[class*="ph-"] {
 }
 
 .btn-driver:hover:not(:disabled) {
-    box-shadow: 0 0 20px rgba(22, 163, 74, 0.4);
+    box-shadow: 0 0 20px var(--zoona-emerald-glow);
     transform: translateY(-2px);
 }
 
 .btn-danger {
-    background: linear-gradient(135deg, #ef4444, #dc2626);
+    background: linear-gradient(135deg, var(--danger), var(--danger-dark));
     color: white;
     font-weight: 700;
     box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
@@ -167,11 +173,6 @@ i.ph, i[class*="ph-"] {
     cursor: pointer;
     width: 100%;
     border: none;
-}
-
-.btn-danger:hover:not(:disabled) {
-    box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
-    transform: translateY(-2px);
 }
 
 .btn-outline {
@@ -220,17 +221,177 @@ i.ph, i[class*="ph-"] {
     border-radius: 50%;
 }
 
-.status-offline .status-dot {
-    background: var(--danger);
+/* Form Styles */
+.form-input {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid var(--gray-light);
+    border-radius: var(--radius);
+    font-family: 'Tajawal', sans-serif;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    background: white;
 }
 
-.status-online .status-dot {
-    background: var(--driver);
+.form-input:focus {
+    outline: none;
+    border-color: var(--driver);
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
 }
 
-/* Polished Glow for Icons */
-.ph-glow-blue, .ph-glow-emerald {
-    filter: drop-shadow(0 0 4px rgba(22, 163, 74, 0.2));
+/* Notification Styles */
+.notification {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    background: white;
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--shadow-lg);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-right: 4px solid var(--driver);
+    animation: slideIn 0.3s ease;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.notification-success {
+    border-right-color: var(--driver);
+}
+
+.notification-error {
+    border-right-color: var(--danger);
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Loading Spinner */
+.loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255,255,255,.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Overlay & Modal Styles */
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    max-width: 500px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-lg);
+    animation: slideUp 0.4s ease;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(40px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Splash Screen */
+#splash-screen {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(135deg, #15803d, #16a34a, #22c55e);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999999;
+    transition: opacity 0.6s ease, visibility 0.6s ease;
+}
+
+.splash-content {
+    text-align: center;
+    position: relative;
+}
+
+.splash-logo {
+    width: 150px;
+    height: auto;
+    position: relative;
+    z-index: 2;
+    animation: logoIn 0.9s ease;
+}
+
+.loader {
+    margin: 26px auto 10px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 4px solid rgba(255,255,255,0.35);
+    border-top-color: #ffffff;
+    animation: spin 0.9s linear infinite;
+}
+
+.splash-text {
+    font-family: "Tajawal", sans-serif;
+    font-size: 14px;
+    color: #eef2ff;
+}
+
+@keyframes logoIn {
+    from {
+        transform: scale(0.85);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+#splash-screen.hide {
+    opacity: 0;
+    visibility: hidden;
 }
 
 /* RTL Support */
@@ -238,15 +399,12 @@ i.ph, i[class*="ph-"] {
     font-family: 'Tajawal', sans-serif;
 }
 
-/* Utility Classes */
-.text-driver {
-    color: var(--driver);
+.form-input {
+    direction: rtl;
+    text-align: right;
 }
 
-.bg-driver-light {
-    background-color: var(--driver-light);
-}
-
-.border-driver {
-    border-color: var(--driver);
+.form-input::placeholder {
+    direction: rtl;
+    text-align: right;
 }
