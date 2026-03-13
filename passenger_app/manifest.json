@@ -6,10 +6,10 @@
   "dir": "rtl",
   "start_url": "./index.html",
   "scope": ".",
-  "display": "standalone",
+  "display": "fullscreen",
   "orientation": "portrait",
-  "theme_color": "#16a34a",
-  "background_color": "#ffffff",
+  "theme_color": "#008B5E",
+  "background_color": "#F3F4F6",
   "icons": [
     {
       "src": "../assets/branding/icon-72x72.png",
