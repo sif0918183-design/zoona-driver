@@ -17,11 +17,11 @@
     --tech-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     --tech-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.08);
 
-    /* Zoona Brand Colors (Unified Emerald Theme) */
-    --zoona-primary: #16a34a;
-    --zoona-primary-dark: #15803d;
-    --zoona-primary-light: rgba(22, 163, 74, 0.1);
-    --zoona-emerald-glow: rgba(22, 163, 74, 0.4);
+    /* Zoona Brand Colors (Unified Dark Olive Theme) */
+    --zoona-primary: #556B2F;
+    --zoona-primary-dark: #3E4C21;
+    --zoona-primary-light: rgba(85, 107, 47, 0.1);
+    --zoona-emerald-glow: rgba(85, 107, 47, 0.4);
 
     /* Brand Colors for Legacy Compat */
     --neon-blue: var(--zoona-primary);
@@ -33,11 +33,11 @@
     /* Semantic Colors */
     --danger: #ef4444;
     --warning: #f59e0b;
-    --success: #16a34a;
+    --success: #556B2F;
 
     /* Gradients */
-    --grad-emerald: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-    --grad-emerald-tech: linear-gradient(135deg, #16a34a 0%, #059669 100%);
+    --grad-emerald: linear-gradient(135deg, #556B2F 0%, #3E4C21 100%);
+    --grad-emerald-tech: linear-gradient(135deg, #556B2F 0%, #2E3B19 100%);
     --grad-blue: var(--grad-emerald);
 
     /* Shared Spacing/Radius */
@@ -50,7 +50,7 @@
     filter: drop-shadow(0 0 2px var(--zoona-primary))
             drop-shadow(0 0 8px var(--zoona-emerald-glow))
             drop-shadow(0 0 15px var(--zoona-emerald-glow))
-            drop-shadow(0 0 30px rgba(22, 163, 74, 0.15));
+            drop-shadow(0 0 30px rgba(85, 107, 47, 0.15));
 }
 
 .neon-glow-blue, .neon-glow-emerald {
