@@ -2,7 +2,7 @@ import admin from 'firebase-admin';
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://zsmlyiygjagmhnglrhoa.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
 
 const tarhalDB = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -24,24 +24,15 @@ if (!admin.apps.length) {
 }
 
 export default async function handler(req, res) {
-    // تمكين CORS
+    // إعدادات CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS, GET');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
-    
-    if (req.method !== 'POST') {
-        return res.status(405).json({ success: false, error: 'Method not allowed' });
-    }
+    if (req.method === 'OPTIONS') return res.status(200).end();
+    if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });
 
     try {
-        if (!req.body) {
-            return res.status(400).json({ success: false, error: 'Missing request body' });
-        }
-
         const { 
             driverId, 
             rideId, 
@@ -52,13 +43,9 @@ export default async function handler(req, res) {
             distance 
         } = req.body;
 
-        console.log('🔔 طلب إرسال إشعار FCM للسائق:', driverId);
+        if (!driverId) return res.status(400).json({ success: false, error: 'driverId is required' });
 
-        if (!driverId) {
-            return res.status(400).json({ success: false, error: 'يجب تحديد driverId' });
-        }
-
-        // 1. التحقق من حالة الرحلة أولاً لمنع الإشعارات المتكررة (Ghosting Fix)
+        // 1. التحقق من حالة الرحلة (التصحيح الحرج هنا)
         if (rideId) {
             const { data: ride, error: rideError } = await tarhalDB
                 .from('rides')
@@ -67,20 +54,23 @@ export default async function handler(req, res) {
                 .single();
 
             if (!rideError && ride) {
-                // إرسال الإشعار فقط إذا كانت الرحلة تنتظر سائقاً
-                const validStatuses = ['pending', 'awaiting_driver_acceptance'];
-                if (!validStatuses.includes(ride.status)) {
-                    console.log(`⚠️ تم تجاهل الإشعار لأن حالة الرحلة هي: ${ride.status}`);
+                /** * ✅ تم إضافة 'searching' للقائمة المسموحة لأن النظام 
+                 * يبدأ البحث بهذه الحالة قبل تحويلها لـ pending.
+                 **/
+                const allowedStatuses = ['searching', 'pending', 'awaiting_driver_acceptance'];
+                
+                if (!allowedStatuses.includes(ride.status)) {
+                    console.log(`⚠️ إيقاف الإشعار: الرحلة في حالة [${ride.status}] ولا تحتاج لتنبيه السائق.`);
                     return res.status(200).json({
                         success: false,
-                        error: 'ride_already_handled',
+                        message: `Notification skipped: Ride status is ${ride.status}`,
                         status: ride.status
                     });
                 }
             }
         }
 
-        // 2. جلب توكن FCM من قاعدة البيانات
+        // 2. جلب بيانات السائق
         const { data: driver, error: dbError } = await tarhalDB
             .from('drivers')
             .select('fcm_token, full_name')
@@ -88,70 +78,63 @@ export default async function handler(req, res) {
             .single();
 
         if (dbError || !driver || !driver.fcm_token) {
-            console.error('❌ فشل العثور على FCM Token للسائق:', driverId, dbError);
             return res.status(404).json({ success: false, error: 'fcm_token_not_found' });
         }
 
-        // 2. إعداد رسالة FCM المصححة
+        // 3. بناء رسالة FCM الاحترافية
         const message = {
             token: driver.fcm_token,
             notification: {
-                title: '🚖 طلب رحلة جديدة - زونا',
-                body: `عميل: ${customerName || 'عميل'}\nالنوع: ${getVehicleTypeArabic(vehicleType) || 'سيارة'}\nالمبلغ: ${amount || '0'} SDG`,
+                title: '🚖 طلب رحلة جديد - زونا',
+                body: `عميل: ${customerName || 'عميل جديد'}\nالنوع: ${getVehicleTypeArabic(vehicleType)}\nالأجرة: ${amount || '0'} SDG`,
             },
-            // تم حذف click_action من هنا (المستوى الأعلى) لأنه يسبب خطأ 500
             data: {
                 ride_id: String(rideId || ''),
                 customer_name: String(customerName || ''),
                 amount: String(amount || '0'),
-                priority: 'high',
-                request_id: String(requestId || ''),
                 distance: String(distance || ''),
-                vehicle_type: String(vehicleType || ''),
                 type: 'RIDE_REQUEST',
-                click_action: 'FLUTTER_NOTIFICATION_CLICK' // يبقى داخل الـ data ليقرأه التطبيق
+                click_action: 'FLUTTER_NOTIFICATION_CLICK'
             },
             android: {
                 priority: 'high',
-                ttl: 60 * 1000,
+                ttl: 45 * 1000, // تنتهي صلاحية الإشعار بعد 45 ثانية (عمر الطلب)
                 notification: {
                     sound: 'ride_request_sound',
                     channelId: 'urgent_alerts_v5',
-                    // الـ SDK يستخدم camelCase هنا
-                    clickAction: 'FLUTTER_NOTIFICATION_CLICK', 
+                    clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+                    sticky: true,
+                    visibility: 'public'
                 }
             },
             apns: {
                 payload: {
                     aps: {
                         sound: 'ride_request_sound.wav',
-                        contentAvailable: true
+                        contentAvailable: true,
+                        badge: 1
                     }
                 }
             }
         };
 
-        // 3. إرسال الإشعار عبر Firebase
+        // 4. الإرسال الفعلي
         const response = await admin.messaging().send(message);
-        console.log('✅ تم إرسال إشعار FCM بنجاح:', response);
+        console.log(`✅ تم الإرسال للسائق [${driver.full_name}]:`, response);
 
-        // 4. تسجيل العملية في Supabase
+        // 5. تسجيل العملية
         await tarhalDB.from('push_notification_logs').insert({
             driver_id: driverId,
+            ride_id: rideId,
             success: true,
-            notification_type: 'ride_request_fcm',
             sent_at: new Date().toISOString()
         });
 
-        return res.status(200).json({ success: true, message: 'تم إرسال الإشعار بنجاح عبر FCM' });
+        return res.status(200).json({ success: true, message: 'FCM Sent Successfully' });
 
     } catch (error) {
-        console.error('❌ خطأ في إرسال FCM:', error);
-        return res.status(500).json({
-            success: false,
-            error: error.message,
-            message: 'حدث خطأ أثناء إرسال الإشعار'
-        });
+        console.error('❌ FCM Error:', error);
+        return res.status(500).json({ success: false, error: error.message });
     }
 }
 
@@ -163,5 +146,5 @@ function getVehicleTypeArabic(type) {
         'vip': 'VIP',
         'motorcycle': 'دراجة نارية'
     };
-    return types[type] || type;
+    return types[type] || 'مركبة زونا';
 }
