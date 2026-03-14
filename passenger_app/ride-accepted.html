@@ -474,9 +474,17 @@
                 display.innerHTML = '<span class="pulse" style="background: white"></span> السائق وصل لموقعك';
                 header.style.background = 'linear-gradient(135deg, #F59E0B, #D97706)';
 
-                // Vibration feedback for arrival
+                // الربط: اهتزاز الهاتف عند وصول السائق
                 if ('vibrate' in navigator) {
                     navigator.vibrate([200, 100, 200]);
+                }
+
+                // إشعار بسيط
+                if (window.Notification && Notification.permission === "granted") {
+                    new Notification("🚖 زونا: السائق وصل!", {
+                        body: "السائق ينتظرك في موقع الانطلاق",
+                        icon: "../icons/icon-192x192.png"
+                    });
                 }
             } else if (status === 'ongoing') {
                 display.innerHTML = '<span class="pulse" style="background: white"></span> أنت الآن في الرحلة';
@@ -526,7 +534,7 @@
 
             console.log('📡 Initializing Realtime for Ride:', currentRideId);
 
-            // Subscribe to ride status updates
+            // الربط المباشر: الاستماع لتحديثات الحالة والموقع من جدول الرحلات
             tarhalDB
                 .channel(`ride-tracking-${currentRideId}`)
                 .on('postgres_changes', {
@@ -535,13 +543,24 @@
                     table: 'rides',
                     filter: `id=eq.${currentRideId}`
                 }, (payload) => {
-                    console.log('🔔 Ride status update received:', payload.new.status);
-                    updateStatusUI(payload.new.status);
+                    const data = payload.new;
+                    console.log('🔔 Ride update received:', data.status);
+
+                    // 1. تحديث الحالة
+                    updateStatusUI(data.status);
+
+                    // 2. تحديث موقع السائق فوراً إذا توفر في جدول الرحلة
+                    if (data.driver_lat && data.driver_lng) {
+                        handleLocationUpdate({
+                            lat: parseFloat(data.driver_lat),
+                            lng: parseFloat(data.driver_lng)
+                        });
+                    }
 
                     // If driver assigned/changed, restart tracking
-                    if (payload.new.driver_id && payload.new.driver_id !== currentDriverId) {
-                        console.log('🔀 Driver assigned/changed:', payload.new.driver_id);
-                        currentDriverId = payload.new.driver_id;
+                    if (data.driver_id && data.driver_id !== currentDriverId) {
+                        console.log('🔀 Driver assigned/changed:', data.driver_id);
+                        currentDriverId = data.driver_id;
                         startDriverTracking();
                         subscribeToDriverLocation(currentDriverId);
                     }

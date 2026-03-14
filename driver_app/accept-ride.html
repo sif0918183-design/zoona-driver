@@ -385,36 +385,42 @@
 
         async function fetchRideDetails(rideId) {
             try {
-                const { data, error } = await tarhalDB
+                const { data: ride, error } = await tarhalDB
                     .from('rides')
                     .select('*')
                     .eq('id', rideId)
                     .single();
 
-                if (error) throw error;
-                if (data) {
-                    // Sanity Check: If ride is already accepted or handled, redirect
-                    if (data.status !== 'pending' && data.status !== 'awaiting_driver_acceptance') {
-                        console.log(`Ride ${rideId} already handled with status: ${data.status}`);
-                        if (data.status === 'accepted' || data.status === 'arrived' || data.status === 'ongoing') {
-                            window.location.href = `active-ride.html?rideId=${rideId}`;
-                        } else {
-                            window.location.href = 'index.html';
-                        }
-                        return;
-                    }
-
-                    updateUI({
-                        customer_name: data.passenger_name || data.customer_name,
-                        amount: data.amount || data.final_price,
-                        distance: data.distance_km || data.distance,
-                        pickup_address: data.pickup_address,
-                        ride_id: data.id
-                    });
-
-                    // Enable acceptance button after data is loaded
-                    document.getElementById('accept-btn').disabled = false;
+                if (error || !ride) {
+                    alert("عذراً، الرحلة لم تعد متاحة");
+                    window.location.href = 'index.html';
+                    return;
                 }
+
+                // الربط: فحص الحالة لضمان أن الرحلة ما زالت متاحة
+                const validStatuses = ['searching', 'pending', 'awaiting_driver_acceptance'];
+                if (!validStatuses.includes(ride.status)) {
+                    console.log(`Ride ${rideId} already handled with status: ${ride.status}`);
+                    if (['accepted', 'arrived', 'ongoing'].includes(ride.status)) {
+                        window.location.href = `active-ride.html?rideId=${rideId}`;
+                    } else {
+                        alert("عذراً، الرحلة لم تعد متاحة أو تم قبولها");
+                        window.location.href = 'index.html';
+                    }
+                    return;
+                }
+
+                // تحديث الواجهة ببيانات حقيقية من الداتابيز
+                updateUI({
+                    customer_name: ride.passenger_name || ride.customer_name,
+                    amount: ride.amount || ride.final_price,
+                    distance: ride.distance_km || ride.distance,
+                    pickup_address: ride.pickup_address,
+                    ride_id: ride.id
+                });
+
+                // Enable acceptance button after data is loaded
+                document.getElementById('accept-btn').disabled = false;
             } catch (err) {
                 console.error('Error fetching ride details:', err);
                 showToast('❌ فشل تحميل بيانات الرحلة', 'error');
