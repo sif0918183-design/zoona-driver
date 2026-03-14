@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>طلب رحلة جديد - ترحال زونا</title>
 
-    <!-- ✅ مكتبات التصميم -->
+    <!-- مكتبات التصميم -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
@@ -13,26 +13,25 @@
 
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../shared/supabase-config.js"></script>
-    <script src="../sound-manager.js"></script>
-
-    <!-- Global Tech Redesign Theme -->
+    <!-- تم دمج الإعدادات مباشرة في الكود لضمان الربط -->
+    
+    <!-- Global Tech Redesign Theme (ملف تجميلي) -->
     <link rel="stylesheet" href="../shared/theme.css">
 
     <style>
         :root {
-            --primary: var(--zoona-primary);
-            --primary-dark: var(--zoona-primary-dark);
-            --primary-light: var(--zoona-primary-light);
-            --danger: var(--danger);
+            --primary: #16a34a;
+            --primary-dark: #15803d;
+            --primary-light: #22c55e;
+            --danger: #ef4444;
             --danger-dark: #dc2626;
-            --warning: var(--warning);
-            --light: var(--tech-bg);
-            --dark: var(--tech-text);
-            --gray: #6b7280;
-            --gray-light: var(--tech-border);
+            --warning: #f59e0b;
+            --light: #1f2937;
+            --dark: #111827;
+            --gray: #9ca3af;
+            --gray-light: #374151;
             --radius: 16px;
-            --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.2);
+            --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.5);
         }
 
         * {
@@ -62,7 +61,7 @@
             overflow: hidden;
         }
 
-        /* ✅ Header */
+        /* Header */
         .app-header {
             text-align: center;
             margin-bottom: 12px;
@@ -77,7 +76,7 @@
             text-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
 
-        /* ✅ Countdown */
+        /* Countdown */
         .countdown-container {
             background: rgba(239, 68, 68, 0.1);
             border: 2px solid var(--danger);
@@ -96,7 +95,7 @@
             line-height: 1;
         }
 
-        /* ✅ Ride Details */
+        /* Ride Details */
         .ride-card {
             background: rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(10px);
@@ -164,7 +163,7 @@
             line-height: 1.2;
         }
 
-        /* ✅ Action Buttons */
+        /* Action Buttons */
         .action-buttons {
             display: grid;
             grid-template-columns: 1fr;
@@ -206,7 +205,7 @@
             height: 50px;
         }
 
-        /* ✅ Notification */
+        /* Notification */
         #notification {
             position: fixed;
             top: 20px;
@@ -240,7 +239,6 @@
             to { transform: rotate(360deg); }
         }
 
-        /* تحسين للشاشات الصغيرة */
         @media (max-height: 700px) {
             .app-header h1 {
                 font-size: 22px;
@@ -267,18 +265,15 @@
 <body>
 
     <div class="full-screen-container">
-        <!-- ✅ Header -->
         <header class="app-header">
             <h1>🚖 طلب رحلة جديد</h1>
         </header>
         
-        <!-- ✅ Countdown -->
         <div class="countdown-container">
             <div style="font-size: 13px; margin-bottom: 2px;">الوقت المتبقي للرد</div>
             <div class="timer-value" id="countdown">60</div>
         </div>
 
-        <!-- ✅ Ride Details Card -->
         <div class="ride-card">
             <div class="detail-row">
                 <div class="detail-icon"><ion-icon name="person-circle-outline"></ion-icon></div>
@@ -310,7 +305,6 @@
             </div>
         </div>
 
-        <!-- ✅ Action Buttons -->
         <div class="action-buttons">
             <button class="btn btn-accept" onclick="handleAccept()" id="accept-btn" disabled>
                 <ion-icon name="checkmark-circle"></ion-icon>
@@ -322,21 +316,24 @@
         </div>
     </div>
 
-    <!-- Notification Area -->
     <div id="notification"></div>
 
     <script>
         // ==============================================
-        // ✅ Supabase Configuration
+        // ✅ Supabase Configuration (المفاتيح المطلوبة)
         // ==============================================
-        const tarhalDB = supabase.createClient(window.SB_URL, window.SB_KEY);
+        const SB_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
+        const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
+        const tarhalDB = supabase.createClient(SB_URL, SB_KEY);
 
+        // متغيرات عامة
         let currentRideId = null;
         let countdownValue = 60;
         let timerInterval = null;
+        let dataLoaded = false;  // للتأكد من تمكين الزر بعد تحميل البيانات
 
         // ==============================================
-        // ✅ Global Handler for Flutter
+        // ✅ Bridge من Flutter (استقبال البيانات)
         // ==============================================
         window.handleIncomingRide = function(data) {
             console.log('Incoming ride data from Flutter Bridge:', data);
@@ -353,36 +350,70 @@
             if (parsedData && parsedData.ride_id) {
                 currentRideId = parsedData.ride_id;
 
-                // Verify if critical data exists, otherwise fallback to DB fetch
+                // إذا كانت البيانات ناقصة نجلبها من Supabase مباشرة
                 const isDataIncomplete = !parsedData.customer_name || !parsedData.amount;
-
                 if (isDataIncomplete) {
                     console.log('Data incomplete, fetching from Supabase as fallback...');
                     fetchRideDetails(currentRideId);
                 } else {
                     updateUI(parsedData);
+                    dataLoaded = true;
                     document.getElementById('accept-btn').disabled = false;
                 }
             } else if (parsedData) {
                 updateUI(parsedData);
+                dataLoaded = true;
+                document.getElementById('accept-btn').disabled = false;
             }
         };
 
         // ==============================================
-        // ✅ Initialization
+        // ✅ التحميل الأولي
         // ==============================================
         document.addEventListener('DOMContentLoaded', async function() {
             const urlParams = new URLSearchParams(window.location.search);
             currentRideId = urlParams.get('rideId') || urlParams.get('ride_id');
 
             if (currentRideId) {
+                // قبل كل شيء، نفحص إن كانت الرحلة ما زالت pending
+                await checkRideStatusAndRedirect(currentRideId);
+                // ثم نجلب التفاصيل
                 fetchRideDetails(currentRideId);
+            } else {
+                // لا يوجد rideId في الرابط، نعرض رسالة
+                document.getElementById('customer-name').innerText = 'لا توجد رحلة';
             }
 
             startTimer();
             triggerVibration();
         });
 
+        // ✅ التحقق من حالة الرحلة عند فتح الصفحة (يمنع فتح الرحلة إذا تم قبولها مسبقاً)
+        async function checkRideStatusAndRedirect(rideId) {
+            try {
+                const { data, error } = await tarhalDB
+                    .from('rides')
+                    .select('status')
+                    .eq('id', rideId)
+                    .single();
+
+                if (error) throw error;
+
+                if (data && data.status !== 'pending' && data.status !== 'awaiting_driver_acceptance') {
+                    console.log(`الرحلة ${rideId} حالتها ${data.status} - تحويل تلقائي`);
+                    if (data.status === 'accepted' || data.status === 'arrived' || data.status === 'ongoing') {
+                        window.location.replace(`active-ride.html?rideId=${rideId}`);
+                    } else {
+                        window.location.replace('index.html');
+                    }
+                }
+            } catch (err) {
+                console.error('خطأ في فحص حالة الرحلة:', err);
+                // إذا لم نستطع جلب الحالة، نكمل بحذر (ربما الرحلة غير موجودة)
+            }
+        }
+
+        // ✅ جلب بيانات الرحلة من Supabase
         async function fetchRideDetails(rideId) {
             try {
                 const { data, error } = await tarhalDB
@@ -392,43 +423,47 @@
                     .single();
 
                 if (error) throw error;
+
                 if (data) {
-                    // Sanity Check: If ride is already accepted or handled, redirect
+                    // فحص سريع: إذا كانت الحالة غير قابلة للقبول نوجه فوراً
                     if (data.status !== 'pending' && data.status !== 'awaiting_driver_acceptance') {
                         console.log(`Ride ${rideId} already handled with status: ${data.status}`);
                         if (data.status === 'accepted' || data.status === 'arrived' || data.status === 'ongoing') {
-                            window.location.href = `active-ride.html?rideId=${rideId}`;
+                            window.location.replace(`active-ride.html?rideId=${rideId}`);
                         } else {
-                            window.location.href = 'index.html';
+                            window.location.replace('index.html');
                         }
                         return;
                     }
 
                     updateUI({
-                        customer_name: data.passenger_name || data.customer_name,
-                        amount: data.amount || data.final_price,
-                        distance: data.distance_km || data.distance,
-                        pickup_address: data.pickup_address,
+                        customer_name: data.passenger_name || data.customer_name || 'عميل',
+                        amount: data.amount || data.final_price || 0,
+                        distance: data.distance_km || data.distance || '--',
+                        pickup_address: data.pickup_address || 'عنوان غير متوفر',
                         ride_id: data.id
                     });
 
-                    // Enable acceptance button after data is loaded
+                    dataLoaded = true;
                     document.getElementById('accept-btn').disabled = false;
                 }
             } catch (err) {
                 console.error('Error fetching ride details:', err);
+                document.getElementById('customer-name').innerText = 'فشل التحميل';
                 showToast('❌ فشل تحميل بيانات الرحلة', 'error');
             }
         }
 
+        // ✅ تحديث الواجهة بالبيانات
         function updateUI(data) {
             if (!data) return;
             if (data.customer_name) document.getElementById('customer-name').textContent = data.customer_name;
-            if (data.amount || data.final_price) document.getElementById('amount').textContent = data.amount || data.final_price;
-            if (data.distance || data.distance_km) document.getElementById('distance').textContent = data.distance || data.distance_km;
+            if (data.amount) document.getElementById('amount').textContent = data.amount;
+            if (data.distance) document.getElementById('distance').textContent = data.distance + ' كم';
             if (data.pickup_address) document.getElementById('pickup-location').textContent = data.pickup_address;
         }
 
+        // ✅ عداد التنازلي
         function startTimer() {
             timerInterval = setInterval(() => {
                 countdownValue--;
@@ -448,53 +483,70 @@
         }
 
         // ==============================================
-        // ✅ Accept/Decline Logic
+        // ✅ قبول الرحلة (مع التحديث الفوري ومنع التكرار)
         // ==============================================
         async function handleAccept() {
             if (!currentRideId) {
-                showToast('خطأ: لا يوجد معرف للرحلة', 'error');
+                showToast('لا يوجد معرف رحلة', 'error');
                 return;
             }
 
+            // تعطيل الأزرار ومنع أي نقرة ثانية
             setLoading(true, 'accept');
-            clearInterval(timerInterval);
+            clearInterval(timerInterval);  // إيقاف العداد
+
+            // جلب بيانات السائق من localStorage
+            const driverData = JSON.parse(localStorage.getItem('tarhal_driver') || '{}');
+            const driverId = driverData.id || null;  // قد يكون غير متوفر في بعض السيناريوهات
 
             try {
+                // تحديث الرحلة: الحالة accepted و driver_id
+                // هذا التحديث هو المهم لمنع إعادة إرسال الإشعار من السيرفر
                 const { error } = await tarhalDB
                     .from('rides')
                     .update({
-                        status: 'accepted',
+                        status: 'accepted',          // الحالة التي يوقف السيرفر بناءً عليها الإشعارات
+                        driver_id: driverId,
                         driver_accepted: true,
                         accepted_at: new Date().toISOString()
                     })
-                    .eq('id', currentRideId);
+                    .eq('id', currentRideId)
+                    .eq('status', 'pending');        // شرط إضافي: نضمن أنها لم تتغير من قبل سائق آخر
 
-                if (error) throw error;
+                if (error) {
+                    // إذا حصل خطأ، ربما بسبب أن الصف لم يعد pending (قبله سائق آخر)
+                    throw error;
+                }
 
+                // نجاح التحديث
                 showToast('✅ تم قبول الرحلة بنجاح!', 'success');
-                if (window.soundManager) window.soundManager.playSuccessSound();
-                
-                // إبلاغ Flutter
+
+                // إبلاغ Flutter (اختياري)
                 if (window.flutter_inappwebview) {
                     window.flutter_inappwebview.callHandler('rideAccepted', { ride_id: currentRideId });
                 }
 
-                setTimeout(() => {
-                    // التوجه لصفحة تتبع الرحلة
-                    window.location.href = `active-ride.html?rideId=${currentRideId}`;
-                }, 1500);
+                // التوجيه الفوري إلى صفحة الرحلة النشطة (بدون تأخير)
+                window.location.replace(`active-ride.html?rideId=${currentRideId}`);
 
             } catch (err) {
                 console.error('Accept error:', err);
-                showToast('❌ فشل قبول الرحلة، حاول مرة أخرى', 'error');
+                // هنا نعرض رسالة تفيد بأن الرحلة ربما قبلت من قبل سائق آخر
+                showToast('❌ عذراً، ربما قبلها سائق آخر', 'error');
+                
+                // نعيد تمكين الزر؟ لا، الأفضل توجيهه للصفحة الرئيسية أو إعادة تحميل البيانات
                 setLoading(false, 'accept');
-                startTimer();
+                // نبدأ العداد من جديد؟ لكن الأفضل نعيد توجيهه بعد ثانيتين
+                setTimeout(() => {
+                    window.location.replace('index.html');
+                }, 2000);
             }
         }
 
+        // ✅ رفض الرحلة
         async function handleDecline() {
             if (!currentRideId) {
-                window.location.href = 'index.html';
+                window.location.replace('index.html');
                 return;
             }
 
@@ -502,7 +554,8 @@
             clearInterval(timerInterval);
 
             try {
-                const { error } = await tarhalDB
+                // نحديث الحالة إلى driver_rejected
+                await tarhalDB
                     .from('rides')
                     .update({
                         status: 'driver_rejected',
@@ -510,29 +563,29 @@
                     })
                     .eq('id', currentRideId);
 
-                if (error) throw error;
-
                 showToast('تم رفض الرحلة');
 
-                // إبلاغ Flutter
                 if (window.flutter_inappwebview) {
                     window.flutter_inappwebview.callHandler('rideRejected', { ride_id: currentRideId });
                 }
 
                 setTimeout(() => {
-                    window.location.href = 'index.html';
+                    window.location.replace('index.html');
                 }, 1000);
 
             } catch (err) {
                 console.error('Decline error:', err);
-                window.location.href = 'index.html';
+                // حتى لو فشل التحديث، نوجه للرئيسية
+                window.location.replace('index.html');
             }
         }
 
+        // ✅ انتهاء الوقت (رفض تلقائي)
         function autoDecline() {
             handleDecline();
         }
 
+        // ✅ التحكم بحالة التحميل للأزرار
         function setLoading(loading, type) {
             const acceptBtn = document.getElementById('accept-btn');
             const declineBtn = document.getElementById('decline-btn');
@@ -542,14 +595,18 @@
                 declineBtn.disabled = true;
                 if (type === 'accept') {
                     acceptBtn.innerHTML = '<div class="spinner"></div> جاري القبول...';
+                } else if (type === 'decline') {
+                    declineBtn.innerHTML = '<div class="spinner"></div> جاري الرفض...';
                 }
             } else {
-                acceptBtn.disabled = false;
+                acceptBtn.disabled = !dataLoaded;  // إذا كانت البيانات محملة نمكن
                 declineBtn.disabled = false;
                 acceptBtn.innerHTML = '<ion-icon name="checkmark-circle"></ion-icon> قــبـول الـرحـلـة';
+                declineBtn.innerHTML = 'رفض الطلب';
             }
         }
 
+        // ✅ إشعارات منبثقة
         function showToast(message, type = 'info') {
             const notification = document.getElementById('notification');
             notification.textContent = message;
@@ -561,6 +618,33 @@
                 notification.style.display = 'none';
             }, 3000);
         }
+
+        // ✅ كشف إذا تم قبول الرحلة من نافذة أخرى (اختياري عبر Subscription)
+        // يمكن إضافة اشتراك لحظي، لكن لا داعي له لأننا نعتمد على التحديث المباشر عند القبول
+        // لكن إضافته تزيد الموثوقية
+        (function subscribeToRideChanges() {
+            // نشترك فقط إذا كان لدينا rideId
+            if (!currentRideId) return;
+            
+            const subscription = tarhalDB
+                .channel('ride-status-channel')
+                .on(
+                    'postgres_changes',
+                    { event: 'UPDATE', schema: 'public', table: 'rides', filter: `id=eq.${currentRideId}` },
+                    (payload) => {
+                        const newStatus = payload.new.status;
+                        if (newStatus === 'accepted' || newStatus === 'ongoing' || newStatus === 'arrived') {
+                            // الرحلة أصبحت محجوزة (ربما قبلها السائق نفسه في جهاز آخر أو قبلها سائق آخر)
+                            // نوجه إلى الصفحة المناسبة
+                            window.location.replace(`active-ride.html?rideId=${currentRideId}`);
+                        } else if (newStatus === 'cancelled' || newStatus === 'driver_rejected') {
+                            window.location.replace('index.html');
+                        }
+                    }
+                )
+                .subscribe();
+        })();
+
     </script>
 </body>
 </html>
