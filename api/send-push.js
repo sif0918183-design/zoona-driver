@@ -58,7 +58,29 @@ export default async function handler(req, res) {
             return res.status(400).json({ success: false, error: 'يجب تحديد driverId' });
         }
 
-        // 1. جلب توكن FCM من قاعدة البيانات
+        // 1. التحقق من حالة الرحلة أولاً لمنع الإشعارات المتكررة (Ghosting Fix)
+        if (rideId) {
+            const { data: ride, error: rideError } = await tarhalDB
+                .from('rides')
+                .select('status')
+                .eq('id', rideId)
+                .single();
+
+            if (!rideError && ride) {
+                // إرسال الإشعار فقط إذا كانت الرحلة تنتظر سائقاً
+                const validStatuses = ['pending', 'awaiting_driver_acceptance'];
+                if (!validStatuses.includes(ride.status)) {
+                    console.log(`⚠️ تم تجاهل الإشعار لأن حالة الرحلة هي: ${ride.status}`);
+                    return res.status(200).json({
+                        success: false,
+                        error: 'ride_already_handled',
+                        status: ride.status
+                    });
+                }
+            }
+        }
+
+        // 2. جلب توكن FCM من قاعدة البيانات
         const { data: driver, error: dbError } = await tarhalDB
             .from('drivers')
             .select('fcm_token, full_name')

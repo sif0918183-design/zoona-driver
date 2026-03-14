@@ -16,18 +16,21 @@
     <script src="../shared/supabase-config.js"></script>
     <script src="../sound-manager.js"></script>
 
+    <!-- Global Tech Redesign Theme -->
+    <link rel="stylesheet" href="../shared/theme.css">
+
     <style>
         :root {
-            --primary: #16a34a;
-            --primary-dark: #15803d;
-            --primary-light: #dcfce7;
-            --danger: #ef4444;
+            --primary: var(--zoona-primary);
+            --primary-dark: var(--zoona-primary-dark);
+            --primary-light: var(--zoona-primary-light);
+            --danger: var(--danger);
             --danger-dark: #dc2626;
-            --warning: #f59e0b;
-            --light: #f9fafb;
-            --dark: #111827;
+            --warning: var(--warning);
+            --light: var(--tech-bg);
+            --dark: var(--tech-text);
             --gray: #6b7280;
-            --gray-light: #e5e7eb;
+            --gray-light: var(--tech-border);
             --radius: 16px;
             --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.2);
         }
@@ -337,10 +340,31 @@
         // ==============================================
         window.handleIncomingRide = function(data) {
             console.log('Incoming ride data from Flutter Bridge:', data);
-            updateUI(data);
 
-            if (data.ride_id) {
-                currentRideId = data.ride_id;
+            let parsedData = data;
+            if (typeof data === 'string') {
+                try {
+                    parsedData = JSON.parse(data);
+                } catch (e) {
+                    console.error('Error parsing incoming ride data:', e);
+                }
+            }
+
+            if (parsedData && parsedData.ride_id) {
+                currentRideId = parsedData.ride_id;
+
+                // Verify if critical data exists, otherwise fallback to DB fetch
+                const isDataIncomplete = !parsedData.customer_name || !parsedData.amount;
+
+                if (isDataIncomplete) {
+                    console.log('Data incomplete, fetching from Supabase as fallback...');
+                    fetchRideDetails(currentRideId);
+                } else {
+                    updateUI(parsedData);
+                    document.getElementById('accept-btn').disabled = false;
+                }
+            } else if (parsedData) {
+                updateUI(parsedData);
             }
         };
 
@@ -369,6 +393,17 @@
 
                 if (error) throw error;
                 if (data) {
+                    // Sanity Check: If ride is already accepted or handled, redirect
+                    if (data.status !== 'pending' && data.status !== 'awaiting_driver_acceptance') {
+                        console.log(`Ride ${rideId} already handled with status: ${data.status}`);
+                        if (data.status === 'accepted' || data.status === 'arrived' || data.status === 'ongoing') {
+                            window.location.href = `active-ride.html?rideId=${rideId}`;
+                        } else {
+                            window.location.href = 'index.html';
+                        }
+                        return;
+                    }
+
                     updateUI({
                         customer_name: data.passenger_name || data.customer_name,
                         amount: data.amount || data.final_price,
@@ -387,9 +422,10 @@
         }
 
         function updateUI(data) {
+            if (!data) return;
             if (data.customer_name) document.getElementById('customer-name').textContent = data.customer_name;
-            if (data.amount) document.getElementById('amount').textContent = data.amount;
-            if (data.distance) document.getElementById('distance').textContent = data.distance;
+            if (data.amount || data.final_price) document.getElementById('amount').textContent = data.amount || data.final_price;
+            if (data.distance || data.distance_km) document.getElementById('distance').textContent = data.distance || data.distance_km;
             if (data.pickup_address) document.getElementById('pickup-location').textContent = data.pickup_address;
         }
 

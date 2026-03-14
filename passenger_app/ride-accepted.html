@@ -465,10 +465,23 @@
 
         function updateStatusUI(status) {
             const display = document.getElementById('status-display');
-            if (status === 'accepted') display.innerHTML = '<span class="pulse"></span> السائق في الطريق إليك';
-            else if (status === 'arrived') display.innerHTML = '<span class="pulse" style="background: var(--primary)"></span> السائق وصل لموقعك';
-            else if (status === 'ongoing') display.innerHTML = '<span class="pulse" style="background: var(--primary-dark)"></span> أنت الآن في الرحلة';
-            else if (['completed', 'cancelled_by_driver', 'cancelled_by_customer'].includes(status)) {
+            const header = document.querySelector('.header');
+
+            if (status === 'accepted') {
+                display.innerHTML = '<span class="pulse"></span> السائق في الطريق إليك';
+                header.style.background = 'linear-gradient(135deg, #556B2F, #3E4C21)';
+            } else if (status === 'arrived') {
+                display.innerHTML = '<span class="pulse" style="background: white"></span> السائق وصل لموقعك';
+                header.style.background = 'linear-gradient(135deg, #F59E0B, #D97706)';
+
+                // Vibration feedback for arrival
+                if ('vibrate' in navigator) {
+                    navigator.vibrate([200, 100, 200]);
+                }
+            } else if (status === 'ongoing') {
+                display.innerHTML = '<span class="pulse" style="background: white"></span> أنت الآن في الرحلة';
+                header.style.background = 'linear-gradient(135deg, #3B82F6, #2563EB)';
+            } else if (['completed', 'cancelled_by_driver', 'cancelled_by_customer'].includes(status)) {
                 localStorage.removeItem('tarhal_current_ride_id');
 
                 if (status === 'completed') {
@@ -548,35 +561,56 @@
 
             if (driverMarker) {
                 animateMarker(driverMarker, pos);
+                // Explicitly update position to ensure marker moves even if animation fails
+                driverMarker.setPosition(new google.maps.LatLng(pos.lat, pos.lng));
+
+                // Ensure icon is correct in case it was initialized differently
+                driverMarker.setIcon({
+                    path: 'M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.22.42-1.42.99L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z',
+                    scale: 1.4,
+                    fillColor: '#556B2F',
+                    fillOpacity: 1,
+                    strokeWeight: 1,
+                    strokeColor: '#ffffff',
+                    anchor: new google.maps.Point(12, 12)
+                });
             } else {
                 driverMarker = new google.maps.Marker({
                     position: pos,
                     map: map,
                     icon: {
-                        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-                        scale: 6,
-                        fillColor: '#16a34a',
+                        path: 'M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.22.42-1.42.99L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z',
+                        scale: 1.4,
+                        fillColor: '#556B2F',
                         fillOpacity: 1,
-                        strokeWeight: 2,
+                        strokeWeight: 1,
                         strokeColor: '#ffffff',
-                        rotation: 0
+                        anchor: new google.maps.Point(12, 12)
                     },
                     title: 'السائق'
                 });
             }
 
-            if (!hasFocusedOnDriver && map) {
-                map.setCenter(pos);
-                map.setZoom(16);
-                hasFocusedOnDriver = true;
+            // Only pan if distance > 500m or if it's the first focus
+            const currentCenter = map.getCenter();
+            const distanceToCenter = window.google && google.maps && google.maps.geometry ?
+                google.maps.geometry.spherical.computeDistanceBetween(currentCenter, new google.maps.LatLng(pos.lat, pos.lng)) : 1000;
+
+            if (!hasFocusedOnDriver || distanceToCenter > 500) {
+                map.panTo(pos);
+                if (!hasFocusedOnDriver) {
+                    map.setZoom(16);
+                    hasFocusedOnDriver = true;
+                }
             }
 
-            // Calculate ETA
-            if (pickupMarker) {
+            // Calculate ETA only if status is accepted
+            const statusDisplay = document.getElementById('status-display');
+            if (pickupMarker && statusDisplay.textContent.includes('الطريق إليك')) {
                 const pickupPos = pickupMarker.getPosition();
                 const distance = google.maps.geometry.spherical.computeDistanceBetween(pickupPos, new google.maps.LatLng(pos.lat, pos.lng));
                 const etaMinutes = Math.ceil((distance / 1000) / 0.5);
-                document.getElementById('status-display').innerHTML = `<span class="pulse"></span> السائق في الطريق (وصول خلال ${etaMinutes} دق)`;
+                statusDisplay.innerHTML = `<span class="pulse"></span> السائق في الطريق (وصول خلال ${etaMinutes} دق)`;
             }
         }
 
@@ -612,6 +646,13 @@
                 }
             }
         }
+
+        // Clean up subscriptions
+        window.addEventListener('beforeunload', () => {
+            if (tarhalDB && tarhalDB.removeAllChannels) {
+                tarhalDB.removeAllChannels();
+            }
+        });
     </script>
 </body>
 </html>
