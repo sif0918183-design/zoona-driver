@@ -259,8 +259,8 @@
 
         <div class="ride-stats">
             <div class="stat-card">
-                <div class="stat-label">المسافة المقدرة</div>
-                <div class="stat-value" id="ride-distance">-- كم</div>
+                <div class="stat-label">المسافة المتبقية</div>
+                <div class="stat-value" id="remaining-distance">-- كم</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">رقم اللوحة</div>
@@ -270,10 +270,10 @@
 
         <div class="actions">
             <a href="#" id="call-btn" class="btn btn-call" target="_blank">
-                <i class="fas fa-phone-alt"></i> إتصال1
+                <i class="fas fa-phone-alt"></i> إتصال
             </a>
             <a href="#" id="whatsapp-btn" class="btn btn-whatsapp" target="_blank">
-                <i class="fab fa-whatsapp"></i> إتصال2
+                <i class="fab fa-whatsapp"></i> واتساب
             </a>
             <button class="btn btn-cancel" onclick="cancelRide()">
                 إلغاء
@@ -282,13 +282,17 @@
     </div>
 
     <script>
-        // ✅ تهيئة Supabase مباشرة بالمفاتيح المقدمة
+        // ==============================================
+        // ✅ Supabase Configuration
+        // ==============================================
         const SUPABASE_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
         
         const tarhalDB = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // متغيرات عامة
+        // ==============================================
+        // ✅ المتغيرات العامة
+        // ==============================================
         let currentRideId = null;
         let currentDriverId = null;
         let map = null;
@@ -302,6 +306,9 @@
         let rideChannel = null;
         let driverLocChannel = null;
 
+        // ==============================================
+        // ✅ التهيئة
+        // ==============================================
         document.addEventListener('DOMContentLoaded', async function() {
             const urlParams = new URLSearchParams(window.location.search);
             currentRideId = urlParams.get('rideId') || localStorage.getItem('tarhal_current_ride_id');
@@ -309,7 +316,6 @@
             if (currentRideId) {
                 localStorage.setItem('tarhal_current_ride_id', currentRideId);
                 
-                // إخفاء شاشة التحميل بعد 10 ثواني كحد أقصى
                 setTimeout(() => {
                     document.getElementById('loadingOverlay').classList.add('hidden');
                 }, 10000);
@@ -318,24 +324,28 @@
                 initRealtime();
                 await fetchRideDetails();
             } else {
-                console.warn('No rideId found');
                 window.location.href = 'index.html';
             }
         });
 
+        // ==============================================
+        // ✅ تحميل خرائط جوجل
+        // ==============================================
         function loadGoogleMaps() {
             const script = document.createElement('script');
             script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyClnU4c2RbCOtMLxxZNBxAZrAkIdX5BBv4&libraries=places,geometry&language=ar&callback=initMap';
             script.async = true;
             script.defer = true;
             script.onerror = function() {
-                console.error('Failed to load Google Maps');
                 document.getElementById('loadingOverlay').classList.add('hidden');
                 alert('فشل تحميل الخريطة. الرجاء التحقق من اتصال الإنترنت.');
             };
             document.head.appendChild(script);
         }
 
+        // ==============================================
+        // ✅ تهيئة الخريطة
+        // ==============================================
         window.initMap = function() {
             map = new google.maps.Map(document.getElementById('map'), {
                 zoom: 14,
@@ -356,7 +366,6 @@
                 }
             });
 
-            console.log('✅ Google Maps initialized');
             document.getElementById('loadingOverlay').classList.add('hidden');
             
             if (currentRideId) {
@@ -364,10 +373,11 @@
             }
         }
 
+        // ==============================================
+        // ✅ جلب تفاصيل الرحلة
+        // ==============================================
         async function fetchRideDetails() {
             try {
-                console.log('🔍 Fetching ride details for:', currentRideId);
-                
                 const { data: ride, error } = await tarhalDB
                     .from('rides')
                     .select(`*, drivers:driver_id (full_name, car_model, car_plate, car_color, phone, whatsapp_number)`)
@@ -380,8 +390,6 @@
                 }
 
                 if (ride) {
-                    console.log('📦 Ride data received:', ride);
-                    
                     if (ride.driver_id) {
                         currentDriverId = ride.driver_id;
                     }
@@ -401,13 +409,16 @@
             }
         }
 
+        // ==============================================
+        // ✅ عرض بيانات الرحلة
+        // ==============================================
         function renderRideData(ride) {
             const driver = ride.drivers || {};
             
             document.getElementById('driver-name').textContent = driver.full_name || 'جاري التعيين...';
             document.getElementById('driver-avatar').textContent = (driver.full_name || 'ز').charAt(0);
             document.getElementById('ride-price').textContent = `${ride.amount || 0} SDG`;
-            document.getElementById('ride-distance').textContent = `${ride.distance_km || 0} كم`;
+            document.getElementById('remaining-distance').textContent = `${ride.distance_km || 0} كم`;
 
             const carModel = driver.car_model || '';
             const carColor = driver.car_color || '';
@@ -421,16 +432,13 @@
 
             if (phone) {
                 document.getElementById('call-btn').href = `tel:${phone}`;
-                document.getElementById('call-btn').style.display = 'flex';
             } else {
                 document.getElementById('call-btn').style.display = 'none';
             }
             
             if (whatsapp) {
-                // تنظيف رقم الهاتف للواتساب
                 const cleanNumber = whatsapp.toString().replace(/[^0-9]/g, '');
                 document.getElementById('whatsapp-btn').href = `https://wa.me/${cleanNumber}`;
-                document.getElementById('whatsapp-btn').style.display = 'flex';
             } else {
                 document.getElementById('whatsapp-btn').style.display = 'none';
             }
@@ -449,7 +457,10 @@
                                 color: 'white',
                                 fontWeight: 'bold'
                             },
-                            title: 'موقعك'
+                            title: 'موقع الانطلاق',
+                            icon: {
+                                url: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png'
+                            }
                         });
                     } else {
                         pickupMarker.setPosition(pickupPos);
@@ -471,7 +482,10 @@
                                 color: 'white',
                                 fontWeight: 'bold'
                             },
-                            title: 'الوجهة'
+                            title: 'الوجهة',
+                            icon: {
+                                url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png'
+                            }
                         });
                     } else {
                         destinationMarker.setPosition(destPos);
@@ -480,10 +494,36 @@
             }
         }
 
+        // ==============================================
+        // ✅ رسم الطريق
+        // ==============================================
+        function drawRoute(ride) {
+            if (!ride.pickup_lat || !ride.pickup_lng || !ride.destination_lat || !ride.destination_lng) return;
+            if (!directionsService || !directionsRenderer) return;
+
+            const request = {
+                origin: { lat: parseFloat(ride.pickup_lat), lng: parseFloat(ride.pickup_lng) },
+                destination: { lat: parseFloat(ride.destination_lat), lng: parseFloat(ride.destination_lng) },
+                travelMode: google.maps.TravelMode.DRIVING
+            };
+
+            directionsService.route(request, (result, status) => {
+                if (status === 'OK') {
+                    directionsRenderer.setDirections(result);
+                    
+                    if (result.routes[0] && result.routes[0].legs[0]) {
+                        const distanceInKm = (result.routes[0].legs[0].distance.value / 1000).toFixed(1);
+                        document.getElementById('remaining-distance').textContent = `${distanceInKm} كم`;
+                    }
+                }
+            });
+        }
+
+        // ==============================================
+        // ✅ البث المباشر لتحديثات الرحلة
+        // ==============================================
         function initRealtime() {
             if (!currentRideId) return;
-
-            console.log('📡 Initializing Realtime for Ride:', currentRideId);
 
             if (rideChannel) {
                 tarhalDB.removeChannel(rideChannel);
@@ -497,14 +537,10 @@
                     table: 'rides',
                     filter: `id=eq.${currentRideId}`
                 }, async (payload) => {
-                    console.log('🔔 Ride status update received:', payload.new.status);
-                    
                     if (payload.new.status === 'accepted' || 
                         (payload.new.driver_id && payload.new.driver_id !== currentDriverId)) {
                         
-                        console.log('✅ Ride accepted or driver changed, fetching fresh data...');
                         currentDriverId = payload.new.driver_id;
-                        
                         await fetchRideDetails();
                         
                         if (currentDriverId) {
@@ -515,11 +551,12 @@
                     
                     updateStatusUI(payload.new.status);
                 })
-                .subscribe((status) => {
-                    console.log('✅ Realtime subscription status:', status);
-                });
+                .subscribe();
         }
 
+        // ==============================================
+        // ✅ بدء تتبع موقع السائق
+        // ==============================================
         async function startDriverTracking() {
             if (trackingInterval) clearInterval(trackingInterval);
             
@@ -529,6 +566,9 @@
             }
         }
 
+        // ==============================================
+        // ✅ تحديث موقع السائق من قاعدة البيانات
+        // ==============================================
         async function updateDriverLocation() {
             if (!currentDriverId || !map) return;
 
@@ -558,6 +598,9 @@
             }
         }
 
+        // ==============================================
+        // ✅ تحريك الماركر بسلاسة
+        // ==============================================
         function animateMarker(marker, newPos) {
             if (!marker) return;
             
@@ -581,6 +624,9 @@
             requestAnimationFrame(step);
         }
 
+        // ==============================================
+        // ✅ تحديث حالة الرحلة في الواجهة
+        // ==============================================
         function updateStatusUI(status) {
             const display = document.getElementById('status-display');
             
@@ -617,6 +663,9 @@
             }
         }
 
+        // ==============================================
+        // ✅ الاشتراك في تحديثات موقع السائق المباشرة
+        // ==============================================
         function subscribeToDriverLocation(driverId) {
             if (!driverId) return;
             
@@ -624,8 +673,6 @@
                 tarhalDB.removeChannel(driverLocChannel);
             }
 
-            console.log('📍 Subscribing to driver location updates:', driverId);
-            
             driverLocChannel = tarhalDB
                 .channel(`driver-loc-${driverId}`)
                 .on('postgres_changes', {
@@ -659,30 +706,32 @@
                 .subscribe();
         }
 
+        // ==============================================
+        // ✅ معالجة تحديث موقع السائق (مع أيقونة السيارة)
+        // ==============================================
         function handleLocationUpdate(pos) {
             if (!map) return;
 
-            const icon = {
-                path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-                scale: 6,
-                fillColor: '#4f46e5',
-                fillOpacity: 1,
-                strokeWeight: 2,
-                strokeColor: '#ffffff',
+            // ✅ أيقونة سيارة حقيقية - نفس الأيقونة المستخدمة في كود السائق
+            const carIcon = {
+                url: 'https://cdn-icons-png.flaticon.com/512/3202/3202926.png',
+                scaledSize: new google.maps.Size(50, 50),
+                anchor: new google.maps.Point(25, 25),
                 rotation: pos.heading || 0
             };
 
             if (driverMarker) {
                 animateMarker(driverMarker, pos);
                 if (driverMarker.setIcon) {
-                    driverMarker.setIcon(icon);
+                    driverMarker.setIcon(carIcon);
                 }
             } else {
                 driverMarker = new google.maps.Marker({
                     position: pos,
                     map: map,
-                    icon: icon,
-                    title: 'السائق'
+                    icon: carIcon,
+                    title: 'السائق',
+                    optimized: false
                 });
             }
 
@@ -692,6 +741,7 @@
                 hasFocusedOnDriver = true;
             }
 
+            // حساب المسافة المتبقية ووقت الوصول
             if (pickupMarker) {
                 const pickupPos = pickupMarker.getPosition();
                 if (pickupPos && google.maps.geometry) {
@@ -700,7 +750,10 @@
                         new google.maps.LatLng(pos.lat, pos.lng)
                     );
                     
-                    const etaMinutes = Math.ceil(distance / 500);
+                    const distanceKm = (distance / 1000).toFixed(1);
+                    document.getElementById('remaining-distance').textContent = `${distanceKm} كم`;
+                    
+                    const etaMinutes = Math.ceil(distance / 500); // بافتراض سرعة 30 كم/ساعة
                     
                     if (etaMinutes > 0 && etaMinutes < 60) {
                         const statusDisplay = document.getElementById('status-display');
@@ -712,30 +765,9 @@
             }
         }
 
-        function drawRoute(ride) {
-            if (!ride.pickup_lat || !ride.pickup_lng || !ride.destination_lat || !ride.destination_lng) return;
-            if (!directionsService || !directionsRenderer) return;
-
-            const request = {
-                origin: { lat: parseFloat(ride.pickup_lat), lng: parseFloat(ride.pickup_lng) },
-                destination: { lat: parseFloat(ride.destination_lat), lng: parseFloat(ride.destination_lng) },
-                travelMode: google.maps.TravelMode.DRIVING
-            };
-
-            directionsService.route(request, (result, status) => {
-                if (status === 'OK') {
-                    directionsRenderer.setDirections(result);
-                    
-                    if (result.routes[0] && result.routes[0].legs[0]) {
-                        const distanceInKm = (result.routes[0].legs[0].distance.value / 1000).toFixed(1);
-                        document.getElementById('ride-distance').textContent = `${distanceInKm} كم`;
-                    }
-                } else {
-                    console.error('Directions request failed:', status);
-                }
-            });
-        }
-
+        // ==============================================
+        // ✅ إلغاء الرحلة
+        // ==============================================
         async function cancelRide() {
             if (!currentRideId) return;
             
@@ -760,13 +792,15 @@
                         document.getElementById('loadingOverlay').classList.add('hidden');
                     }
                 } catch (e) {
-                    console.error('Cancel error:', e);
                     alert('حدث خطأ في الشبكة. الرجاء المحاولة مرة أخرى.');
                     document.getElementById('loadingOverlay').classList.add('hidden');
                 }
             }
         }
 
+        // ==============================================
+        // ✅ تنظيف الموارد عند إغلاق الصفحة
+        // ==============================================
         window.addEventListener('beforeunload', function() {
             if (trackingInterval) clearInterval(trackingInterval);
             if (rideChannel) tarhalDB.removeChannel(rideChannel);
