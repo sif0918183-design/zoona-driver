@@ -11,20 +11,20 @@
     --tech-text: #111827;         /* لون النصوص الأساسي */
     --tech-border: #E5E7EB;       /* حدود البطاقات الخفيفة */
     
-    /* --- Zoona Brand Colors (Emerald Deep) --- */
-    --zoona-primary: #008B5E;     /* الأخضر الزمردي العلوي */
-    --zoona-primary-dark: #005F41; /* الأخضر الغاباتي السفلي */
-    --zoona-emerald-glow: rgba(0, 139, 94, 0.25);
-    --zoona-primary-light: rgba(0, 139, 94, 0.05);
+    /* --- Zoona Brand Colors (Dark Olive Tech) --- */
+    --zoona-primary: #556B2F;     /* Dark Olive Green */
+    --zoona-primary-dark: #3E4C21; /* Darker Olive */
+    --zoona-emerald-glow: rgba(85, 107, 47, 0.25);
+    --zoona-primary-light: rgba(85, 107, 47, 0.05);
 
     /* --- Semantic Colors --- */
-    --danger: #EF4444;            /* للرسائل التحذيرية وحالة "غير متصل" */
+    --danger: #EF4444;
     --warning: #F59E0B;
-    --success: #008B5E;
+    --success: #556B2F;
 
-    /* --- Gradients (Identical to UI image) --- */
-    --grad-emerald: linear-gradient(180deg, #008B5E 0%, #005F41 100%);
-    --grad-header: linear-gradient(180deg, #008B5E 0%, #005F41 100%);
+    /* --- Gradients (Dark Tech aesthetic) --- */
+    --grad-emerald: linear-gradient(180deg, #556B2F 0%, #3E4C21 100%);
+    --grad-header: linear-gradient(180deg, #556B2F 0%, #3E4C21 100%);
 
     /* --- Spacing & Radius --- */
     --radius-standard: 14px;
@@ -61,6 +61,10 @@ header, .app-header, .navbar-zoona {
 }
 
 /* Primary Button: محاكاة زر "تفعيل وضع العمل" */
+.btn-zoona, .btn-neon-emerald, .btn {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .btn-zoona, .btn-neon-emerald {
     background: var(--grad-emerald) !important;
     color: white !important;
@@ -74,12 +78,11 @@ header, .app-header, .navbar-zoona {
     justify-content: center;
     gap: 10px;
     cursor: pointer;
-    box-shadow: 0 4px 15px rgba(0, 95, 65, 0.2);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(62, 76, 33, 0.2);
 }
 
-.btn-zoona:active {
-    transform: scale(0.97);
+.btn-zoona:active, .btn-neon-emerald:active, .btn:active {
+    transform: scale(0.96) !important;
     filter: brightness(0.9);
 }
 
