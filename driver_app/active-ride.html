@@ -5,30 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>الرحلة النشطة - ترحال زونا</title>
 
-    <!-- ✅ مكتبات التصميم -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- مكتبات التصميم -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
-
-    <!-- Global Tech Tech Redesign Theme -->
-    <link rel="stylesheet" href="../shared/theme.css">
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
 
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../shared/supabase-config.js"></script>
-    <script src="../sound-manager.js"></script>
 
     <style>
         :root {
-            --primary: var(--zoona-primary);
-            --primary-dark: var(--zoona-primary-dark);
-            --primary-light: var(--zoona-primary-light);
-            --danger: var(--danger);
+            --primary: #16a34a;
+            --primary-dark: #15803d;
+            --primary-light: #dcfce7;
+            --danger: #ef4444;
             --danger-dark: #dc2626;
-            --warning: var(--warning);
-            --light: var(--tech-bg);
-            --dark: var(--tech-text);
+            --warning: #f59e0b;
+            --light: #f9fafb;
+            --dark: #111827;
             --gray: #6b7280;
-            --gray-light: var(--tech-border);
+            --gray-light: #e5e7eb;
             --radius: 16px;
             --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.2);
         }
@@ -41,10 +38,10 @@
 
         body {
             font-family: 'Tajawal', sans-serif;
-            background: var(--tech-bg);
+            background: #f3f4f6;
             height: 100vh;
             width: 100vw;
-            color: var(--tech-text);
+            color: var(--dark);
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -76,7 +73,7 @@
         .avatar {
             width: 50px;
             height: 50px;
-            background: var(--grad-emerald);
+            background: var(--primary);
             color: white;
             border-radius: 50%;
             display: flex;
@@ -84,7 +81,6 @@
             justify-content: center;
             font-size: 24px;
             font-weight: bold;
-            box-shadow: 0 4px 10px var(--zoona-emerald-glow);
         }
 
         .info-text h3 {
@@ -199,7 +195,7 @@
                 <p id="passenger-phone">---</p>
             </div>
             <a href="#" id="call-btn" class="btn btn-primary" style="margin-right: auto; width: 50px; height: 50px; border-radius: 50%; font-size: 20px;">
-                <i class="ph-bold ph-phone"></i>
+                <ion-icon name="call"></ion-icon>
             </a>
         </div>
 
@@ -225,8 +221,14 @@
     </div>
 
     <script>
-        const tarhalDB = supabase.createClient(window.SB_URL, window.SB_KEY);
+        // ==============================================
+        // ✅ Supabase Configuration (المفاتيح المطلوبة)
+        // ==============================================
+        const SB_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
+        const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
+        const tarhalDB = supabase.createClient(SB_URL, SB_KEY);
 
+        // متغيرات عامة
         let currentRideId = null;
         let currentDriverId = null;
         let currentStatus = 'accepted';
@@ -235,6 +237,9 @@
         let directionsService = null;
         let directionsRenderer = null;
         let initialPosition = null;
+        let lastSentPos = null; // للمقارنة عند إرسال الموقع
+        let pickupMarker = null;
+        let destinationMarker = null;
 
         document.addEventListener('DOMContentLoaded', async function() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -245,12 +250,12 @@
                 currentDriverId = JSON.parse(driverData).id;
             }
 
-            // Get initial location immediately
+            // الحصول على الموقع الأولي فوراً
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition((position) => {
                     initialPosition = { lat: position.coords.latitude, lng: position.coords.longitude };
                     handleLocationUpdate(initialPosition);
-                }, (err) => console.warn("Initial geolocation failed", err), { enableHighAccuracy: true });
+                }, (err) => console.warn("❌ تحديد الموقع الأولي فشل", err), { enableHighAccuracy: true });
             }
 
             if (currentRideId) {
@@ -260,6 +265,7 @@
             }
         });
 
+        // تحميل خرائط جوجل
         function loadGoogleMaps() {
             const script = document.createElement('script');
             script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyClnU4c2RbCOtMLxxZNBxAZrAkIdX5BBv4&libraries=places,geometry&language=ar&callback=initMap';
@@ -290,6 +296,7 @@
             });
         }
 
+        // جلب تفاصيل الرحلة
         async function fetchRideDetails() {
             const { data, error } = await tarhalDB
                 .from('rides')
@@ -297,8 +304,12 @@
                 .eq('id', currentRideId)
                 .single();
 
+            if (error) {
+                console.error('❌ خطأ في جلب الرحلة:', error);
+                return;
+            }
+
             if (data) {
-                // Ensure currentDriverId is set from ride data if missing
                 if (!currentDriverId) currentDriverId = data.driver_id;
 
                 document.getElementById('passenger-name').textContent = data.passenger_name || 'عميل';
@@ -311,7 +322,6 @@
                 updateUIStatus(data.status);
                 drawRoute(data);
 
-                // Ensure subscription and broadcasting start correctly
                 if (currentDriverId) {
                     subscribeToDriverLocation(currentDriverId);
                     startLocationBroadcasting();
@@ -319,9 +329,7 @@
             }
         }
 
-        let pickupMarkerMap = null;
-        let destinationMarkerMap = null;
-
+        // رسم الطريق بين نقطة الانطلاق والوجهة
         function drawRoute(ride) {
             if (!ride.pickup_lat || !ride.pickup_lng || !ride.destination_lat || !ride.destination_lng) return;
             if (!directionsService || !directionsRenderer) return;
@@ -329,27 +337,21 @@
             const pickup = { lat: parseFloat(ride.pickup_lat), lng: parseFloat(ride.pickup_lng) };
             const destination = { lat: parseFloat(ride.destination_lat), lng: parseFloat(ride.destination_lng) };
 
-            // إضافة ماركرات مخصصة لنقطة الانطلاق والوجهة
-            if (!pickupMarkerMap) {
-                pickupMarkerMap = new google.maps.Marker({
+            if (!pickupMarker) {
+                pickupMarker = new google.maps.Marker({
                     position: pickup,
                     map: map,
                     label: 'A',
                     title: 'نقطة الانطلاق'
                 });
-            } else {
-                pickupMarkerMap.setPosition(pickup);
             }
-
-            if (!destinationMarkerMap) {
-                destinationMarkerMap = new google.maps.Marker({
+            if (!destinationMarker) {
+                destinationMarker = new google.maps.Marker({
                     position: destination,
                     map: map,
                     label: 'B',
                     title: 'الوجهة'
                 });
-            } else {
-                destinationMarkerMap.setPosition(destination);
             }
 
             const request = {
@@ -362,11 +364,12 @@
                 if (status === 'OK') {
                     directionsRenderer.setDirections(result);
                 } else {
-                    console.error('Directions request failed due to ' + status);
+                    console.error('❌ فشل رسم الطريق:', status);
                 }
             });
         }
 
+        // تحديث واجهة المستخدم حسب الحالة
         function updateUIStatus(status) {
             currentStatus = status;
             const btn = document.getElementById('main-action-btn');
@@ -389,12 +392,12 @@
             }
         }
 
+        // إرسال الموقع إلى قاعدة البيانات (جدول driver_locations)
         async function updateDriverLocationDB(position) {
             const { latitude, longitude } = position.coords;
             const now = new Date().toISOString();
 
             try {
-                // Check if record exists first to handle potential lack of unique constraint
                 const { data: existing, error: selectError } = await tarhalDB
                     .from('driver_locations')
                     .select('driver_id')
@@ -426,21 +429,22 @@
                             last_seen: now,
                             updated_at: now,
                             is_online: true,
-                            is_available: false // Busy with ride
+                            is_available: false // مشغول برحلة
                         });
                     if (error) throw error;
                 }
-                console.log(`📍 Location broadcasted: ${latitude}, ${longitude}`);
+                console.log(`📍 تم بث الموقع: ${latitude}, ${longitude}`);
             } catch (e) {
-                console.error('❌ Broadcast exception:', e);
+                console.error('❌ خطأ في بث الموقع:', e);
             }
         }
 
+        // بدء تتبع الموقع بشكل مستمر
         let watchId = null;
         function startLocationBroadcasting() {
             if (!currentDriverId || watchId) return;
 
-            console.log('📡 Starting high-accuracy location tracking...');
+            console.log('📡 بدء التتبع عالي الدقة...');
 
             const geoOptions = {
                 enableHighAccuracy: true,
@@ -449,20 +453,97 @@
             };
 
             if (navigator.geolocation) {
-                // Watch position for continuous updates
                 watchId = navigator.geolocation.watchPosition(
-                    updateDriverLocationDB,
-                    (err) => console.warn('⚠️ watchPosition error:', err.message),
+                    (position) => {
+                        // هنا نمرر الموقع لـ handleLocationUpdate والذي بدوره سيقرر ما إذا كان سيرسل لقاعدة البيانات
+                        const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
+                        handleLocationUpdate(pos);
+                    },
+                    (err) => console.warn('⚠️ خطأ في watchPosition:', err.message),
                     geoOptions
                 );
 
-                // Fallback interval to ensure at least some updates if watchPosition is throttled
+                // تحديث دوري كل 15 ثانية كنسخة احتياطية
                 setInterval(() => {
-                    navigator.geolocation.getCurrentPosition(updateDriverLocationDB, null, geoOptions);
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
+                            handleLocationUpdate(pos);
+                        },
+                        null,
+                        geoOptions
+                    );
                 }, 15000);
             }
         }
 
+        // معالجة الموقع الجديد: تحديث السيارة على الخريطة وإرسال الموقع إذا كانت المسافة > 200 متر
+        function handleLocationUpdate(pos) {
+            if (!map) return;
+
+            if (driverMarker) {
+                // تحديث مكان السيارة بسلاسة
+                animateMarker(driverMarker, pos);
+            } else {
+                // إنشاء ماركر السيارة لأول مرة
+                driverMarker = new google.maps.Marker({
+                    position: pos,
+                    map: map,
+                    icon: {
+                        url: 'https://cdn-icons-png.flaticon.com/512/3202/3202926.png', // أيقونة سيارة
+                        scaledSize: new google.maps.Size(40, 40),
+                        anchor: new google.maps.Point(20, 20)
+                    },
+                    title: 'موقعك'
+                });
+            }
+
+            // إرسال الإحداثيات لجدول المواقع ليراها الراكب (شرط المسافة 200 متر)
+            if (!lastSentPos || google.maps.geometry.spherical.computeDistanceBetween(
+                new google.maps.LatLng(lastSentPos.lat, lastSentPos.lng),
+                new google.maps.LatLng(pos.lat, pos.lng)) > 200) {
+
+                // تحويل الموقع إلى كائن GeolocationPosition وهمي
+                const fakePosition = {
+                    coords: {
+                        latitude: pos.lat,
+                        longitude: pos.lng,
+                        accuracy: 10,
+                        altitude: null,
+                        altitudeAccuracy: null,
+                        heading: null,
+                        speed: null
+                    },
+                    timestamp: Date.now()
+                };
+                updateDriverLocationDB(fakePosition);
+                lastSentPos = pos;
+            }
+
+            map.setCenter(pos);
+        }
+
+        // تحريك السيارة بسلاسة
+        function animateMarker(marker, newPos) {
+            const startPos = marker.getPosition();
+            const endPos = new google.maps.LatLng(newPos.lat, newPos.lng);
+            let frames = 0;
+            const totalFrames = 30;
+
+            function step() {
+                frames++;
+                const lat = startPos.lat() + (endPos.lat() - startPos.lat()) * (frames / totalFrames);
+                const lng = startPos.lng() + (endPos.lng() - startPos.lng()) * (frames / totalFrames);
+                marker.setPosition(new google.maps.LatLng(lat, lng));
+
+                if (frames < totalFrames) {
+                    requestAnimationFrame(step);
+                }
+            }
+            requestAnimationFrame(step);
+        }
+
+        // الزر الرئيسي (حسب الحالة)
         async function handleMainAction() {
             let nextStatus = '';
             let updateData = { updated_at: new Date().toISOString() };
@@ -483,28 +564,25 @@
 
                 let success = false;
                 if (nextStatus === 'completed') {
-                    // استخدام RPC لإنهاء الرحلة وخصم العمولة بأمان
                     const { error } = await tarhalDB.rpc('complete_ride', { p_ride_id: currentRideId });
                     if (!error) success = true;
-                    else alert('خطأ في إنهاء الرحلة: ' + error.message);
+                    else alert('❌ خطأ في إنهاء الرحلة: ' + error.message);
                 } else {
                     const { error } = await tarhalDB
                         .from('rides')
                         .update(updateData)
                         .eq('id', currentRideId);
                     if (!error) success = true;
-                    else alert('خطأ في تحديث الحالة: ' + error.message);
+                    else alert('❌ خطأ في تحديث الحالة: ' + error.message);
                 }
 
                 if (success) {
                     updateUIStatus(nextStatus);
-                    if (nextStatus === 'ongoing') {
-                        if (window.soundManager) window.soundManager.playSuccessSound();
-                    }
                 }
             }
         }
 
+        // الاستماع للتحديثات المباشرة على الرحلة
         function initRealtime() {
             tarhalDB
                 .channel('active-ride')
@@ -514,7 +592,7 @@
                     table: 'rides',
                     filter: `id=eq.${currentRideId}`
                 }, (payload) => {
-                    console.log('Ride update in active-ride:', payload.new.status);
+                    console.log('🔄 تحديث الرحلة:', payload.new.status);
                     if (payload.new.status !== currentStatus) {
                         updateUIStatus(payload.new.status);
                     }
@@ -522,12 +600,13 @@
                 .subscribe();
         }
 
+        // الاشتراك في تحديثات موقع السائق (لنفسه لعرض السيارة)
         let driverLocChannel = null;
         function subscribeToDriverLocation(driverId) {
             if (!driverId) return;
             if (driverLocChannel) tarhalDB.removeChannel(driverLocChannel);
 
-            console.log('📡 Subscribing to self location updates:', driverId);
+            console.log('📡 الاشتراك في تحديثات موقع السائق:', driverId);
             driverLocChannel = tarhalDB
                 .channel(`driver-loc-${driverId}`)
                 .on('postgres_changes', {
@@ -546,67 +625,7 @@
                 .subscribe();
         }
 
-        function handleLocationUpdate(pos) {
-            if (!map) return;
-
-            if (driverMarker) {
-                animateMarker(driverMarker, pos);
-                // Explicitly update position to ensure marker moves even if animation fails
-                driverMarker.setPosition(new google.maps.LatLng(pos.lat, pos.lng));
-            } else {
-                driverMarker = new google.maps.Marker({
-                    position: pos,
-                    map: map,
-                    icon: {
-                        path: 'M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.22.42-1.42.99L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z',
-                        scale: 1.4,
-                        fillColor: '#556B2F',
-                        fillOpacity: 1,
-                        strokeWeight: 1,
-                        strokeColor: '#ffffff',
-                        anchor: new google.maps.Point(12, 12)
-                    },
-                    title: 'موقعك'
-                });
-            }
-
-            // Only pan if distance > 500m to avoid jitter
-            const currentCenter = map.getCenter();
-            if (window.google && google.maps && google.maps.geometry) {
-                const distance = google.maps.geometry.spherical.computeDistanceBetween(
-                    currentCenter,
-                    new google.maps.LatLng(pos.lat, pos.lng)
-                );
-
-                if (distance > 500) {
-                    map.panTo(pos);
-                }
-            } else {
-                map.setCenter(pos);
-            }
-
-            if (map.getZoom() < 14) map.setZoom(16);
-        }
-
-        function animateMarker(marker, newPos) {
-            const startPos = marker.getPosition();
-            const endPos = new google.maps.LatLng(newPos.lat, newPos.lng);
-            let frames = 0;
-            const totalFrames = 30;
-
-            function step() {
-                frames++;
-                const lat = startPos.lat() + (endPos.lat() - startPos.lat()) * (frames / totalFrames);
-                const lng = startPos.lng() + (endPos.lng() - startPos.lng()) * (frames / totalFrames);
-                marker.setPosition(new google.maps.LatLng(lat, lng));
-
-                if (frames < totalFrames) {
-                    requestAnimationFrame(step);
-                }
-            }
-            requestAnimationFrame(step);
-        }
-
+        // إلغاء الرحلة
         async function cancelRide() {
             if (confirm('هل أنت متأكد من إلغاء الرحلة؟')) {
                 const { error } = await tarhalDB
@@ -620,16 +639,14 @@
                 if (!error) {
                     window.location.href = 'index.html';
                 } else {
-                    alert('خطأ في الإلغاء: ' + error.message);
+                    alert('❌ خطأ في الإلغاء: ' + error.message);
                 }
             }
         }
 
-        // Clean up subscriptions to prevent memory leaks
-        window.addEventListener('beforeunload', () => {
-            if (tarhalDB && tarhalDB.removeAllChannels) {
-                tarhalDB.removeAllChannels();
-            }
+        // تنظيف عند إغلاق الصفحة
+        window.addEventListener('beforeunload', function() {
+            if (watchId) navigator.geolocation.clearWatch(watchId);
         });
     </script>
 </body>
