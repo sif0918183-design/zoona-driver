@@ -394,7 +394,7 @@
             const now = new Date().toISOString();
 
             try {
-                // Check if record exists first to handle potential lack of unique constraint
+                // 1. تحديث جدول المواقع العام
                 const { data: existing, error: selectError } = await tarhalDB
                     .from('driver_locations')
                     .select('driver_id')
@@ -404,33 +404,27 @@
                 if (selectError) throw selectError;
 
                 if (existing) {
-                    const { error } = await tarhalDB
-                        .from('driver_locations')
-                        .update({
-                            lat: latitude,
-                            lng: longitude,
-                            last_updated: now,
-                            last_seen: now,
-                            updated_at: now
-                        })
-                        .eq('driver_id', currentDriverId);
-                    if (error) throw error;
+                    await tarhalDB.from('driver_locations').update({
+                        lat: latitude, lng: longitude, last_updated: now, last_seen: now, updated_at: now
+                    }).eq('driver_id', currentDriverId);
                 } else {
-                    const { error } = await tarhalDB
-                        .from('driver_locations')
-                        .insert({
-                            driver_id: currentDriverId,
-                            lat: latitude,
-                            lng: longitude,
-                            last_updated: now,
-                            last_seen: now,
-                            updated_at: now,
-                            is_online: true,
-                            is_available: false // Busy with ride
-                        });
-                    if (error) throw error;
+                    await tarhalDB.from('driver_locations').insert({
+                        driver_id: currentDriverId, lat: latitude, lng: longitude,
+                        last_updated: now, last_seen: now, updated_at: now,
+                        is_online: true, is_available: false
+                    });
                 }
-                console.log(`📍 Location broadcasted: ${latitude}, ${longitude}`);
+
+                // 2. الربط المباشر: تحديث جدول الرحلة ليراها الراكب فوراً
+                if (currentRideId) {
+                    await tarhalDB.from('rides').update({
+                        driver_lat: latitude,
+                        driver_lng: longitude,
+                        last_location_update: now
+                    }).eq('id', currentRideId);
+                }
+
+                console.log(`📍 Location synced: ${latitude}, ${longitude}`);
             } catch (e) {
                 console.error('❌ Broadcast exception:', e);
             }
