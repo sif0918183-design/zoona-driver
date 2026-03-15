@@ -1,23 +1,28 @@
 /*
-   Shared Zoona Emerald Theme - Final Professional Edition
-   Standardized for Mobile-First & WebView Workflows
-   Ref: Green Identity (Emerald) for All Apps
+   Shared Zoona Emerald Theme - Global Tech Redesign
+   Standardized for Mobile-First Workflows
+   Ref: Based on Zuna Driver UI Analysis
 */
 
 :root {
-    /* --- Base Palette (Clean Light Mode) --- */
-    --tech-bg: #F3F4F6;           
-    --tech-card: #FFFFFF;         
-    --tech-text: #111827;         
-    --tech-border: #E5E7EB;       
+    /* --- Base Palette (Light Mode Focus) --- */
+    --tech-bg: #F3F4F6;           /* الخلفية الرمادية الفاتحة من الصورة */
+    --tech-card: #FFFFFF;         /* خلفية البطاقات البيضاء */
+    --tech-text: #111827;         /* لون النصوص الأساسي */
+    --tech-border: #E5E7EB;       /* حدود البطاقات الخفيفة */
     
     /* --- Zoona Brand Colors (Emerald Deep) --- */
-    --zoona-primary: #008B5E;     
-    --zoona-primary-dark: #005F41; 
+    --zoona-primary: #008B5E;     /* الأخضر الزمردي العلوي */
+    --zoona-primary-dark: #005F41; /* الأخضر الغاباتي السفلي */
     --zoona-emerald-glow: rgba(0, 139, 94, 0.25);
     --zoona-primary-light: rgba(0, 139, 94, 0.05);
 
-    /* --- Gradients --- */
+    /* --- Semantic Colors --- */
+    --danger: #EF4444;            /* للرسائل التحذيرية وحالة "غير متصل" */
+    --warning: #F59E0B;
+    --success: #008B5E;
+
+    /* --- Gradients (Identical to UI image) --- */
     --grad-emerald: linear-gradient(180deg, #008B5E 0%, #005F41 100%);
     --grad-header: linear-gradient(180deg, #008B5E 0%, #005F41 100%);
 
@@ -27,7 +32,7 @@
     --tech-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
-/* --- Global Elements --- */
+/* --- Global Elements Redesign --- */
 
 body {
     background-color: var(--tech-bg);
@@ -36,28 +41,16 @@ body {
     font-family: 'Tajawal', sans-serif;
 }
 
-/* Header UI: Emerald Identity */
+/* Header UI: المطلب الرئيسي بجعل الهيدر بنفس لون الأزرار */
 header, .app-header, .navbar-zoona {
     background: var(--grad-header) !important;
     color: white !important;
-    padding: 10px 20px; /* تقليل البادينغ ليتناسب مع اللوقو الجديد */
+    padding: 15px 20px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
-/* Logo Scaling: تم التصغير ليتناسب مع WebView */
-.logo-img {
-    height: 42px !important; /* الحجم المثالي الجديد */
-    width: auto !important;   /* الحفاظ على النسبة والتناسب */
-    object-fit: contain !important;
-    display: block;
-    margin: 0 auto;
-}
-
-/* Card Styling */
+/* Card Styling: محاكاة بطاقات البيانات في الصورة */
 .card-tech-light {
     background: var(--tech-card);
     border: 1px solid var(--tech-border);
@@ -67,7 +60,7 @@ header, .app-header, .navbar-zoona {
     margin-bottom: 12px;
 }
 
-/* Primary Buttons */
+/* Primary Button: محاكاة زر "تفعيل وضع العمل" */
 .btn-zoona, .btn-neon-emerald {
     background: var(--grad-emerald) !important;
     color: white !important;
@@ -75,16 +68,45 @@ header, .app-header, .navbar-zoona {
     border-radius: var(--radius-standard);
     padding: 14px 20px;
     font-weight: 700;
-    box-shadow: 0 4px 15px rgba(0, 95, 65, 0.2);
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
     cursor: pointer;
-    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 95, 65, 0.2);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Status Indicators */
+.btn-zoona:active {
+    transform: scale(0.97);
+    filter: brightness(0.9);
+}
+
+/* Outline Button: محاكاة زر "إصلاح استلام الإشعارات" */
+.btn-outline-zoona {
+    background: transparent !important;
+    border: 1.5px solid var(--zoona-primary) !important;
+    color: var(--zoona-primary) !important;
+    border-radius: var(--radius-standard);
+    padding: 12px 20px;
+    font-weight: 600;
+    transition: background 0.3s ease;
+}
+
+.btn-outline-zoona:hover {
+    background: var(--zoona-primary-light) !important;
+}
+
+/* Status Badges: محاكاة حالة "غير متصل" */
 .status-indicator {
     padding: 6px 16px;
     border-radius: 50px;
+    font-size: 0.9rem;
     font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .status-offline {
@@ -92,8 +114,76 @@ header, .app-header, .navbar-zoona {
     color: #DC2626;
 }
 
-/* تم حذف كافة أكواد أزرار العودة (Back Buttons) نهائياً */
+/* --- Phosphor Icon Refinement --- */
+i.ph {
+    font-size: 1.4rem;
+    vertical-align: middle;
+}
 
+.neon-icon-emerald {
+    color: var(--zoona-primary) !important;
+}
+
+/* RTL Support for Tajawal */
 [dir="rtl"] {
     font-family: 'Tajawal', sans-serif;
+    letter-spacing: 0;
+}
+
+/* Utility for stats (مثل الرصيد وإجمالي الرحلات) */
+.stat-value {
+    color: var(--zoona-primary);
+    font-weight: 800;
+    font-size: 1.2rem;
+}
+
+.stat-label {
+    color: #6B7280;
+    font-size: 0.85rem;
+}
+
+/* --- Navigation & Back Buttons --- */
+.back-btn-global {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--zoona-primary);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    z-index: 100;
+    cursor: pointer;
+}
+
+.back-btn-global:active {
+    opacity: 0.7;
+    transform: translateX(3px);
+}
+
+.back-btn-global i {
+    font-size: 1.2rem;
+}
+
+/* Absolute positioned variant for Login pages */
+.back-btn-absolute {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: white;
+    padding: 8px 16px;
+    border-radius: 50px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Standardized Logo Scaling */
+.logo-img {
+    height: 60px !important;
+    width: 60px !important;
+    object-fit: contain !important;
+}
+
+.app-header {
+    padding-top: 3px !important;
+    padding-bottom: 3px !important;
 }
