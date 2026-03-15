@@ -71,6 +71,15 @@
             box-shadow: 0 0 40px rgba(0, 0, 0, 0.1);
         }
 
+        .app-header {
+            flex-shrink: 0;
+            background: linear-gradient(135deg, var(--driver), var(--driver-dark));
+            color: white;
+            padding: 8px 15px;
+            text-align: center;
+            box-shadow: var(--shadow);
+            border-bottom: 4px solid var(--driver-dark);
+        }
 
         .app-header h1 {
             margin: 0;
@@ -82,6 +91,12 @@
             gap: 12px;
         }
 
+        .logo-img {
+            width: 42px;  /* تكبير العرض */
+    height: 42px; /* تكبير الارتفاع */
+    object-fit: contain;
+    margin: 2px 0; /* إضافة مسافة صغيرة من الأعلى والأسفل */
+        }
 
         .screen {
             padding: 10px;
@@ -311,12 +326,6 @@
             color: var(--driver);
             text-decoration: none;
             font-weight: 600;
-        }
-
-
-        .back-btn-global:hover {
-            background: rgba(0, 139, 94, 0.25);
-            transform: translateX(-5px);
         }
 
         /* Home Screen - مطابقة لتصميم السائق */
@@ -1194,6 +1203,9 @@
                 gap: 6px;
             }
             
+            .logo-img {
+                height: 35px;
+            }
             
             .card {
                 margin: 12px;
@@ -1645,10 +1657,6 @@
     
     <!-- Customer Login Screen -->
     <section id="customer-login-screen" class="screen">
-        <a href="../landing.html" class="back-btn-global">
-            <i class="ph-light ph-arrow-right"></i>
-            العودة للرئيسية
-        </a>
         <div class="login-container">
             <div class="card">
                 <h2 class="card-title">

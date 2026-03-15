@@ -66,20 +66,28 @@
             margin-bottom: 15px;
             position: relative;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-            margin-top: 10px;
+            margin-top: 20px;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.9rem;
             display: flex;
-            flex-direction: column;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 10;
         }
-
-
-
-        .back-btn-global:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateX(-5px);
-        }
-
 
         .back-btn:hover {
             background: rgba(255, 255, 255, 0.3);
@@ -598,14 +606,11 @@
 <body>
     <div class="complaints-container">
         <div class="complaints-header">
-            <a href="index.html" class="back-btn-global">
+            <a href="index.html" class="back-btn">
                 <i class="ph-light ph-arrow-right"></i>
                 العودة للتطبيق
             </a>
-            <h1>
-                <img src="../assets/branding/icon-512x512.png" alt="ترحال زونا" class="logo-img">
-                الشكاوى وآراء العملاء
-            </h1>
+            <h1>الشكاوى وآراء العملاء</h1>
             <p>رأيكم يهمنا! شاركونا ملاحظاتكم واقتراحاتكم لتحسين خدماتنا</p>
         </div>
 

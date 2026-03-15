@@ -160,19 +160,12 @@
 
         .header {
             background: white;
-            padding: 3px 15px;
+            padding: 15px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             box-shadow: 0 2px 10px rgba(0,0,0,0.05);
             z-index: 100;
-        }
-
-
-
-        .back-btn-global:hover {
-            background: rgba(85, 107, 47, 0.2);
-            transform: translateX(-3px);
         }
 
         .status-badge {
@@ -188,16 +181,7 @@
 <body>
 
     <header class="header">
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <a href="index.html" class="back-btn-global">
-                <i class="ph-light ph-arrow-right"></i>
-                عودة
-            </a>
-            <div style="font-weight: 800; font-size: 18px; color: var(--primary); display: flex; align-items: center; gap: 8px;">
-                <img src="../assets/branding/icon-512x512.png" alt="ترحال زونا" class="logo-img">
-                ترحال زونا
-            </div>
-        </div>
+        <div style="font-weight: 800; font-size: 18px; color: var(--primary);">ترحال زونا</div>
         <div class="status-badge" id="ride-status-text">جاري الذهاب للراكب</div>
     </header>
 
