@@ -72,14 +72,14 @@
         }
 
         .app-header {
-            flex-shrink: 0;
-            background: linear-gradient(135deg, var(--driver), var(--driver-dark));
-            color: white;
-            padding: 8px 15px;
-            text-align: center;
-            box-shadow: var(--shadow);
-            border-bottom: 4px solid var(--driver-dark);
-        }
+    flex-shrink: 0;
+    background: linear-gradient(135deg, var(--driver), var(--driver-dark));
+    color: white;
+    padding: 8px 15px;
+    text-align: center;
+    box-shadow: var(--shadow);
+    border-bottom: 4px solid var(--driver-dark);
+}
 
         .app-header h1 {
             margin: 0;
@@ -89,13 +89,12 @@
             align-items: center;
             justify-content: center;
             gap: 12px;
-        }
-
         .logo-img {
-            width: 30px;
-            height: 30px;
-            object-fit: contain;
-        }
+    width: 42px;  /* تكبير العرض */
+    height: 42px; /* تكبير الارتفاع */
+    object-fit: contain;
+    margin: 2px 0; /* إضافة مسافة صغيرة من الأعلى والأسفل */
+}
 
         .screen {
             padding: 10px;
