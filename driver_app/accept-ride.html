@@ -62,22 +62,18 @@
         }
 
         /* Header */
+        .app-header {
+            text-align: center;
+            margin-bottom: 12px;
+            padding-top: 4px;
+            flex-shrink: 0;
+        }
         
         .app-header h1 {
             font-size: 24px;
             font-weight: 800;
             color: var(--primary);
             text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-
-
-        .back-btn-global:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateX(-5px);
         }
 
         /* Countdown */
@@ -270,14 +266,7 @@
 
     <div class="full-screen-container">
         <header class="app-header">
-            <a href="index.html" class="back-btn-global" style="position: absolute; right: 16px;">
-                <i class="ph-light ph-arrow-right"></i>
-                عودة
-            </a>
-            <h1 style="margin: 0 auto;">
-                <img src="../assets/branding/icon-512x512.png" alt="ترحال زونا" class="logo-img">
-                طلب رحلة جديد
-            </h1>
+            <h1>🚖 طلب رحلة جديد</h1>
         </header>
         
         <div class="countdown-container">
