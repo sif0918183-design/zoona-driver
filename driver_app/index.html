@@ -72,15 +72,6 @@
             box-shadow: 0 0 40px rgba(0, 0, 0, 0.1);
         }
 
-        .app-header {
-            flex-shrink: 0;
-            background: linear-gradient(135deg, var(--driver), var(--driver-dark));
-            color: white;
-            padding: 8px 15px;
-            text-align: center;
-            box-shadow: var(--shadow);
-            border-bottom: 4px solid var(--driver-dark);
-        }
 
         .app-header h1 {
             margin: 0;
@@ -92,11 +83,6 @@
             gap: 12px;
         }
 
-        .logo-img {
-            width: 45px;
-            height: 45px;
-            object-fit: contain;
-        }
 
         .screen {
             padding: 10px;
@@ -241,6 +227,12 @@
             border-radius: 12px;
             background: #f1f2ff;
             font-size: 14px;
+        }
+
+
+        .back-btn-global:hover {
+            background: rgba(0, 139, 94, 0.25);
+            transform: translateX(-5px);
         }
 
         .user-profile {
@@ -649,6 +641,10 @@
 
     <!-- Driver Login Screen -->
     <section id="driver-login-screen" class="screen">
+        <a href="../landing.html" class="back-btn-global">
+            <i class="ph-light ph-arrow-right"></i>
+            العودة للرئيسية
+        </a>
         <div class="card">
             <h2 class="card-title">
                 <i class="ph-light ph-steering-wheel neon-icon-emerald"></i>
@@ -764,24 +760,24 @@
                 </div>
             </div>
 
+            <button class="btn btn-driver mt-2" onclick="window.location.href='travel-platform.html'">
+                <i class="ph-light ph-airplane-tilt"></i>
+                منصة السفريات
+            </button>
+
             <button class="btn btn-driver mt-2" onclick="showDriverProfile()">
                 <i class="ph-light ph-user-circle"></i>
                 الملف الشخصي
             </button>
 
-            <button id="fix-notifications-btn" class="btn btn-outline mt-2" onclick="manualFixNotifications()">
-                <i class="ph-light ph-bell-ringing"></i>
-                إصلاح استلام الإشعارات
-            </button>
-
-            <button class="btn btn-driver mt-2" onclick="window.location.href='travel-platform.html'">
-                <i class="ph-light ph-airplane-tilt"></i>
-                دخول منصة سفريات زونا
+            <button class="btn btn-driver mt-2" onclick="window.location.href='customer-complaints.html'">
+                <i class="ph-light ph-chats-teardrop"></i>
+                الشكاوى
             </button>
 
             <button class="btn btn-driver mt-2" onclick="logoutDriver()">
                 <i class="ph-light ph-sign-out"></i>
-                تسجيل خروج السائق
+                تسجيل الخروج
             </button>
         </div>
     </section>

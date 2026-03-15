@@ -91,20 +91,6 @@
         }
 
         /* Header */
-        .app-header {
-            background: #ffffff;
-            color: var(--tech-text);
-            padding: 1rem 1.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: var(--tech-shadow);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            min-height: 70px;
-            border-bottom: 1px solid var(--tech-border);
-        }
 
         .logo-container {
             display: flex;
@@ -112,18 +98,11 @@
             gap: 1rem;
         }
 
-        .logo-img {
-            height: 45px;
-            width: 45px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 12px;
-            background: transparent;
-            padding: 0;
-            box-shadow: 0 0 15px var(--zoona-emerald-glow);
-            margin: 0;
-            object-fit: contain;
+
+
+        .back-btn-global:hover {
+            background: rgba(85, 107, 47, 0.2);
+            transform: translateX(-3px);
         }
 
         .app-title {
@@ -919,9 +898,6 @@
                 font-size: 14px;
             }
             
-            .app-header {
-                padding: 0.75rem 1rem;
-            }
             
             .main-content {
                 padding: 1rem;
@@ -1009,6 +985,10 @@
         <!-- Header -->
         <header class="app-header">
             <div class="logo-container">
+                <a href="index.html" class="back-btn-global">
+                    <i class="ph-light ph-arrow-right"></i>
+                    عودة
+                </a>
                 <div class="logo-img"></div>
                 <div>
                     <h1 class="app-title">ترحال زونا</h1>
