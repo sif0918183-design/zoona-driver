@@ -311,7 +311,7 @@
                 map: map,
                 suppressMarkers: true,
                 polylineOptions: {
-                    strokeColor: '#008B5E',
+                    strokeColor: '#4f46e5',
                     strokeWeight: 5,
                     strokeOpacity: 0.7
                 }
@@ -426,7 +426,7 @@
                     .maybeSingle();
                 
                 if (data && data.lat && data.lng) {
-                    updateDriverMarker({
+                    handleLocationUpdate({
                         lat: parseFloat(data.lat),
                         lng: parseFloat(data.lng)
                     });
@@ -578,9 +578,31 @@
         }
 
         // ==============================================
+        // تحريك السائق بسلاسة
+        // ==============================================
+        function animateMarker(marker, newPos) {
+            const startPos = marker.getPosition();
+            const endPos = new google.maps.LatLng(newPos.lat, newPos.lng);
+            let frames = 0;
+            const totalFrames = 30;
+
+            function step() {
+                frames++;
+                const lat = startPos.lat() + (endPos.lat() - startPos.lat()) * (frames / totalFrames);
+                const lng = startPos.lng() + (endPos.lng() - startPos.lng()) * (frames / totalFrames);
+                marker.setPosition(new google.maps.LatLng(lat, lng));
+
+                if (frames < totalFrames) {
+                    requestAnimationFrame(step);
+                }
+            }
+            requestAnimationFrame(step);
+        }
+
+        // ==============================================
         // تحديث موقع السائق على الخريطة
         // ==============================================
-        function updateDriverMarker(pos) {
+        function handleLocationUpdate(pos) {
             if (!map) return;
             
             const icon = {
@@ -590,7 +612,7 @@
             };
             
             if (driverMarker) {
-                driverMarker.setPosition(pos);
+                animateMarker(driverMarker, pos);
             } else {
                 driverMarker = new google.maps.Marker({
                     position: pos,
@@ -622,7 +644,7 @@
                 }, (payload) => {
                     console.log('📍 تحديث موقع السائق:', payload.new);
                     if (payload.new && payload.new.lat && payload.new.lng) {
-                        updateDriverMarker({
+                        handleLocationUpdate({
                             lat: parseFloat(payload.new.lat),
                             lng: parseFloat(payload.new.lng)
                         });
