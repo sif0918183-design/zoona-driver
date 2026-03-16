@@ -172,6 +172,12 @@
             justify-content: center;
             z-index: 1000;
         }
+
+        .eta-text {
+            font-size: 13px;
+            color: var(--primary-dark);
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -187,7 +193,8 @@
 
     <div class="status-bar" id="status-display">
         <span class="pulse"></span>
-        جاري تتبع السائق...
+        <span id="status-text">جاري تتبع السائق...</span>
+        <span id="eta-display" class="eta-text"></span>
     </div>
 
     <div id="map"></div>
@@ -242,6 +249,8 @@
         let destinationMarker = null;
         let directionsService = null;
         let directionsRenderer = null;
+        let lastDriverPos = null;
+        let watchId = null;
 
         // ==============================================
         // التهيئة عند تحميل الصفحة
@@ -249,14 +258,12 @@
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('🚀 تم تحميل صفحة تتبع الرحلة');
             
-            // الحصول على معرف الرحلة من URL
             const urlParams = new URLSearchParams(window.location.search);
             currentRideId = urlParams.get('id') || urlParams.get('rideId');
             
             console.log('📋 معرف الرحلة:', currentRideId);
 
             if (currentRideId) {
-                // إيقاف الصوت في Flutter إذا وجد
                 if (window.flutter_inappwebview) {
                     try {
                         window.flutter_inappwebview.callHandler('stopAlerts');
@@ -265,12 +272,10 @@
                     }
                 }
                 
-                // تحميل الخريطة
                 loadGoogleMaps();
             } else {
                 document.getElementById('loadingOverlay').style.display = 'none';
                 document.getElementById('status-display').innerHTML = '❌ لم يتم العثور على معرف الرحلة';
-                console.error('❌ لا يوجد معرف رحلة في الرابط');
             }
         });
 
@@ -296,7 +301,6 @@
         window.initMap = function() {
             console.log('🗺️ تم تهيئة الخريطة');
             
-            // مركز افتراضي (الخرطوم)
             const defaultCenter = { lat: 15.5007, lng: 32.5599 };
             
             map = new google.maps.Map(document.getElementById('map'), {
@@ -317,18 +321,16 @@
                 }
             });
 
-            // بعد تهيئة الخريطة، نجلب بيانات الرحلة
             fetchRideDetails();
         };
 
         // ==============================================
-        // جلب تفاصيل الرحلة - الطريقة الصحيحة للربط
+        // جلب تفاصيل الرحلة مع السائق
         // ==============================================
         async function fetchRideDetails() {
             try {
                 console.log('📡 جلب تفاصيل الرحلة:', currentRideId);
                 
-                // ✅ الطريقة الصحيحة للربط مع جدول drivers
                 const { data: ride, error } = await tarhalDB
                     .from('rides')
                     .select(`
@@ -348,142 +350,259 @@
                 if (error) {
                     console.error('❌ خطأ في جلب الرحلة:', error);
                     
-                    // محاولة بديلة: جلب الرحلة فقط ثم جلب السائق بشكل منفصل
-                    console.log('📡 محاولة بديلة: جلب الرحلة فقط');
-                    const { data: rideOnly, error: error2 } = await tarhalDB
+                    // محاولة بديلة
+                    const { data: rideOnly } = await tarhalDB
                         .from('rides')
                         .select('*')
                         .eq('id', currentRideId)
                         .single();
                     
-                    if (error2) throw error2;
-                    
                     if (rideOnly) {
-                        console.log('✅ تم جلب الرحلة فقط:', rideOnly);
-                        
-                        // جلب بيانات السائق بشكل منفصل
                         if (rideOnly.driver_id) {
-                            const { data: driver, error: error3 } = await tarhalDB
+                            const { data: driver } = await tarhalDB
                                 .from('drivers')
                                 .select('*')
                                 .eq('id', rideOnly.driver_id)
                                 .single();
                             
-                            if (!error3 && driver) {
-                                console.log('✅ تم جلب السائق:', driver);
-                                updateUI(rideOnly, driver);
-                            } else {
-                                updateUI(rideOnly, null);
+                            updateUI(rideOnly, driver);
+                            if (rideOnly.driver_id) {
+                                currentDriverId = rideOnly.driver_id;
+                                startDriverTracking();
                             }
                         } else {
                             updateUI(rideOnly, null);
                         }
                     }
-                    
                     return;
                 }
 
                 if (ride) {
-                    console.log('✅ تم جلب الرحلة مع السائق:', ride);
-                    
-                    // استخراج بيانات السائق من النتيجة
+                    console.log('✅ تم جلب الرحلة:', ride);
                     const driverData = ride.driver || null;
                     
-                    // تحديث واجهة المستخدم
                     updateUI(ride, driverData);
                     
-                    // الاشتراك في تحديثات الرحلة
-                    subscribeToRideChanges();
-                    
-                    // إذا كان هناك سائق، اشترك في موقعه
                     if (ride.driver_id) {
                         currentDriverId = ride.driver_id;
-                        subscribeToDriverLocation();
-                        
-                        // جلب الموقع الحالي للسائق
-                        fetchDriverCurrentLocation();
+                        startDriverTracking();
                     }
+                    
+                    if (ride.pickup_lat && ride.pickup_lng && ride.destination_lat && ride.destination_lng) {
+                        drawRoute(ride);
+                        addMarkers(ride);
+                    }
+                    
+                    subscribeToRideChanges();
                 }
                 
             } catch (error) {
-                console.error('❌ خطأ نهائي في جلب الرحلة:', error);
+                console.error('❌ خطأ:', error);
                 document.getElementById('loadingOverlay').style.display = 'none';
-                document.getElementById('status-display').innerHTML = '❌ خطأ في تحميل بيانات الرحلة';
             }
+        }
+
+        // ==============================================
+        // بدء تتبع السائق (مثل صفحة السائق تماماً)
+        // ==============================================
+        function startDriverTracking() {
+            if (!currentDriverId) return;
+            
+            console.log('📡 بدء تتبع السائق:', currentDriverId);
+            
+            // 1. جلب الموقع الحالي أولاً
+            fetchCurrentDriverLocation();
+            
+            // 2. الاشتراك في التحديثات المباشرة
+            subscribeToDriverLocation();
+            
+            // 3. تحديث دوري كل 10 ثوان كنسخة احتياطية
+            setInterval(fetchCurrentDriverLocation, 10000);
         }
 
         // ==============================================
         // جلب الموقع الحالي للسائق
         // ==============================================
-        async function fetchDriverCurrentLocation() {
+        async function fetchCurrentDriverLocation() {
             if (!currentDriverId) return;
             
             try {
                 const { data, error } = await tarhalDB
                     .from('driver_locations')
-                    .select('lat, lng')
+                    .select('lat, lng, last_updated')
                     .eq('driver_id', currentDriverId)
+                    .order('last_updated', { ascending: false })
+                    .limit(1)
                     .maybeSingle();
                 
+                if (error) {
+                    console.error('❌ خطأ في جلب موقع السائق:', error);
+                    return;
+                }
+                
                 if (data && data.lat && data.lng) {
-                    updateDriverMarker({
+                    console.log('📍 تم جلب موقع السائق:', data);
+                    const pos = {
                         lat: parseFloat(data.lat),
                         lng: parseFloat(data.lng)
-                    });
+                    };
+                    updateDriverMarker(pos);
                 }
             } catch (e) {
-                console.warn('⚠️ خطأ في جلب موقع السائق:', e);
+                console.warn('⚠️ خطأ:', e);
             }
         }
 
         // ==============================================
-        // تحديث واجهة المستخدم
+        // الاشتراك في تحديثات موقع السائق المباشرة
         // ==============================================
-        function updateUI(ride, driver = null) {
-            console.log('🔄 تحديث واجهة المستخدم');
+        function subscribeToDriverLocation() {
+            if (!currentDriverId) return;
             
-            // إخفاء شاشة التحميل
-            document.getElementById('loadingOverlay').style.display = 'none';
+            console.log('📡 الاشتراك في التحديثات المباشرة:', currentDriverId);
             
-            // بيانات الرحلة
-            document.getElementById('ride-price').textContent = `${ride.amount || 0} SDG`;
+            tarhalDB
+                .channel(`driver-tracking-${currentDriverId}`)
+                .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'driver_locations',
+                    filter: `driver_id=eq.${currentDriverId}`
+                }, (payload) => {
+                    console.log('📍 تحديث مباشر:', payload.new);
+                    if (payload.new && payload.new.lat && payload.new.lng) {
+                        const pos = {
+                            lat: parseFloat(payload.new.lat),
+                            lng: parseFloat(payload.new.lng)
+                        };
+                        updateDriverMarker(pos);
+                    }
+                })
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'driver_locations',
+                    filter: `driver_id=eq.${currentDriverId}`
+                }, (payload) => {
+                    console.log('📍 تحديث مباشر:', payload.new);
+                    if (payload.new && payload.new.lat && payload.new.lng) {
+                        const pos = {
+                            lat: parseFloat(payload.new.lat),
+                            lng: parseFloat(payload.new.lng)
+                        };
+                        updateDriverMarker(pos);
+                    }
+                })
+                .subscribe();
+        }
+
+        // ==============================================
+        // تحديث موقع السائق على الخريطة (مع تحريك سلس)
+        // ==============================================
+        function updateDriverMarker(pos) {
+            if (!map || !pos) return;
             
-            // تحديث حالة الرحلة
-            updateStatusUI(ride.status);
-            
-            // رسم الطريق إذا كانت الإحداثيات موجودة
-            if (ride.pickup_lat && ride.pickup_lng && ride.destination_lat && ride.destination_lng) {
-                drawRoute(ride);
-                addMarkers(ride);
-            }
-            
-            // إذا كان لدينا بيانات السائق
-            if (driver) {
-                document.getElementById('driver-name').textContent = driver.full_name || 'سائق زونا';
-                document.getElementById('driver-avatar').textContent = (driver.full_name || 'ز').charAt(0);
-                document.getElementById('plate-number').textContent = driver.car_plate || '---';
+            // حساب المسافة من آخر موقع معروف
+            if (lastDriverPos && google.maps.geometry) {
+                const distance = google.maps.geometry.spherical.computeDistanceBetween(
+                    new google.maps.LatLng(lastDriverPos.lat, lastDriverPos.lng),
+                    new google.maps.LatLng(pos.lat, pos.lng)
+                );
                 
-                const vehicleInfo = [driver.car_model, driver.car_color].filter(Boolean).join(' - ');
-                document.getElementById('vehicle-info').textContent = vehicleInfo || 'مركبة زونا';
-                
-                if (driver.phone) {
-                    document.getElementById('call-btn').href = `tel:${driver.phone}`;
-                    document.getElementById('whatsapp-btn').href = `https://wa.me/${driver.phone.replace(/[^0-9]/g, '')}`;
+                // تحديث المسافة المتبقية إذا كان أقل من 200 متر
+                if (distance < 200 && pickupMarker) {
+                    calculateETA(pos);
                 }
-            } else if (ride.driver_name) {
-                // بيانات قديمة من جدول الرحلات
-                document.getElementById('driver-name').textContent = ride.driver_name || 'سائق زونا';
-                document.getElementById('driver-avatar').textContent = (ride.driver_name || 'ز').charAt(0);
+            }
+            
+            const icon = {
+                url: 'https://cdn-icons-png.flaticon.com/512/3202/3202926.png',
+                scaledSize: new google.maps.Size(50, 50),
+                anchor: new google.maps.Point(25, 25),
+                origin: new google.maps.Point(0, 0),
+                labelOrigin: new google.maps.Point(25, 15)
+            };
+            
+            if (driverMarker) {
+                // تحريك سلس للماركر
+                animateMarker(driverMarker, pos);
+            } else {
+                driverMarker = new google.maps.Marker({
+                    position: pos,
+                    map: map,
+                    icon: icon,
+                    title: 'موقع السائق'
+                });
+                
+                // تركيز الخريطة على السائق لأول مرة
+                map.setCenter(pos);
+                map.setZoom(16);
+            }
+            
+            // حساب المسافة المتبقية والوقت المتوقع
+            calculateETA(pos);
+            
+            lastDriverPos = pos;
+        }
+
+        // ==============================================
+        // تحريك الماركر بسلاسة
+        // ==============================================
+        function animateMarker(marker, newPos) {
+            const startPos = marker.getPosition();
+            const endPos = new google.maps.LatLng(newPos.lat, newPos.lng);
+            let frames = 0;
+            const totalFrames = 30;
+
+            function step() {
+                frames++;
+                const lat = startPos.lat() + (endPos.lat() - startPos.lat()) * (frames / totalFrames);
+                const lng = startPos.lng() + (endPos.lng() - startPos.lng()) * (frames / totalFrames);
+                marker.setPosition(new google.maps.LatLng(lat, lng));
+
+                if (frames < totalFrames) {
+                    requestAnimationFrame(step);
+                }
+            }
+            requestAnimationFrame(step);
+        }
+
+        // ==============================================
+        // حساب المسافة المتبقية والوقت المتوقع
+        // ==============================================
+        function calculateETA(driverPos) {
+            if (!pickupMarker || !google.maps.geometry) return;
+            
+            const pickupPos = pickupMarker.getPosition();
+            const distance = google.maps.geometry.spherical.computeDistanceBetween(
+                new google.maps.LatLng(driverPos.lat, driverPos.lng),
+                pickupPos
+            );
+            
+            const distanceKm = (distance / 1000).toFixed(1);
+            document.getElementById('remaining-distance').textContent = `${distanceKm} كم`;
+            
+            // حساب الوقت المتوقع (بافتراض سرعة 30 كم/ساعة)
+            const etaMinutes = Math.ceil((distance / 1000) / 30 * 60);
+            
+            const etaDisplay = document.getElementById('eta-display');
+            if (etaMinutes > 0 && etaMinutes < 60) {
+                etaDisplay.textContent = `(وصول خلال ${etaMinutes} دقيقة)`;
+            } else if (etaMinutes >= 60) {
+                const hours = Math.floor(etaMinutes / 60);
+                const mins = etaMinutes % 60;
+                etaDisplay.textContent = `(وصول خلال ${hours} س ${mins} د)`;
+            } else {
+                etaDisplay.textContent = '';
             }
         }
 
         // ==============================================
-        // إضافة علامات المواقع على الخريطة
+        // إضافة علامات المواقع
         // ==============================================
         function addMarkers(ride) {
             if (!map) return;
             
-            // نقطة الانطلاق
             if (ride.pickup_lat && ride.pickup_lng) {
                 const pickupPos = {
                     lat: parseFloat(ride.pickup_lat),
@@ -503,7 +622,6 @@
                 }
             }
             
-            // نقطة الوجهة
             if (ride.destination_lat && ride.destination_lng) {
                 const destPos = {
                     lat: parseFloat(ride.destination_lat),
@@ -525,7 +643,7 @@
         }
 
         // ==============================================
-        // رسم الطريق على الخريطة
+        // رسم الطريق
         // ==============================================
         function drawRoute(ride) {
             if (!directionsService || !directionsRenderer) return;
@@ -547,17 +665,41 @@
             }, (result, status) => {
                 if (status === 'OK') {
                     directionsRenderer.setDirections(result);
-                } else {
-                    console.error('❌ فشل رسم الطريق:', status);
                 }
             });
+        }
+
+        // ==============================================
+        // تحديث واجهة المستخدم
+        // ==============================================
+        function updateUI(ride, driver = null) {
+            document.getElementById('loadingOverlay').style.display = 'none';
+            
+            document.getElementById('ride-price').textContent = `${ride.amount || 0} SDG`;
+            updateStatusUI(ride.status);
+            
+            if (driver) {
+                document.getElementById('driver-name').textContent = driver.full_name || 'سائق زونا';
+                document.getElementById('driver-avatar').textContent = (driver.full_name || 'ز').charAt(0);
+                document.getElementById('plate-number').textContent = driver.car_plate || '---';
+                
+                const vehicleInfo = [driver.car_model, driver.car_color].filter(Boolean).join(' - ');
+                document.getElementById('vehicle-info').textContent = vehicleInfo || 'مركبة زونا';
+                
+                if (driver.phone) {
+                    document.getElementById('call-btn').href = `tel:${driver.phone}`;
+                    document.getElementById('whatsapp-btn').href = `https://wa.me/${driver.phone.replace(/[^0-9]/g, '')}`;
+                }
+            }
         }
 
         // ==============================================
         // تحديث حالة الرحلة
         // ==============================================
         function updateStatusUI(status) {
+            const statusText = document.getElementById('status-text');
             const statusDisplay = document.getElementById('status-display');
+            
             const statuses = {
                 'accepted': 'السائق في الطريق إليك',
                 'arrived': 'السائق وصل إلى موقعك',
@@ -567,85 +709,26 @@
                 'cancelled_by_driver': 'تم إلغاء الرحلة من قبل السائق'
             };
             
-            statusDisplay.innerHTML = `<span class="pulse"></span> ${statuses[status] || 'جاري التحديث...'}`;
+            statusText.textContent = statuses[status] || 'جاري التحديث...';
             
-            // إذا اكتملت الرحلة، انتقل للصفحة الرئيسية بعد 3 ثوان
             if (status === 'completed') {
-                setTimeout(() => {
-                    window.location.href = 'index.html';
-                }, 3000);
+                setTimeout(() => window.location.href = 'index.html', 3000);
             }
-        }
-
-        // ==============================================
-        // تحديث موقع السائق على الخريطة
-        // ==============================================
-        function updateDriverMarker(pos) {
-            if (!map) return;
-            
-            const icon = {
-                url: 'https://cdn-icons-png.flaticon.com/512/3202/3202926.png',
-                scaledSize: new google.maps.Size(40, 40),
-                anchor: new google.maps.Point(20, 20)
-            };
-            
-            if (driverMarker) {
-                driverMarker.setPosition(pos);
-            } else {
-                driverMarker = new google.maps.Marker({
-                    position: pos,
-                    map: map,
-                    icon: icon,
-                    title: 'موقع السائق'
-                });
-            }
-            
-            // تحريك الخريطة لتتبع السائق
-            map.panTo(pos);
-        }
-
-        // ==============================================
-        // الاشتراك في تحديثات موقع السائق
-        // ==============================================
-        function subscribeToDriverLocation() {
-            if (!currentDriverId) return;
-            
-            console.log('📡 الاشتراك في تحديثات موقع السائق:', currentDriverId);
-            
-            tarhalDB
-                .channel(`driver-location-${currentDriverId}`)
-                .on('postgres_changes', {
-                    event: '*',
-                    schema: 'public',
-                    table: 'driver_locations',
-                    filter: `driver_id=eq.${currentDriverId}`
-                }, (payload) => {
-                    console.log('📍 تحديث موقع السائق:', payload.new);
-                    if (payload.new && payload.new.lat && payload.new.lng) {
-                        updateDriverMarker({
-                            lat: parseFloat(payload.new.lat),
-                            lng: parseFloat(payload.new.lng)
-                        });
-                    }
-                })
-                .subscribe();
         }
 
         // ==============================================
         // الاشتراك في تحديثات الرحلة
         // ==============================================
         function subscribeToRideChanges() {
-            console.log('📡 الاشتراك في تحديثات الرحلة:', currentRideId);
-            
             tarhalDB
-                .channel(`ride-changes-${currentRideId}`)
+                .channel(`ride-updates-${currentRideId}`)
                 .on('postgres_changes', {
                     event: 'UPDATE',
                     schema: 'public',
                     table: 'rides',
                     filter: `id=eq.${currentRideId}`
                 }, (payload) => {
-                    console.log('🔄 تحديث الرحلة:', payload.new);
+                    console.log('🔄 تحديث الرحلة:', payload.new.status);
                     updateStatusUI(payload.new.status);
                 })
                 .subscribe();
@@ -667,20 +750,20 @@
                     .eq('id', currentRideId);
                 
                 if (error) throw error;
-                
                 window.location.href = 'index.html';
                 
             } catch (error) {
-                console.error('❌ خطأ في إلغاء الرحلة:', error);
+                console.error('❌ خطأ:', error);
                 alert('حدث خطأ أثناء إلغاء الرحلة');
             }
         }
 
-        // ==============================================
-        // جعل الدالة متاحة عالمياً
-        // ==============================================
         window.cancelRide = cancelRide;
         
+        // تنظيف
+        window.addEventListener('beforeunload', function() {
+            if (watchId) navigator.geolocation.clearWatch(watchId);
+        });
     </script>
 </body>
 </html>
