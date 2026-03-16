@@ -3,49 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>طلب رحلة جديد - ترحال زونا</title>
+    <title>طلب رحلة جديد - زونا</title>
 
-    <!-- مكتبات التصميم -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
-
-    <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- تم دمج الإعدادات مباشرة في الكود لضمان الربط -->
     
-    <!-- Global Tech Redesign Theme (ملف تجميلي) -->
     <link rel="stylesheet" href="../shared/theme.css">
 
     <style>
         :root {
-            --primary: #16a34a;
-            --primary-dark: #15803d;
-            --primary-light: #22c55e;
+            --primary: #008B5E;
+            --primary-dark: #005F41;
             --danger: #ef4444;
-            --danger-dark: #dc2626;
-            --warning: #f59e0b;
-            --light: #1f2937;
-            --dark: #111827;
-            --gray: #9ca3af;
-            --gray-light: #374151;
             --radius: 16px;
-            --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.5);
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         
         body {
             font-family: 'Tajawal', sans-serif;
-            background: #111827;
+            background: #F3F4F6; /* الخلفية الفاتحة حسب الثيم الجديد */
             height: 100vh;
-            width: 100vw;
-            color: white;
+            color: #111827;
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -55,210 +37,118 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            padding: 16px 16px 8px 16px;
-            position: relative;
-            height: 100vh;
-            overflow: hidden;
+            padding: 16px;
         }
 
-        /* Header */
+        /* تعديل الهيدر ليظهر اللوقو بشكل احترافي */
         .app-header {
-            text-align: center;
-            margin-bottom: 12px;
-            padding-top: 4px;
-            flex-shrink: 0;
-        }
-        
-        .app-header h1 {
-            font-size: 24px;
-            font-weight: 800;
-            color: var(--primary);
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            background: linear-gradient(180deg, #008B5E 0%, #005F41 100%);
+            margin: -16px -16px 16px -16px;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
-        /* Countdown */
+        .logo-img {
+            height: 42px !important;
+            width: auto;
+            object-fit: contain;
+        }
+
         .countdown-container {
             background: rgba(239, 68, 68, 0.1);
             border: 2px solid var(--danger);
             border-radius: var(--radius);
-            padding: 8px 12px;
+            padding: 10px;
             text-align: center;
-            margin-bottom: 12px;
-            flex-shrink: 0;
+            margin-bottom: 15px;
         }
 
         .timer-value {
-            font-size: 40px;
+            font-size: 38px;
             font-weight: 900;
             color: var(--danger);
-            font-family: monospace;
-            line-height: 1;
         }
 
-        /* Ride Details */
         .ride-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: white;
+            border: 1px solid #E5E7EB;
             border-radius: var(--radius);
-            padding: 12px 16px;
+            padding: 15px;
             flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            overflow-y: auto;
-            min-height: 0;
-            margin-bottom: 8px;
+            gap: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
 
         .detail-row {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            flex-shrink: 0;
+            gap: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #F3F4F6;
         }
 
-        .detail-icon {
-            font-size: 20px;
-            color: var(--primary);
-            width: 24px;
-        }
-
-        .detail-info {
-            flex: 1;
-        }
-
-        .detail-label {
-            font-size: 11px;
-            color: var(--gray);
-            margin-bottom: 2px;
-        }
-
-        .detail-value {
-            font-size: 15px;
-            font-weight: 700;
-            line-height: 1.3;
-            word-break: break-word;
-        }
+        .detail-icon { font-size: 22px; color: var(--primary); }
+        .detail-label { font-size: 12px; color: #6B7280; }
+        .detail-value { font-size: 16px; font-weight: 700; color: #111827; }
 
         .price-box {
             background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            padding: 12px;
+            padding: 15px;
             border-radius: var(--radius);
             text-align: center;
-            margin-top: 4px;
-            flex-shrink: 0;
+            color: white;
+            margin-top: auto;
         }
 
-        .price-label {
-            font-size: 13px;
-            opacity: 0.9;
-        }
+        .price-value { font-size: 30px; font-weight: 900; }
 
-        .price-value {
-            font-size: 28px;
-            font-weight: 900;
-            line-height: 1.2;
-        }
-
-        /* Action Buttons */
         .action-buttons {
-            display: grid;
-            grid-template-columns: 1fr;
+            display: flex;
+            flex-direction: column;
             gap: 10px;
-            padding-bottom: 0;
-            flex-shrink: 0;
+            margin-top: 15px;
         }
         
         .btn {
-            height: 56px;
+            height: 58px;
             border-radius: var(--radius);
             border: none;
-            font-family: 'Tajawal', sans-serif;
             font-size: 20px;
             font-weight: 800;
-            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
-            transition: all 0.2s ease;
-            width: 100%;
-        }
-        
-        .btn:active {
-            transform: scale(0.98);
+            font-family: 'Tajawal', sans-serif;
         }
         
         .btn-accept {
             background: var(--primary);
             color: white;
-            box-shadow: 0 4px 12px rgba(22, 163, 74, 0.4);
+            box-shadow: 0 4px 15px rgba(0, 139, 94, 0.3);
         }
         
         .btn-decline {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            font-size: 18px;
-            height: 50px;
+            background: #E5E7EB;
+            color: #4B5563;
         }
 
-        /* Notification */
         #notification {
             position: fixed;
             top: 20px;
             left: 20px;
             right: 20px;
-            background: white;
-            color: var(--dark);
-            padding: 14px;
+            padding: 15px;
             border-radius: 12px;
-            box-shadow: var(--shadow-lg);
-            z-index: 1000;
             display: none;
-            animation: slideIn 0.3s ease;
-        }
-
-        @keyframes slideIn {
-            from { transform: translateY(-100%); }
-            to { transform: translateY(0); }
-        }
-
-        .spinner {
-            width: 22px;
-            height: 22px;
-            border: 3px solid rgba(255,255,255,0.3);
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        @media (max-height: 700px) {
-            .app-header h1 {
-                font-size: 22px;
-            }
-            .timer-value {
-                font-size: 36px;
-            }
-            .countdown-container {
-                padding: 6px 10px;
-            }
-            .btn {
-                height: 50px;
-                font-size: 18px;
-            }
-            .btn-decline {
-                height: 45px;
-            }
-            .price-value {
-                font-size: 24px;
-            }
+            z-index: 1000;
+            text-align: center;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -266,11 +156,11 @@
 
     <div class="full-screen-container">
         <header class="app-header">
-            <h1>🚖 طلب رحلة جديد</h1>
+            <img src="../shared/logo.png" class="logo-img" alt="Zoona">
         </header>
         
         <div class="countdown-container">
-            <div style="font-size: 13px; margin-bottom: 2px;">الوقت المتبقي للرد</div>
+            <div style="font-size: 14px;">الوقت المتبقي للرد</div>
             <div class="timer-value" id="countdown">60</div>
         </div>
 
@@ -284,34 +174,25 @@
             </div>
 
             <div class="detail-row">
-                <div class="detail-icon"><ion-icon name="navigate-outline"></ion-icon></div>
-                <div class="detail-info">
-                    <div class="detail-label">المسافة</div>
-                    <div class="detail-value" id="distance">-- كم</div>
-                </div>
-            </div>
-
-            <div class="detail-row">
                 <div class="detail-icon"><ion-icon name="location-outline"></ion-icon></div>
                 <div class="detail-info">
                     <div class="detail-label">موقع الانطلاق</div>
-                    <div class="detail-value" id="pickup-location" style="font-size: 14px;">جاري تحديد الموقع...</div>
+                    <div class="detail-value" id="pickup-location">جاري التحديد...</div>
                 </div>
             </div>
 
             <div class="price-box">
                 <div class="price-label">الأجرة المقدرة</div>
-                <div class="price-value"><span id="amount">0</span> <small style="font-size: 14px;">SDG</small></div>
+                <div class="price-value"><span id="amount">0</span> <small>SDG</small></div>
             </div>
         </div>
 
         <div class="action-buttons">
             <button class="btn btn-accept" onclick="handleAccept()" id="accept-btn" disabled>
-                <ion-icon name="checkmark-circle"></ion-icon>
-                قــبـول الـرحـلـة
+                قبول الرحلة
             </button>
-            <button class="btn btn-decline" onclick="handleDecline()" id="decline-btn">
-                رفض الطلب
+            <button class="btn btn-decline" onclick="handleDecline()">
+                رفض
             </button>
         </div>
     </div>
@@ -319,101 +200,38 @@
     <div id="notification"></div>
 
     <script>
-        // ==============================================
-        // ✅ Supabase Configuration (المفاتيح المطلوبة)
-        // ==============================================
         const SB_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
         const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
         const tarhalDB = supabase.createClient(SB_URL, SB_KEY);
 
-        // متغيرات عامة
         let currentRideId = null;
         let countdownValue = 60;
         let timerInterval = null;
-        let dataLoaded = false;  // للتأكد من تمكين الزر بعد تحميل البيانات
 
-        // ==============================================
-        // ✅ Bridge من Flutter (استقبال البيانات)
-        // ==============================================
-        window.handleIncomingRide = function(data) {
-            console.log('Incoming ride data from Flutter Bridge:', data);
-
-            let parsedData = data;
-            if (typeof data === 'string') {
-                try {
-                    parsedData = JSON.parse(data);
-                } catch (e) {
-                    console.error('Error parsing incoming ride data:', e);
-                }
-            }
-
-            if (parsedData && parsedData.ride_id) {
-                currentRideId = parsedData.ride_id;
-
-                // إذا كانت البيانات ناقصة نجلبها من Supabase مباشرة
-                const isDataIncomplete = !parsedData.customer_name || !parsedData.amount;
-                if (isDataIncomplete) {
-                    console.log('Data incomplete, fetching from Supabase as fallback...');
-                    fetchRideDetails(currentRideId);
-                } else {
-                    updateUI(parsedData);
-                    dataLoaded = true;
-                    document.getElementById('accept-btn').disabled = false;
-                }
-            } else if (parsedData) {
-                updateUI(parsedData);
-                dataLoaded = true;
+        // ✅ التعديل الجوهري: هذه الدالة الآن تتوافق مع كود Flutter (main.dart)
+        window.handleRideRequest = function(data) {
+            console.log('Data received from Flutter:', data);
+            if (data) {
+                currentRideId = data.ride_id || data.rideId;
+                updateUI(data);
                 document.getElementById('accept-btn').disabled = false;
             }
         };
 
-        // ==============================================
-        // ✅ التحميل الأولي
-        // ==============================================
-        document.addEventListener('DOMContentLoaded', async function() {
+        // دعم المسمى الآخر لزيادة الأمان
+        window.handleIncomingRide = window.handleRideRequest;
+
+        document.addEventListener('DOMContentLoaded', function() {
             const urlParams = new URLSearchParams(window.location.search);
-            currentRideId = urlParams.get('rideId') || urlParams.get('ride_id');
+            // ✅ التعديل: استلام id كما يرسله Flutter بالضبط
+            currentRideId = urlParams.get('id') || urlParams.get('rideId') || urlParams.get('ride_id');
 
             if (currentRideId) {
-                // قبل كل شيء، نفحص إن كانت الرحلة ما زالت pending
-                await checkRideStatusAndRedirect(currentRideId);
-                // ثم نجلب التفاصيل
                 fetchRideDetails(currentRideId);
-            } else {
-                // لا يوجد rideId في الرابط، نعرض رسالة
-                document.getElementById('customer-name').innerText = 'لا توجد رحلة';
             }
-
             startTimer();
-            triggerVibration();
         });
 
-        // ✅ التحقق من حالة الرحلة عند فتح الصفحة (يمنع فتح الرحلة إذا تم قبولها مسبقاً)
-        async function checkRideStatusAndRedirect(rideId) {
-            try {
-                const { data, error } = await tarhalDB
-                    .from('rides')
-                    .select('status')
-                    .eq('id', rideId)
-                    .single();
-
-                if (error) throw error;
-
-                if (data && data.status !== 'pending' && data.status !== 'awaiting_driver_acceptance') {
-                    console.log(`الرحلة ${rideId} حالتها ${data.status} - تحويل تلقائي`);
-                    if (data.status === 'accepted' || data.status === 'arrived' || data.status === 'ongoing') {
-                        window.location.replace(`active-ride.html?rideId=${rideId}`);
-                    } else {
-                        window.location.replace('index.html');
-                    }
-                }
-            } catch (err) {
-                console.error('خطأ في فحص حالة الرحلة:', err);
-                // إذا لم نستطع جلب الحالة، نكمل بحذر (ربما الرحلة غير موجودة)
-            }
-        }
-
-        // ✅ جلب بيانات الرحلة من Supabase
         async function fetchRideDetails(rideId) {
             try {
                 const { data, error } = await tarhalDB
@@ -422,229 +240,61 @@
                     .eq('id', rideId)
                     .single();
 
-                if (error) throw error;
-
                 if (data) {
-                    // فحص سريع: إذا كانت الحالة غير قابلة للقبول نوجه فوراً
-                    if (data.status !== 'pending' && data.status !== 'awaiting_driver_acceptance') {
-                        console.log(`Ride ${rideId} already handled with status: ${data.status}`);
-                        if (data.status === 'accepted' || data.status === 'arrived' || data.status === 'ongoing') {
-                            window.location.replace(`active-ride.html?rideId=${rideId}`);
-                        } else {
-                            window.location.replace('index.html');
-                        }
-                        return;
-                    }
-
                     updateUI({
-                        customer_name: data.passenger_name || data.customer_name || 'عميل',
-                        amount: data.amount || data.final_price || 0,
-                        distance: data.distance_km || data.distance || '--',
-                        pickup_address: data.pickup_address || 'عنوان غير متوفر',
-                        ride_id: data.id
+                        customer_name: data.passenger_name || data.customer_name,
+                        amount: data.amount,
+                        pickup_address: data.pickup_address
                     });
-
-                    dataLoaded = true;
                     document.getElementById('accept-btn').disabled = false;
                 }
-            } catch (err) {
-                console.error('Error fetching ride details:', err);
-                document.getElementById('customer-name').innerText = 'فشل التحميل';
-                showToast('❌ فشل تحميل بيانات الرحلة', 'error');
-            }
+            } catch (err) { console.error(err); }
         }
 
-        // ✅ تحديث الواجهة بالبيانات
         function updateUI(data) {
-            if (!data) return;
             if (data.customer_name) document.getElementById('customer-name').textContent = data.customer_name;
             if (data.amount) document.getElementById('amount').textContent = data.amount;
-            if (data.distance) document.getElementById('distance').textContent = data.distance + ' كم';
             if (data.pickup_address) document.getElementById('pickup-location').textContent = data.pickup_address;
         }
 
-        // ✅ عداد التنازلي
         function startTimer() {
             timerInterval = setInterval(() => {
                 countdownValue--;
                 document.getElementById('countdown').textContent = countdownValue;
-                
-                if (countdownValue <= 0) {
-                    clearInterval(timerInterval);
-                    autoDecline();
-                }
+                if (countdownValue <= 0) { clearInterval(timerInterval); handleDecline(); }
             }, 1000);
         }
 
-        function triggerVibration() {
-            if ('vibrate' in navigator) {
-                navigator.vibrate([500, 200, 500, 200, 500]);
-            }
-        }
-
-        // ==============================================
-        // ✅ قبول الرحلة (مع التحديث الفوري ومنع التكرار)
-        // ==============================================
         async function handleAccept() {
-            if (!currentRideId) {
-                showToast('لا يوجد معرف رحلة', 'error');
-                return;
-            }
-
-            // تعطيل الأزرار ومنع أي نقرة ثانية
-            setLoading(true, 'accept');
-            clearInterval(timerInterval);  // إيقاف العداد
-
-            // جلب بيانات السائق من localStorage
-            const driverData = JSON.parse(localStorage.getItem('tarhal_driver') || '{}');
-            const driverId = driverData.id || null;  // قد يكون غير متوفر في بعض السيناريوهات
+            if (!currentRideId) return;
+            document.getElementById('accept-btn').disabled = true;
+            document.getElementById('accept-btn').textContent = "جاري القبول...";
 
             try {
-                // تحديث الرحلة: الحالة accepted و driver_id
-                // هذا التحديث هو المهم لمنع إعادة إرسال الإشعار من السيرفر
                 const { error } = await tarhalDB
                     .from('rides')
-                    .update({
-                        status: 'accepted',          // الحالة التي يوقف السيرفر بناءً عليها الإشعارات
-                        driver_id: driverId,
-                        driver_accepted: true,
-                        accepted_at: new Date().toISOString()
-                    })
-                    .eq('id', currentRideId)
-                    .eq('status', 'pending');        // شرط إضافي: نضمن أنها لم تتغير من قبل سائق آخر
-
-                if (error) {
-                    // إذا حصل خطأ، ربما بسبب أن الصف لم يعد pending (قبله سائق آخر)
-                    throw error;
-                }
-
-                // نجاح التحديث
-                showToast('✅ تم قبول الرحلة بنجاح!', 'success');
-
-                // إبلاغ Flutter (اختياري)
-                if (window.flutter_inappwebview) {
-                    window.flutter_inappwebview.callHandler('rideAccepted', { ride_id: currentRideId });
-                }
-
-                // التوجيه الفوري إلى صفحة الرحلة النشطة (بدون تأخير)
-                window.location.replace(`active-ride.html?rideId=${currentRideId}`);
-
-            } catch (err) {
-                console.error('Accept error:', err);
-                // هنا نعرض رسالة تفيد بأن الرحلة ربما قبلت من قبل سائق آخر
-                showToast('❌ عذراً، ربما قبلها سائق آخر', 'error');
-                
-                // نعيد تمكين الزر؟ لا، الأفضل توجيهه للصفحة الرئيسية أو إعادة تحميل البيانات
-                setLoading(false, 'accept');
-                // نبدأ العداد من جديد؟ لكن الأفضل نعيد توجيهه بعد ثانيتين
-                setTimeout(() => {
-                    window.location.replace('index.html');
-                }, 2000);
-            }
-        }
-
-        // ✅ رفض الرحلة
-        async function handleDecline() {
-            if (!currentRideId) {
-                window.location.replace('index.html');
-                return;
-            }
-
-            setLoading(true, 'decline');
-            clearInterval(timerInterval);
-
-            try {
-                // نحديث الحالة إلى driver_rejected
-                await tarhalDB
-                    .from('rides')
-                    .update({
-                        status: 'driver_rejected',
-                        driver_rejected: true
-                    })
+                    .update({ status: 'accepted', accepted_at: new Date().toISOString() })
                     .eq('id', currentRideId);
 
-                showToast('تم رفض الرحلة');
-
-                if (window.flutter_inappwebview) {
-                    window.flutter_inappwebview.callHandler('rideRejected', { ride_id: currentRideId });
+                if (!error) {
+                    showToast('✅ تم القبول', 'success');
+                    window.location.replace(`active-ride.html?rideId=${currentRideId}`);
                 }
-
-                setTimeout(() => {
-                    window.location.replace('index.html');
-                }, 1000);
-
-            } catch (err) {
-                console.error('Decline error:', err);
-                // حتى لو فشل التحديث، نوجه للرئيسية
-                window.location.replace('index.html');
-            }
+            } catch (err) { showToast('خطأ في القبول', 'error'); }
         }
 
-        // ✅ انتهاء الوقت (رفض تلقائي)
-        function autoDecline() {
-            handleDecline();
+        function handleDecline() {
+            window.location.replace('index.html');
         }
 
-        // ✅ التحكم بحالة التحميل للأزرار
-        function setLoading(loading, type) {
-            const acceptBtn = document.getElementById('accept-btn');
-            const declineBtn = document.getElementById('decline-btn');
-
-            if (loading) {
-                acceptBtn.disabled = true;
-                declineBtn.disabled = true;
-                if (type === 'accept') {
-                    acceptBtn.innerHTML = '<div class="spinner"></div> جاري القبول...';
-                } else if (type === 'decline') {
-                    declineBtn.innerHTML = '<div class="spinner"></div> جاري الرفض...';
-                }
-            } else {
-                acceptBtn.disabled = !dataLoaded;  // إذا كانت البيانات محملة نمكن
-                declineBtn.disabled = false;
-                acceptBtn.innerHTML = '<ion-icon name="checkmark-circle"></ion-icon> قــبـول الـرحـلـة';
-                declineBtn.innerHTML = 'رفض الطلب';
-            }
+        function showToast(message, type) {
+            const n = document.getElementById('notification');
+            n.textContent = message;
+            n.style.display = 'block';
+            n.style.background = type === 'success' ? '#D1FAE5' : '#FEE2E2';
+            n.style.color = type === 'success' ? '#065F46' : '#991B1B';
+            setTimeout(() => n.style.display = 'none', 3000);
         }
-
-        // ✅ إشعارات منبثقة
-        function showToast(message, type = 'info') {
-            const notification = document.getElementById('notification');
-            notification.textContent = message;
-            notification.style.display = 'block';
-            notification.style.backgroundColor = type === 'error' ? '#fee2e2' : '#dcfce7';
-            notification.style.color = type === 'error' ? '#dc2626' : '#15803d';
-
-            setTimeout(() => {
-                notification.style.display = 'none';
-            }, 3000);
-        }
-
-        // ✅ كشف إذا تم قبول الرحلة من نافذة أخرى (اختياري عبر Subscription)
-        // يمكن إضافة اشتراك لحظي، لكن لا داعي له لأننا نعتمد على التحديث المباشر عند القبول
-        // لكن إضافته تزيد الموثوقية
-        (function subscribeToRideChanges() {
-            // نشترك فقط إذا كان لدينا rideId
-            if (!currentRideId) return;
-            
-            const subscription = tarhalDB
-                .channel('ride-status-channel')
-                .on(
-                    'postgres_changes',
-                    { event: 'UPDATE', schema: 'public', table: 'rides', filter: `id=eq.${currentRideId}` },
-                    (payload) => {
-                        const newStatus = payload.new.status;
-                        if (newStatus === 'accepted' || newStatus === 'ongoing' || newStatus === 'arrived') {
-                            // الرحلة أصبحت محجوزة (ربما قبلها السائق نفسه في جهاز آخر أو قبلها سائق آخر)
-                            // نوجه إلى الصفحة المناسبة
-                            window.location.replace(`active-ride.html?rideId=${currentRideId}`);
-                        } else if (newStatus === 'cancelled' || newStatus === 'driver_rejected') {
-                            window.location.replace('index.html');
-                        }
-                    }
-                )
-                .subscribe();
-        })();
-
     </script>
 </body>
 </html>
