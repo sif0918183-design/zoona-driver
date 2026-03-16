@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>تتبع الرحلة - زونا</title>
+    <title>تتبع السائق - زونا</title>
 
+    <!-- مكتبات التصميم -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+
+    <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <link rel="stylesheet" href="../shared/theme.css">
 
     <style>
         :root {
@@ -140,6 +141,7 @@
             justify-content: center;
             gap: 8px;
             text-decoration: none;
+            cursor: pointer;
         }
 
         .btn-call { background: var(--primary); color: white; }
@@ -169,12 +171,6 @@
             align-items: center;
             justify-content: center;
             z-index: 1000;
-        }
-
-        .error-message {
-            color: var(--danger);
-            text-align: center;
-            padding: 20px;
         }
     </style>
 </head>
@@ -246,8 +242,6 @@
         let destinationMarker = null;
         let directionsService = null;
         let directionsRenderer = null;
-        let rideData = null;
-        let driverData = null;
 
         // ==============================================
         // التهيئة عند تحميل الصفحة
@@ -271,11 +265,9 @@
                     }
                 }
                 
-                // تحميل الخريطة وجلب بيانات الرحلة
+                // تحميل الخريطة
                 loadGoogleMaps();
-                await fetchRideDetails();
             } else {
-                // لا يوجد معرف رحلة
                 document.getElementById('loadingOverlay').style.display = 'none';
                 document.getElementById('status-display').innerHTML = '❌ لم يتم العثور على معرف الرحلة';
                 console.error('❌ لا يوجد معرف رحلة في الرابط');
@@ -325,24 +317,23 @@
                 }
             });
 
-            // إذا كانت بيانات الرحلة موجودة، ارسم الطريق
-            if (rideData) {
-                drawRoute();
-            }
+            // بعد تهيئة الخريطة، نجلب بيانات الرحلة
+            fetchRideDetails();
         };
 
         // ==============================================
-        // جلب تفاصيل الرحلة
+        // جلب تفاصيل الرحلة - الطريقة الصحيحة للربط
         // ==============================================
         async function fetchRideDetails() {
             try {
                 console.log('📡 جلب تفاصيل الرحلة:', currentRideId);
                 
+                // ✅ الطريقة الصحيحة للربط مع جدول drivers
                 const { data: ride, error } = await tarhalDB
                     .from('rides')
                     .select(`
                         *,
-                        drivers:driver_id (
+                        driver:driver_id (
                             id,
                             full_name,
                             phone,
@@ -355,156 +346,200 @@
                     .single();
 
                 if (error) {
-                    throw error;
+                    console.error('❌ خطأ في جلب الرحلة:', error);
+                    
+                    // محاولة بديلة: جلب الرحلة فقط ثم جلب السائق بشكل منفصل
+                    console.log('📡 محاولة بديلة: جلب الرحلة فقط');
+                    const { data: rideOnly, error: error2 } = await tarhalDB
+                        .from('rides')
+                        .select('*')
+                        .eq('id', currentRideId)
+                        .single();
+                    
+                    if (error2) throw error2;
+                    
+                    if (rideOnly) {
+                        console.log('✅ تم جلب الرحلة فقط:', rideOnly);
+                        
+                        // جلب بيانات السائق بشكل منفصل
+                        if (rideOnly.driver_id) {
+                            const { data: driver, error: error3 } = await tarhalDB
+                                .from('drivers')
+                                .select('*')
+                                .eq('id', rideOnly.driver_id)
+                                .single();
+                            
+                            if (!error3 && driver) {
+                                console.log('✅ تم جلب السائق:', driver);
+                                updateUI(rideOnly, driver);
+                            } else {
+                                updateUI(rideOnly, null);
+                            }
+                        } else {
+                            updateUI(rideOnly, null);
+                        }
+                    }
+                    
+                    return;
                 }
 
                 if (ride) {
-                    console.log('✅ تم جلب بيانات الرحلة:', ride);
-                    rideData = ride;
-                    currentDriverId = ride.driver_id;
-                    driverData = ride.drivers || {};
+                    console.log('✅ تم جلب الرحلة مع السائق:', ride);
+                    
+                    // استخراج بيانات السائق من النتيجة
+                    const driverData = ride.driver || null;
                     
                     // تحديث واجهة المستخدم
-                    updateUI(ride);
+                    updateUI(ride, driverData);
                     
                     // الاشتراك في تحديثات الرحلة
                     subscribeToRideChanges();
                     
                     // إذا كان هناك سائق، اشترك في موقعه
-                    if (currentDriverId) {
+                    if (ride.driver_id) {
+                        currentDriverId = ride.driver_id;
                         subscribeToDriverLocation();
-                    }
-                    
-                    // رسم الطريق إذا كانت الخريطة جاهزة
-                    if (map) {
-                        drawRoute();
+                        
+                        // جلب الموقع الحالي للسائق
+                        fetchDriverCurrentLocation();
                     }
                 }
+                
             } catch (error) {
-                console.error('❌ خطأ في جلب الرحلة:', error);
+                console.error('❌ خطأ نهائي في جلب الرحلة:', error);
                 document.getElementById('loadingOverlay').style.display = 'none';
                 document.getElementById('status-display').innerHTML = '❌ خطأ في تحميل بيانات الرحلة';
             }
         }
 
         // ==============================================
+        // جلب الموقع الحالي للسائق
+        // ==============================================
+        async function fetchDriverCurrentLocation() {
+            if (!currentDriverId) return;
+            
+            try {
+                const { data, error } = await tarhalDB
+                    .from('driver_locations')
+                    .select('lat, lng')
+                    .eq('driver_id', currentDriverId)
+                    .maybeSingle();
+                
+                if (data && data.lat && data.lng) {
+                    updateDriverMarker({
+                        lat: parseFloat(data.lat),
+                        lng: parseFloat(data.lng)
+                    });
+                }
+            } catch (e) {
+                console.warn('⚠️ خطأ في جلب موقع السائق:', e);
+            }
+        }
+
+        // ==============================================
         // تحديث واجهة المستخدم
         // ==============================================
-        function updateUI(ride) {
+        function updateUI(ride, driver = null) {
             console.log('🔄 تحديث واجهة المستخدم');
             
             // إخفاء شاشة التحميل
             document.getElementById('loadingOverlay').style.display = 'none';
             
-            // بيانات السائق
-            const driver = ride.drivers || {};
-            document.getElementById('driver-name').textContent = driver.full_name || 'سائق زونا';
-            document.getElementById('driver-avatar').textContent = (driver.full_name || 'ز').charAt(0);
+            // بيانات الرحلة
             document.getElementById('ride-price').textContent = `${ride.amount || 0} SDG`;
-            document.getElementById('plate-number').textContent = driver.car_plate || '---';
-            document.getElementById('vehicle-info').textContent = `${driver.car_model || ''} ${driver.car_color || ''}`.trim() || 'مركبة زونا';
-            
-            // أزرار الاتصال
-            if (driver.phone) {
-                document.getElementById('call-btn').href = `tel:${driver.phone}`;
-                document.getElementById('whatsapp-btn').href = `https://wa.me/${driver.phone.replace(/[^0-9]/g, '')}`;
-            }
             
             // تحديث حالة الرحلة
             updateStatusUI(ride.status);
             
-            // حساب المسافة المتبقية (إذا كانت الإحداثيات موجودة)
-            if (ride.pickup_lat && ride.pickup_lng && driver.last_lat && driver.last_lng) {
-                calculateRemainingDistance(
-                    { lat: parseFloat(driver.last_lat), lng: parseFloat(driver.last_lng) },
-                    { lat: parseFloat(ride.pickup_lat), lng: parseFloat(ride.pickup_lng) }
-                );
+            // رسم الطريق إذا كانت الإحداثيات موجودة
+            if (ride.pickup_lat && ride.pickup_lng && ride.destination_lat && ride.destination_lng) {
+                drawRoute(ride);
+                addMarkers(ride);
             }
-        }
-
-        // ==============================================
-        // تحديث حالة الرحلة
-        // ==============================================
-        function updateStatusUI(status) {
-            const statusDisplay = document.getElementById('status-display');
-            const statuses = {
-                'accepted': 'السائق في الطريق إليك',
-                'arrived': 'السائق وصل إلى موقعك',
-                'ongoing': 'الرحلة مستمرة الآن',
-                'completed': 'تمت الرحلة بنجاح'
-            };
             
-            statusDisplay.innerHTML = `<span class="pulse"></span> ${statuses[status] || 'جاري التحديث...'}`;
-            
-            // إذا اكتملت الرحلة، انتقل للصفحة الرئيسية بعد 3 ثوان
-            if (status === 'completed') {
-                setTimeout(() => {
-                    window.location.href = 'index.html';
-                }, 3000);
-            }
-        }
-
-        // ==============================================
-        // حساب المسافة المتبقية
-        // ==============================================
-        function calculateRemainingDistance(driverPos, pickupPos) {
-            if (!google.maps || !google.maps.geometry) return;
-            
-            try {
-                const distance = google.maps.geometry.spherical.computeDistanceBetween(
-                    new google.maps.LatLng(driverPos.lat, driverPos.lng),
-                    new google.maps.LatLng(pickupPos.lat, pickupPos.lng)
-                );
+            // إذا كان لدينا بيانات السائق
+            if (driver) {
+                document.getElementById('driver-name').textContent = driver.full_name || 'سائق زونا';
+                document.getElementById('driver-avatar').textContent = (driver.full_name || 'ز').charAt(0);
+                document.getElementById('plate-number').textContent = driver.car_plate || '---';
                 
-                const distanceKm = (distance / 1000).toFixed(1);
-                document.getElementById('remaining-distance').textContent = `${distanceKm} كم`;
-            } catch (e) {
-                console.warn('⚠️ خطأ في حساب المسافة:', e);
+                const vehicleInfo = [driver.car_model, driver.car_color].filter(Boolean).join(' - ');
+                document.getElementById('vehicle-info').textContent = vehicleInfo || 'مركبة زونا';
+                
+                if (driver.phone) {
+                    document.getElementById('call-btn').href = `tel:${driver.phone}`;
+                    document.getElementById('whatsapp-btn').href = `https://wa.me/${driver.phone.replace(/[^0-9]/g, '')}`;
+                }
+            } else if (ride.driver_name) {
+                // بيانات قديمة من جدول الرحلات
+                document.getElementById('driver-name').textContent = ride.driver_name || 'سائق زونا';
+                document.getElementById('driver-avatar').textContent = (ride.driver_name || 'ز').charAt(0);
+            }
+        }
+
+        // ==============================================
+        // إضافة علامات المواقع على الخريطة
+        // ==============================================
+        function addMarkers(ride) {
+            if (!map) return;
+            
+            // نقطة الانطلاق
+            if (ride.pickup_lat && ride.pickup_lng) {
+                const pickupPos = {
+                    lat: parseFloat(ride.pickup_lat),
+                    lng: parseFloat(ride.pickup_lng)
+                };
+                
+                if (!pickupMarker) {
+                    pickupMarker = new google.maps.Marker({
+                        position: pickupPos,
+                        map: map,
+                        icon: {
+                            url: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png',
+                            scaledSize: new google.maps.Size(40, 40)
+                        },
+                        title: 'موقع الانطلاق'
+                    });
+                }
+            }
+            
+            // نقطة الوجهة
+            if (ride.destination_lat && ride.destination_lng) {
+                const destPos = {
+                    lat: parseFloat(ride.destination_lat),
+                    lng: parseFloat(ride.destination_lng)
+                };
+                
+                if (!destinationMarker) {
+                    destinationMarker = new google.maps.Marker({
+                        position: destPos,
+                        map: map,
+                        icon: {
+                            url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
+                            scaledSize: new google.maps.Size(40, 40)
+                        },
+                        title: 'الوجهة'
+                    });
+                }
             }
         }
 
         // ==============================================
         // رسم الطريق على الخريطة
         // ==============================================
-        function drawRoute() {
-            if (!rideData || !directionsService || !directionsRenderer) return;
+        function drawRoute(ride) {
+            if (!directionsService || !directionsRenderer) return;
             
             const pickup = {
-                lat: parseFloat(rideData.pickup_lat),
-                lng: parseFloat(rideData.pickup_lng)
+                lat: parseFloat(ride.pickup_lat),
+                lng: parseFloat(ride.pickup_lng)
             };
             
             const destination = {
-                lat: parseFloat(rideData.destination_lat),
-                lng: parseFloat(rideData.destination_lng)
+                lat: parseFloat(ride.destination_lat),
+                lng: parseFloat(ride.destination_lng)
             };
             
-            // إضافة علامات النقاط
-            if (!pickupMarker) {
-                pickupMarker = new google.maps.Marker({
-                    position: pickup,
-                    map: map,
-                    icon: {
-                        url: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png',
-                        scaledSize: new google.maps.Size(40, 40)
-                    },
-                    title: 'موقع الانطلاق'
-                });
-            }
-            
-            if (!destinationMarker) {
-                destinationMarker = new google.maps.Marker({
-                    position: destination,
-                    map: map,
-                    icon: {
-                        url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
-                        scaledSize: new google.maps.Size(40, 40)
-                    },
-                    title: 'الوجهة'
-                });
-            }
-            
-            // رسم المسار
             directionsService.route({
                 origin: pickup,
                 destination: destination,
@@ -516,6 +551,30 @@
                     console.error('❌ فشل رسم الطريق:', status);
                 }
             });
+        }
+
+        // ==============================================
+        // تحديث حالة الرحلة
+        // ==============================================
+        function updateStatusUI(status) {
+            const statusDisplay = document.getElementById('status-display');
+            const statuses = {
+                'accepted': 'السائق في الطريق إليك',
+                'arrived': 'السائق وصل إلى موقعك',
+                'ongoing': 'الرحلة مستمرة الآن',
+                'completed': 'تمت الرحلة بنجاح',
+                'cancelled_by_customer': 'تم إلغاء الرحلة',
+                'cancelled_by_driver': 'تم إلغاء الرحلة من قبل السائق'
+            };
+            
+            statusDisplay.innerHTML = `<span class="pulse"></span> ${statuses[status] || 'جاري التحديث...'}`;
+            
+            // إذا اكتملت الرحلة، انتقل للصفحة الرئيسية بعد 3 ثوان
+            if (status === 'completed') {
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 3000);
+            }
         }
 
         // ==============================================
@@ -543,20 +602,14 @@
             
             // تحريك الخريطة لتتبع السائق
             map.panTo(pos);
-            
-            // حساب المسافة المتبقية إذا كانت نقاط الانطلاق موجودة
-            if (rideData && rideData.pickup_lat) {
-                calculateRemainingDistance(
-                    pos,
-                    { lat: parseFloat(rideData.pickup_lat), lng: parseFloat(rideData.pickup_lng) }
-                );
-            }
         }
 
         // ==============================================
         // الاشتراك في تحديثات موقع السائق
         // ==============================================
         function subscribeToDriverLocation() {
+            if (!currentDriverId) return;
+            
             console.log('📡 الاشتراك في تحديثات موقع السائق:', currentDriverId);
             
             tarhalDB
@@ -593,18 +646,7 @@
                     filter: `id=eq.${currentRideId}`
                 }, (payload) => {
                     console.log('🔄 تحديث الرحلة:', payload.new);
-                    
-                    // تحديث البيانات
-                    rideData = payload.new;
-                    
-                    // تحديث حالة الرحلة
                     updateStatusUI(payload.new.status);
-                    
-                    // إذا تغير السائق (نادراً ما يحدث)
-                    if (payload.new.driver_id && payload.new.driver_id !== currentDriverId) {
-                        currentDriverId = payload.new.driver_id;
-                        subscribeToDriverLocation();
-                    }
                 })
                 .subscribe();
         }
@@ -626,7 +668,6 @@
                 
                 if (error) throw error;
                 
-                // العودة للصفحة الرئيسية
                 window.location.href = 'index.html';
                 
             } catch (error) {
