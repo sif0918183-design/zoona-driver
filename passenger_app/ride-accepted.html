@@ -244,7 +244,7 @@
         let destinationMarker = null;
         let directionsService = null;
         let directionsRenderer = null;
-        let lastDriverPos = null;
+        let routeRendered = false;
 
         // ==============================================
         // التهيئة عند تحميل الصفحة
@@ -437,15 +437,15 @@
             
             updateStatusUI(ride.status);
             
+            // رسم المسار وإضافة العلامات
             if (ride.pickup_lat && ride.pickup_lng && ride.destination_lat && ride.destination_lng) {
                 drawRoute(ride);
-                addMarkers(ride);
-                
-                if (ride.distance_km) {
-                    document.getElementById('remaining-distance').textContent = `${ride.distance_km} كم`;
-                } else {
-                    calculateRemainingDistance(ride);
-                }
+            }
+            
+            if (ride.distance_km) {
+                document.getElementById('remaining-distance').textContent = `${ride.distance_km} كم`;
+            } else {
+                calculateRemainingDistance(ride);
             }
             
             if (driver) {
@@ -488,45 +488,6 @@
         }
 
         // ==============================================
-        // إضافة علامات المواقع على الخريطة
-        // ==============================================
-        function addMarkers(ride) {
-            if (!map) return;
-            
-            if (ride.pickup_lat && ride.pickup_lng) {
-                const pickupPos = {
-                    lat: parseFloat(ride.pickup_lat),
-                    lng: parseFloat(ride.pickup_lng)
-                };
-                
-                if (!pickupMarker) {
-                    pickupMarker = new google.maps.Marker({
-                        position: pickupPos,
-                        map: map,
-                        label: 'A',
-                        title: 'موقع الانطلاق'
-                    });
-                }
-            }
-            
-            if (ride.destination_lat && ride.destination_lng) {
-                const destPos = {
-                    lat: parseFloat(ride.destination_lat),
-                    lng: parseFloat(ride.destination_lng)
-                };
-                
-                if (!destinationMarker) {
-                    destinationMarker = new google.maps.Marker({
-                        position: destPos,
-                        map: map,
-                        label: 'B',
-                        title: 'الوجهة'
-                    });
-                }
-            }
-        }
-
-        // ==============================================
         // رسم الطريق على الخريطة
         // ==============================================
         function drawRoute(ride) {
@@ -541,6 +502,49 @@
                 lat: parseFloat(ride.destination_lat),
                 lng: parseFloat(ride.destination_lng)
             };
+
+            // إنشاء علامات النقاط
+            if (!pickupMarker) {
+                pickupMarker = new google.maps.Marker({
+                    position: pickup,
+                    map: map,
+                    label: {
+                        text: 'A',
+                        color: 'white',
+                        fontWeight: 'bold'
+                    },
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 8,
+                        fillColor: '#16a34a',
+                        fillOpacity: 1,
+                        strokeWeight: 2,
+                        strokeColor: 'white'
+                    },
+                    title: 'نقطة الانطلاق'
+                });
+            }
+            
+            if (!destinationMarker) {
+                destinationMarker = new google.maps.Marker({
+                    position: destination,
+                    map: map,
+                    label: {
+                        text: 'B',
+                        color: 'white',
+                        fontWeight: 'bold'
+                    },
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 8,
+                        fillColor: '#dc2626',
+                        fillOpacity: 1,
+                        strokeWeight: 2,
+                        strokeColor: 'white'
+                    },
+                    title: 'الوجهة'
+                });
+            }
             
             directionsService.route({
                 origin: pickup,
@@ -549,6 +553,18 @@
             }, (result, status) => {
                 if (status === 'OK') {
                     directionsRenderer.setDirections(result);
+                    routeRendered = true;
+                    
+                    // توسيط الخريطة لعرض المسار والسائق إذا كان موجوداً
+                    const bounds = new google.maps.LatLngBounds();
+                    bounds.extend(pickup);
+                    bounds.extend(destination);
+                    
+                    if (driverMarker) {
+                        bounds.extend(driverMarker.getPosition());
+                    }
+                    
+                    map.fitBounds(bounds);
                 } else {
                     console.error('❌ فشل رسم الطريق:', status);
                 }
@@ -602,10 +618,15 @@
                     title: 'موقع السائق'
                 });
                 
-                map.setCenter(newPos);
+                // إذا كان المسار مرسوماً بالفعل، وسّع الخريطة ليشمل المسار والسائق
+                if (routeRendered && pickupMarker && destinationMarker) {
+                    const bounds = new google.maps.LatLngBounds();
+                    bounds.extend(pickupMarker.getPosition());
+                    bounds.extend(destinationMarker.getPosition());
+                    bounds.extend(newPos);
+                    map.fitBounds(bounds);
+                }
             }
-            
-            lastDriverPos = newPos;
         }
 
         // ==============================================
@@ -625,8 +646,6 @@
 
                 if (frames < totalFrames) {
                     requestAnimationFrame(step);
-                } else {
-                    map.panTo(endPos);
                 }
             }
             requestAnimationFrame(step);
