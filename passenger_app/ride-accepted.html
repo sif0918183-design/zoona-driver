@@ -248,6 +248,34 @@
         let driverLocationChannel = null;
 
         // ==============================================
+        // دالة مساعدة لاستخراج الإحداثيات من location_point
+        // ==============================================
+        function extractCoordinatesFromPoint(point) {
+            if (!point) return null;
+            
+            // إذا كان النص بصيغة POINT(lng lat)
+            if (typeof point === 'string') {
+                const matches = point.match(/POINT\(([^ ]+) ([^)]+)\)/i);
+                if (matches) {
+                    return {
+                        lng: parseFloat(matches[1]),
+                        lat: parseFloat(matches[2])
+                    };
+                }
+            }
+            
+            // إذا كان الكائن يحتوي على إحداثيات
+            if (point.coordinates && point.coordinates.length === 2) {
+                return {
+                    lng: point.coordinates[0],
+                    lat: point.coordinates[1]
+                };
+            }
+            
+            return null;
+        }
+
+        // ==============================================
         // التهيئة عند تحميل الصفحة
         // ==============================================
         document.addEventListener('DOMContentLoaded', async function() {
@@ -319,56 +347,7 @@
             });
 
             fetchRideDetails();
-            
-            if (currentRideId) {
-                startDriverLocationPolling();
-            }
-            
-            // التحقق من وجود موقع معلق
-            if (window.pendingDriverPos) {
-                updateDriverMarker(window.pendingDriverPos);
-                window.pendingDriverPos = null;
-            }
         };
-
-        // ==============================================
-        // بدء استطلاع موقع السائق بشكل مستمر
-        // ==============================================
-        function startDriverLocationPolling() {
-            console.log('🔄 بدء استطلاع موقع السائق...');
-            
-            const pollInterval = setInterval(async () => {
-                if (!currentDriverId) return;
-                
-                try {
-                    const { data, error } = await tarhalDB
-                        .from('driver_locations')
-                        .select('lat, lng, last_updated')
-                        .eq('driver_id', currentDriverId)
-                        .maybeSingle();
-                    
-                    if (data && data.lat && data.lng) {
-                        console.log('📍 تم جلب موقع السائق:', data);
-                        updateDriverMarker({
-                            lat: parseFloat(data.lat),
-                            lng: parseFloat(data.lng)
-                        });
-                        
-                        clearInterval(pollInterval);
-                        subscribeToDriverLocation();
-                    }
-                } catch (e) {
-                    console.warn('⚠️ خطأ في استطلاع موقع السائق:', e);
-                }
-            }, 3000);
-            
-            setTimeout(() => {
-                clearInterval(pollInterval);
-                if (currentDriverId) {
-                    subscribeToDriverLocation();
-                }
-            }, 30000);
-        }
 
         // ==============================================
         // جلب تفاصيل الرحلة
@@ -440,8 +419,8 @@
                     if (ride.driver_id) {
                         currentDriverId = ride.driver_id;
                         console.log('👤 تم تعيين معرف السائق:', currentDriverId);
-                        subscribeToDriverLocation();
                         fetchDriverCurrentLocation();
+                        subscribeToDriverLocation();
                     }
                 }
                 
@@ -453,7 +432,7 @@
         }
 
         // ==============================================
-        // جلب الموقع الحالي للسائق مع إعادة المحاولة
+        // جلب الموقع الحالي للسائق من location_point
         // ==============================================
         async function fetchDriverCurrentLocation(retryCount = 0) {
             if (!currentDriverId) {
@@ -467,9 +446,10 @@
             try {
                 console.log('🔍 جلب آخر موقع للسائق:', currentDriverId);
                 
+                // استعلام خاص لتحويل location_point إلى نص
                 const { data, error } = await tarhalDB
                     .from('driver_locations')
-                    .select('lat, lng, last_updated')
+                    .select('location_point, last_updated')
                     .eq('driver_id', currentDriverId)
                     .order('last_updated', { ascending: false })
                     .limit(1)
@@ -483,12 +463,18 @@
                     return;
                 }
                 
-                if (data && data.lat && data.lng) {
+                if (data && data.location_point) {
                     console.log('✅ تم العثور على موقع السائق:', data);
-                    updateDriverMarker({
-                        lat: parseFloat(data.lat),
-                        lng: parseFloat(data.lng)
-                    });
+                    
+                    // استخراج الإحداثيات من location_point
+                    const coords = extractCoordinatesFromPoint(data.location_point);
+                    
+                    if (coords) {
+                        console.log('📍 الإحداثيات المستخرجة:', coords);
+                        updateDriverMarker(coords);
+                    } else {
+                        console.log('⚠️ فشل استخراج الإحداثيات من:', data.location_point);
+                    }
                 } else {
                     console.log('⚠️ لا يوجد موقع مسجل للسائق بعد');
                     
@@ -649,7 +635,7 @@
                     bounds.extend(pickup);
                     bounds.extend(destination);
                     
-                    if (driverMarker) {
+                    if (driverMarker && driverMarker.getPosition()) {
                         bounds.extend(driverMarker.getPosition());
                     }
                     
@@ -689,7 +675,11 @@
         function updateDriverMarker(pos) {
             if (!map) {
                 console.log('⏳ الخريطة غير جاهزة بعد، حفظ الموقع للاستخدام لاحقاً');
-                window.pendingDriverPos = pos;
+                return;
+            }
+            
+            if (!pos || typeof pos.lat !== 'number' || typeof pos.lng !== 'number') {
+                console.error('❌ إحداثيات غير صالحة:', pos);
                 return;
             }
             
@@ -705,7 +695,8 @@
             const newPos = new google.maps.LatLng(pos.lat, pos.lng);
             
             if (driverMarker) {
-                animateMarker(driverMarker, newPos);
+                driverMarker.setPosition(newPos);
+                console.log('🔄 تم تحديث موقع علامة السائق');
             } else {
                 driverMarker = new google.maps.Marker({
                     position: newPos,
@@ -732,36 +723,11 @@
         }
 
         // ==============================================
-        // تحريك العلامة بسلاسة
-        // ==============================================
-        function animateMarker(marker, newPos) {
-            const startPos = marker.getPosition();
-            const endPos = newPos;
-            let frames = 0;
-            const totalFrames = 30;
-
-            function step() {
-                frames++;
-                const lat = startPos.lat() + (endPos.lat() - startPos.lat()) * (frames / totalFrames);
-                const lng = startPos.lng() + (endPos.lng() - startPos.lng()) * (frames / totalFrames);
-                marker.setPosition(new google.maps.LatLng(lat, lng));
-
-                if (frames < totalFrames) {
-                    requestAnimationFrame(step);
-                }
-            }
-            requestAnimationFrame(step);
-        }
-
-        // ==============================================
         // الاشتراك في تحديثات موقع السائق
         // ==============================================
         function subscribeToDriverLocation() {
             if (!currentDriverId) {
-                console.log('⏳ لا يوجد معرف سائق بعد، سأحاول مرة أخرى');
-                setTimeout(() => {
-                    if (currentDriverId) subscribeToDriverLocation();
-                }, 2000);
+                console.log('⏳ لا يوجد معرف سائق بعد');
                 return;
             }
             
@@ -780,11 +746,11 @@
                     filter: `driver_id=eq.${currentDriverId}`
                 }, (payload) => {
                     console.log('📍 إدراج جديد لموقع السائق:', payload.new);
-                    if (payload.new && payload.new.lat && payload.new.lng) {
-                        updateDriverMarker({
-                            lat: parseFloat(payload.new.lat),
-                            lng: parseFloat(payload.new.lng)
-                        });
+                    if (payload.new && payload.new.location_point) {
+                        const coords = extractCoordinatesFromPoint(payload.new.location_point);
+                        if (coords) {
+                            updateDriverMarker(coords);
+                        }
                     }
                 })
                 .on('postgres_changes', {
@@ -794,18 +760,16 @@
                     filter: `driver_id=eq.${currentDriverId}`
                 }, (payload) => {
                     console.log('📍 تحديث موقع السائق:', payload.new);
-                    if (payload.new && payload.new.lat && payload.new.lng) {
-                        updateDriverMarker({
-                            lat: parseFloat(payload.new.lat),
-                            lng: parseFloat(payload.new.lng)
-                        });
+                    if (payload.new && payload.new.location_point) {
+                        const coords = extractCoordinatesFromPoint(payload.new.location_point);
+                        if (coords) {
+                            updateDriverMarker(coords);
+                        }
                     }
                 })
                 .subscribe((status) => {
                     console.log('📡 حالة الاشتراك:', status);
                 });
-            
-            fetchDriverCurrentLocation();
         }
 
         // ==============================================
