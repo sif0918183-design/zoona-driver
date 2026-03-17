@@ -324,11 +324,6 @@
             if (currentRideId) {
                 startDriverLocationPolling();
             }
-            
-            if (window.pendingDriverPos) {
-                updateDriverMarker(window.pendingDriverPos);
-                window.pendingDriverPos = null;
-            }
         };
 
         // ==============================================
@@ -737,57 +732,53 @@
         }
 
         // ==============================================
-        // تحديث موقع السائق على الخريطة باستخدام lat, lng
+        // تحديث موقع السائق على الخريطة - نسخة مطابقة لصفحة السائق
         // ==============================================
         function updateDriverMarker(pos) {
-            if (!map) {
-                console.log('⏳ الخريطة غير جاهزة بعد، حفظ الموقع للاستخدام لاحقاً');
-                window.pendingDriverPos = pos;
-                return;
-            }
-            
-            if (!pos || typeof pos.lat !== 'number' || typeof pos.lng !== 'number') {
-                console.error('❌ إحداثيات غير صالحة:', pos);
-                return;
-            }
-            
-            console.log('🚗 تحديث موقع السائق على الخريطة:', pos.lat, pos.lng);
-            
+            if (!map) return;
+
             const icon = {
                 url: 'https://cdn-icons-png.flaticon.com/512/3202/3202926.png',
-                scaledSize: new google.maps.Size(50, 50),
-                anchor: new google.maps.Point(25, 25),
-                zIndex: 1000
+                scaledSize: new google.maps.Size(40, 40),
+                anchor: new google.maps.Point(20, 20)
             };
-            
+
             const newPos = new google.maps.LatLng(pos.lat, pos.lng);
-            
+
             if (driverMarker) {
-                driverMarker.setPosition(newPos);
-                console.log('🔄 تم تحديث موقع علامة السائق');
+                animateMarker(driverMarker, newPos);
             } else {
                 driverMarker = new google.maps.Marker({
                     position: newPos,
                     map: map,
                     icon: icon,
-                    title: 'موقع السائق',
-                    zIndex: 1000,
-                    optimized: false
+                    title: 'موقع السائق'
                 });
-                
-                console.log('✅ تم إنشاء علامة السائق');
-                
-                if (pickupMarker && destinationMarker) {
-                    const bounds = new google.maps.LatLngBounds();
-                    bounds.extend(pickupMarker.getPosition());
-                    bounds.extend(destinationMarker.getPosition());
-                    bounds.extend(newPos);
-                    map.fitBounds(bounds);
-                } else {
-                    map.setCenter(newPos);
-                    map.setZoom(15);
+            }
+
+            map.setCenter(pos);
+        }
+
+        // ==============================================
+        // تحريك السيارة بسلاسة - مطابقة لصفحة السائق
+        // ==============================================
+        function animateMarker(marker, newPos) {
+            const startPos = marker.getPosition();
+            const endPos = newPos;
+            let frames = 0;
+            const totalFrames = 30;
+
+            function step() {
+                frames++;
+                const lat = startPos.lat() + (endPos.lat() - startPos.lat()) * (frames / totalFrames);
+                const lng = startPos.lng() + (endPos.lng() - startPos.lng()) * (frames / totalFrames);
+                marker.setPosition(new google.maps.LatLng(lat, lng));
+
+                if (frames < totalFrames) {
+                    requestAnimationFrame(step);
                 }
             }
+            requestAnimationFrame(step);
         }
 
         // ==============================================
@@ -819,8 +810,8 @@
                     console.log('📍 إدراج جديد لموقع السائق:', payload.new);
                     if (payload.new && payload.new.lat && payload.new.lng) {
                         updateDriverMarker({
-                            lat: parseFloat(payload.new.lat),
-                            lng: parseFloat(payload.new.lng)
+                            lat: payload.new.lat,
+                            lng: payload.new.lng
                         });
                     }
                 })
@@ -833,8 +824,8 @@
                     console.log('📍 تحديث موقع السائق:', payload.new);
                     if (payload.new && payload.new.lat && payload.new.lng) {
                         updateDriverMarker({
-                            lat: parseFloat(payload.new.lat),
-                            lng: parseFloat(payload.new.lng)
+                            lat: payload.new.lat,
+                            lng: payload.new.lng
                         });
                     }
                 })
