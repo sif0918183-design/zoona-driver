@@ -381,6 +381,16 @@
             gap: 10px;
             padding: 5px;
         }
+        
+        .home-actions.btn-row {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .home-actions.btn-row .btn {
+            flex: 1;
+            min-width: 0;
+        }
 
         .action-card {
             background: white;
@@ -974,6 +984,11 @@
         .splash-content {
             text-align: center;
             position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100%;
         }
 
         .splash-logo {
@@ -982,10 +997,11 @@
             position: relative;
             z-index: 2;
             animation: logoIn 0.9s ease;
+            margin-bottom: 20px;
         }
 
         .loader {
-            margin: 26px auto 10px;
+            margin: 10px auto;
             width: 36px;
             height: 36px;
             border-radius: 50%;
@@ -998,6 +1014,7 @@
             font-family: "Tajawal", sans-serif;
             font-size: 14px;
             color: #eef2ff;
+            margin-top: 10px;
         }
 
         @keyframes spin {
@@ -1819,10 +1836,15 @@
                 </div>
             </div>
 
-            <div style="margin-bottom: 20px;">
-                <button class="btn btn-driver" onclick="requestRide()" style="height: 60px; font-size: 16px;">
+            <div class="home-actions btn-row" style="margin-bottom: 20px;">
+                <button class="btn btn-driver" onclick="requestRide()" style="height: 100px; font-size: 16px;">
                     <i class="ph-bold ph-car"></i>
                     اطلب رحلة الآن
+                </button>
+                
+                <button class="btn btn-driver" onclick="openTravelPlatform()" style="height: 100px; font-size: 16px;">
+                    <i class="ph-bold ph-suitcase-simple"></i>
+                    اطلب رحلة سفر
                 </button>
             </div>
             
@@ -1837,9 +1859,9 @@
                     <h4>الإعدادات</h4>
                 </div>
                 
-                <div class="action-card" onclick="openTravelPlatform()">
-                    <div class="action-icon"><i class="ph-light ph-airplane-tilt"></i></div>
-                    <h4>منصة السفر</h4>
+                <div class="action-card" onclick="showNotification('قريباً: الملف الشخصي', 'info')">
+                    <div class="action-icon"><i class="ph-light ph-user-circle"></i></div>
+                    <h4>الملف الشخصي</h4>
                 </div>
 
                 <div class="action-card" onclick="showComplaints()">
@@ -1848,13 +1870,8 @@
                 </div>
             </div>
 
-            <div style="margin-top: 20px; display: grid; gap: 8px;">
-                <button class="btn btn-outline" onclick="showNotification('قريباً: الملف الشخصي', 'info')">
-                    <i class="ph-light ph-user-circle"></i>
-                    الملف الشخصي
-                </button>
-
-                <button class="btn btn-outline" onclick="logout()" style="color: var(--danger); border-color: var(--danger);">
+            <div style="margin-top: 20px;">
+                <button class="btn btn-driver" onclick="logout()" style="height: 50px;">
                     <i class="ph-bold ph-sign-out"></i>
                     تسجيل الخروج
                 </button>
