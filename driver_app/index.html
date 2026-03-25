@@ -957,6 +957,9 @@
         }
         
         showNotification('✅ الأنظمة جاهزة لاستقبال الطلبات', 'success');
+        
+        // تهيئة مستمع تحديث الرصيد
+        setupBalanceUpdateListener();
     }
 
     /**
@@ -1451,6 +1454,65 @@
             vip: 'VIP'
         };
         return names[type] || type;
+    }
+
+    // ============ الاستماع لتحديثات الرصيد من النوافذ الأخرى ============
+    async function setupBalanceUpdateListener() {
+        // الاستماع لـ BroadcastChannel
+        if (window.BroadcastChannel) {
+            const balanceChannel = new BroadcastChannel('driver_balance_channel');
+            balanceChannel.onmessage = async (event) => {
+                if (event.data.type === 'BALANCE_UPDATED') {
+                    console.log('💰 Received balance update from active ride');
+                    await refreshDriverBalance();
+                }
+            };
+        }
+        
+        // الاستماع لـ postMessage من النوافذ الفرعية
+        window.addEventListener('message', async (event) => {
+            if (event.data.type === 'BALANCE_UPDATE') {
+                console.log('💰 Received balance update message');
+                await refreshDriverBalance();
+            }
+        });
+        
+        // التحقق من وجود تحديث رصيد في localStorage
+        const needsUpdate = localStorage.getItem('balance_update_needed') === 'true';
+        if (needsUpdate) {
+            localStorage.removeItem('balance_update_needed');
+            await refreshDriverBalance();
+        }
+    }
+
+    // دالة تحديث رصيد السائق من قاعدة البيانات
+    async function refreshDriverBalance() {
+        if (!currentDriver || !currentDriver.id) return;
+        
+        console.log('🔄 Refreshing driver balance from database...');
+        
+        try {
+            const { data: driverData, error } = await tarhalDB
+                .from('drivers')
+                .select('balance')
+                .eq('id', currentDriver.id)
+                .single();
+                
+            if (!error && driverData) {
+                currentDriver.balance = driverData.balance;
+                localStorage.setItem('tarhal_driver', JSON.stringify(currentDriver));
+                
+                // تحديث الرصيد في الواجهة فوراً
+                const balanceEl = document.getElementById('driver-balance');
+                if (balanceEl) {
+                    balanceEl.textContent = (driverData.balance || 0).toLocaleString();
+                }
+                
+                console.log('✅ Balance updated:', driverData.balance);
+            }
+        } catch (error) {
+            console.error('❌ Error refreshing balance:', error);
+        }
     }
 
     function showNotification(message, type = 'info') {
@@ -1980,6 +2042,9 @@ async function toggleDriverStatus() {
             toggleBtn.innerHTML = '<i class="ph-bold ph-power"></i> متصل الآن';
             toggleBtn.classList.add('btn-danger');
             toggleBtn.classList.remove('btn-driver');
+            toggleBtn.style.background = '#dc2626';
+            toggleBtn.style.borderColor = '#dc2626';
+            toggleBtn.style.boxShadow = '0 6px 20px rgba(239, 68, 68, 0.3)';
             
             isDriverOnline = true;
             driverOnlineSince = new Date().toISOString();
@@ -2022,6 +2087,9 @@ async function toggleDriverStatus() {
             toggleBtn.innerHTML = '<i class="ph-bold ph-power"></i> تفعيل وضع العمل';
             toggleBtn.classList.remove('btn-danger');
             toggleBtn.classList.add('btn-driver');
+            toggleBtn.style.background = '';
+            toggleBtn.style.borderColor = '';
+            toggleBtn.style.boxShadow = '';
 
             // تحديث مؤشر الحالة أيضاً
             statusIndicator.className = 'status-indicator status-offline';
@@ -2054,6 +2122,9 @@ async function toggleDriverStatus() {
             toggleBtn.innerHTML = '<i class="ph-bold ph-power"></i> تفعيل وضع العمل';
             toggleBtn.classList.remove('btn-danger');
             toggleBtn.classList.add('btn-driver');
+            toggleBtn.style.background = '';
+            toggleBtn.style.borderColor = '';
+            toggleBtn.style.boxShadow = '';
             
             isDriverOnline = false;
             
@@ -2111,12 +2182,23 @@ async function restoreDriverStatus() {
     if (wasOnline && currentDriver && savedDriverId === currentDriver.id) {
         console.log(' Restoring FOREVER ONLINE mode from storage...');
         
-        // تحديث الواجهة أولاً
-        document.getElementById('driver-status-indicator').className = 'status-indicator status-online';
-        document.getElementById('driver-status-text').textContent = 'متصل وجاهز';
-        document.getElementById('toggle-online-btn').innerHTML = '<i class="ph-bold ph-power"></i> متصل الآن';
-        document.getElementById('toggle-online-btn').classList.add('btn-danger');
-        document.getElementById('toggle-online-btn').classList.remove('btn-driver');
+        // تحديث الواجهة أولاً - مع استخدام inline style لضمان استمرار اللون الأحمر
+        const statusIndicator = document.getElementById('driver-status-indicator');
+        const statusText = document.getElementById('driver-status-text');
+        const toggleBtn = document.getElementById('toggle-online-btn');
+        
+        statusIndicator.className = 'status-indicator status-online';
+        statusIndicator.style.background = '#dcfce7';
+        statusIndicator.style.color = '#16a34a';
+        statusText.textContent = 'متصل وجاهز';
+        toggleBtn.innerHTML = '<i class="ph-bold ph-power"></i> متصل الآن';
+        
+        // إضافة clsas btn-danger مع inline style كاحتياط
+        toggleBtn.classList.add('btn-danger');
+        toggleBtn.classList.remove('btn-driver');
+        toggleBtn.style.background = '#dc2626';
+        toggleBtn.style.borderColor = '#dc2626';
+        toggleBtn.style.boxShadow = '0 6px 20px rgba(239, 68, 68, 0.3)';
         
         isDriverOnline = true;
         driverOnlineSince = onlineSince || new Date().toISOString();
@@ -2139,11 +2221,20 @@ async function restoreDriverStatus() {
                 localStorage.removeItem('driver_online_since');
                 localStorage.removeItem('driver_online_id');
                 
-                document.getElementById('driver-status-indicator').className = 'status-indicator status-offline';
-                document.getElementById('driver-status-text').textContent = 'غير متصل';
-                document.getElementById('toggle-online-btn').innerHTML = '<i class="ph-bold ph-power"></i> تفعيل وضع العمل';
-                document.getElementById('toggle-online-btn').classList.remove('btn-danger');
-                document.getElementById('toggle-online-btn').classList.add('btn-driver');
+                const statusIndicatorOff = document.getElementById('driver-status-indicator');
+                const statusTextOff = document.getElementById('driver-status-text');
+                const toggleBtnOff = document.getElementById('toggle-online-btn');
+                
+                statusIndicatorOff.className = 'status-indicator status-offline';
+                statusIndicatorOff.style.background = '#fee2e2';
+                statusIndicatorOff.style.color = '#dc2626';
+                statusTextOff.textContent = 'غير متصل';
+                toggleBtnOff.innerHTML = '<i class="ph-bold ph-power"></i> تفعيل وضع العمل';
+                toggleBtnOff.classList.remove('btn-danger');
+                toggleBtnOff.classList.add('btn-driver');
+                toggleBtnOff.style.background = '';
+                toggleBtnOff.style.borderColor = '';
+                toggleBtnOff.style.boxShadow = '';
                 
                 isDriverOnline = false;
             }
