@@ -749,34 +749,24 @@
                 </div>
 
                 <div class="stat-card">
-                    <div class="stat-value" id="today-trips">0</div>
-                    <div class="stat-label">رحلات اليوم</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value" id="today-earnings">0</div>
-                    <div class="stat-label">أرباح اليوم</div>
-                </div>
-
-                <div class="stat-card">
                     <div class="stat-value" id="total-trips">0</div>
                     <div class="stat-label">إجمالي الرحلات</div>
                 </div>
             </div>
+
+            <button class="btn btn-driver mt-2" onclick="window.location.href='travel-platform.html'">
+                <i class="ph-light ph-airplane-tilt"></i>
+                دخول منصة سفريات زونا
+            </button>
 
             <button class="btn btn-driver mt-2" onclick="showDriverProfile()">
                 <i class="ph-light ph-user-circle"></i>
                 الملف الشخصي
             </button>
 
-            <button id="fix-notifications-btn" class="btn btn-outline mt-2" onclick="manualFixNotifications()">
-                <i class="ph-light ph-bell-ringing"></i>
-                إصلاح استلام الإشعارات
-            </button>
-
-            <button class="btn btn-driver mt-2" onclick="window.location.href='travel-platform.html'">
-                <i class="ph-light ph-airplane-tilt"></i>
-                دخول منصة سفريات زونا
+            <button class="btn btn-driver mt-2" onclick="window.location.href='customer-complaints.html'">
+                <i class="ph-light ph-warning-circle"></i>
+                الشكاوى والمقترحات
             </button>
 
             <button class="btn btn-driver mt-2" onclick="logoutDriver()">
@@ -1221,26 +1211,9 @@
             `${currentDriver.car_model || 'سيارة'} - ${getVehicleTypeName(currentDriver.car_type)}`;
 
         document.getElementById('driver-balance').textContent = 
-            (currentDriver.balance || 0).toLocaleString();
+            Math.floor(currentDriver.balance || 0);
 
         try {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            // Today's trips
-            const { data: rides, error } = await tarhalDB
-                .from('rides')
-                .select('*')
-                .eq('driver_id', currentDriver.id)
-                .gte('created_at', today.toISOString())
-                .eq('status', 'completed');
-
-            if (!error && rides) {
-                const todayEarnings = rides.reduce((sum, ride) => sum + (ride.driver_earnings || 0), 0);
-                document.getElementById('today-trips').textContent = rides.length;
-                document.getElementById('today-earnings').textContent = todayEarnings.toLocaleString();
-            }
-
             // Total trips
             const { data: totalRides, error: totalError } = await tarhalDB
                 .from('rides')
@@ -1505,7 +1478,9 @@
                 // تحديث الرصيد في الواجهة فوراً
                 const balanceEl = document.getElementById('driver-balance');
                 if (balanceEl) {
-                    balanceEl.textContent = (driverData.balance || 0).toLocaleString();
+                    // تحويل الرصيد إلى رقم صحيح مع تجاهل أي رقم بعد الفاصلة
+                    const intBalance = Math.floor(driverData.balance || 0);
+                    balanceEl.textContent = intBalance.toString();
                 }
                 
                 console.log('✅ Balance updated:', driverData.balance);
