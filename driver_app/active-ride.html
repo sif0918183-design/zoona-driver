@@ -621,6 +621,21 @@
                 }
 
                 if (success) {
+                    // إرسال حدث تحديث الرصيد للصفحة الرئيسية
+                    localStorage.setItem('balance_update_needed', 'true');
+                    localStorage.setItem('last_ride_completed', Date.now().toString());
+                    
+                    // إذا كانت الصفحة الرئيسية مفتوحة، إرسال حدث لها
+                    if (window.opener) {
+                        window.opener.postMessage({ type: 'BALANCE_UPDATE' }, '*');
+                    }
+                    
+                    // استخدام BroadcastChannel للتواصل مع الصفحة الرئيسية
+                    if (window.BroadcastChannel) {
+                        const balanceChannel = new BroadcastChannel('driver_balance_channel');
+                        balanceChannel.postMessage({ type: 'BALANCE_UPDATED' });
+                    }
+                    
                     updateUIStatus(nextStatus);
                 }
             }
