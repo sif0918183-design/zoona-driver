@@ -8,39 +8,13 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <!-- Tajawal Font -->
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Global Tech Redesign Theme -->
+    <link rel="stylesheet" href="../shared/theme.css">
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-        }
-
-        :root {
-            /* --- Base Palette (Light Mode Focus) --- */
-            --tech-bg: #F3F4F6;
-            --tech-card: #FFFFFF;
-            --tech-text: #111827;
-            --tech-border: #E5E7EB;
-            
-            /* --- Zoona Brand Colors (Emerald Deep) --- */
-            --zoona-primary: #008B5E;
-            --zoona-primary-dark: #005F41;
-            --zoona-emerald-glow: rgba(0, 139, 94, 0.25);
-            --zoona-primary-light: rgba(0, 139, 94, 0.05);
-            
-            /* --- Semantic Colors --- */
-            --danger: #EF4444;
-            --warning: #F59E0B;
-            --success: #008B5E;
-            
-            /* --- Gradients --- */
-            --grad-emerald: linear-gradient(180deg, #008B5E 0%, #005F41 100%);
-            --grad-header: linear-gradient(180deg, #008B5E 0%, #005F41 100%);
-            
-            /* --- Spacing & Radius --- */
-            --radius-standard: 14px;
-            --radius-large: 20px;
-            --tech-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
         }
 
         body {
@@ -176,41 +150,23 @@
             font-size: 1rem;
         }
 
-        /* ===== تحسينات الحقول - إصلاح الشفافية ===== */
         .form-control {
             width: 100%;
             padding: 12px 15px;
-            border: 1.5px solid #E5E7EB;
+            border: 1.5px solid var(--gray-light);
             border-radius: 12px;
             font-size: 1rem;
             font-family: 'Tajawal', sans-serif;
             transition: all 0.3s ease;
-            background: #FFFFFF !important; /* خلفية بيضاء صلبة */
-            color: #111827 !important; /* نص داكن واضح */
-            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+            background: var(--tech-card);
+            color: var(--tech-text);
         }
 
         .form-control:focus {
             outline: none;
             border-color: var(--zoona-primary);
-            box-shadow: 0 0 0 3px var(--zoona-emerald-glow);
-            background: #FFFFFF !important;
-        }
-
-        /* تحسين النص الموجود داخل الحقول */
-        .form-control::placeholder {
-            color: #9CA3AF;
-            opacity: 1;
-        }
-
-        /* تحسين حقول التحديد (select) */
-        select.form-control {
-            appearance: none;
-            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23008B5E' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-            background-repeat: no-repeat;
-            background-position: left 15px center;
-            background-size: 20px;
-            background-color: #FFFFFF !important;
+            box-shadow: 0 0 15px var(--zoona-primary-light);
+            background: var(--tech-card);
         }
 
         textarea.form-control {
@@ -235,18 +191,17 @@
         .account-type-option label {
             display: block;
             padding: 15px;
-            background: #FFFFFF;
-            border: 1.5px solid #E5E7EB;
+            background: var(--tech-card);
+            border: 1.5px solid var(--gray-light);
             border-radius: 12px;
             text-align: center;
             cursor: pointer;
             transition: all 0.3s ease;
-            color: #6B7280;
-            font-weight: 500;
+            color: var(--gray);
         }
 
         .account-type-option label:hover {
-            background: #F9FAFB;
+            background: var(--tech-bg);
             border-color: var(--zoona-primary);
         }
 
@@ -273,33 +228,43 @@
             gap: 20px;
         }
 
-        .whatsapp-field, .phone-field {
+        .whatsapp-field {
             position: relative;
         }
 
-        .whatsapp-field .whatsapp-icon,
+        .whatsapp-field .whatsapp-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #10B981;
+            font-size: 1.2rem;
+            background: var(--tech-bg);
+            padding: 5px;
+            border-radius: 50%;
+        }
+
+        .whatsapp-field .form-control {
+            padding-right: 15px;
+            padding-left: 50px;
+        }
+
+        .phone-field {
+            position: relative;
+        }
+
         .phone-field .phone-icon {
             position: absolute;
             left: 15px;
             top: 50%;
             transform: translateY(-50%);
+            color: var(--zoona-primary);
             font-size: 1.2rem;
-            background: #FFFFFF;
+            background: var(--tech-bg);
             padding: 5px;
             border-radius: 50%;
-            pointer-events: none;
-            z-index: 2;
         }
 
-        .whatsapp-field .whatsapp-icon i {
-            color: #10B981;
-        }
-
-        .phone-field .phone-icon i {
-            color: var(--zoona-primary);
-        }
-
-        .whatsapp-field .form-control,
         .phone-field .form-control {
             padding-right: 15px;
             padding-left: 50px;
@@ -309,9 +274,9 @@
             text-align: center;
             margin: 30px 0;
             padding: 20px;
-            background: #F9FAFB;
+            background: var(--tech-bg);
             border-radius: 15px;
-            border: 2px dashed #E5E7EB;
+            border: 2px dashed var(--gray-light);
         }
 
         .rating-title {
@@ -330,21 +295,21 @@
 
         .star {
             font-size: 2rem;
-            color: #D1D5DB;
+            color: #ddd;
             cursor: pointer;
             transition: all 0.3s ease;
         }
 
         .star:hover,
         .star.active {
-            color: #FBBF24;
+            color: #ffd700;
             transform: scale(1.2);
         }
 
         .rating-labels {
             display: flex;
             justify-content: space-between;
-            color: #9CA3AF;
+            color: #777;
             font-size: 0.9rem;
             margin-top: 10px;
         }
@@ -389,7 +354,7 @@
         }
 
         .submit-btn:disabled {
-            background: #9CA3AF;
+            background: #ccc;
             cursor: not-allowed;
             transform: none;
             box-shadow: none;
@@ -422,7 +387,7 @@
             text-align: center;
             position: relative;
             overflow: hidden;
-            border: 1px solid #E5E7EB;
+            border: 1px solid var(--gray-light);
         }
 
         .response-info::before {
@@ -450,16 +415,16 @@
 
         .response-item {
             padding: 20px 15px;
-            background: #FFFFFF;
+            background: var(--tech-card);
             border-radius: 15px;
             transition: all 0.3s ease;
             box-shadow: var(--tech-shadow);
-            border: 1px solid #E5E7EB;
+            border: 1px solid var(--tech-border);
         }
 
         .response-item:hover {
             transform: translateY(-5px);
-            box-shadow: 0 8px 20px rgba(0, 139, 94, 0.15);
+            box-shadow: 0 8px 20px var(--zoona-primary-light);
             border-color: var(--zoona-primary);
         }
 
@@ -467,7 +432,7 @@
             color: var(--zoona-primary);
             font-size: 1.8rem;
             margin-bottom: 12px;
-            background: #F3F4F6;
+            background: var(--zoona-primary-light);
             width: 50px;
             height: 50px;
             border-radius: 12px;
@@ -478,7 +443,7 @@
         }
 
         .response-item h3 {
-            color: #111827;
+            color: var(--tech-text);
             font-size: 1.1rem;
             margin-bottom: 8px;
             font-weight: 600;
@@ -486,7 +451,7 @@
 
         .response-item p {
             font-size: 0.9rem;
-            color: #6B7280;
+            color: #666;
             line-height: 1.5;
         }
 
@@ -526,29 +491,18 @@
             border-radius: 10px;
             text-align: center;
             font-weight: 500;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
         }
 
         .alert-success {
-            background: #D1FAE5;
-            color: #065F46;
-            border: 1px solid #A7F3D0;
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
         }
 
         .alert-error {
-            background: #FEE2E2;
-            color: #991B1B;
-            border: 1px solid #FECACA;
-        }
-
-        small {
-            color: #6B7280;
-            font-size: 0.85rem;
-            display: block;
-            margin-top: 5px;
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
         }
 
         /* تحسينات للجوال */
@@ -631,7 +585,7 @@
             }
 
             .response-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(2, 1fr);
                 gap: 10px;
             }
 
@@ -700,7 +654,7 @@
                                 <i class="ph-light ph-whatsapp-logo"></i>
                             </div>
                             <input type="tel" id="whatsapp" name="whatsapp" class="form-control" placeholder="0XXXXXXXXX">
-                            <small>للتواصل عبر الواتساب إذا أردت</small>
+                            <small style="color: #94a3b8; font-size: 0.85rem; display: block; margin-top: 5px;">للتواصل عبر الواتساب إذا أردت</small>
                         </div>
                         
                         <div class="phone-field">
@@ -709,7 +663,7 @@
                                 <i class="ph-light ph-phone"></i>
                             </div>
                             <input type="tel" id="phone" name="phone" class="form-control" required placeholder="0XXXXXXXXX">
-                            <small>للتواصل المباشر</small>
+                            <small style="color: #94a3b8; font-size: 0.85rem; display: block; margin-top: 5px;">للتواصل المباشر</small>
                         </div>
                     </div>
                 </div>
@@ -818,9 +772,9 @@
                 const rating = this.getAttribute('data-rating');
                 stars.forEach(s => {
                     if (s.getAttribute('data-rating') <= rating) {
-                        s.style.color = '#FBBF24';
+                        s.style.color = '#ffd700';
                     } else {
-                        s.style.color = '#D1D5DB';
+                        s.style.color = '#ddd';
                     }
                 });
             });
@@ -828,9 +782,7 @@
             star.addEventListener('mouseout', function() {
                 stars.forEach(s => {
                     if (s.getAttribute('data-rating') > ratingInput.value) {
-                        s.style.color = '#D1D5DB';
-                    } else if (s.getAttribute('data-rating') <= ratingInput.value) {
-                        s.style.color = '#FBBF24';
+                        s.style.color = '#ddd';
                     }
                 });
             });
@@ -842,7 +794,7 @@
             const alertDiv = document.createElement('div');
             alertDiv.className = `alert alert-${type}`;
             alertDiv.innerHTML = `
-                <i class="ph-light ph-${type === 'success' ? 'check-circle' : 'warning-circle'}"></i>
+                <i class="ph-light ph-${type === 'success' ? 'check-circle' : 'warning'}"></i>
                 ${message}
             `;
             alertsContainer.appendChild(alertDiv);
@@ -921,32 +873,20 @@
             submitBtn.innerHTML = '<span class="loading"></span> جاري الإرسال...';
             
             try {
-                // التحقق من وجود نوع الحساب
-                const selectedAccountType = document.querySelector('input[name="accountType"]:checked');
-                if (!selectedAccountType) {
-                    throw new Error('يرجى اختيار نوع الحساب (راكب أو سائق)');
-                }
-
                 // جمع بيانات النموذج
                 const formData = {
-                    name: document.getElementById('name').value.trim(),
-                    accountType: selectedAccountType.value,
-                    whatsapp: document.getElementById('whatsapp').value.trim() || 'غير محدد',
-                    phone: document.getElementById('phone').value.trim(),
+                    name: document.getElementById('name').value,
+                    accountType: document.querySelector('input[name="accountType"]:checked').value,
+                    whatsapp: document.getElementById('whatsapp').value || 'غير محدد',
+                    phone: document.getElementById('phone').value,
                     complaintType: document.getElementById('complaintType').value,
-                    message: document.getElementById('message').value.trim(),
+                    message: document.getElementById('message').value,
                     rating: document.getElementById('rating').value
                 };
 
                 // التحقق من صحة البيانات
-                if (!formData.name) {
-                    throw new Error('يرجى إدخال الاسم الكامل');
-                }
-                if (!formData.phone) {
-                    throw new Error('يرجى إدخال رقم الهاتف');
-                }
-                if (!formData.message) {
-                    throw new Error('يرجى كتابة تفاصيل الشكوى أو الاقتراح');
+                if (!formData.name || !formData.accountType || !formData.phone || !formData.message) {
+                    throw new Error('يرجى ملء جميع الحقول الإلزامية');
                 }
 
                 // إرسال البيانات إلى JSONBin.io
@@ -970,6 +910,27 @@
             }
         });
 
+        // رسالة تأكيد قبل الإرسال
+        document.getElementById('complaintForm').addEventListener('submit', function(e) {
+            const name = document.getElementById('name').value;
+            const message = document.getElementById('message').value;
+            const accountType = document.querySelector('input[name="accountType"]:checked');
+            const phone = document.getElementById('phone').value;
+            
+            if (!name || !message || !accountType || !phone) {
+                showAlert('يرجى ملء جميع الحقول الإلزامية', 'error');
+                e.preventDefault();
+                return;
+            }
+        });
+
+        // تحذير إذا لم يتم إعداد المفاتيح
+        if (JSONBIN_CONFIG.BIN_ID === 'YOUR_BIN_ID_HERE' || JSONBIN_CONFIG.API_KEY === 'YOUR_MASTER_KEY_HERE') {
+            document.addEventListener('DOMContentLoaded', function() {
+                showAlert('يرجى إعداد مفاتيح JSONBin.io أولاً', 'error');
+            });
+        }
+
         // جلب بيانات المستخدم من localStorage وتعبئة الحقول
         document.addEventListener('DOMContentLoaded', function() {
             const savedUser = localStorage.getItem('tarhal_customer');
@@ -985,10 +946,10 @@
                     // تعبئة الهاتف
                     if (user.phone) {
                         document.getElementById('phone').value = user.phone;
-                        document.getElementById('whatsapp').value = user.phone;
+                        document.getElementById('whatsapp').value = user.phone; // افتراضاً نفس الرقم
                     }
 
-                    // تحديد نوع الحساب كراكب افتراضياً
+                    // تحديد نوع الحساب كراكب افتراضياً لمستخدمي تطبيق الركاب
                     const passengerRadio = document.getElementById('passenger');
                     if (passengerRadio) {
                         passengerRadio.checked = true;
