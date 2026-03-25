@@ -247,6 +247,7 @@
         let routeRendered = false;
         let driverLocationChannel = null;
         let pollingInterval = null;
+        let driverLocationBroadcastChannel = null;
 
         // ==============================================
         // التهيئة عند تحميل الصفحة
@@ -300,8 +301,9 @@
             
             const defaultCenter = { lat: 15.5007, lng: 32.5599 };
             
+            // استخدام نفس إعدادات الخريطة كما في صفحة السائق
             map = new google.maps.Map(document.getElementById('map'), {
-                zoom: 13,
+                zoom: 16,
                 center: defaultCenter,
                 mapTypeControl: false,
                 streetViewControl: false,
@@ -313,9 +315,9 @@
                 map: map,
                 suppressMarkers: true,
                 polylineOptions: {
-                    strokeColor: '#008B5E',
+                    strokeColor: '#16a34a',
                     strokeWeight: 5,
-                    strokeOpacity: 0.7
+                    strokeOpacity: 0.6
                 }
             });
 
@@ -439,6 +441,7 @@
                         console.log('👤 تم تعيين معرف السائق:', currentDriverId);
                         fetchDriverCurrentLocation();
                         subscribeToDriverLocation();
+                        setupDriverLocationBroadcastChannel();
                     }
                 }
                 
@@ -755,8 +758,7 @@
                     title: 'موقع السائق'
                 });
             }
-
-            map.setCenter(pos);
+            // لا نستخدم setCenter هنا لمنع قفز الخريطة - يتم توسيطها عند رسم المسار
         }
 
         // ==============================================
@@ -859,6 +861,35 @@
                     updateStatusUI(payload.new.status);
                 })
                 .subscribe();
+        }
+
+        // ==============================================
+        // إعداد BroadcastChannel لتحديث موقع السائق فورياً
+        // ==============================================
+        function setupDriverLocationBroadcastChannel() {
+            if (!window.BroadcastChannel) {
+                console.log('⚠️ BroadcastChannel غير مدعوم');
+                return;
+            }
+            
+            // إغلاق القناة القديمة إذا كانت موجودة
+            if (driverLocationBroadcastChannel) {
+                driverLocationBroadcastChannel.close();
+            }
+            
+            driverLocationBroadcastChannel = new BroadcastChannel('driver_location_channel');
+            
+            driverLocationBroadcastChannel.onmessage = (event) => {
+                if (event.data.type === 'LOCATION_UPDATE' && event.data.driverId === currentDriverId) {
+                    console.log('📍 تحديث موقع فوري من السائق:', event.data);
+                    updateDriverMarker({
+                        lat: event.data.lat,
+                        lng: event.data.lng
+                    });
+                }
+            };
+            
+            console.log('✅ تم إعداد BroadcastChannel لتحديث موقع السائق');
         }
 
         // ==============================================

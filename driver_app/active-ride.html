@@ -525,6 +525,17 @@
                         
                         // إرسال الموقع لقاعدة البيانات
                         updateDriverLocationDB(position);
+                        
+                        // إرسال تحديث الموقع فوري للراكب عبر BroadcastChannel
+                        if (window.BroadcastChannel && currentDriverId) {
+                            const locationChannel = new BroadcastChannel('driver_location_channel');
+                            locationChannel.postMessage({
+                                type: 'LOCATION_UPDATE',
+                                driverId: currentDriverId,
+                                lat: position.coords.latitude,
+                                lng: position.coords.longitude
+                            });
+                        }
                     },
                     (err) => console.warn('⚠️ خطأ في watchPosition:', err.message),
                     geoOptions
