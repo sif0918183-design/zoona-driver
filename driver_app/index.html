@@ -2480,7 +2480,7 @@ async function submitComplaint(event) {
         whatsapp: formData.get('whatsapp'),
         phone: formData.get('phone'),
         complaint_type: formData.get('complaint_type'),
-        description: formData.get('description'),
+        message: formData.get('description'),
         rating: formData.get('rating'),
         created_at: new Date().toISOString()
     };
