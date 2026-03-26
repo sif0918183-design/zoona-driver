@@ -2333,51 +2333,51 @@ if ('serviceWorker' in navigator) {
 
 <!-- Complaints Modal -->
 <div id="complaints-modal" class="overlay hidden">
-    <div class="modal" style="background: var(--tech-card); border: 2px solid var(--zoona-primary); backdrop-filter: blur(15px); max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
+    <div class="modal" style="background: var(--tech-card); border: 2px solid var(--zoona-primary); backdrop-filter: blur(15px); max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; font-family: 'Tajawal', sans-serif;">
         <div class="modal-header" style="border-bottom: 2px solid var(--zoona-primary); padding-bottom: 15px; margin-bottom: 15px;">
-            <h2 class="modal-title" style="color: var(--zoona-primary); font-size: 1.5rem;">الشكاوى والمقترحات</h2>
+            <h2 class="modal-title" style="color: var(--zoona-primary); font-size: 1.5rem; font-family: 'Tajawal', sans-serif;">الشكاوى والمقترحات</h2>
             <button onclick="closeComplaintsModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--gray);">&times;</button>
         </div>
-        <form id="complaints-form" onsubmit="submitComplaint(event)">
+        <form id="complaints-form" onsubmit="submitComplaint(event)" style="font-family: 'Tajawal', sans-serif;">
             <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; color: var(--tech-text); font-weight: 600;">الاسم الكامل</label>
+                <label style="display: block; margin-bottom: 5px; color: var(--tech-text); font-weight: 600; font-family: 'Tajawal', sans-serif;">الاسم الكامل</label>
                 <input type="text" id="complaint-name" name="name" required 
-                       style="width: 100%; padding: 12px; border: 1.5px solid var(--tech-border); border-radius: 10px; background: white; color: var(--tech-text); font-size: 1rem;">
+                       style="width: 100%; padding: 12px; border: 1.5px solid var(--tech-border); border-radius: 10px; background: white; color: var(--tech-text); font-size: 1rem; font-family: 'Tajawal', sans-serif;">
             </div>
             
             <div style="display: flex; gap: 15px; margin-bottom: 15px;">
                 <div style="flex: 1;">
-                    <label style="display: block; margin-bottom: 5px; color: var(--tech-text); font-weight: 600;">رقم الواتساب</label>
+                    <label style="display: block; margin-bottom: 5px; color: var(--tech-text); font-weight: 600; font-family: 'Tajawal', sans-serif;">رقم الواتساب</label>
                     <input type="tel" id="complaint-whatsapp" name="whatsapp" 
-                           style="width: 100%; padding: 12px; border: 1.5px solid var(--tech-border); border-radius: 10px; background: white; color: var(--tech-text); font-size: 1rem;">
+                           style="width: 100%; padding: 12px; border: 1.5px solid var(--tech-border); border-radius: 10px; background: white; color: var(--tech-text); font-size: 1rem; font-family: 'Tajawal', sans-serif;">
                 </div>
                 <div style="flex: 1;">
-                    <label style="display: block; margin-bottom: 5px; color: var(--tech-text); font-weight: 600;">رقم الهاتف</label>
+                    <label style="display: block; margin-bottom: 5px; color: var(--tech-text); font-weight: 600; font-family: 'Tajawal', sans-serif;">رقم الهاتف</label>
                     <input type="tel" id="complaint-phone" name="phone" required 
-                           style="width: 100%; padding: 12px; border: 1.5px solid var(--tech-border); border-radius: 10px; background: white; color: var(--tech-text); font-size: 1rem;">
+                           style="width: 100%; padding: 12px; border: 1.5px solid var(--tech-border); border-radius: 10px; background: white; color: var(--tech-text); font-size: 1rem; font-family: 'Tajawal', sans-serif;">
                 </div>
             </div>
             
             <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 8px; color: var(--tech-text); font-weight: 600;">نوع الحساب</label>
+                <label style="display: block; margin-bottom: 8px; color: var(--tech-text); font-weight: 600; font-family: 'Tajawal', sans-serif;">نوع الحساب</label>
                 <div style="display: flex; gap: 20px;">
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-family: 'Tajawal', sans-serif;">
                         <input type="radio" name="user_type" id="complaint-driver" value="driver" checked 
                                style="accent-color: var(--zoona-primary); width: 20px; height: 20px;">
-                        <span style="color: var(--tech-text);">سائق</span>
+                        <span style="color: var(--tech-text); font-family: 'Tajawal', sans-serif;">سائق</span>
                     </label>
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-family: 'Tajawal', sans-serif;">
                         <input type="radio" name="user_type" id="complaint-passenger" value="passenger" 
                                style="accent-color: var(--zoona-primary); width: 20px; height: 20px;">
-                        <span style="color: var(--tech-text);">راكب</span>
+                        <span style="color: var(--tech-text); font-family: 'Tajawal', sans-serif;">راكب</span>
                     </label>
                 </div>
             </div>
             
             <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; color: var(--tech-text); font-weight: 600;">نوع الشكوى</label>
+                <label style="display: block; margin-bottom: 5px; color: var(--tech-text); font-weight: 600; font-family: 'Tajawal', sans-serif;">نوع الشكوى</label>
                 <select id="complaint-type" name="complaint_type" required 
-                        style="width: 100%; padding: 12px; border: 1.5px solid var(--tech-border); border-radius: 10px; background: white; color: var(--tech-text); font-size: 1rem;">
+                        style="width: 100%; padding: 12px; border: 1.5px solid var(--tech-border); border-radius: 10px; background: white; color: var(--tech-text); font-size: 1rem; font-family: 'Tajawal', sans-serif;">
                     <option value="">اختر نوع الشكوى</option>
                     <option value="شكوى_against_driver">شكوى ضد سائق</option>
                     <option value="شكوى_against_passenger">شكوى ضد راكب</option>
@@ -2388,13 +2388,13 @@ if ('serviceWorker' in navigator) {
             </div>
             
             <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; color: var(--tech-text); font-weight: 600;">الوصف التفصيلي</label>
+                <label style="display: block; margin-bottom: 5px; color: var(--tech-text); font-weight: 600; font-family: 'Tajawal', sans-serif;">الوصف التفصيلي</label>
                 <textarea id="complaint-description" name="description" rows="4" required 
                           style="width: 100%; padding: 12px; border: 1.5px solid var(--tech-border); border-radius: 10px; background: white; color: var(--tech-text); font-size: 1rem; resize: vertical;"></textarea>
             </div>
             
             <div style="margin-bottom: 20px;">
-                <label style="display: block; margin-bottom: 8px; color: var(--tech-text); font-weight: 600;">التقييم</label>
+                <label style="display: block; margin-bottom: 8px; color: var(--tech-text); font-weight: 600; font-family: 'Tajawal', sans-serif;">التقييم</label>
                 <div id="complaint-rating" style="display: flex; gap: 10px; direction: ltr;">
                     <span onclick="setComplaintRating(1)" style="font-size: 2rem; cursor: pointer; color: #ddd;">★</span>
                     <span onclick="setComplaintRating(2)" style="font-size: 2rem; cursor: pointer; color: #ddd;">★</span>
@@ -2418,7 +2418,7 @@ function showComplaintsModal() {
     const modal = document.getElementById('complaints-modal');
     modal.classList.remove('hidden');
     
-    // Fill driver data from localStorage
+    // Fill driver data from localStorage - do this FIRST before any reset
     const driverData = localStorage.getItem('tarhal_driver');
     if (driverData) {
         try {
@@ -2433,9 +2433,7 @@ function showComplaintsModal() {
         }
     }
     
-    // Reset form
-    document.getElementById('complaints-form').reset();
-    document.getElementById('complaint-driver').checked = true;
+    // Only reset rating, don't reset form (to keep auto-filled data)
     setComplaintRating(0);
 }
 
@@ -2472,7 +2470,7 @@ async function submitComplaint(event) {
     };
     
     try {
-        const { data, error } = await supabase
+        const { data, error } = await tarhalDB
             .from('complaints')
             .insert([complaintData]);
         
