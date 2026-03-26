@@ -4185,17 +4185,8 @@ function openTravelPlatform() {
 }
 
 function showComplaints() {
-    const loader = document.getElementById('page-transition-loader');
-    if (loader) loader.classList.remove('hidden');
-
-    // التأكد من حفظ بيانات المستخدم الحالي
-    if (currentUser) {
-        localStorage.setItem('tarhal_customer', JSON.stringify(currentUser));
-    }
-
-    setTimeout(() => {
-        window.location.href = 'customer-complaints.html';
-    }, 800);
+    // Open complaints modal instead of redirecting
+    showComplaintsModal();
 }
 
 function showPageLoader(show = true) {
@@ -4240,6 +4231,184 @@ if ('serviceWorker' in navigator) {
       });
   });
 }
+</script>
+
+<!-- Complaints Modal -->
+<div id="complaints-modal" class="overlay hidden">
+    <div class="modal" style="background: var(--tech-card); border: 2px solid var(--zoona-primary); backdrop-filter: blur(15px); max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; font-family: 'Tajawal', sans-serif;">
+        <div class="modal-header" style="border-bottom: 2px solid var(--zoona-primary); padding-bottom: 15px; margin-bottom: 15px;">
+            <h2 class="modal-title" style="color: var(--zoona-primary); font-size: 1.5rem; font-family: 'Tajawal', sans-serif;">الشكاوى والمقترحات</h2>
+            <button onclick="closeComplaintsModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--gray);">&times;</button>
+        </div>
+        <form id="complaints-form" onsubmit="submitPassengerComplaint(event)" style="font-family: 'Tajawal', sans-serif;">
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: var(--tech-text); font-weight: 600; font-family: 'Tajawal', sans-serif;">الاسم الكامل</label>
+                <input type="text" id="complaint-name" name="name" required 
+                       style="width: 100%; padding: 12px; border: 1.5px solid var(--tech-border); border-radius: 10px; background: white; color: var(--tech-text); font-size: 1rem; font-family: 'Tajawal', sans-serif;">
+            </div>
+            
+            <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                <div style="flex: 1;">
+                    <label style="display: block; margin-bottom: 5px; color: var(--tech-text); font-weight: 600; font-family: 'Tajawal', sans-serif;">رقم الواتساب</label>
+                    <input type="tel" id="complaint-whatsapp" name="whatsapp" 
+                           style="width: 100%; padding: 12px; border: 1.5px solid var(--tech-border); border-radius: 10px; background: white; color: var(--tech-text); font-size: 1rem; font-family: 'Tajawal', sans-serif;">
+                </div>
+                <div style="flex: 1;">
+                    <label style="display: block; margin-bottom: 5px; color: var(--tech-text); font-weight: 600; font-family: 'Tajawal', sans-serif;">رقم الهاتف</label>
+                    <input type="tel" id="complaint-phone" name="phone" required 
+                           style="width: 100%; padding: 12px; border: 1.5px solid var(--tech-border); border-radius: 10px; background: white; color: var(--tech-text); font-size: 1rem; font-family: 'Tajawal', sans-serif;">
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 8px; color: var(--tech-text); font-weight: 600; font-family: 'Tajawal', sans-serif;">نوع الحساب</label>
+                <div style="display: flex; gap: 20px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-family: 'Tajawal', sans-serif;">
+                        <input type="radio" name="user_type" id="complaint-driver" value="driver" 
+                               style="accent-color: var(--zoona-primary); width: 20px; height: 20px;">
+                        <span style="color: var(--tech-text); font-family: 'Tajawal', sans-serif;">سائق</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-family: 'Tajawal', sans-serif;">
+                        <input type="radio" name="user_type" id="complaint-passenger" value="passenger" checked 
+                               style="accent-color: var(--zoona-primary); width: 20px; height: 20px;">
+                        <span style="color: var(--tech-text); font-family: 'Tajawal', sans-serif;">راكب</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: var(--tech-text); font-weight: 600; font-family: 'Tajawal', sans-serif;">نوع الشكوى</label>
+                <select id="complaint-type" name="complaint_type" required 
+                        style="width: 100%; padding: 12px; border: 1.5px solid var(--tech-border); border-radius: 10px; background: white; color: var(--tech-text); font-size: 1rem; font-family: 'Tajawal', sans-serif;">
+                    <option value="">اختر نوع الشكوى</option>
+                    <option value="شكوى_against_driver">شكوى ضد سائق</option>
+                    <option value="شكوى_against_passenger">شكوى ضد راكب</option>
+                    <option value="مشكلة_تقنية">مشكلة تقنية</option>
+                    <option value="مقترح">اقتراح</option>
+                    <option value="أخرى">أخرى</option>
+                </select>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: var(--tech-text); font-weight: 600; font-family: 'Tajawal', sans-serif;">الوصف التفصيلي</label>
+                <textarea id="complaint-description" name="description" rows="4" required 
+                          style="width: 100%; padding: 12px; border: 1.5px solid var(--tech-border); border-radius: 10px; background: white; color: var(--tech-text); font-size: 1rem; resize: vertical;"></textarea>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; color: var(--tech-text); font-weight: 600; font-family: 'Tajawal', sans-serif;">التقييم</label>
+                <div id="complaint-rating" style="display: flex; gap: 10px; direction: ltr;">
+                    <span onclick="setPassengerComplaintRating(1)" style="font-size: 2rem; cursor: pointer; color: #ddd;">★</span>
+                    <span onclick="setPassengerComplaintRating(2)" style="font-size: 2rem; cursor: pointer; color: #ddd;">★</span>
+                    <span onclick="setPassengerComplaintRating(3)" style="font-size: 2rem; cursor: pointer; color: #ddd;">★</span>
+                    <span onclick="setPassengerComplaintRating(4)" style="font-size: 2rem; cursor: pointer; color: #ddd;">★</span>
+                    <span onclick="setPassengerComplaintRating(5)" style="font-size: 2rem; cursor: pointer; color: #ddd;">★</span>
+                </div>
+                <input type="hidden" id="complaint-rating-value" name="rating" value="0">
+            </div>
+            
+            <button type="submit" 
+                    style="width: 100%; padding: 14px; background: linear-gradient(135deg, var(--zoona-primary) 0%, var(--zoona-primary-dark) 100%); color: white; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: transform 0.2s;">
+                إرسال الشكوى
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+function showComplaintsModal() {
+    const modal = document.getElementById('complaints-modal');
+    modal.classList.remove('hidden');
+    
+    // Fill passenger data from localStorage
+    const passengerData = localStorage.getItem('tarhal_passenger');
+    if (passengerData) {
+        try {
+            const passenger = JSON.parse(passengerData);
+            document.getElementById('complaint-name').value = passenger.full_name || passenger.fullName || passenger.name || '';
+            document.getElementById('complaint-whatsapp').value = passenger.whatsapp_number || passenger.whatsappNumber || passenger.phone || '';
+            document.getElementById('complaint-phone').value = passenger.phone || passenger.whatsapp_number || '';
+            document.getElementById('complaint-passenger').checked = true;
+            console.log('✅ تم ملء بيانات الراكب:', passenger.full_name);
+        } catch (e) {
+            console.error('Error parsing passenger data:', e);
+        }
+    }
+    
+    setPassengerComplaintRating(0);
+}
+
+function closeComplaintsModal() {
+    document.getElementById('complaints-modal').classList.add('hidden');
+}
+
+let currentPassengerComplaintRating = 0;
+function setPassengerComplaintRating(rating) {
+    currentPassengerComplaintRating = rating;
+    document.getElementById('complaint-rating-value').value = rating;
+    
+    const stars = document.querySelectorAll('#complaint-rating span');
+    stars.forEach((star, index) => {
+        star.style.color = index < rating ? '#fbbf24' : '#ddd';
+    });
+}
+
+async function submitPassengerComplaint(event) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    // Get passenger ID and name from localStorage
+    const passengerData = localStorage.getItem('tarhal_passenger');
+    let userId = null;
+    let userName = null;
+    if (passengerData) {
+        try {
+            const passenger = JSON.parse(passengerData);
+            userId = passenger.id;
+            userName = passenger.full_name || passenger.fullName || passenger.name || null;
+        } catch (e) {
+            console.error('Error getting passenger data:', e);
+        }
+    }
+    
+    const complaintData = {
+        name: formData.get('name'),
+        user_id: userId,
+        user_name: userName,
+        user_type: formData.get('user_type'),
+        whatsapp: formData.get('whatsapp'),
+        phone: formData.get('phone'),
+        complaint_type: formData.get('complaint_type'),
+        message: formData.get('description'),
+        rating: formData.get('rating'),
+        created_at: new Date().toISOString()
+    };
+    
+    try {
+        const { data, error } = await tarhalDB
+            .from('complaints')
+            .insert([complaintData]);
+        
+        if (error) throw error;
+        
+        showNotification('✅ تم إرسال الشكوى بنجاح!', 'success');
+        closeComplaintsModal();
+        form.reset();
+        setPassengerComplaintRating(0);
+    } catch (error) {
+        console.error('Error submitting complaint:', error);
+        showNotification('❌ فشل إرسال الشكوى. يرجى المحاولة مرة أخرى.', 'error');
+    }
+}
+
+// Close modal when clicking outside
+document.getElementById('complaints-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeComplaintsModal();
+    }
+});
 </script>
 
 </body>
