@@ -143,6 +143,11 @@
             color: white;
         }
 
+        .btn-success {
+            background: #10B981;
+            color: white;
+        }
+
         .btn-outline {
             background: white;
             border: 2px solid var(--primary);
@@ -194,9 +199,14 @@
                 <h3 id="passenger-name">جاري التحميل...</h3>
                 <p id="passenger-phone">---</p>
             </div>
-            <a href="#" id="call-btn" class="btn btn-primary" style="margin-right: auto; width: 50px; height: 50px; border-radius: 50%; font-size: 20px;">
-                <ion-icon name="call"></ion-icon>
-            </a>
+            <div style="display: flex; gap: 8px; margin-right: auto;">
+                <a href="#" id="call-btn-1" class="btn btn-primary" style="width: 50px; height: 50px; border-radius: 50%; font-size: 20px; display: flex; align-items: center; justify-content: center;">
+                    <ion-icon name="call"></ion-icon>
+                </a>
+                <a href="#" id="call-btn-2" class="btn btn-success" style="width: 50px; height: 50px; border-radius: 50%; font-size: 20px; display: flex; align-items: justify-content: center;">
+                    <ion-icon name="call"></ion-icon>
+                </a>
+            </div>
         </div>
 
         <div class="ride-details">
@@ -300,7 +310,15 @@
         async function fetchRideDetails() {
             const { data, error } = await tarhalDB
                 .from('rides')
-                .select('*')
+                .select(`
+                    *,
+                    passenger:passenger_id (
+                        id,
+                        full_name,
+                        phone,
+                        phone2
+                    )
+                `)
                 .eq('id', currentRideId)
                 .single();
 
@@ -312,10 +330,29 @@
             if (data) {
                 if (!currentDriverId) currentDriverId = data.driver_id;
 
-                document.getElementById('passenger-name').textContent = data.passenger_name || 'عميل';
-                document.getElementById('passenger-avatar').textContent = (data.passenger_name || 'ع').charAt(0);
-                document.getElementById('passenger-phone').textContent = data.passenger_phone || '';
-                document.getElementById('call-btn').href = `tel:${data.passenger_phone}`;
+                document.getElementById('passenger-name').textContent = data.passenger_name || data.passenger?.full_name || 'عميل';
+                document.getElementById('passenger-avatar').textContent = (data.passenger_name || data.passenger?.full_name || 'ع').charAt(0);
+                
+                // رقم الهاتف الأول
+                const phone1 = data.passenger_phone || data.passenger?.phone || '';
+                document.getElementById('passenger-phone').textContent = phone1;
+                
+                // إعداد زر الاتصال الأول
+                if (phone1) {
+                    document.getElementById('call-btn-1').href = `tel:${phone1}`;
+                }
+                
+                // رقم الهاتف الثاني
+                const phone2 = data.passenger?.phone2 || '';
+                
+                // إعداد زر الاتصال الثاني
+                if (phone2) {
+                    document.getElementById('call-btn-2').href = `tel:${phone2}`;
+                } else if (phone1) {
+                    // إذا لم يوجد phone2 استخدم phone1 كخيار ثاني
+                    document.getElementById('call-btn-2').href = `tel:${phone1}`;
+                }
+                
                 document.getElementById('ride-distance').textContent = `${data.distance_km || 0} كم`;
                 document.getElementById('ride-amount').textContent = data.amount || 0;
 
