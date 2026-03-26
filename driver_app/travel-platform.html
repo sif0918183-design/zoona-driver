@@ -3178,25 +3178,25 @@
                 
                 if (!error && driver) {
                     if (driver.balance <= WARNING_BALANCE_THRESHOLD && driver.balance > STOP_BALANCE_THRESHOLD) {
-                        showNotification(`رصيدك منخفض: ${driver.balance.toLocaleString()} جنيـه، سيتم إيقافك عند ${STOP_BALANCE_THRESHOLD} جنيـه`, 'warning');
+                        showNotification(`رصيدك منخفض: ${Math.floor(driver.balance)} جنيـه، سيتم إيقافك عند ${STOP_BALANCE_THRESHOLD} جنيـه`, 'warning');
 
                         const warningDiv = document.getElementById('balance-warning');
                         const warningMsg = document.getElementById('warning-message');
                         if (warningDiv && warningMsg) {
-                            warningMsg.textContent = `رصيدك ${driver.balance.toLocaleString()} جنيـه. يرجى شحن الرصيد لتجنب التوقف.`;
+                            warningMsg.textContent = `رصيدك ${Math.floor(driver.balance)} جنيـه. يرجى شحن الرصيد لتجنب التوقف.`;
                             warningDiv.classList.remove('hidden');
                         }
                     } else if (driver.balance <= STOP_BALANCE_THRESHOLD) {
                         const warningDiv = document.getElementById('balance-warning');
                         const warningMsg = document.getElementById('warning-message');
                         if (warningDiv && warningMsg) {
-                            warningMsg.textContent = `رصيدك ${driver.balance.toLocaleString()} جنيـه. تم إيقاف استقبال الرحلات حتى الشحن.`;
+                            warningMsg.textContent = `رصيدك ${Math.floor(driver.balance)} جنيـه. تم إيقاف استقبال الرحلات حتى الشحن.`;
                             warningDiv.classList.remove('hidden');
                         }
                     }
 
                     const balanceSpan = document.getElementById('current-balance');
-                    if (balanceSpan) balanceSpan.textContent = driver.balance.toLocaleString();
+                    if (balanceSpan) balanceSpan.textContent = Math.floor(driver.balance);
 
                     return driver.balance;
                 }
