@@ -764,7 +764,7 @@
                 الملف الشخصي
             </button>
 
-            <button class="btn btn-driver mt-2" onclick="window.location.href='customer-complaints.html'">
+            <button class="btn btn-driver mt-2" onclick="showComplaintsModal()">
                 <i class="ph-light ph-warning-circle"></i>
                 الشكاوى والمقترحات
             </button>
@@ -2329,6 +2329,171 @@ if ('serviceWorker' in navigator) {
     }
   });
 }
+</script>
+
+<!-- Complaints Modal -->
+<div id="complaints-modal" class="overlay hidden">
+    <div class="modal" style="background: var(--tech-card); border: 2px solid var(--zoona-primary); backdrop-filter: blur(15px); max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header" style="border-bottom: 2px solid var(--zoona-primary); padding-bottom: 15px; margin-bottom: 15px;">
+            <h2 class="modal-title" style="color: var(--zoona-primary); font-size: 1.5rem;">الشكاوى والمقترحات</h2>
+            <button onclick="closeComplaintsModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--gray);">&times;</button>
+        </div>
+        <form id="complaints-form" onsubmit="submitComplaint(event)">
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: var(--tech-text); font-weight: 600;">الاسم الكامل</label>
+                <input type="text" id="complaint-name" name="name" required 
+                       style="width: 100%; padding: 12px; border: 1.5px solid var(--tech-border); border-radius: 10px; background: white; color: var(--tech-text); font-size: 1rem;">
+            </div>
+            
+            <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                <div style="flex: 1;">
+                    <label style="display: block; margin-bottom: 5px; color: var(--tech-text); font-weight: 600;">رقم الواتساب</label>
+                    <input type="tel" id="complaint-whatsapp" name="whatsapp" 
+                           style="width: 100%; padding: 12px; border: 1.5px solid var(--tech-border); border-radius: 10px; background: white; color: var(--tech-text); font-size: 1rem;">
+                </div>
+                <div style="flex: 1;">
+                    <label style="display: block; margin-bottom: 5px; color: var(--tech-text); font-weight: 600;">رقم الهاتف</label>
+                    <input type="tel" id="complaint-phone" name="phone" required 
+                           style="width: 100%; padding: 12px; border: 1.5px solid var(--tech-border); border-radius: 10px; background: white; color: var(--tech-text); font-size: 1rem;">
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 8px; color: var(--tech-text); font-weight: 600;">نوع الحساب</label>
+                <div style="display: flex; gap: 20px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="radio" name="user_type" id="complaint-driver" value="driver" checked 
+                               style="accent-color: var(--zoona-primary); width: 20px; height: 20px;">
+                        <span style="color: var(--tech-text);">سائق</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="radio" name="user_type" id="complaint-passenger" value="passenger" 
+                               style="accent-color: var(--zoona-primary); width: 20px; height: 20px;">
+                        <span style="color: var(--tech-text);">راكب</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: var(--tech-text); font-weight: 600;">نوع الشكوى</label>
+                <select id="complaint-type" name="complaint_type" required 
+                        style="width: 100%; padding: 12px; border: 1.5px solid var(--tech-border); border-radius: 10px; background: white; color: var(--tech-text); font-size: 1rem;">
+                    <option value="">اختر نوع الشكوى</option>
+                    <option value="شكوى_against_driver">شكوى ضد سائق</option>
+                    <option value="شكوى_against_passenger">شكوى ضد راكب</option>
+                    <option value="مشكلة_تقنية">مشكلة تقنية</option>
+                    <option value="مقترح">اقتراح</option>
+                    <option value="أخرى">أخرى</option>
+                </select>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: var(--tech-text); font-weight: 600;">الوصف التفصيلي</label>
+                <textarea id="complaint-description" name="description" rows="4" required 
+                          style="width: 100%; padding: 12px; border: 1.5px solid var(--tech-border); border-radius: 10px; background: white; color: var(--tech-text); font-size: 1rem; resize: vertical;"></textarea>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; color: var(--tech-text); font-weight: 600;">التقييم</label>
+                <div id="complaint-rating" style="display: flex; gap: 10px; direction: ltr;">
+                    <span onclick="setComplaintRating(1)" style="font-size: 2rem; cursor: pointer; color: #ddd;">★</span>
+                    <span onclick="setComplaintRating(2)" style="font-size: 2rem; cursor: pointer; color: #ddd;">★</span>
+                    <span onclick="setComplaintRating(3)" style="font-size: 2rem; cursor: pointer; color: #ddd;">★</span>
+                    <span onclick="setComplaintRating(4)" style="font-size: 2rem; cursor: pointer; color: #ddd;">★</span>
+                    <span onclick="setComplaintRating(5)" style="font-size: 2rem; cursor: pointer; color: #ddd;">★</span>
+                </div>
+                <input type="hidden" id="complaint-rating-value" name="rating" value="0">
+            </div>
+            
+            <button type="submit" 
+                    style="width: 100%; padding: 14px; background: linear-gradient(135deg, var(--zoona-primary) 0%, var(--zoona-primary-dark) 100%); color: white; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: transform 0.2s;">
+                إرسال الشكوى
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+function showComplaintsModal() {
+    const modal = document.getElementById('complaints-modal');
+    modal.classList.remove('hidden');
+    
+    // Fill driver data from localStorage
+    const driverData = localStorage.getItem('tarhal_driver');
+    if (driverData) {
+        try {
+            const driver = JSON.parse(driverData);
+            document.getElementById('complaint-name').value = driver.full_name || '';
+            document.getElementById('complaint-whatsapp').value = driver.whatsapp_number || driver.phone || '';
+            document.getElementById('complaint-phone').value = driver.phone || driver.whatsapp_number || '';
+            document.getElementById('complaint-driver').checked = true;
+            console.log('✅ تم ملء بيانات السائق:', driver.full_name);
+        } catch (e) {
+            console.error('Error parsing driver data:', e);
+        }
+    }
+    
+    // Reset form
+    document.getElementById('complaints-form').reset();
+    document.getElementById('complaint-driver').checked = true;
+    setComplaintRating(0);
+}
+
+function closeComplaintsModal() {
+    document.getElementById('complaints-modal').classList.add('hidden');
+}
+
+let currentComplaintRating = 0;
+function setComplaintRating(rating) {
+    currentComplaintRating = rating;
+    document.getElementById('complaint-rating-value').value = rating;
+    
+    const stars = document.querySelectorAll('#complaint-rating span');
+    stars.forEach((star, index) => {
+        star.style.color = index < rating ? '#fbbf24' : '#ddd';
+    });
+}
+
+async function submitComplaint(event) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    const complaintData = {
+        name: formData.get('name'),
+        user_type: formData.get('user_type'),
+        whatsapp: formData.get('whatsapp'),
+        phone: formData.get('phone'),
+        complaint_type: formData.get('complaint_type'),
+        description: formData.get('description'),
+        rating: formData.get('rating'),
+        created_at: new Date().toISOString()
+    };
+    
+    try {
+        const { data, error } = await supabase
+            .from('complaints')
+            .insert([complaintData]);
+        
+        if (error) throw error;
+        
+        showNotification('✅ تم إرسال الشكوى بنجاح!', 'success');
+        closeComplaintsModal();
+        form.reset();
+        setComplaintRating(0);
+    } catch (error) {
+        console.error('Error submitting complaint:', error);
+        showNotification('❌ فشل إرسال الشكوى. يرجى المحاولة مرة أخرى.', 'error');
+    }
+}
+
+// Close modal when clicking outside
+document.getElementById('complaints-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeComplaintsModal();
+    }
+});
 </script>
 
 
