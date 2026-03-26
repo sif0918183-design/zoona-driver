@@ -147,6 +147,7 @@
         }
 
         .btn-call { background: var(--primary); color: white; }
+        .btn-call-secondary { background: #10B981; color: white; }
         .btn-whatsapp { background: #25D366; color: white; }
         .btn-cancel { background: #F3F4F6; color: var(--danger); }
 
@@ -219,8 +220,8 @@
         </div>
 
         <div class="actions">
-            <a href="#" id="call-btn" class="btn btn-call"><i class="fas fa-phone-alt"></i>اتصال</a>
-            <a href="#" id="whatsapp-btn" class="btn btn-whatsapp"><i class="fab fa-whatsapp"></i>واتساب</a>
+            <a href="#" id="call-btn-1" class="btn btn-call"><i class="fas fa-phone-alt"></i> اتصال 1</a>
+            <a href="#" id="call-btn-2" class="btn btn-call-secondary"><i class="fas fa-phone-alt"></i> اتصال 2</a>
             <button class="btn btn-cancel" onclick="cancelRide()">إلغاء</button>
         </div>
     </div>
@@ -384,6 +385,7 @@
                             id,
                             full_name,
                             phone,
+                            whatsapp_number,
                             car_model,
                             car_color,
                             car_plate
@@ -574,9 +576,17 @@
                 const vehicleInfo = [driver.car_model, driver.car_color].filter(Boolean).join(' - ');
                 document.getElementById('vehicle-info').textContent = vehicleInfo || 'مركبة زونا';
                 
+                // إعداد زر الاتصال الأول (phone)
                 if (driver.phone) {
-                    document.getElementById('call-btn').href = `tel:${driver.phone}`;
-                    document.getElementById('whatsapp-btn').href = `https://wa.me/${driver.phone.replace(/[^0-9]/g, '')}`;
+                    document.getElementById('call-btn-1').href = `tel:${driver.phone}`;
+                }
+                
+                // إعداد زر الاتصال الثاني (whatsapp_number)
+                if (driver.whatsapp_number) {
+                    document.getElementById('call-btn-2').href = `tel:${driver.whatsapp_number}`;
+                } else if (driver.phone) {
+                    // إذا لم يوجد whatsapp_number، استخدم phone كخيار ثاني
+                    document.getElementById('call-btn-2').href = `tel:${driver.phone}`;
                 }
                 
                 if (driver.id) {
