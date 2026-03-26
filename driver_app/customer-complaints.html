@@ -781,18 +781,20 @@
         // Auto-fill form with user data
         document.addEventListener('DOMContentLoaded', function() {
             if (currentUser) {
-                // Fill name
-                if (currentUser.full_name) {
-                    document.getElementById('name').value = currentUser.full_name;
+                // Fill name (full_name or fullName)
+                const userName = currentUser.full_name || currentUser.fullName || currentUser.name || '';
+                if (userName) {
+                    document.getElementById('name').value = userName;
                 }
                 
-                // Fill phone
-                if (currentUser.phone) {
-                    document.getElementById('phone').value = currentUser.phone;
-                    document.getElementById('whatsapp').value = currentUser.phone;
+                // Fill phone - driver uses whatsapp_number, passenger uses phone
+                const userPhone = currentUser.phone || currentUser.whatsapp_number || currentUser.whatsappNumber || '';
+                if (userPhone) {
+                    document.getElementById('phone').value = userPhone;
+                    document.getElementById('whatsapp').value = userPhone;
                 }
 
-                // Set user type
+                // Set user type radio button
                 if (userType === 'driver') {
                     const driverRadio = document.getElementById('driver');
                     if (driverRadio) driverRadio.checked = true;
@@ -801,7 +803,7 @@
                     if (passengerRadio) passengerRadio.checked = true;
                 }
                 
-                console.log('✅ تم تحميل بيانات المستخدم:', userType);
+                console.log('✅ تم تحميل بيانات المستخدم:', userType, currentUser);
             }
         });
 
