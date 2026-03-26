@@ -4320,8 +4320,13 @@ function showComplaintsModal() {
     const modal = document.getElementById('complaints-modal');
     modal.classList.remove('hidden');
     
-    // Fill passenger data from localStorage
-    const passengerData = localStorage.getItem('tarhal_passenger');
+    // Fill passenger data from localStorage - check both keys
+    let passengerData = localStorage.getItem('tarhal_passenger') || localStorage.getItem('tarhal_customer');
+    if (!passengerData && currentUser) {
+        // Also check currentUser variable
+        passengerData = JSON.stringify(currentUser);
+    }
+    
     if (passengerData) {
         try {
             const passenger = JSON.parse(passengerData);
@@ -4359,13 +4364,17 @@ async function submitPassengerComplaint(event) {
     const form = event.target;
     const formData = new FormData(form);
     
-    // Get passenger ID and name from localStorage
-    const passengerData = localStorage.getItem('tarhal_passenger');
+    // Get passenger ID and name from localStorage - check multiple keys
+    let passengerRaw = localStorage.getItem('tarhal_passenger') || localStorage.getItem('tarhal_customer');
+    if (!passengerRaw && currentUser) {
+        passengerRaw = JSON.stringify(currentUser);
+    }
+    
     let userId = null;
     let userName = null;
-    if (passengerData) {
+    if (passengerRaw) {
         try {
-            const passenger = JSON.parse(passengerData);
+            const passenger = JSON.parse(passengerRaw);
             userId = passenger.id;
             userName = passenger.full_name || passenger.fullName || passenger.name || null;
         } catch (e) {
