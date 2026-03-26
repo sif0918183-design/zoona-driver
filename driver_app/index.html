@@ -2458,21 +2458,24 @@ async function submitComplaint(event) {
     const form = event.target;
     const formData = new FormData(form);
     
-    // Get driver ID from localStorage
+    // Get driver ID and name from localStorage
     const driverData = localStorage.getItem('tarhal_driver');
     let userId = null;
+    let userName = null;
     if (driverData) {
         try {
             const driver = JSON.parse(driverData);
             userId = driver.id;
+            userName = driver.full_name || driver.name || null;
         } catch (e) {
-            console.error('Error getting driver ID:', e);
+            console.error('Error getting driver data:', e);
         }
     }
     
     const complaintData = {
         name: formData.get('name'),
         user_id: userId,
+        user_name: userName,
         user_type: formData.get('user_type'),
         whatsapp: formData.get('whatsapp'),
         phone: formData.get('phone'),
