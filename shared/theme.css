@@ -1,7 +1,7 @@
 /*
-   Shared Zoona Emerald Theme - Global Tech Redesign
+   Shared Tracka Emerald Theme - Global Tech Redesign
    Standardized for Mobile-First Workflows
-   Ref: Based on Zuna Driver UI Analysis
+   Ref: Based on Tracka Driver UI Analysis
 */
 
 :root {
@@ -11,11 +11,11 @@
     --tech-text: #111827;         /* لون النصوص الأساسي */
     --tech-border: #E5E7EB;       /* حدود البطاقات الخفيفة */
     
-    /* --- Zoona Brand Colors (Emerald Deep) --- */
-    --zoona-primary: #008B5E;     /* الأخضر الزمردي العلوي */
-    --zoona-primary-dark: #005F41; /* الأخضر الغاباتي السفلي */
-    --zoona-emerald-glow: rgba(0, 139, 94, 0.25);
-    --zoona-primary-light: rgba(0, 139, 94, 0.05);
+    /* --- Tracka Brand Colors (Emerald Deep) --- */
+    --Tracka-primary: #008B5E;     /* الأخضر الزمردي العلوي */
+    --Tracka-primary-dark: #005F41; /* الأخضر الغاباتي السفلي */
+    --Tracka-emerald-glow: rgba(0, 139, 94, 0.25);
+    --Tracka-primary-light: rgba(0, 139, 94, 0.05);
 
     /* --- Semantic Colors --- */
     --danger: #EF4444;            /* للرسائل التحذيرية وحالة "غير متصل" */
@@ -42,7 +42,7 @@ body {
 }
 
 /* Header UI: المطلب الرئيسي بجعل الهيدر بنفس لون الأزرار */
-header, .app-header, .navbar-zoona {
+header, .app-header, .navbar-Tracka {
     background: var(--grad-header) !important;
     color: white !important;
     padding: 15px 20px;
@@ -61,7 +61,7 @@ header, .app-header, .navbar-zoona {
 }
 
 /* Primary Button: محاكاة زر "تفعيل وضع العمل" */
-.btn-zoona, .btn-neon-emerald {
+.btn-Tracka, .btn-neon-emerald {
     background: var(--grad-emerald) !important;
     color: white !important;
     border: none;
@@ -78,24 +78,24 @@ header, .app-header, .navbar-zoona {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.btn-zoona:active {
+.btn-Tracka:active {
     transform: scale(0.97);
     filter: brightness(0.9);
 }
 
 /* Outline Button: محاكاة زر "إصلاح استلام الإشعارات" */
-.btn-outline-zoona {
+.btn-outline-Tracka {
     background: transparent !important;
-    border: 1.5px solid var(--zoona-primary) !important;
-    color: var(--zoona-primary) !important;
+    border: 1.5px solid var(--Tracka-primary) !important;
+    color: var(--Tracka-primary) !important;
     border-radius: var(--radius-standard);
     padding: 12px 20px;
     font-weight: 600;
     transition: background 0.3s ease;
 }
 
-.btn-outline-zoona:hover {
-    background: var(--zoona-primary-light) !important;
+.btn-outline-Tracka:hover {
+    background: var(--Tracka-primary-light) !important;
 }
 
 /* Status Badges: محاكاة حالة "غير متصل" */
@@ -121,7 +121,7 @@ i.ph {
 }
 
 .neon-icon-emerald {
-    color: var(--zoona-primary) !important;
+    color: var(--Tracka-primary) !important;
 }
 
 /* RTL Support for Tajawal */
@@ -132,7 +132,7 @@ i.ph {
 
 /* Utility for stats (مثل الرصيد وإجمالي الرحلات) */
 .stat-value {
-    color: var(--zoona-primary);
+    color: var(--Tracka-primary);
     font-weight: 800;
     font-size: 1.2rem;
 }

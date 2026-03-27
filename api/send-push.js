@@ -61,7 +61,7 @@ export default async function handler(req, res) {
         const message = {
             token: driver.fcm_token,
             notification: {
-                title: '🚖 طلب رحلة جديد - زونا',
+                title: '🚖 طلب رحلة جديد - تراكا',
                 body: `عميل: ${customerName || 'عميل'}\nالأجرة: ${amount || '0'} SDG`,
             },
             data: {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ترحال زونا - تطبيق السائقين</title>
+    <title>تراكا للنقل - تطبيق السائقين</title>
 
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="manifest.json">
@@ -32,9 +32,9 @@
     <style>
         /* الأنماط الأساسية */
         :root {
-            --driver: var(--zoona-primary);
-            --driver-dark: var(--zoona-primary-dark);
-            --driver-light: var(--zoona-primary-light);
+            --driver: var(--Tracka-primary);
+            --driver-dark: var(--Tracka-primary-dark);
+            --driver-light: var(--Tracka-primary-light);
             --danger: #ef4444;
             --danger-dark: #dc2626;
             --light: var(--tech-bg);
@@ -261,7 +261,7 @@
             color: white;
             font-size: 20px;
             font-weight: 700;
-            box-shadow: 0 4px 10px var(--zoona-emerald-glow);
+            box-shadow: 0 4px 10px var(--Tracka-emerald-glow);
         }
 
         .user-info h3 {
@@ -632,9 +632,9 @@
 <!-- Splash Screen -->
 <div id="splash-screen">
     <div class="splash-content">
-        <img src="../assets/branding/icon-384x384.png" alt="Tarhal Zoona Logo" class="splash-logo">
+        <img src="../assets/branding/icon-512x512.png" alt="Tarhal Tracka Logo" class="splash-logo">
         <div class="loader"></div>
-        <p class="splash-text">جاري تشغيل زونا للسائقين...</p>
+        <p class="splash-text">جاري تشغيل تراكا للسائقين...</p>
     </div>
 </div>
 
@@ -642,8 +642,8 @@
     <!-- Header -->
     <header class="app-header">
         <h1 class="app-title">
-            <img src="../assets/branding/icon-512x512.png" alt="ترحال زونا" class="logo-img">
-            زونــا - السائقين
+            <img src="../assets/branding/icon-512x512.png" alt="تراكا للنقل" class="logo-img">
+            تراكا - السائقين
         </h1>
     </header>
 
@@ -691,7 +691,7 @@
             </h2>
 
             <div class="mb-3">
-                <p>للتسجيل كسائق في تطبيق ترحال زونا ، يرجى التواصل مع إدارتنا على واتساب لإكمال عملية التسجيل:</p>
+                <p>للتسجيل كسائق في تطبيق تراكا للنقل ، يرجى التواصل مع إدارتنا على واتساب لإكمال عملية التسجيل:</p>
 
                 <div class="p-3" style="background: #f0f9ff; border-radius: var(--radius); margin: 20px 0;">
                     <h4 class="mb-2" style="color: var(--driver);">المستندات المطلوبة:</h4>
@@ -782,14 +782,14 @@
 
 <!-- Incoming Ride Modal -->
 <div id="incoming-ride-modal" class="overlay hidden">
-        <div class="modal" style="background: var(--tech-card); border: 2px solid var(--zoona-primary); backdrop-filter: blur(15px);">
+        <div class="modal" style="background: var(--tech-card); border: 2px solid var(--Tracka-primary); backdrop-filter: blur(15px);">
         <div class="modal-header">
-                <div style="font-size: 48px; margin-bottom: 16px;"><i class="ph-bold ph-bell-ringing" style="color: var(--zoona-primary);"></i></div>
-                <h2 class="modal-title" style="color: var(--zoona-primary);">طلب رحلة جديد!</h2>
+                <div style="font-size: 48px; margin-bottom: 16px;"><i class="ph-bold ph-bell-ringing" style="color: var(--Tracka-primary);"></i></div>
+                <h2 class="modal-title" style="color: var(--Tracka-primary);">طلب رحلة جديد!</h2>
                 <p class="modal-subtitle" style="color: var(--gray);">لديك 40 ثانية للرد</p>
         </div>
 
-            <div class="card" style="background: var(--zoona-primary-light); border: 1px solid var(--zoona-primary);">
+            <div class="card" style="background: var(--Tracka-primary-light); border: 1px solid var(--Tracka-primary);">
             <div id="ride-details">
                 <!-- سيتم تعبئة تفاصيل الرحلة هنا -->
             </div>
@@ -914,7 +914,7 @@
 
     // Initialize
     document.addEventListener('DOMContentLoaded', async function() {
-        console.log(' تطبيق ترحال زونا للسائقين');
+        console.log(' تطبيق تراكا للنقل للسائقين');
         
         // انتظار جاهزية التخزين
         await FlutterBridge.waitForStorage();
@@ -1044,7 +1044,7 @@
             </div>
 
             <p style="font-size: 14px; color: #4b5563;">
-                تطبيق "زونا" للسائقين هو منصة تقنية تطوعية وغير ربحية، تهدف إلى تسهيل التعاون المجتمعي بين الأفراد لتخفيف أعباء التنقل. باستخدامك لهذا التطبيق، فإنك تقر وتوافق على البنود التالية:
+                تطبيق "تراكا" للسائقين هو منصة تقنية تطوعية وغير ربحية، تهدف إلى تسهيل التعاون المجتمعي بين الأفراد لتخفيف أعباء التنقل. باستخدامك لهذا التطبيق، فإنك تقر وتوافق على البنود التالية:
             </p>
 
             <h3 style="color: var(--driver-dark); font-size: 15px; margin: 20px 0 12px 0; padding-bottom: 6px; border-bottom: 1px solid var(--driver-light);">
@@ -1052,8 +1052,8 @@
             </h3>
 
             <ol style="font-size: 13.5px;">
-                <li>أقر بأنني سائق متطوع في مبادرة مجتمعية عبر تطبيق «زونا» وليس في عمل تجاري.</li>
-                <li>أقر بأن تطبيق «زونا» منصة تقنية وسيطة فقط لربط السائقين بالركاب، ولا يمنحني أي صفة رسمية كسائق نقل عام أو خاص.</li>
+                <li>أقر بأنني سائق متطوع في مبادرة مجتمعية عبر تطبيق «تراكا» وليس في عمل تجاري.</li>
+                <li>أقر بأن تطبيق «تراكا» منصة تقنية وسيطة فقط لربط السائقين بالركاب، ولا يمنحني أي صفة رسمية كسائق نقل عام أو خاص.</li>
                 <li>أقر بعدم وجود أي علاقة تعاقدية أو عقد عمل بيني وبين إدارة التطبيق، وأنني مجرد مستخدم للمنصة.</li>
                 <li>أستخدم مركبتي الخاصة تحت مسؤوليتي الشخصية الكاملة، وأتحمل وحدي جميع النتائج القانونية والمرورية.</li>
                 <li>أتعهد بأن لدي رخصة قيادة سارية المفعول، وأن مركبتي مؤمنة ومستوفية للشروط القانونية والفنية.</li>
@@ -1321,7 +1321,7 @@
         }
 
         const adminNumber = "249918183521";
-        const message = "مرحباً، أريد التسجيل كسائق في تطبيق ترحال زونا";
+        const message = "مرحباً، أريد التسجيل كسائق في تطبيق تراكا للنقل";
         const whatsappUrl = `https://wa.me/${adminNumber}?text=${encodeURIComponent(message)}`;
 
         window.open(whatsappUrl, '_blank');
@@ -1562,7 +1562,7 @@
                 إقرار وموافقة السائق
             </h2>
             <p style="color: rgba(255,255,255,0.9); margin-top: 4px; font-size: 14px;">
-                تطبيق زونا (النسخة التجريبية)
+                تطبيق تراكا (النسخة التجريبية)
             </p>
         </div>
 
@@ -2333,9 +2333,9 @@ if ('serviceWorker' in navigator) {
 
 <!-- Complaints Modal -->
 <div id="complaints-modal" class="overlay hidden">
-    <div class="modal" style="background: var(--tech-card); border: 2px solid var(--zoona-primary); backdrop-filter: blur(15px); max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; font-family: 'Tajawal', sans-serif;">
-        <div class="modal-header" style="border-bottom: 2px solid var(--zoona-primary); padding-bottom: 15px; margin-bottom: 15px;">
-            <h2 class="modal-title" style="color: var(--zoona-primary); font-size: 1.5rem; font-family: 'Tajawal', sans-serif;">الشكاوى والمقترحات</h2>
+    <div class="modal" style="background: var(--tech-card); border: 2px solid var(--Tracka-primary); backdrop-filter: blur(15px); max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; font-family: 'Tajawal', sans-serif;">
+        <div class="modal-header" style="border-bottom: 2px solid var(--Tracka-primary); padding-bottom: 15px; margin-bottom: 15px;">
+            <h2 class="modal-title" style="color: var(--Tracka-primary); font-size: 1.5rem; font-family: 'Tajawal', sans-serif;">الشكاوى والمقترحات</h2>
             <button onclick="closeComplaintsModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--gray);">&times;</button>
         </div>
         <form id="complaints-form" onsubmit="submitComplaint(event)" style="font-family: 'Tajawal', sans-serif;">
@@ -2363,12 +2363,12 @@ if ('serviceWorker' in navigator) {
                 <div style="display: flex; gap: 20px;">
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-family: 'Tajawal', sans-serif;">
                         <input type="radio" name="user_type" id="complaint-driver" value="driver" checked 
-                               style="accent-color: var(--zoona-primary); width: 20px; height: 20px;">
+                               style="accent-color: var(--Tracka-primary); width: 20px; height: 20px;">
                         <span style="color: var(--tech-text); font-family: 'Tajawal', sans-serif;">سائق</span>
                     </label>
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-family: 'Tajawal', sans-serif;">
                         <input type="radio" name="user_type" id="complaint-passenger" value="passenger" 
-                               style="accent-color: var(--zoona-primary); width: 20px; height: 20px;">
+                               style="accent-color: var(--Tracka-primary); width: 20px; height: 20px;">
                         <span style="color: var(--tech-text); font-family: 'Tajawal', sans-serif;">راكب</span>
                     </label>
                 </div>
@@ -2406,7 +2406,7 @@ if ('serviceWorker' in navigator) {
             </div>
             
             <button type="submit" 
-                    style="width: 100%; padding: 14px; background: linear-gradient(135deg, var(--zoona-primary) 0%, var(--zoona-primary-dark) 100%); color: white; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: transform 0.2s;">
+                    style="width: 100%; padding: 14px; background: linear-gradient(135deg, var(--Tracka-primary) 0%, var(--Tracka-primary-dark) 100%); color: white; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: transform 0.2s;">
                 إرسال الشكوى
             </button>
         </form>

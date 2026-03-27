@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>منصة سفيريات زونا</title>
+    <title>منصة سفيريات تراكا</title>
     
     <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -22,11 +22,11 @@
            GLOBAL STYLES - COSMIC NEON REDESIGN (DRIVER)
            ============================================ */
         :root {
-            --primary: var(--zoona-primary);
-            --primary-dark: var(--zoona-primary-dark);
-            --primary-light: var(--zoona-primary-light);
-            --secondary: var(--zoona-primary);
-            --secondary-light: var(--zoona-primary-light);
+            --primary: var(--Tracka-primary);
+            --primary-dark: var(--Tracka-primary-dark);
+            --primary-light: var(--Tracka-primary-light);
+            --secondary: var(--Tracka-primary);
+            --secondary-light: var(--Tracka-primary-light);
             --success: var(--success);
             --warning: var(--warning);
             --danger: var(--danger);
@@ -121,7 +121,7 @@
             border-radius: 12px;
             background: transparent;
             padding: 0;
-            box-shadow: 0 0 15px var(--zoona-emerald-glow);
+            box-shadow: 0 0 15px var(--Tracka-emerald-glow);
             margin: 0;
             object-fit: contain;
         }
@@ -253,15 +253,15 @@
         }
 
         .tab:hover {
-            color: var(--zoona-primary);
-            background: var(--zoona-primary-light);
+            color: var(--Tracka-primary);
+            background: var(--Tracka-primary-light);
         }
 
         .tab.active {
-            color: var(--zoona-primary);
-            background: var(--zoona-primary-light);
-            box-shadow: 0 0 15px var(--zoona-emerald-glow);
-            border: 1px solid var(--zoona-primary);
+            color: var(--Tracka-primary);
+            background: var(--Tracka-primary-light);
+            box-shadow: 0 0 15px var(--Tracka-emerald-glow);
+            border: 1px solid var(--Tracka-primary);
         }
 
         .tab-content {
@@ -306,12 +306,12 @@
         .card-title {
             font-size: 1.25rem;
             font-weight: 700;
-            color: var(--zoona-primary);
+            color: var(--Tracka-primary);
             display: flex;
             align-items: center;
             gap: 0.75rem;
             margin: 0;
-            text-shadow: 0 0 10px var(--zoona-emerald-glow);
+            text-shadow: 0 0 10px var(--Tracka-emerald-glow);
         }
 
         /* Forms */
@@ -342,7 +342,7 @@
         .form-control:focus {
             outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px var(--zoona-primary-light);
+            box-shadow: 0 0 0 3px var(--Tracka-primary-light);
         }
 
         .form-select {
@@ -401,12 +401,12 @@
             background: var(--grad-emerald);
             color: white;
             border: none;
-            box-shadow: 0 4px 15px var(--zoona-emerald-glow);
+            box-shadow: 0 4px 15px var(--Tracka-emerald-glow);
         }
 
         .btn-primary:hover {
             background: var(--grad-emerald-tech);
-            box-shadow: 0 0 25px var(--zoona-emerald-glow);
+            box-shadow: 0 0 25px var(--Tracka-emerald-glow);
             transform: translateY(-2px);
         }
 
@@ -429,7 +429,7 @@
 
         .btn-outline:hover {
             background: var(--primary-light);
-            box-shadow: 0 4px 12px var(--zoona-emerald-glow);
+            box-shadow: 0 4px 12px var(--Tracka-emerald-glow);
         }
 
         .btn-danger {
@@ -481,14 +481,14 @@
 
         .vehicle-category:hover {
             transform: translateY(-2px);
-            box-shadow: 0 0 15px var(--zoona-emerald-glow);
-            border-color: var(--zoona-primary);
+            box-shadow: 0 0 15px var(--Tracka-emerald-glow);
+            border-color: var(--Tracka-primary);
         }
 
         .vehicle-category.selected {
-            border-color: var(--zoona-primary);
-            background: var(--zoona-primary-light);
-            box-shadow: 0 0 20px var(--zoona-emerald-glow);
+            border-color: var(--Tracka-primary);
+            background: var(--Tracka-primary-light);
+            box-shadow: 0 0 20px var(--Tracka-emerald-glow);
         }
 
         .vehicle-icon {
@@ -733,8 +733,8 @@
         }
 
         .message-outgoing .message-content {
-            background: var(--zoona-primary-light);
-            border-color: var(--zoona-primary);
+            background: var(--Tracka-primary-light);
+            border-color: var(--Tracka-primary);
             color: var(--tech-text);
         }
 
@@ -904,7 +904,7 @@
         .notification-title {
             font-weight: 700;
             margin-bottom: 0.25rem;
-            color: var(--zoona-primary);
+            color: var(--Tracka-primary);
         }
 
         .notification-message {
@@ -999,7 +999,7 @@
             /* Animation removed by request */
         }
         .unread-chat {
-            background-color: var(--zoona-primary-light) !important;
+            background-color: var(--Tracka-primary-light) !important;
             border-right: 4px solid var(--primary) !important;
         }
     </style>
@@ -1011,7 +1011,7 @@
             <div class="logo-container">
                 <div class="logo-img"></div>
                 <div>
-                    <h1 class="app-title">ترحال زونا</h1>
+                    <h1 class="app-title">تراكا للنقل</h1>
                     <div class="app-subtitle">منصة سفيريات السفر</div>
                 </div>
             </div>
@@ -1401,7 +1401,7 @@
         // INITIALIZATION
         // ============================================
         document.addEventListener('DOMContentLoaded', async function() {
-            console.log(' ترحال زونا - سفيريات السفر');
+            console.log(' تراكا للنقل - سفيريات السفر');
             await initializeUser();
         });
 
@@ -1524,7 +1524,7 @@
                             <div class="empty-icon" style="font-size: 5rem;"></div>
                             <h2 class="empty-title" style="color: var(--danger);">أنت غير مسجل للدخول</h2>
                             <p class="empty-description" style="font-size: 1.1rem; line-height: 1.7;">
-                                يرجى تسجيل الدخول في تطبيق ترحال زونا أولاً، ثم العودة إلى هذه الصفحة.
+                                يرجى تسجيل الدخول في تطبيق تراكا للنقل أولاً، ثم العودة إلى هذه الصفحة.
                             </p>
                         </div>
                     `;
@@ -2620,10 +2620,10 @@
 
                         let displayLabel = `سائق رقم ${driverIndex++}`;
                         if (isFinalSelection) {
-                            displayLabel = driver.full_name || 'سائق ترحال';
+                            displayLabel = driver.full_name || 'سائق تراكا';
                         } else {
-                            // استخدام تسمية "سائق ترحال" كبديل أكثر احترافية
-                            displayLabel = `سائق ترحال (${driverIndex - 1})`;
+                            // استخدام تسمية "سائق تراكا" كبديل أكثر احترافية
+                            displayLabel = `سائق تراكا (${driverIndex - 1})`;
                         }
 
                         card.innerHTML = `
@@ -2804,17 +2804,17 @@
                         const lastMessage = messages[0];
 
                         // الخصوصية: إخفاء اسم السائق إذا لم يتم الاختيار النهائي
-                        let displayName = 'سائق ترحال';
+                        let displayName = 'سائق تراكا';
                         if (req.status !== 'pending' && req.status !== 'driver_selected' && req.status !== 'confirmed') {
-                            displayName = 'سائق ترحال';
+                            displayName = 'سائق تراكا';
                         } else {
                             // يتم كشف الاسم فقط بعد اختيار السائق نهائياً
                             const isFinal = (req.status === 'driver_selected' || req.status === 'confirmed');
                             if (isFinal) {
-                                displayName = req.driver_name || 'سائق ترحال';
+                                displayName = req.driver_name || 'سائق تراكا';
                             } else {
                                 // قبل الاختيار النهائي، نستخدم تسمية عامة
-                                displayName = 'سائق ترحال';
+                                displayName = 'سائق تراكا';
                             }
                         }
 
@@ -2851,7 +2851,7 @@
                             validChats.push({
                                 id: ride.id,
                                 ride_id: ride.id,
-                                other_user_name: ride.driver_name || 'سائق ترحال',
+                                other_user_name: ride.driver_name || 'سائق تراكا',
                                 last_message: last.message,
                                 last_message_time: last.created_at,
                                 last_message_id: last.id,
@@ -4326,7 +4326,7 @@
             notification.innerHTML = `
                 <div class="notification-icon"><i class="ph-light ${icon} neon-icon-emerald"></i></div>
                 <div class="notification-content">
-                    <div class="notification-title" style="color: var(--zoona-primary);">${notificationTitle}</div>
+                    <div class="notification-title" style="color: var(--Tracka-primary);">${notificationTitle}</div>
                     <div class="notification-message" style="font-weight: 600;">${escapeHtml(message)}</div>
                 </div>
                 <button onclick="this.parentElement.remove()" style="
@@ -4373,7 +4373,7 @@
             toast.innerHTML = `
                 <div class="notification-icon"><i class="ph-light ${icons[type] || 'ph-sparkle'} neon-icon-emerald"></i></div>
                 <div class="notification-content">
-                    <div class="notification-title" style="color: var(--zoona-primary);">تنبيه منصة ترحال</div>
+                    <div class="notification-title" style="color: var(--Tracka-primary);">تنبيه منصة ترحال</div>
                     <div class="notification-message" style="font-weight:700;">${escapeHtml(message)}</div>
                 </div>
             `;
