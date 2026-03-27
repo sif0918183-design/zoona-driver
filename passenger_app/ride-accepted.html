@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>تتبع السائق - زونا</title>
+    <title>تتبع السائق - تراكا</title>
 
     <!-- مكتبات التصميم -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -185,7 +185,7 @@
     </div>
 
     <header class="app-header">
-        <img src="assets/branding/icon-192x192.png" class="logo-img" alt="Zoona">
+        <img src="assets/branding/icon-192x192.png" class="logo-img" alt="Tracka">
     </header>
 
     <div class="status-bar" id="status-display">
@@ -200,7 +200,7 @@
             <div class="avatar" id="driver-avatar">ز</div>
             <div class="info-text">
                 <h3 id="driver-name" style="font-size: 17px;">جاري التحميل...</h3>
-                <div class="vehicle-badge" id="vehicle-info">مركبة زونا</div>
+                <div class="vehicle-badge" id="vehicle-info">مركبة تراكا</div>
             </div>
             <div style="margin-right: auto; text-align: left;">
                 <div style="font-size: 18px; font-weight: 900; color: var(--primary);" id="ride-price">0 SDG</div>
@@ -569,12 +569,12 @@
             }
             
             if (driver) {
-                document.getElementById('driver-name').textContent = driver.full_name || 'سائق زونا';
+                document.getElementById('driver-name').textContent = driver.full_name || 'سائق تراكا';
                 document.getElementById('driver-avatar').textContent = (driver.full_name || 'ز').charAt(0);
                 document.getElementById('plate-number').textContent = driver.car_plate || '---';
                 
                 const vehicleInfo = [driver.car_model, driver.car_color].filter(Boolean).join(' - ');
-                document.getElementById('vehicle-info').textContent = vehicleInfo || 'مركبة زونا';
+                document.getElementById('vehicle-info').textContent = vehicleInfo || 'مركبة تراكا';
                 
                 // إعداد زر الاتصال الأول (phone)
                 if (driver.phone) {
@@ -613,7 +613,7 @@
                 fetchDriverCurrentLocation();
                 subscribeToDriverLocation();
             } else if (ride.driver_name) {
-                document.getElementById('driver-name').textContent = ride.driver_name || 'سائق زونا';
+                document.getElementById('driver-name').textContent = ride.driver_name || 'سائق تراكا';
                 document.getElementById('driver-avatar').textContent = (ride.driver_name || 'ز').charAt(0);
             }
         }

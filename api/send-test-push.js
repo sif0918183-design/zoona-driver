@@ -66,7 +66,7 @@ export default async function handler(req, res) {
         const message = {
             token: driver.fcm_token,
             notification: {
-                title: '🔔 اختبار إشعار - زونا',
+                title: '🔔 اختبار إشعار - تراكا',
                 body: `هذا إشعار تجريبي\nالعميل: ${customerName || 'تجريبي'}\nالنوع: ${getVehicleTypeArabic(vehicleType || 'economy')}\nالأجرة: ${amount || '0'} SDG`,
             },
             // Align with requested payload structure
