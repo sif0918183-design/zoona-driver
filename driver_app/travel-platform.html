@@ -154,7 +154,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #333333;
+            color: white;
             font-weight: 700;
             font-size: 1.125rem;
             box-shadow: var(--shadow);
@@ -399,7 +399,7 @@
 
         .btn-primary {
             background: var(--grad-emerald);
-            color: #333333;
+            color: white;
             border: none;
             box-shadow: 0 4px 15px var(--Tracka-emerald-glow);
         }
@@ -412,7 +412,7 @@
 
         .btn-secondary {
             background: linear-gradient(135deg, var(--secondary) 0%, #047857 100%);
-            color: #333333;
+            color: white;
             border: 1px solid var(--secondary);
         }
 
@@ -434,7 +434,7 @@
 
         .btn-danger {
             background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%);
-            color: #333333;
+            color: white;
             border: 1px solid var(--danger);
         }
 
@@ -688,7 +688,7 @@
 
         .chat-header {
             background: var(--primary);
-            color: #333333;
+            color: white;
             padding: 1.25rem;
             font-weight: 600;
             font-size: 1.125rem;
@@ -992,12 +992,12 @@
 
         .trip-progress-steps .step.completed .step-icon {
             background: var(--success);
-            color: #333333;
+            color: white;
         }
 
         .trip-progress-steps .step.active .step-icon {
             background: var(--Tracka-primary);
-            color: #333333;
+            color: white;
             box-shadow: 0 0 15px var(--Tracka-emerald-glow);
         }
 
@@ -1015,7 +1015,7 @@
 
         .trip-cancelled-badge {
             background: var(--danger);
-            color: #333333;
+            color: white;
             padding: 0.5rem 1.5rem;
             border-radius: var(--radius);
             text-align: center;
@@ -1040,7 +1040,7 @@
 
         .btn-success {
             background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
-            color: #333333;
+            color: white;
             box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
         }
 
@@ -1051,7 +1051,7 @@
 
         .btn-danger {
             background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%);
-            color: #333333;
+            color: white;
             box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
         }
 
@@ -1134,7 +1134,7 @@
             width: 24px;
             height: 24px;
             background-color: var(--danger);
-            color: #333333;
+            color: white;
             font-size: 0.75rem;
             font-weight: 700;
             border-radius: 50%;
@@ -1444,7 +1444,7 @@
         bottom: 1rem;
         right: 1rem;
         background: linear-gradient(135deg, #f59e0b, #d97706);
-        color: #333333;
+        color: white;
         padding: 1rem 1.5rem;
         border-radius: var(--radius-lg);
         box-shadow: var(--shadow-xl);
@@ -1459,7 +1459,7 @@
                 <div id="warning-message" style="font-size: 0.95rem; opacity: 0.9;"></div>
             </div>
             <button onclick="document.getElementById('balance-warning').classList.add('hidden')"
-                    style="background: none; border: none; color: #333333; cursor: pointer; font-size: 1.25rem;">
+                    style="background: none; border: none; color: white; cursor: pointer; font-size: 1.25rem;">
                 &times;
             </button>
         </div>
@@ -1564,7 +1564,7 @@
             "></p>
             <button onclick="handleCancellationAlert()" style="
                 background: var(--Tracka-primary);
-                color: #333333;
+                color: white;
                 border: none;
                 padding: 0.875rem 2rem;
                 border-radius: var(--radius);
@@ -2542,15 +2542,32 @@
                     }
                 }
 
-                // جلب الرحلات من جدول rides أيضاً
-                const { data: ridesData } = await travelSupabase
-                    .from('rides')
-                    .select('*')
+                // جلب الرحلات من جدول travel_trips (الجدول الجديد للرحلات الخارجية)
+                const { data: travelTripsData, error: tripsError } = await travelSupabase
+                    .from('travel_trips')
+                    .select('*, drivers!travel_trips_driver_id_fkey(full_name, phone)')
                     .eq('passenger_id', currentUser.id)
                     .order('created_at', { ascending: false });
 
-                if (ridesData) {
-                    combinedRides = [...combinedRides, ...ridesData];
+                if (!tripsError && travelTripsData) {
+                    for (const trip of travelTripsData) {
+                        const formattedTrip = {
+                            id: trip.id,
+                            ride_request_id: trip.ride_request_id,
+                            passenger_id: trip.passenger_id,
+                            from_city: trip.from_city,
+                            to_city: trip.to_city,
+                            vehicle_category: trip.vehicle_category,
+                            final_price: trip.final_price,
+                            status: trip.status,
+                            driver_id: trip.driver_id,
+                            driver_name: trip.drivers?.full_name || trip.driver_name,
+                            created_at: trip.created_at,
+                            is_travel_trip: true, // علامة للتمييز
+                            trip_data: trip // تخزين بيانات الرحلة الكاملة
+                        };
+                        combinedRides.push(formattedTrip);
+                    }
                 }
                 
                 combinedRides.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -3169,7 +3186,7 @@
                         <div class="ride-route">
                             <i class="ph-light ph-chat-centered-dots"></i>
                             ${escapedUserName}
-                            ${chat.is_unread ? '<span class="badge badge-primary" style="font-size: 0.7rem; margin-right: 5px; background: var(--primary); color: #333333; padding: 2px 6px; border-radius: 10px;">جديد</span>' : ''}
+                            ${chat.is_unread ? '<span class="badge badge-primary" style="font-size: 0.7rem; margin-right: 5px; background: var(--primary); color: white; padding: 2px 6px; border-radius: 10px;">جديد</span>' : ''}
                         </div>
                         <div style="font-size: 0.875rem; color: var(--gray-500);">
                             ${timeStr}

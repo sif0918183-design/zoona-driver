@@ -2542,15 +2542,32 @@
                     }
                 }
 
-                // جلب الرحلات من جدول rides أيضاً
-                const { data: ridesData } = await travelSupabase
-                    .from('rides')
-                    .select('*')
+                // جلب الرحلات من جدول travel_trips (الجدول الجديد للرحلات الخارجية)
+                const { data: travelTripsData, error: tripsError } = await travelSupabase
+                    .from('travel_trips')
+                    .select('*, drivers!travel_trips_driver_id_fkey(full_name, phone)')
                     .eq('passenger_id', currentUser.id)
                     .order('created_at', { ascending: false });
 
-                if (ridesData) {
-                    combinedRides = [...combinedRides, ...ridesData];
+                if (!tripsError && travelTripsData) {
+                    for (const trip of travelTripsData) {
+                        const formattedTrip = {
+                            id: trip.id,
+                            ride_request_id: trip.ride_request_id,
+                            passenger_id: trip.passenger_id,
+                            from_city: trip.from_city,
+                            to_city: trip.to_city,
+                            vehicle_category: trip.vehicle_category,
+                            final_price: trip.final_price,
+                            status: trip.status,
+                            driver_id: trip.driver_id,
+                            driver_name: trip.drivers?.full_name || trip.driver_name,
+                            created_at: trip.created_at,
+                            is_travel_trip: true, // علامة للتمييز
+                            trip_data: trip // تخزين بيانات الرحلة الكاملة
+                        };
+                        combinedRides.push(formattedTrip);
+                    }
                 }
                 
                 combinedRides.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
