@@ -2240,7 +2240,45 @@ document.addEventListener('DOMContentLoaded', async function() {
     // انتظار جاهزية التخزين (خاص بالـ WebView)
     await FlutterBridge.waitForStorage();
 
-    // تحميل خرائط Google بشكل منفصل
+    // =====================================================
+    // نظام الحارس (Gatekeeper) - Strict Lockdown
+    // التحقق من وجود رحلة نشطة فوراً
+    // =====================================================
+    
+    // التحقق من تسجيل الدخول أولاً
+    const passengerDataStr = localStorage.getItem('tarhal_passenger');
+    
+    if (passengerDataStr) {
+        try {
+            const passengerData = JSON.parse(passengerDataStr);
+            
+            // التحقق من وجود رحلة نشطة في Supabase
+            const { data: activeRide, error } = await tarhalDB
+                .from('rides')
+                .select('id, status, driver_id, pickup_location, dropoff_location, amount')
+                .eq('passenger_id', passengerData.id)
+                .in('status', ['accepted', 'arrived', 'ongoing'])
+                .maybeSingle();
+            
+            if (activeRide) {
+                console.log('🚨 اكتشاف رحلة نشطة! توجيه الراكب لـ ride-accepted.html');
+                
+                // تخزين بيانات الرحلة لتجاوز التحقق في الصفحة التالية
+                localStorage.setItem('active_ride_id', activeRide.id);
+                localStorage.setItem('active_ride_status', activeRide.status);
+                
+                // توجيه إجباري للرحلة النشطة
+                window.location.href = 'ride-accepted.html';
+                return; // إيقاف التنفيذ
+            }
+        } catch (e) {
+            console.error('خطأ في فحص الرحلة النشطة:', e);
+        }
+    }
+    
+    // =====================================================
+    // نهاية نظام الحارس
+    // =====================================================
     loadGoogleMaps();
     
     // تهيئة التطبيق
