@@ -1022,6 +1022,30 @@
             font-weight: 600;
         }
 
+        .trip-completed-info {
+            text-align: center;
+            padding: 1.5rem;
+            background: rgba(16, 185, 129, 0.1);
+            border-radius: var(--radius);
+            margin-top: 1rem;
+        }
+
+        .trip-completed-info p {
+            margin: 0.5rem 0 0;
+            font-weight: 600;
+            color: var(--success);
+        }
+
+        .commission-info {
+            border: 1px solid var(--warning);
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        .balance-info {
+            border: 1px solid var(--success);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
         /* Button Styles */
         .btn {
             padding: 0.75rem 1.5rem;
@@ -4844,6 +4868,11 @@
             const driverName = tripData.drivers?.full_name || tripData.driver_name || 'غير محدد';
             const driverPhone = tripData.drivers?.phone || tripData.driver_phone || 'غير محدد';
             
+            // Calculate commission
+            const price = tripData.final_price || tripData.estimated_price || 0;
+            const commission = price * 0.05;
+            const driverBalanceAfter = price - commission;
+            
             // Build modal content based on status
             let statusHtml = '';
             let progressBarHtml = getTripProgressBar(tripData.status);
@@ -4872,7 +4901,15 @@
                         </div>
                         <div class="trip-detail-row">
                             <i class="ph-light ph-currency-dollar"></i>
-                            <span>السعر: ${tripData.final_price || tripData.estimated_price} ج.س</span>
+                            <span>سعر الرحلة: ${price} ج.س</span>
+                        </div>
+                        <div class="trip-detail-row commission-info">
+                            <i class="ph-light ph-percentage"></i>
+                            <span>العمولة (5%): ${commission} ج.س</span>
+                        </div>
+                        <div class="trip-detail-row balance-info">
+                            <i class="ph-light ph-wallet"></i>
+                            <span>صافي الراتب: ${driverBalanceAfter} ج.س</span>
                         </div>
                         ${tripData.status !== 'completed' && tripData.status !== 'cancelled' ? `
                         <div class="trip-actions">
@@ -4892,6 +4929,13 @@
                                 <i class="ph-light ph-x-circle"></i>
                                 إلغاء الرحلة
                             </button>
+                        </div>
+                        ` : ''}
+                        ${tripData.status === 'completed' ? `
+                        <div class="trip-completed-info">
+                            <i class="ph-light ph-check-circle" style="color: var(--success); font-size: 2rem;"></i>
+                            <p>تم إكمال الرحلة بنجاح!</p>
+                            <p>تم خصم العمولة: ${commission} ج.س</p>
                         </div>
                         ` : ''}
                     </div>
@@ -4920,7 +4964,7 @@
                         </div>
                         <div class="trip-detail-row">
                             <i class="ph-light ph-currency-dollar"></i>
-                            <span>السعر: ${tripData.final_price || tripData.estimated_price} ج.س</span>
+                            <span>سعر الرحلة: ${price} ج.س</span>
                         </div>
                         <div class="trip-detail-row">
                             <i class="ph-light ph-info"></i>
@@ -4932,6 +4976,12 @@
                                 <i class="ph-light ph-x-circle"></i>
                                 إلغاء الرحلة
                             </button>
+                        </div>
+                        ` : ''}
+                        ${tripData.status === 'completed' ? `
+                        <div class="trip-completed-info">
+                            <i class="ph-light ph-check-circle" style="color: var(--success); font-size: 2rem;"></i>
+                            <p>تم إكمال الرحلة بنجاح!</p>
                         </div>
                         ` : ''}
                     </div>
@@ -5582,19 +5632,93 @@
                 .subscribe();
         }
 
+        // ============================================
+        // INITIALIZE - CHECK FOR ACTIVE TRIP FIRST
+        // ============================================
+        
+        // Check for active trip on page load - called BEFORE user initialization
+        async function checkActiveTripOnLoad() {
+            try {
+                // First check localStorage for saved trip
+                const savedTripData = localStorage.getItem('currentTripModal');
+                if (!savedTripData) return false;
+                
+                const modalData = JSON.parse(savedTripData);
+                const tripId = modalData.tripData?.id || modalData.tripData?.ride_request_id;
+                
+                if (!tripId) return false;
+                
+                // Check if trip is still active in database
+                const { data: trip, error } = await travelSupabase
+                    .from('travel_trips')
+                    .select('*, drivers!travel_trips_driver_id_fkey(full_name, phone), customers!travel_trips_passenger_id_fkey(full_name, phone)')
+                    .eq('id', tripId)
+                    .single();
+                
+                if (error || !trip) {
+                    // Trip doesn't exist anymore, clear localStorage
+                    localStorage.removeItem('currentTripModal');
+                    return false;
+                }
+                
+                // Check if trip is still active
+                if (trip.status === 'completed' || trip.status === 'cancelled') {
+                    localStorage.removeItem('currentTripModal');
+                    return false;
+                }
+                
+                // Determine user role and check if user is the correct party
+                let shouldShow = false;
+                let userRole = '';
+                
+                if (modalData.userRole === 'driver' && currentUser?.id && trip.driver_id === currentUser.id) {
+                    shouldShow = true;
+                    userRole = 'driver';
+                } else if (modalData.userRole === 'passenger' && currentUser?.id && trip.passenger_id === currentUser.id) {
+                    shouldShow = true;
+                    userRole = 'passenger';
+                }
+                
+                if (shouldShow) {
+                    // Hide all interfaces and show only the trip modal
+                    document.getElementById('passenger-interface')?.classList.add('hidden');
+                    document.getElementById('driver-interface')?.classList.add('hidden');
+                    document.getElementById('login-screen')?.classList.add('hidden');
+                    
+                    // Show the modal
+                    showTripModal(trip, userRole);
+                    return true;
+                }
+                
+                return false;
+            } catch (error) {
+                console.error('Error checking active trip on load:', error);
+                localStorage.removeItem('currentTripModal');
+                return false;
+            }
+        }
+
         // Initialize trip modal on page load
         document.addEventListener('DOMContentLoaded', async function() {
-            // Wait a bit for user initialization
-            setTimeout(async () => {
-                await restoreTripModal();
-                if (userType === 'driver') {
-                    await checkAndShowDriverTripModal();
-                } else if (userType === 'passenger') {
-                    await checkAndShowPassengerTripModal();
-                }
-                // Setup cancellation listener
-                setupTripCancellationListener();
-            }, 2000);
+            // First check for active trip BEFORE any other initialization
+            // Wait a minimal time for currentUser to be available
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            const hasActiveTrip = await checkActiveTripOnLoad();
+            
+            if (!hasActiveTrip) {
+                // Normal initialization - user will see their dashboard
+                setTimeout(async () => {
+                    await restoreTripModal();
+                    if (userType === 'driver') {
+                        await checkAndShowDriverTripModal();
+                    } else if (userType === 'passenger') {
+                        await checkAndShowPassengerTripModal();
+                    }
+                    // Setup cancellation listener
+                    setupTripCancellationListener();
+                }, 2000);
+            }
         });
 
     </script>
