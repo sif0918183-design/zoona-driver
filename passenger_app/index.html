@@ -3199,14 +3199,17 @@ function displayRouteDetails() {
     routeDuration.textContent = Math.round(currentRoute.duration);
     
     // إظهار عناوين المواقع
+    const fromAddress = formatAddress(currentRoute.startAddress);
+    const toAddress = formatAddress(currentRoute.endAddress);
+    
     routeContent.innerHTML = `
         <div class="route-info-item">
             <span class="route-info-label">من:</span>
-            <span class="route-info-value">${currentRoute.startAddress.substring(0, 25)}${currentRoute.startAddress.length > 25 ? '...' : ''}</span>
+            <span class="route-info-value">${fromAddress}</span>
         </div>
         <div class="route-info-item">
             <span class="route-info-label">إلى:</span>
-            <span class="route-info-value">${currentRoute.endAddress.substring(0, 25)}${currentRoute.endAddress.length > 25 ? '...' : ''}</span>
+            <span class="route-info-value">${toAddress}</span>
         </div>
         <div class="route-info-item">
             <span class="route-info-label">المسافة:</span>
@@ -4174,6 +4177,84 @@ function extractCity(address) {
     }
 
     return 'الخرطوم';
+}
+
+// دالة لتنسيق العنوان بشكل أفضل (إزالة الأرقام والرموز وإظهار اسم المدينة والشارع أو أقرب معلم)
+function formatAddress(address) {
+    if (!address) return 'موقع غير محدد';
+    
+    // قائمة المعالم القابلة للتعريب
+    const landmarkTranslations = {
+        'School': 'مدرسة',
+        'Mosque': 'مسجد',
+        'University': 'جامعة',
+        'Hospital': 'مستشفى',
+        'Market': 'سوق',
+        'Mall': 'مول',
+        'Restaurant': 'مطعم',
+        'Cafe': 'مقهى',
+        'Bank': 'بنك',
+        'Hotel': 'فندق',
+        'Park': 'حديقة',
+        'Station': 'محطة',
+        'Stop': 'محطة',
+        'College': 'كلية'
+    };
+    
+    // تقسيم العنوان إلى أجزاء
+    let parts = address.split(',').map(p => p.trim()).filter(p => p);
+    
+    // استخراج المدينة (عادة آخر جزء قبل الدولة)
+    let city = '';
+    for (const part of parts) {
+        const cityList = ['الخرطوم', 'أم درمان', 'بحري', 'شرق النيل', 'جبل أولياء', 'أم بدة', 'كرري', 'Omdurman', 'Khartoum', 'Bahri'];
+        for (const c of cityList) {
+            if (part.includes(c)) {
+                city = c;
+                break;
+            }
+        }
+        if (city) break;
+    }
+    
+    // البحث عن معلم أو street name
+    let landmark = '';
+    let streetName = '';
+    
+    for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        
+        // البحث عن معلم
+        for (const [eng, arb] of Object.entries(landmarkTranslations)) {
+            if (part.toLowerCase().includes(eng.toLowerCase())) {
+                landmark = arb;
+                break;
+            }
+        }
+        
+        // البحث عن اسم شارع
+        if (!streetName && !landmark && part.length > 3) {
+            if (!part.toLowerCase().includes('unnamed') && !part.match(/^[\d\s]+$/)) {
+                streetName = part;
+            }
+        }
+    }
+    
+    // بناء العنوان المنسق
+    let formattedAddress = '';
+    
+    if (landmark) {
+        formattedAddress = `جوار ${landmark}`;
+    } else if (streetName && streetName !== city) {
+        formattedAddress = streetName;
+    }
+    
+    // إضافة المدينة
+    if (city && city !== formattedAddress) {
+        formattedAddress = formattedAddress ? `${formattedAddress} - ${city}` : city;
+    }
+    
+    return formattedAddress || address.substring(0, 30);
 }
 
 function showMyRides() {
