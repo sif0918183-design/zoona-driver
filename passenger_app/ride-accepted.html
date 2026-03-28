@@ -259,6 +259,12 @@
             const urlParams = new URLSearchParams(window.location.search);
             currentRideId = urlParams.get('id') || urlParams.get('rideId');
             
+            // إذا لم يكن هناك rideId في الرابط، تحقق من localStorage
+            if (!currentRideId) {
+                currentRideId = localStorage.getItem('active_ride_id');
+                console.log('📋 تم جلب معرف الرحلة من localStorage:', currentRideId);
+            }
+            
             console.log('📋 معرف الرحلة:', currentRideId);
 
             if (currentRideId) {
@@ -947,6 +953,17 @@
             const confirmed = confirm('هل أنت متأكد من إلغاء الرحلة؟');
             if (!confirmed) return;
             
+            // إذا لم يكن هناك rideId، حاول الحصول عليه من localStorage
+            if (!currentRideId) {
+                currentRideId = localStorage.getItem('active_ride_id');
+                console.log('📋 تم جلب معرف الرحلة من localStorage:', currentRideId);
+            }
+            
+            if (!currentRideId) {
+                alert('❌ لا يوجد معرف رحلة');
+                return;
+            }
+            
             try {
                 // Get ride details
                 const { data: rideData, error: rideError } = await tarhalDB
@@ -955,34 +972,43 @@
                     .eq('id', currentRideId)
                     .single();
 
-                if (rideError) throw rideError;
+                if (rideError || !rideData) {
+                    console.error('❌ خطأ في جلب بيانات الرحلة:', rideError);
+                    alert('❌ تعذر جلب بيانات الرحلة');
+                    return;
+                }
 
                 // Get accepted time and calculate elapsed time
-                const acceptedAt = new Date(rideData.accepted_at);
-                const now = new Date();
-                const elapsedMinutes = (now - acceptedAt) / 1000 / 60;
+                let elapsedMinutes = 0;
+                if (rideData.accepted_at) {
+                    const acceptedAt = new Date(rideData.accepted_at);
+                    if (!isNaN(acceptedAt.getTime())) {
+                        const now = new Date();
+                        elapsedMinutes = (now - acceptedAt) / 1000 / 60;
+                    }
+                }
                 
                 // Get driver location (if available) for distance check
                 let driverWithinRange = false;
-                let driverLocation = null;
                 
                 try {
-                    const { data: locationData } = await tarhalDB
-                        .from('driver_locations')
-                        .select('lat, lng')
-                        .eq('driver_id', rideData.driver_id)
-                        .order('updated_at', { ascending: false })
-                        .limit(1)
-                        .maybeSingle();
-                    
-                    if (locationData && rideData.pickup_lat && rideData.pickup_lng) {
-                        // Calculate distance between driver and pickup location
-                        const distance = calculateDistance(
-                            locationData.lat, locationData.lng,
-                            rideData.pickup_lat, rideData.pickup_lng
-                        );
-                        driverWithinRange = distance <= 200; // 200 meters
-                        console.log(`📍 مسافة السائق من نقطة الاستلام: ${Math.round(distance)} متر`);
+                    if (rideData.driver_id && rideData.pickup_lat && rideData.pickup_lng) {
+                        const { data: locationData } = await tarhalDB
+                            .from('driver_locations')
+                            .select('lat, lng')
+                            .eq('driver_id', rideData.driver_id)
+                            .order('updated_at', { ascending: false })
+                            .limit(1)
+                            .maybeSingle();
+                        
+                        if (locationData) {
+                            const distance = calculateDistance(
+                                locationData.lat, locationData.lng,
+                                rideData.pickup_lat, rideData.pickup_lng
+                            );
+                            driverWithinRange = distance <= 200;
+                            console.log(`📍 مسافة السائق من نقطة الاستلام: ${Math.round(distance)} متر`);
+                        }
                     }
                 } catch (e) {
                     console.warn('تعذر جلب موقع السائق:', e);
@@ -993,10 +1019,10 @@
 
                 let cancellationResult = '';
 
-                if (elapsedMinutes <= 2) {
-                    // Within 2 minutes: Return commission to driver (full refund)
+                // إذا كانت أقل من دقيقتين أو لا يمكن حساب الوقت
+                if (elapsedMinutes <= 2 || elapsedMinutes === 0) {
+                    // Return commission to driver (full refund)
                     if (rideData.driver_id) {
-                        // Return held commission to driver
                         const { data: driver } = await tarhalDB
                             .from('drivers')
                             .select('balance')
@@ -1004,7 +1030,6 @@
                             .single();
                         
                         if (driver && commissionAmount > 0) {
-                            // Return the held commission
                             await tarhalDB
                                 .from('drivers')
                                 .update({
@@ -1012,27 +1037,24 @@
                                 })
                                 .eq('id', rideData.driver_id);
 
-                            // Record the refund transaction
                             await tarhalDB.from('balance_transactions').insert({
                                 driver_id: rideData.driver_id,
                                 ride_id: currentRideId,
                                 amount: commissionAmount,
                                 type: 'cancellation_refund',
-                                description: 'استرجاع عمولة الرحلة - إلغاء الراكب خلال دقيقتين',
+                                description: 'استرجاع عمولة الرحلة - إلغاء الراكب',
                                 created_at: new Date().toISOString()
                             });
                         }
                     }
-                    cancellationResult = 'تم استرجاع العمولة للسائق (إلغاء خلال دقيقتين)';
-                    console.log('✅ تم استرجاع العمولة للسائق - إلغاء خلال دقيقتين');
+                    cancellationResult = 'تم استرجاع العمولة للسائق';
+                    console.log('✅ تم استرجاع العمولة للسائق');
                     
                 } else if (driverWithinRange) {
-                    // After 2 minutes + driver is nearby (within 200m): Keep commission, mark as completed
-                    // The held commission stays as deduction (ride considered "almost completed")
+                    // After 2 minutes + driver is nearby: Keep commission, mark as completed
                     cancellationResult = 'السائق كان بالقرب من نقطة الاستلام - تم إبقاء العمولة';
                     console.log('⚠️ السائق كان قريباً - العمولة تحولت لخصم');
                     
-                    // Update ride to completed status
                     await tarhalDB
                         .from('rides')
                         .update({
@@ -1072,16 +1094,18 @@
                     console.log('✅ تم استرجاع العمولة للسائق - السائق بعيد');
                 }
 
-                // Update ride status
-                await tarhalDB
-                    .from('rides')
-                    .update({
-                        status: 'cancelled_by_customer',
-                        cancelled_at: new Date().toISOString(),
-                        cancellation_reason: cancellationResult,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', currentRideId);
+                // Update ride status (if not already set to completed above)
+                if (rideData.status !== 'completed') {
+                    await tarhalDB
+                        .from('rides')
+                        .update({
+                            status: 'cancelled_by_customer',
+                            cancelled_at: new Date().toISOString(),
+                            cancellation_reason: cancellationResult,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', currentRideId);
+                }
 
                 // =====================================================
                 // سؤال الراكب: هل طلب منك السائق إلغاء الرحلة؟
@@ -1093,7 +1117,6 @@
                     );
                     
                     if (driverRequestedCancel && rideData.driver_id) {
-                        // Ban the driver for 24 hours
                         banDriver(rideData.driver_id);
                     }
                 }, 1000);
@@ -1101,8 +1124,6 @@
                 // =====================================================
                 // إرسال إشعار للسائق بالإلغاء
                 // =====================================================
-                // The driver will receive this via the active ride page's realtime subscription
-                // For now, we'll use localStorage + BroadcastChannel
                 try {
                     const driverChannel = new BroadcastChannel('driver_ride_channel');
                     driverChannel.postMessage({
@@ -1118,12 +1139,15 @@
                 localStorage.removeItem('active_ride_id');
                 localStorage.removeItem('active_ride_status');
                 
+                // Show success message
+                alert('✅ تم إلغاء الرحلة بنجاح');
+                
                 // Redirect to home
                 window.location.href = 'index.html';
                 
             } catch (error) {
                 console.error('❌ خطأ في إلغاء الرحلة:', error);
-                alert('حدث خطأ أثناء إلغاء الرحلة');
+                alert('حدث خطأ أثناء إلغاء الرحلة: ' + error.message);
             }
         }
 

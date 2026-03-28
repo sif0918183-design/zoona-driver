@@ -266,48 +266,57 @@
             // التحقق من أن الرحلة لا تزال نشطة
             // =====================================================
             
-            if (currentRideId) {
-                // Check if ride is still active in database
-                const { data: rideData, error } = await tarhalDB
-                    .from('rides')
-                    .select('id, status, driver_id')
-                    .eq('id', currentRideId)
-                    .single();
-                
-                if (!rideData || !['accepted', 'arrived', 'ongoing'].includes(rideData.status)) {
-                    // Ride is no longer active - redirect to dashboard
-                    console.log('⚠️ الرحلة لم تعد نشطة، توجيه للرئيسية');
-                    localStorage.removeItem('active_ride_id');
-                    localStorage.removeItem('active_ride_status');
-                    window.location.href = 'index.html';
-                    return;
-                }
-                
-                // Verify this driver owns this ride
-                if (rideData.driver_id !== currentDriverId) {
-                    console.log('⚠️ هذه الرحلة ليست لهذا السائق');
-                    window.location.href = 'index.html';
-                    return;
-                }
-                
-                console.log('✅ تم التحقق من الرحلة النشطة');
+            // إذا لم يكن هناك rideId في الرابط، تحقق من localStorage
+            if (!currentRideId) {
+                currentRideId = localStorage.getItem('active_ride_id');
+                console.log('📋 تم جلب معرف الرحلة من localStorage:', currentRideId);
             }
+            
+            // إذا لا يزال لا يوجد rideId، توجيه للرئيسية
+            if (!currentRideId) {
+                console.log('⚠️ لا يوجد معرف رحلة، توجيه للرئيسية');
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            // Check if ride is still active in database
+            const { data: rideData, error } = await tarhalDB
+                .from('rides')
+                .select('id, status, driver_id')
+                .eq('id', currentRideId)
+                .single();
+            
+            if (!rideData || !['accepted', 'arrived', 'ongoing'].includes(rideData.status)) {
+                // Ride is no longer active - redirect to dashboard
+                console.log('⚠️ الرحلة لم تعد نشطة، توجيه للرئيسية');
+                localStorage.removeItem('active_ride_id');
+                localStorage.removeItem('active_ride_status');
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            // Verify this driver owns this ride
+            if (rideData.driver_id !== currentDriverId) {
+                console.log('⚠️ هذه الرحلة ليست لهذا السائق');
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            console.log('✅ تم التحقق من الرحلة النشطة');
             // =====================================================
             // نهاية نظام الحارس
             // =====================================================
 
-            // الحصول على الموقع الأولي فوراً
+            // Getting initial location immediately
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition((position) => {
                     initialPosition = { lat: position.coords.latitude, lng: position.coords.longitude };
                 }, (err) => console.warn("❌ تحديد الموقع الأولي فشل", err), { enableHighAccuracy: true });
             }
 
-            if (currentRideId) {
-                loadGoogleMaps();
-                fetchRideDetails();
-                initRealtime();
-            }
+            loadGoogleMaps();
+            fetchRideDetails();
+            initRealtime();
         });
 
         // تحميل خرائط جوجل
