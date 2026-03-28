@@ -4185,76 +4185,102 @@ function formatAddress(address) {
     
     // قائمة المعالم القابلة للتعريب
     const landmarkTranslations = {
-        'School': 'مدرسة',
-        'Mosque': 'مسجد',
-        'University': 'جامعة',
-        'Hospital': 'مستشفى',
-        'Market': 'سوق',
-        'Mall': 'مول',
-        'Restaurant': 'مطعم',
-        'Cafe': 'مقهى',
-        'Bank': 'بنك',
-        'Hotel': 'فندق',
-        'Park': 'حديقة',
-        'Station': 'محطة',
-        'Stop': 'محطة',
-        'College': 'كلية'
+        'School': 'مدرسة', 'Primary School': 'مدرسة ابتدائية',
+        'Mosque': 'مسجد', 'Masjid': 'مسجد',
+        'University': 'جامعة', 'College': 'كلية', 'Institute': 'معهد',
+        'Hospital': 'مستشفى', 'Clinic': 'عيادة', 'Medical': 'مركز طبي',
+        'Market': 'سوق', 'Mall': 'مول', 'Shopping': 'مجمع تجاري',
+        'Restaurant': 'مطعم', 'Cafe': 'مقهى', 'Coffee': 'قهوة', 'Hotel': 'فندق',
+        'Bank': 'بنك', 'Park': 'حديقة', 'Garden': 'منتزه',
+        'Station': 'محطة', 'Stop': 'محطة', 'Bus Stop': 'محطة حافلات',
+        'Police': 'شرطة', 'Fire': 'إطفاء', 'Post': 'بريد', 'Library': 'مكتبة', 'Stadium': 'استاد'
     };
     
-    // تقسيم العنوان إلى أجزاء
+    // المدن المراد التعرف عليها
+    const cityList = ['الخرطم', 'أم درمان', 'بحري', 'شرق النيل', 'جبل أولياء', 'أم بدة', 'كرري', 'Omdurman', 'Khartoum', 'Bahri'];
+    
+    // تقسيم العنوان وإزالة الدولة
     let parts = address.split(',').map(p => p.trim()).filter(p => p);
     
-    // استخراج المدينة (عادة آخر جزء قبل الدولة)
+    // إزالة آخر عنصر إذا كان الدولة (السودان)
+    const lastPart = parts[parts.length - 1] || '';
+    if (lastPart.toLowerCase().includes('sudan') || lastPart.toLowerCase().includes('sd')) {
+        parts = parts.slice(0, -1);
+    }
+    
+    // استخراج المدينة
     let city = '';
-    for (const part of parts) {
-        const cityList = ['الخرطوم', 'أم درمان', 'بحري', 'شرق النيل', 'جبل أولياء', 'أم بدة', 'كرري', 'Omdurman', 'Khartoum', 'Bahri'];
+    let cityIndex = -1;
+    for (let i = 0; i < parts.length; i++) {
         for (const c of cityList) {
-            if (part.includes(c)) {
+            if (parts[i].toLowerCase().includes(c.toLowerCase())) {
                 city = c;
+                cityIndex = i;
                 break;
             }
         }
         if (city) break;
     }
     
-    // البحث عن معلم أو street name
+    // البحث عن معلم أو اسم شارع أو حي
     let landmark = '';
     let streetName = '';
+    let neighborhood = '';
     
     for (let i = 0; i < parts.length; i++) {
-        const part = parts[i];
+        if (i === cityIndex) continue; // تخطي المدينة
         
-        // البحث عن معلم
+        const part = parts[i];
+        const partLower = part.toLowerCase();
+        
+        // البحث عن معلم صريح
         for (const [eng, arb] of Object.entries(landmarkTranslations)) {
-            if (part.toLowerCase().includes(eng.toLowerCase())) {
+            if (partLower.includes(eng.toLowerCase())) {
                 landmark = arb;
                 break;
             }
         }
+        if (landmark) break;
+        
+        // البحث عن حي/neighborhood (كلمات قصيرة قابلة للعرض)
+        if (!neighborhood && part.length > 2 && part.length < 25 && !part.match(/^\d+$/)) {
+            if (!partLower.includes('unnamed') && !partLower.includes('road') && 
+                !partLower.includes('street') && !partLower.includes('ave')) {
+                neighborhood = part;
+            }
+        }
         
         // البحث عن اسم شارع
-        if (!streetName && !landmark && part.length > 3) {
-            if (!part.toLowerCase().includes('unnamed') && !part.match(/^[\d\s]+$/)) {
+        if (!streetName && !landmark && !neighborhood && part.length > 3 && part.length < 40) {
+            if (!partLower.includes('unnamed') && !part.match(/^[\d\s\-\.]+$/)) {
                 streetName = part;
             }
         }
     }
     
-    // بناء العنوان المنسق
+    // بناء العنوان المنسق بدون الدولة
     let formattedAddress = '';
     
+    // الأولوية: المعلم > اسم الشارع > اسم الحي
     if (landmark) {
-        formattedAddress = `جوار ${landmark}`;
-    } else if (streetName && streetName !== city) {
+        formattedAddress = 'جوار ' + landmark;
+    } else if (streetName) {
         formattedAddress = streetName;
+    } else if (neighborhood) {
+        formattedAddress = 'حي ' + neighborhood;
     }
     
-    // إضافة المدينة
-    if (city && city !== formattedAddress) {
-        formattedAddress = formattedAddress ? `${formattedAddress} - ${city}` : city;
+    // إضافة المدينة في النهاية (بدون الدولة)
+    if (city) {
+        let cityDisplay = city;
+        if (city === 'Khartoum') cityDisplay = 'الخرطقة';
+        else if (city === 'Omdurman') cityDisplay = 'أم درمان';
+        else if (city === 'Bahri') cityDisplay = 'بحري';
+        
+        formattedAddress = formattedAddress ? formattedAddress + ' - ' + cityDisplay : cityDisplay;
     }
     
-    return formattedAddress || address.substring(0, 30);
+    return formattedAddress || address.split(',')[0].substring(0, 25);
 }
 
 function showMyRides() {
