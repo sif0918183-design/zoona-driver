@@ -761,8 +761,12 @@
             font-family: 'Tajawal', sans-serif;
             font-size: 1rem;
             transition: var(--transition);
-            background: rgba(255, 255, 255, 0.6);
-            color: white;
+            background: #ffffff;
+            color: #333333;
+        }
+
+        .chat-input::placeholder {
+            color: #888888;
         }
 
         .chat-input:focus {
@@ -911,6 +915,153 @@
             color: var(--gray-600);
             font-size: 0.95rem;
             line-height: 1.5;
+        }
+
+        /* Trip Modal Styles */
+        .trip-modal-body {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .trip-detail-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: var(--tech-bg);
+            border-radius: var(--radius);
+            font-size: 1rem;
+            color: var(--tech-text);
+        }
+
+        .trip-detail-row i {
+            font-size: 1.25rem;
+            color: var(--Tracka-primary);
+        }
+
+        .trip-actions {
+            margin-top: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .trip-progress-bar {
+            margin-bottom: 1.5rem;
+        }
+
+        .trip-progress-steps {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        .trip-progress-steps::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--gray-200);
+            z-index: 0;
+        }
+
+        .trip-progress-steps .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+            flex: 1;
+        }
+
+        .trip-progress-steps .step-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--gray-200);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            color: var(--gray-500);
+            margin-bottom: 0.5rem;
+        }
+
+        .trip-progress-steps .step.completed .step-icon {
+            background: var(--success);
+            color: white;
+        }
+
+        .trip-progress-steps .step.active .step-icon {
+            background: var(--Tracka-primary);
+            color: white;
+            box-shadow: 0 0 15px var(--Tracka-emerald-glow);
+        }
+
+        .trip-progress-steps .step-label {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+            text-align: center;
+        }
+
+        .trip-progress-steps .step.completed .step-label,
+        .trip-progress-steps .step.active .step-label {
+            color: var(--tech-text);
+            font-weight: 600;
+        }
+
+        .trip-cancelled-badge {
+            background: var(--danger);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: var(--radius);
+            text-align: center;
+            font-weight: 600;
+        }
+
+        /* Button Styles */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--radius);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            font-family: 'Tajawal', sans-serif;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-block {
+            width: 100%;
         }
 
         /* Responsive Design */
@@ -1316,6 +1467,115 @@
 
     <!-- Notification Container -->
     <div class="notification-container" id="notification-container"></div>
+
+    <!-- Trip Info Modal (Permanent) -->
+    <div id="trip-info-modal" class="modal hidden" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    ">
+        <div class="modal-content" style="
+            background: var(--tech-card);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: var(--tech-shadow-lg);
+            border: 1px solid var(--tech-border);
+        ">
+            <div class="modal-header" style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 1.5rem;
+                padding-bottom: 1rem;
+                border-bottom: 1px solid var(--tech-border);
+            ">
+                <h3 id="trip-modal-title" style="
+                    margin: 0;
+                    font-size: 1.25rem;
+                    font-weight: 700;
+                    color: var(--Tracka-primary);
+                ">معلومات الرحلة</h3>
+                <button onclick="closeTripModal()" style="
+                    background: none;
+                    border: none;
+                    font-size: 1.5rem;
+                    cursor: pointer;
+                    color: var(--gray-500);
+                    padding: 0.25rem;
+                ">&times;</button>
+            </div>
+            <div id="trip-modal-content" class="modal-body">
+                <!-- Dynamic content will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay Alert for Cancellations -->
+    <div id="cancellation-alert" class="modal hidden" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    ">
+        <div style="
+            background: var(--tech-card);
+            border-radius: var(--radius-lg);
+            padding: 2.5rem;
+            max-width: 350px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.5);
+            border: 2px solid var(--danger);
+        ">
+            <div style="
+                font-size: 4rem;
+                color: var(--danger);
+                margin-bottom: 1rem;
+            ">
+                <i class="ph-light ph-warning-circle"></i>
+            </div>
+            <h2 style="
+                margin: 0 0 1rem;
+                font-size: 1.5rem;
+                color: var(--danger);
+                font-weight: 700;
+            ">تنبيه إلغاء الرحلة</h2>
+            <p id="cancellation-alert-message" style="
+                margin: 0 0 1.5rem;
+                font-size: 1.125rem;
+                color: var(--tech-text);
+            "></p>
+            <button onclick="handleCancellationAlert()" style="
+                background: var(--Tracka-primary);
+                color: white;
+                border: none;
+                padding: 0.875rem 2rem;
+                border-radius: var(--radius);
+                font-size: 1rem;
+                font-weight: 600;
+                cursor: pointer;
+                font-family: 'Tajawal', sans-serif;
+                width: 100%;
+            ">حسناً</button>
+        </div>
+    </div>
 
     <script>
         // ============================================
@@ -4449,6 +4709,877 @@
             await loadPassengerRides();
             displayPassengerRides();
         }
+
+        // ============================================
+        // NEW: TRAVEL TRIPS TABLE FUNCTIONS
+        // ============================================
+        
+        // Create trip in travel_trips table
+        async function createTravelTrip(rideRequestId, passengerId, driverId, fromCity, toCity, vehicleCategory, finalPrice) {
+            try {
+                const { data, error } = await travelSupabase
+                    .from('travel_trips')
+                    .insert([{
+                        ride_request_id: rideRequestId,
+                        passenger_id: passengerId,
+                        driver_id: driverId,
+                        from_city: fromCity,
+                        to_city: toCity,
+                        vehicle_category: vehicleCategory,
+                        final_price: finalPrice,
+                        status: 'driver_selected',
+                        created_at: new Date().toISOString()
+                    }])
+                    .select()
+                    .single();
+                
+                if (error) throw error;
+                return data;
+            } catch (error) {
+                console.error('Error creating travel trip:', error);
+                return null;
+            }
+        }
+
+        // Update trip status
+        async function updateTravelTripStatus(tripId, newStatus, additionalFields = {}) {
+            try {
+                const updateData = { 
+                    status: newStatus, 
+                    updated_at: new Date().toISOString(),
+                    ...additionalFields
+                };
+                
+                const { error } = await travelSupabase
+                    .from('travel_trips')
+                    .update(updateData)
+                    .eq('id', tripId);
+                
+                if (error) throw error;
+                return true;
+            } catch (error) {
+                console.error('Error updating travel trip:', error);
+                return false;
+            }
+        }
+
+        // Get active trip for driver
+        async function getDriverActiveTrip(driverId) {
+            try {
+                const { data, error } = await travelSupabase
+                    .from('travel_trips')
+                    .select('*, ride_requests(*), customers!travel_trips_passenger_id_fkey(full_name, phone), drivers!travel_trips_driver_id_fkey(full_name, phone)')
+                    .eq('driver_id', driverId)
+                    .in('status', ['driver_selected', 'confirmed', 'in_progress'])
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .single();
+                
+                if (error && error.code !== 'PGRST116') throw error;
+                return data;
+            } catch (error) {
+                console.error('Error getting driver active trip:', error);
+                return null;
+            }
+        }
+
+        // Get active trip for passenger
+        async function getPassengerActiveTrip(passengerId) {
+            try {
+                const { data, error } = await travelSupabase
+                    .from('travel_trips')
+                    .select('*, ride_requests(*), customers!travel_trips_passenger_id_fkey(full_name, phone), drivers!travel_trips_driver_id_fkey(full_name, phone)')
+                    .eq('passenger_id', passengerId)
+                    .in('status', ['driver_selected', 'confirmed', 'in_progress'])
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .single();
+                
+                if (error && error.code !== 'PGRST116') throw error;
+                return data;
+            } catch (error) {
+                console.error('Error getting passenger active trip:', error);
+                return null;
+            }
+        }
+
+        // ============================================
+        // NEW: PERMANENT TRIP MODAL FUNCTIONS
+        // ============================================
+        
+        let tripModalPersistent = false;
+        let currentTripData = null;
+
+        // Show trip modal with all details
+        function showTripModal(tripData, userRole) {
+            currentTripData = tripData;
+            const modal = document.getElementById('trip-info-modal');
+            const title = document.getElementById('trip-modal-title');
+            const content = document.getElementById('trip-modal-content');
+            
+            if (!modal || !title || !content) {
+                console.error('Trip modal elements not found');
+                return;
+            }
+
+            const passengerName = tripData.customers?.full_name || tripData.passenger_name || 'غير محدد';
+            const passengerPhone = tripData.customers?.phone || tripData.passenger_phone || 'غير محدد';
+            const driverName = tripData.drivers?.full_name || tripData.driver_name || 'غير محدد';
+            const driverPhone = tripData.drivers?.phone || tripData.driver_phone || 'غير محدد';
+            
+            // Build modal content based on status
+            let statusHtml = '';
+            let progressBarHtml = getTripProgressBar(tripData.status);
+            
+            if (userRole === 'driver') {
+                // Driver view
+                title.textContent = 'رحلتك مع الراكب';
+                content.innerHTML = `
+                    <div class="trip-modal-body">
+                        ${progressBarHtml}
+                        <div class="trip-detail-row">
+                            <i class="ph-light ph-user"></i>
+                            <span>الراكب: ${passengerName}</span>
+                        </div>
+                        <div class="trip-detail-row">
+                            <i class="ph-light ph-phone"></i>
+                            <span>رقم الراكب: ${passengerPhone}</span>
+                        </div>
+                        <div class="trip-detail-row">
+                            <i class="ph-light ph-map-pin"></i>
+                            <span>من: ${tripData.from_city}</span>
+                        </div>
+                        <div class="trip-detail-row">
+                            <i class="ph-light ph-flag"></i>
+                            <span>إلى: ${tripData.to_city}</span>
+                        </div>
+                        <div class="trip-detail-row">
+                            <i class="ph-light ph-currency-dollar"></i>
+                            <span>السعر: ${tripData.final_price || tripData.estimated_price} ج.س</span>
+                        </div>
+                        ${tripData.status !== 'completed' && tripData.status !== 'cancelled' ? `
+                        <div class="trip-actions">
+                            ${tripData.status === 'driver_selected' || tripData.status === 'confirmed' ? `
+                                <button onclick="confirmDriverArrival()" class="btn btn-success btn-block">
+                                    <i class="ph-light ph-check-circle"></i>
+                                    وصلت للراكب
+                                </button>
+                            ` : ''}
+                            ${tripData.status === 'in_progress' ? `
+                                <button onclick="confirmTripCompletion()" class="btn btn-success btn-block">
+                                    <i class="ph-light ph-check-circle"></i>
+                                    تم الوصول للوجهة
+                                </button>
+                            ` : ''}
+                            <button onclick="cancelTripByDriverFromModal()" class="btn btn-danger btn-block">
+                                <i class="ph-light ph-x-circle"></i>
+                                إلغاء الرحلة
+                            </button>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            } else {
+                // Passenger view
+                title.textContent = 'رحلتك مع السائق';
+                content.innerHTML = `
+                    <div class="trip-modal-body">
+                        ${progressBarHtml}
+                        <div class="trip-detail-row">
+                            <i class="ph-light ph-user"></i>
+                            <span>السائق: ${driverName}</span>
+                        </div>
+                        <div class="trip-detail-row">
+                            <i class="ph-light ph-phone"></i>
+                            <span>رقم السائق: ${driverPhone}</span>
+                        </div>
+                        <div class="trip-detail-row">
+                            <i class="ph-light ph-map-pin"></i>
+                            <span>من: ${tripData.from_city}</span>
+                        </div>
+                        <div class="trip-detail-row">
+                            <i class="ph-light ph-flag"></i>
+                            <span>إلى: ${tripData.to_city}</span>
+                        </div>
+                        <div class="trip-detail-row">
+                            <i class="ph-light ph-currency-dollar"></i>
+                            <span>السعر: ${tripData.final_price || tripData.estimated_price} ج.س</span>
+                        </div>
+                        <div class="trip-detail-row">
+                            <i class="ph-light ph-info"></i>
+                            <span>الحالة: ${getTripStatusText(tripData.status)}</span>
+                        </div>
+                        ${tripData.status !== 'completed' && tripData.status !== 'cancelled' ? `
+                        <div class="trip-actions">
+                            <button onclick="cancelTripByPassenger('${tripData.id}')" class="btn btn-danger btn-block">
+                                <i class="ph-light ph-x-circle"></i>
+                                إلغاء الرحلة
+                            </button>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+
+            // Make modal persistent (cannot be closed except through actions)
+            tripModalPersistent = true;
+            modal.classList.remove('hidden');
+            
+            // Save to localStorage for persistence
+            localStorage.setItem('currentTripModal', JSON.stringify({
+                tripData: tripData,
+                userRole: userRole,
+                timestamp: new Date().toISOString()
+            }));
+        }
+
+        // Get trip progress bar HTML
+        function getTripProgressBar(status) {
+            const steps = [
+                { id: 'driver_selected', label: 'اختيار السائق', icon: 'ph-user-check' },
+                { id: 'confirmed', label: 'تأكيد الرحلة', icon: 'ph-check' },
+                { id: 'in_progress', label: 'قيد التنفيذ', icon: 'ph-car' },
+                { id: 'completed', label: 'مكتملة', icon: 'ph-check-circle' }
+            ];
+            
+            let currentStepIndex = 0;
+            if (status === 'driver_selected') currentStepIndex = 0;
+            else if (status === 'confirmed') currentStepIndex = 1;
+            else if (status === 'in_progress') currentStepIndex = 2;
+            else if (status === 'completed') currentStepIndex = 3;
+            else if (status === 'cancelled') currentStepIndex = -1;
+            
+            let html = '<div class="trip-progress-bar"><div class="trip-progress-steps">';
+            
+            if (status === 'cancelled') {
+                html = '<div class="trip-progress-bar cancelled"><div class="trip-cancelled-badge">تم الإلغاء</div></div>';
+                return html;
+            }
+            
+            steps.forEach((step, index) => {
+                let stepClass = 'step';
+                if (index < currentStepIndex) stepClass += ' completed';
+                else if (index === currentStepIndex) stepClass += ' active';
+                
+                html += `
+                    <div class="${stepClass}">
+                        <div class="step-icon"><i class="ph-light ph-${step.icon}"></i></div>
+                        <div class="step-label">${step.label}</div>
+                    </div>
+                `;
+            });
+            
+            html += '</div></div>';
+            return html;
+        }
+
+        // Get trip status text in Arabic
+        function getTripStatusText(status) {
+            const statusMap = {
+                'driver_selected': 'تم اختيار السائق',
+                'confirmed': 'تم تأكيد الرحلة',
+                'in_progress': 'قيد التنفيذ',
+                'completed': 'مكتملة',
+                'cancelled': 'ملغاة'
+            };
+            return statusMap[status] || status;
+        }
+
+        // Confirm driver arrival to passenger
+        async function confirmDriverArrival() {
+            if (!currentTripData || !currentTripData.id) {
+                showNotification('لا توجد رحلة نشطة', 'error');
+                return;
+            }
+            
+            try {
+                showNotification('جاري تأكيد الوصول...', 'info');
+                
+                // Update travel_trips
+                await updateTravelTripStatus(currentTripData.id, 'in_progress', {
+                    driver_arrival_confirmed_at: new Date().toISOString()
+                });
+                
+                // Update ride_requests status
+                await travelSupabase
+                    .from('ride_requests')
+                    .update({ status: 'in_progress' })
+                    .eq('id', currentTripData.ride_request_id);
+                
+                showNotification('تم تأكيد وصولك للراكب بنجاح!', 'success');
+                
+                // Refresh modal
+                const updatedTrip = await travelSupabase
+                    .from('travel_trips')
+                    .select('*')
+                    .eq('id', currentTripData.id)
+                    .single();
+                
+                if (updatedTrip.data) {
+                    showTripModal(updatedTrip.data, 'driver');
+                }
+                
+            } catch (error) {
+                console.error('Error confirming arrival:', error);
+                showNotification('خطأ في تأكيد الوصول', 'error');
+            }
+        }
+
+        // Confirm trip completion
+        async function confirmTripCompletion() {
+            if (!currentTripData || !currentTripData.id) {
+                showNotification('لا توجد رحلة نشطة', 'error');
+                return;
+            }
+            
+            try {
+                showNotification('جاري إكمال الرحلة...', 'info');
+                
+                const commission = (currentTripData.final_price || currentTripData.estimated_price) * 0.05;
+                
+                // Update travel_trips
+                await updateTravelTripStatus(currentTripData.id, 'completed', {
+                    trip_completed_at: new Date().toISOString(),
+                    commission_deducted: true,
+                    commission_amount: commission
+                });
+                
+                // Update ride_requests status
+                await travelSupabase
+                    .from('ride_requests')
+                    .update({ status: 'completed' })
+                    .eq('id', currentTripData.ride_request_id);
+                
+                // Deduct commission from driver balance
+                if (currentTripData.driver_id) {
+                    const { data: driver } = await travelSupabase
+                        .from('drivers')
+                        .select('balance')
+                        .eq('id', currentTripData.driver_id)
+                        .single();
+                    
+                    if (driver) {
+                        const newBalance = (driver.balance || 0) - commission;
+                        await travelSupabase
+                            .from('drivers')
+                            .update({ balance: newBalance })
+                            .eq('id', currentTripData.driver_id);
+                    }
+                }
+                
+                showNotification(`تم إكمال الرحلة! تم خصم عمولة ${commission} ج.س`, 'success');
+                
+                // Close modal and clear localStorage
+                closeTripModal();
+                localStorage.removeItem('currentTripModal');
+                
+            } catch (error) {
+                console.error('Error completing trip:', error);
+                showNotification('خطأ في إكمال الرحلة', 'error');
+            }
+        }
+
+        // Cancel trip by passenger
+        async function cancelTripByPassenger(tripId) {
+            if (!confirm('هل أنت متأكد من إلغاء الرحلة؟')) return;
+            
+            try {
+                const reason = prompt('سبب الإلغاء (اختياري):') || '';
+                
+                // Update travel_trips
+                await updateTravelTripStatus(tripId, 'cancelled', {
+                    cancelled_by: 'passenger',
+                    cancelled_at: new Date().toISOString(),
+                    cancellation_reason: reason
+                });
+                
+                // Update ride_requests
+                await travelSupabase
+                    .from('ride_requests')
+                    .update({ status: 'cancelled' })
+                    .eq('id', currentTripData?.ride_request_id);
+                
+                showNotification('تم إلغاء الرحلة بنجاح', 'success');
+                
+                // Close modal
+                closeTripModal();
+                localStorage.removeItem('currentTripModal');
+                
+                // Reload rides
+                await loadPassengerRides();
+                
+            } catch (error) {
+                console.error('Error cancelling trip:', error);
+                showNotification('خطأ في إلغاء الرحلة', 'error');
+            }
+        }
+
+        // Cancel trip by driver from modal
+        async function cancelTripByDriverFromModal() {
+            if (!currentTripData || !currentTripData.id) {
+                showNotification('لا توجد رحلة نشطة', 'error');
+                return;
+            }
+            await cancelTripByDriver(currentTripData.id);
+        }
+
+        // Cancel trip by driver
+        async function cancelTripByDriver(tripId, reason) {
+            if (!confirm('هل أنت متأكد من إلغاء الرحلة؟')) return;
+            
+            reason = reason || prompt('سبب الإلغاء (إلزامي):');
+            if (!reason) {
+                showNotification('الرجاء إدخال سبب الإلغاء', 'warning');
+                return;
+            }
+            
+            try {
+                // Update travel_trips
+                await updateTravelTripStatus(tripId, 'cancelled', {
+                    cancelled_by: 'driver',
+                    cancelled_at: new Date().toISOString(),
+                    cancellation_reason: reason
+                });
+                
+                // Update ride_requests
+                await travelSupabase
+                    .from('ride_requests')
+                    .update({ status: 'cancelled' })
+                    .eq('id', currentTripData?.ride_request_id);
+                
+                // Log violation if trip was active
+                if (currentTripData?.driver_id) {
+                    await travelSupabase
+                        .from('driver_violations')
+                        .insert([{
+                            driver_id: currentTripData.driver_id,
+                            trip_id: tripId,
+                            violation_type: 'cancellation_after_selection',
+                            description: reason
+                        }]);
+                    
+                    // Deduct penalty
+                    const { data: driver } = await travelSupabase
+                        .from('drivers')
+                        .select('balance')
+                        .eq('id', currentTripData.driver_id)
+                        .single();
+                    
+                    if (driver) {
+                        const penalty = 10;
+                        const newBalance = (driver.balance || 0) - penalty;
+                        await travelSupabase
+                            .from('drivers')
+                            .update({ balance: newBalance })
+                            .eq('id', currentTripData.driver_id);
+                        
+                        showNotification(`تم إلغاء الرحلة. تم خصم غرامة ${penalty} ج.س`, 'warning');
+                    }
+                }
+                
+                // Close modal
+                closeTripModal();
+                localStorage.removeItem('currentTripModal');
+                
+            } catch (error) {
+                console.error('Error cancelling trip:', error);
+                showNotification('خطأ في إلغاء الرحلة', 'error');
+            }
+        }
+
+        // Close trip modal
+        function closeTripModal() {
+            if (tripModalPersistent && currentTripData && currentTripData.status !== 'completed' && currentTripData.status !== 'cancelled') {
+                showNotification('لا يمكن إغلاق هذه النافذة حتى إتمام الرحلة', 'warning');
+                return;
+            }
+            
+            tripModalPersistent = false;
+            currentTripData = null;
+            
+            const modal = document.getElementById('trip-info-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        }
+
+        // Restore trip modal on page load
+        async function restoreTripModal() {
+            try {
+                const saved = localStorage.getItem('currentTripModal');
+                if (!saved) return;
+                
+                const modalData = JSON.parse(saved);
+                
+                // Check if trip is still active
+                const { data: trip } = await travelSupabase
+                    .from('travel_trips')
+                    .select('*')
+                    .eq('id', modalData.tripData.id)
+                    .single();
+                
+                if (trip && trip.status !== 'completed' && trip.status !== 'cancelled') {
+                    // Check if user is still the correct party
+                    let shouldShow = false;
+                    if (modalData.userRole === 'driver' && trip.driver_id === currentUser?.id) {
+                        shouldShow = true;
+                    } else if (modalData.userRole === 'passenger' && trip.passenger_id === currentUser?.id) {
+                        shouldShow = true;
+                    }
+                    
+                    if (shouldShow) {
+                        showTripModal(trip, modalData.userRole);
+                    }
+                } else {
+                    // Clear old modal data
+                    localStorage.removeItem('currentTripModal');
+                }
+            } catch (error) {
+                console.error('Error restoring trip modal:', error);
+                localStorage.removeItem('currentTripModal');
+            }
+        }
+
+        // ============================================
+        // NEW: MESSAGE READ TRACKING (FIX RED CIRCLE)
+        // ============================================
+        
+        // Mark chat as read using user_message_reads table
+        async function markChatAsReadWithDB(chatId, lastMessageId) {
+            if (!chatId || !lastMessageId || !currentUser?.id) return;
+            
+            try {
+                // First check if record exists
+                const { data: existing } = await travelSupabase
+                    .from('user_message_reads')
+                    .select('id')
+                    .eq('user_id', currentUser.id)
+                    .eq('chat_id', chatId)
+                    .single();
+                
+                if (existing) {
+                    // Update existing record
+                    await travelSupabase
+                        .from('user_message_reads')
+                        .update({ 
+                            last_read_message_id: lastMessageId,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', existing.id);
+                } else {
+                    // Create new record
+                    await travelSupabase
+                        .from('user_message_reads')
+                        .insert([{
+                            user_id: currentUser.id,
+                            chat_id: chatId,
+                            last_read_message_id: lastMessageId,
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString()
+                        }]);
+                }
+                
+                // Also update localStorage for backup
+                markChatAsRead(chatId, lastMessageId);
+                
+            } catch (error) {
+                console.error('Error marking chat as read:', error);
+                // Fallback to localStorage
+                markChatAsRead(chatId, lastMessageId);
+            }
+        }
+
+        // Get unread message count
+        async function getUnreadMessageCount(chatId) {
+            if (!chatId || !currentUser?.id) return 0;
+            
+            try {
+                // Get last read message ID from DB
+                const { data: readRecord } = await travelSupabase
+                    .from('user_message_reads')
+                    .select('last_read_message_id')
+                    .eq('user_id', currentUser.id)
+                    .eq('chat_id', chatId)
+                    .single();
+                
+                let lastReadId = readRecord?.last_read_message_id;
+                
+                // Fallback to localStorage
+                if (!lastReadId) {
+                    const seenMessages = JSON.parse(localStorage.getItem('tarhal_seen_messages') || '{}');
+                    lastReadId = seenMessages[chatId];
+                }
+                
+                if (!lastReadId) return 0;
+                
+                // Count messages after last read
+                const { count, error } = await travelSupabase
+                    .from('ride_chats')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('ride_id', chatId)
+                    .neq('sender_id', currentUser.id)
+                    .gt('id', lastReadId);
+                
+                return count || 0;
+            } catch (error) {
+                console.error('Error getting unread count:', error);
+                return 0;
+            }
+        }
+
+        // Override original markChatAsRead to use new function
+        const originalMarkChatAsRead = markChatAsRead;
+        markChatAsRead = async function(rideId, lastMessageId) {
+            await markChatAsReadWithDB(rideId, lastMessageId);
+        };
+
+        // ============================================
+        // NEW: OVERRIDE KEY FUNCTIONS FOR NEW FEATURES
+        // ============================================
+        
+        // Override passengerSelectsDriver to create travel_trips
+        const originalPassengerSelectsDriver = passengerSelectsDriver;
+        passengerSelectsDriver = async function(rideId, driverId) {
+            await originalPassengerSelectsDriver(rideId, driverId);
+            
+            // After original function completes, create travel_trips record
+            try {
+                const { data: rideRequest } = await travelSupabase
+                    .from('ride_requests')
+                    .select('*')
+                    .eq('id', rideId)
+                    .single();
+                
+                if (rideRequest && rideRequest.status === 'driver_selected') {
+                    // Create travel_trips record
+                    const tripData = await createTravelTrip(
+                        rideId,
+                        rideRequest.customer_id,
+                        driverId,
+                        rideRequest.from_city,
+                        rideRequest.to_city,
+                        rideRequest.vehicle_category,
+                        rideRequest.estimated_price
+                    );
+                    
+                    if (tripData) {
+                        showNotification('تم إنشاء سجل الرحلة', 'success');
+                    }
+                }
+            } catch (error) {
+                console.error('Error creating travel trip:', error);
+            }
+        };
+
+        // Override driverConfirmsRide for driver modal
+        const originalDriverConfirmsRide = driverConfirmsRide;
+        driverConfirmsRide = async function(rideId) {
+            await originalDriverConfirmsRide(rideId);
+            
+            // After confirmation, show trip modal for driver
+            try {
+                const { data: ride } = await travelSupabase
+                    .from('ride_requests')
+                    .select('*')
+                    .eq('id', rideId)
+                    .single();
+                
+                if (ride && (ride.status === 'confirmed' || ride.status === 'driver_selected')) {
+                    // Get or create travel_trips
+                    let { data: trip } = await travelSupabase
+                        .from('travel_trips')
+                        .select('*')
+                        .eq('ride_request_id', rideId)
+                        .single();
+                    
+                    if (!trip) {
+                        trip = await createTravelTrip(
+                            rideId,
+                            ride.customer_id,
+                            ride.driver_id,
+                            ride.from_city,
+                            ride.to_city,
+                            ride.vehicle_category,
+                            ride.estimated_price
+                        );
+                    }
+                    
+                    if (trip) {
+                        // Show modal after short delay
+                        setTimeout(() => {
+                            showTripModal(trip, 'driver');
+                        }, 1000);
+                    }
+                }
+            } catch (error) {
+                console.error('Error showing trip modal:', error);
+            }
+        };
+
+        // Check for driver active trip on load
+        async function checkAndShowDriverTripModal() {
+            if (userType === 'driver' && currentUser?.id) {
+                const activeTrip = await getDriverActiveTrip(currentUser.id);
+                if (activeTrip) {
+                    showTripModal(activeTrip, 'driver');
+                }
+            }
+        }
+
+        // Check for passenger active trip on load
+        async function checkAndShowPassengerTripModal() {
+            if (userType === 'passenger' && currentUser?.id) {
+                const activeTrip = await getPassengerActiveTrip(currentUser.id);
+                if (activeTrip) {
+                    showTripModal(activeTrip, 'passenger');
+                }
+            }
+        }
+
+        // ============================================
+        // NEW: ENHANCED CANCEL RIDE FUNCTION
+        // ============================================
+        async function cancelRideWithReason(rideId, cancelledBy) {
+            const reason = prompt('سبب الإلغاء (إلزامي):');
+            if (!reason) {
+                showNotification('الرجاء إدخال سبب الإلغاء', 'warning');
+                return;
+            }
+            
+            try {
+                // Update ride_requests
+                await travelSupabase
+                    .from('ride_requests')
+                    .update({ 
+                        status: 'cancelled',
+                        cancellation_reason: reason
+                    })
+                    .eq('id', rideId);
+                
+                // Update travel_trips if exists
+                await travelSupabase
+                    .from('travel_trips')
+                    .update({
+                        status: 'cancelled',
+                        cancelled_by: cancelledBy,
+                        cancelled_at: new Date().toISOString(),
+                        cancellation_reason: reason
+                    })
+                    .eq('ride_request_id', rideId);
+                
+                // If driver cancels after selection, log violation
+                if (cancelledBy === 'driver') {
+                    const { data: ride } = await travelSupabase
+                        .from('ride_requests')
+                        .select('driver_id')
+                        .eq('id', rideId)
+                        .single();
+                    
+                    if (ride?.driver_id) {
+                        await travelSupabase
+                            .from('driver_violations')
+                            .insert([{
+                                driver_id: ride.driver_id,
+                                violation_type: 'cancellation_after_selection',
+                                description: reason
+                            }]);
+                    }
+                }
+                
+                showNotification('تم إلغاء الرحلة بنجاح', 'success');
+                
+                // Close modal if open
+                closeTripModal();
+                localStorage.removeItem('currentTripModal');
+                
+                // Reload rides
+                if (userType === 'passenger') {
+                    await loadPassengerRides();
+                } else {
+                    await loadDriverRides();
+                }
+                
+            } catch (error) {
+                console.error('Error cancelling ride:', error);
+                showNotification('خطأ في إلغاء الرحلة', 'error');
+            }
+        }
+
+        // Show cancellation alert overlay
+        function showCancellationAlert(message) {
+            const alert = document.getElementById('cancellation-alert');
+            const messageEl = document.getElementById('cancellation-alert-message');
+            if (alert && messageEl) {
+                messageEl.textContent = message;
+                alert.classList.remove('hidden');
+            }
+        }
+
+        // Handle cancellation alert button click
+        function handleCancellationAlert() {
+            const alert = document.getElementById('cancellation-alert');
+            if (alert) {
+                alert.classList.add('hidden');
+            }
+            // Redirect to home
+            if (userType === 'passenger') {
+                // Switch to request tab
+                const requestTab = document.querySelector('#passenger-interface .tab:nth-child(1)');
+                if (requestTab) requestTab.click();
+            } else {
+                // Switch to available rides tab
+                const availableTab = document.querySelector('#driver-interface .tab:nth-child(1)');
+                if (availableTab) availableTab.click();
+            }
+        }
+
+        // Listen for trip cancellation from other party
+        function setupTripCancellationListener() {
+            // Subscribe to ride_requests changes
+            travelSupabase
+                .channel('trip-cancellation-listener')
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'ride_requests',
+                    filter: `customer_id=eq.${currentUser?.id}`
+                }, (payload) => {
+                    if (payload.new.status === 'cancelled' && payload.old.status !== 'cancelled') {
+                        showCancellationAlert('تم إلغاء الرحلة بواسطة الراكب');
+                        closeTripModal();
+                        localStorage.removeItem('currentTripModal');
+                    }
+                })
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'ride_requests',
+                    filter: `driver_id=eq.${currentUser?.id}`
+                }, (payload) => {
+                    if (payload.new.status === 'cancelled' && payload.old.status !== 'cancelled') {
+                        showCancellationAlert('تم إلغاء الرحلة بواسطة السائق');
+                        closeTripModal();
+                        localStorage.removeItem('currentTripModal');
+                    }
+                })
+                .subscribe();
+        }
+
+        // Initialize trip modal on page load
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Wait a bit for user initialization
+            setTimeout(async () => {
+                await restoreTripModal();
+                if (userType === 'driver') {
+                    await checkAndShowDriverTripModal();
+                } else if (userType === 'passenger') {
+                    await checkAndShowPassengerTripModal();
+                }
+                // Setup cancellation listener
+                setupTripCancellationListener();
+            }, 2000);
+        });
+
     </script>
 </body>
 </html>
