@@ -262,6 +262,44 @@
             console.log('📋 معرف الرحلة:', currentRideId);
 
             if (currentRideId) {
+                // =====================================================
+                // نظام الحارس (Gatekeeper) - Strict Lockdown
+                // التحقق من أن الرحلة لا تزال نشطة
+                // =====================================================
+                
+                // Check if ride is still active in database
+                const { data: rideData, error } = await tarhalDB
+                    .from('rides')
+                    .select('id, status, passenger_id')
+                    .eq('id', currentRideId)
+                    .single();
+                
+                if (!rideData || !['accepted', 'arrived', 'ongoing'].includes(rideData.status)) {
+                    // Ride is no longer active - redirect to dashboard
+                    console.log('⚠️ الرحلة لم تعد نشطة، توجيه للرئيسية');
+                    localStorage.removeItem('active_ride_id');
+                    localStorage.removeItem('active_ride_status');
+                    window.location.href = 'index.html';
+                    return;
+                }
+                
+                // Get passenger data
+                const passengerData = localStorage.getItem('tarhal_passenger');
+                if (passengerData) {
+                    const passenger = JSON.parse(passengerData);
+                    // Verify this passenger owns this ride
+                    if (rideData.passenger_id !== passenger.id) {
+                        console.log('⚠️ هذه الرحلة ليست لهذا الراكب');
+                        window.location.href = 'index.html';
+                        return;
+                    }
+                }
+                
+                console.log('✅ تم التحقق من الرحلة النشطة');
+                // =====================================================
+                // نهاية نظام الحارس
+                // =====================================================
+                
                 if (window.flutter_inappwebview) {
                     try {
                         window.flutter_inappwebview.callHandler('stopAlerts');
@@ -903,22 +941,184 @@
         }
 
         // ==============================================
-        // إلغاء الرحلة
+        // إلغاء الرحلة (مع منطق الخصم المتطور)
         // ==============================================
         async function cancelRide() {
-            if (!confirm('هل أنت متأكد من إلغاء الرحلة؟')) return;
+            const confirmed = confirm('هل أنت متأكد من إلغاء الرحلة؟');
+            if (!confirmed) return;
             
             try {
-                const { error } = await tarhalDB
+                // Get ride details
+                const { data: rideData, error: rideError } = await tarhalDB
+                    .from('rides')
+                    .select('*, drivers(*)')
+                    .eq('id', currentRideId)
+                    .single();
+
+                if (rideError) throw rideError;
+
+                // Get accepted time and calculate elapsed time
+                const acceptedAt = new Date(rideData.accepted_at);
+                const now = new Date();
+                const elapsedMinutes = (now - acceptedAt) / 1000 / 60;
+                
+                // Get driver location (if available) for distance check
+                let driverWithinRange = false;
+                let driverLocation = null;
+                
+                try {
+                    const { data: locationData } = await tarhalDB
+                        .from('driver_locations')
+                        .select('lat, lng')
+                        .eq('driver_id', rideData.driver_id)
+                        .order('updated_at', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+                    
+                    if (locationData && rideData.pickup_lat && rideData.pickup_lng) {
+                        // Calculate distance between driver and pickup location
+                        const distance = calculateDistance(
+                            locationData.lat, locationData.lng,
+                            rideData.pickup_lat, rideData.pickup_lng
+                        );
+                        driverWithinRange = distance <= 200; // 200 meters
+                        console.log(`📍 مسافة السائق من نقطة الاستلام: ${Math.round(distance)} متر`);
+                    }
+                } catch (e) {
+                    console.warn('تعذر جلب موقع السائق:', e);
+                }
+
+                const rideAmount = rideData?.amount || 0;
+                const commissionAmount = Math.floor(rideAmount * 0.10);
+
+                let cancellationResult = '';
+
+                if (elapsedMinutes <= 2) {
+                    // Within 2 minutes: Return commission to driver (full refund)
+                    if (rideData.driver_id) {
+                        // Return held commission to driver
+                        const { data: driver } = await tarhalDB
+                            .from('drivers')
+                            .select('balance')
+                            .eq('id', rideData.driver_id)
+                            .single();
+                        
+                        if (driver && commissionAmount > 0) {
+                            // Return the held commission
+                            await tarhalDB
+                                .from('drivers')
+                                .update({
+                                    balance: (driver.balance || 0) + commissionAmount
+                                })
+                                .eq('id', rideData.driver_id);
+
+                            // Record the refund transaction
+                            await tarhalDB.from('balance_transactions').insert({
+                                driver_id: rideData.driver_id,
+                                ride_id: currentRideId,
+                                amount: commissionAmount,
+                                type: 'cancellation_refund',
+                                description: 'استرجاع عمولة الرحلة - إلغاء الراكب خلال دقيقتين',
+                                created_at: new Date().toISOString()
+                            });
+                        }
+                    }
+                    cancellationResult = 'تم استرجاع العمولة للسائق (إلغاء خلال دقيقتين)';
+                    console.log('✅ تم استرجاع العمولة للسائق - إلغاء خلال دقيقتين');
+                    
+                } else if (driverWithinRange) {
+                    // After 2 minutes + driver is nearby (within 200m): Keep commission, mark as completed
+                    // The held commission stays as deduction (ride considered "almost completed")
+                    cancellationResult = 'السائق كان بالقرب من نقطة الاستلام - تم إبقاء العمولة';
+                    console.log('⚠️ السائق كان قريباً - العمولة تحولت لخصم');
+                    
+                    // Update ride to completed status
+                    await tarhalDB
+                        .from('rides')
+                        .update({
+                            status: 'completed',
+                            completed_at: new Date().toISOString()
+                        })
+                        .eq('id', currentRideId);
+                    
+                } else {
+                    // After 2 minutes + driver NOT nearby: Return commission to driver
+                    if (rideData.driver_id) {
+                        const { data: driver } = await tarhalDB
+                            .from('drivers')
+                            .select('balance')
+                            .eq('id', rideData.driver_id)
+                            .single();
+                        
+                        if (driver && commissionAmount > 0) {
+                            await tarhalDB
+                                .from('drivers')
+                                .update({
+                                    balance: (driver.balance || 0) + commissionAmount
+                                })
+                                .eq('id', rideData.driver_id);
+
+                            await tarhalDB.from('balance_transactions').insert({
+                                driver_id: rideData.driver_id,
+                                ride_id: currentRideId,
+                                amount: commissionAmount,
+                                type: 'cancellation_refund',
+                                description: 'استرجاع عمولة الرحلة - إلغاء بعد دقيقتين والسائق بعيد',
+                                created_at: new Date().toISOString()
+                            });
+                        }
+                    }
+                    cancellationResult = 'تم استرجاع العمولة للسائق (السائق لم يكن قريباً)';
+                    console.log('✅ تم استرجاع العمولة للسائق - السائق بعيد');
+                }
+
+                // Update ride status
+                await tarhalDB
                     .from('rides')
                     .update({
                         status: 'cancelled_by_customer',
+                        cancelled_at: new Date().toISOString(),
+                        cancellation_reason: cancellationResult,
                         updated_at: new Date().toISOString()
                     })
                     .eq('id', currentRideId);
+
+                // =====================================================
+                // سؤال الراكب: هل طلب منك السائق إلغاء الرحلة؟
+                // =====================================================
+                setTimeout(() => {
+                    const driverRequestedCancel = confirm(
+                        '⚠️ هل طلب منك السائق إلغاء الرحلة؟\n\n' +
+                        'إذا كان نعم، سيتم حظر السائق لمدة 24 ساعة.'
+                    );
+                    
+                    if (driverRequestedCancel && rideData.driver_id) {
+                        // Ban the driver for 24 hours
+                        banDriver(rideData.driver_id);
+                    }
+                }, 1000);
+
+                // =====================================================
+                // إرسال إشعار للسائق بالإلغاء
+                // =====================================================
+                // The driver will receive this via the active ride page's realtime subscription
+                // For now, we'll use localStorage + BroadcastChannel
+                try {
+                    const driverChannel = new BroadcastChannel('driver_ride_channel');
+                    driverChannel.postMessage({
+                        type: 'RIDE_CANCELLED_BY_PASSENGER',
+                        rideId: currentRideId,
+                        message: 'تم إلغاء الرحلة بواسطة الراكب'
+                    });
+                } catch (e) {
+                    console.log('تعذر إرسال إشعار للسائق:', e);
+                }
+
+                // Clear active ride
+                localStorage.removeItem('active_ride_id');
+                localStorage.removeItem('active_ride_status');
                 
-                if (error) throw error;
-                
+                // Redirect to home
                 window.location.href = 'index.html';
                 
             } catch (error) {
@@ -926,6 +1126,84 @@
                 alert('حدث خطأ أثناء إلغاء الرحلة');
             }
         }
+
+        // ==============================================
+        // دالة حساب المسافة بين نقطتين (بالمتر)
+        // ==============================================
+        function calculateDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371e3; // Earth's radius in meters
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lng2 - lng1) * Math.PI / 180;
+
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+            return R * c;
+        }
+
+        // ==============================================
+        // دالة حظر السائق لمدة 24 ساعة
+        // ==============================================
+        async function banDriver(driverId) {
+            try {
+                const banEndTime = new Date();
+                banEndTime.setHours(banEndTime.getHours() + 24);
+
+                await tarhalDB
+                    .from('drivers')
+                    .update({
+                        is_banned: true,
+                        ban_reason: 'طلب من الراكب إلغاء الرحلة',
+                        ban_until: banEndTime.toISOString()
+                    })
+                    .eq('id', driverId);
+
+                alert('🚫 تم حظر السائق لمدة 24 ساعة');
+                console.log('✅ تم حظر السائق:', driverId);
+            } catch (error) {
+                console.error('خطأ في حظر السائق:', error);
+            }
+        }
+
+        // ==============================================
+        // Back Button Block (منع الرجوع)
+        // ==============================================
+        window.history.pushState(null, null, window.location.href);
+        window.addEventListener('popstate', function(event) {
+            event.preventDefault();
+            window.history.pushState(null, null, window.location.href);
+            
+            const backModal = document.createElement('div');
+            backModal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.8);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 999999;
+            `;
+            backModal.innerHTML = `
+                <div style="background: white; padding: 30px; border-radius: 16px; text-align: center; max-width: 90%;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 50px; color: #ef4444; margin-bottom: 15px;"></i>
+                    <h3 style="color: #ef4444; margin-bottom: 10px;">🚫 ممنوع العودة</h3>
+                    <p style="color: #4b5563; font-size: 16px;">
+                        لا يمكنك العودة للشاشة الرئيسية طالما لديك رحلة نشطة.<br>
+                        أكمل الرحلة أو إلغائها من الأزرار أدناه.
+                    </p>
+                </div>
+            `;
+            document.body.appendChild(backModal);
+            
+            setTimeout(() => backModal.remove(), 3000);
+        });
 
         // ==============================================
         // دالة اختبار الاتصال بقاعدة البيانات

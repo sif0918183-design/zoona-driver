@@ -924,6 +924,46 @@
             document.getElementById('splash-screen').classList.add('hide');
         }, 900);
         
+        // =====================================================
+        // نظام الحارس (Gatekeeper) - Strict Lockdown
+        // التحقق من وجود رحلة نشطة فوراً
+        // =====================================================
+        
+        // التحقق من تسجيل الدخول أولاً
+        const driverDataStr = localStorage.getItem('tarhal_driver');
+        
+        if (driverDataStr) {
+            try {
+                const driverData = JSON.parse(driverDataStr);
+                
+                // التحقق من وجود رحلة نشطة في Supabase
+                const { data: activeRide, error } = await tarhalDB
+                    .from('rides')
+                    .select('id, status, passenger_id, pickup_location, dropoff_location, amount')
+                    .eq('driver_id', driverData.id)
+                    .in('status', ['accepted', 'arrived', 'ongoing'])
+                    .maybeSingle();
+                
+                if (activeRide) {
+                    console.log('🚨 اكتشاف رحلة نشطة! توجيه السائق لـ active-ride.html');
+                    
+                    // تخزين بيانات الرحلة لتجاوز التحقق في الصفحة التالية
+                    localStorage.setItem('active_ride_id', activeRide.id);
+                    localStorage.setItem('active_ride_status', activeRide.status);
+                    
+                    // توجيه إجباري للرحلة النشطة
+                    window.location.href = 'active-ride.html';
+                    return; // إيقاف التنفيذ
+                }
+            } catch (e) {
+                console.error('خطأ في فحص الرحلة النشطة:', e);
+            }
+        }
+        
+        // =====================================================
+        // نهاية نظام الحارس
+        // =====================================================
+
         checkAuth();
 
         // إشعار جاهزية التطبيق لـ Flutter
@@ -1149,6 +1189,29 @@
             return;
         }
 
+        // 6. التحقق من حالة الحظر
+        if (driver.is_banned && driver.ban_until) {
+            const banEndTime = new Date(driver.ban_until);
+            const now = new Date();
+            
+            if (banEndTime > now) {
+                const remainingHours = Math.ceil((banEndTime - now) / (1000 * 60 * 60));
+                showNotification(`🚫 حسابك محظور حتى ${banEndTime.toLocaleDateString('ar-SA')}`, 'error');
+                return;
+            } else {
+                // مدة الحظر انتهت - إلغاء الحظر تلقائياً
+                await tarhalDB
+                    .from('drivers')
+                    .update({
+                        is_banned: false,
+                        ban_reason: null,
+                        ban_until: null
+                    })
+                    .eq('id', driver.id);
+                console.log('✅ تم إلغاء الحظر تلقائياً');
+            }
+        }
+
         // === نجاح تسجيل الدخول ===
         currentDriver = driver;
         
@@ -1362,18 +1425,73 @@
         const data = window.currentIncomingRide;
         if (!data || !data.ride_id) return;
 
+        // Get driver data for commission freeze
+        const driverDataStr = localStorage.getItem('tarhal_driver');
+        let driverData = null;
+        if (driverDataStr) {
+            try {
+                driverData = JSON.parse(driverDataStr);
+            } catch (e) {
+                console.error('Error parsing driver data:', e);
+            }
+        }
+
         try {
+            // Get ride details for commission calculation
+            const { data: rideData, error: rideError } = await tarhalDB
+                .from('rides')
+                .select('amount')
+                .eq('id', data.ride_id)
+                .single();
+
+            if (rideError) throw rideError;
+
+            // Calculate 10% commission to freeze
+            const rideAmount = rideData?.amount || 0;
+            const commissionAmount = Math.floor(rideAmount * 0.10);
+
             // Update ride status in Supabase
             const { error } = await tarhalDB
                 .from('rides')
                 .update({
                     status: 'accepted',
                     driver_accepted: true,
-                    accepted_at: new Date().toISOString()
+                    accepted_at: new Date().toISOString(),
+                    commission_held: commissionAmount,
+                    commission_held_at: new Date().toISOString()
                 })
                 .eq('id', data.ride_id);
 
             if (error) throw error;
+
+            // Freeze commission: deduct from driver balance temporarily
+            // This creates a "hold" on the commission amount
+            if (driverData && commissionAmount > 0) {
+                // Add held commission record
+                await tarhalDB.from('balance_transactions').insert({
+                    driver_id: driverData.id,
+                    ride_id: data.ride_id,
+                    amount: -commissionAmount,
+                    type: 'commission_held',
+                    description: 'تجميد عمولة الرحلة (سيتم خصمها عند الإكمال أو الإلغاء)',
+                    created_at: new Date().toISOString()
+                });
+
+                // Update driver balance (hold the amount)
+                const { error: balanceError } = await tarhalDB
+                    .from('drivers')
+                    .update({
+                        balance: (driverData.balance || 0) - commissionAmount
+                    })
+                    .eq('id', driverData.id);
+
+                if (!balanceError) {
+                    // Update local storage
+                    driverData.balance = (driverData.balance || 0) - commissionAmount;
+                    localStorage.setItem('tarhal_driver', JSON.stringify(driverData));
+                    console.log(`💰 تم تجميد ${commissionAmount} من رصيد السائق`);
+                }
+            }
 
             document.getElementById('incoming-ride-modal').classList.add('hidden');
             if (window.incomingRideTimer) {

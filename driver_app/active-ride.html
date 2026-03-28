@@ -261,6 +261,41 @@
                 currentDriverId = JSON.parse(driverData).id;
             }
 
+            // =====================================================
+            // نظام الحارس (Gatekeeper) - Strict Lockdown
+            // التحقق من أن الرحلة لا تزال نشطة
+            // =====================================================
+            
+            if (currentRideId) {
+                // Check if ride is still active in database
+                const { data: rideData, error } = await tarhalDB
+                    .from('rides')
+                    .select('id, status, driver_id')
+                    .eq('id', currentRideId)
+                    .single();
+                
+                if (!rideData || !['accepted', 'arrived', 'ongoing'].includes(rideData.status)) {
+                    // Ride is no longer active - redirect to dashboard
+                    console.log('⚠️ الرحلة لم تعد نشطة، توجيه للرئيسية');
+                    localStorage.removeItem('active_ride_id');
+                    localStorage.removeItem('active_ride_status');
+                    window.location.href = 'index.html';
+                    return;
+                }
+                
+                // Verify this driver owns this ride
+                if (rideData.driver_id !== currentDriverId) {
+                    console.log('⚠️ هذه الرحلة ليست لهذا السائق');
+                    window.location.href = 'index.html';
+                    return;
+                }
+                
+                console.log('✅ تم التحقق من الرحلة النشطة');
+            }
+            // =====================================================
+            // نهاية نظام الحارس
+            // =====================================================
+
             // الحصول على الموقع الأولي فوراً
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition((position) => {
@@ -691,6 +726,7 @@
 
         // الاستماع للتحديثات المباشرة على الرحلة
         function initRealtime() {
+            // Supabase Realtime for ride status changes
             tarhalDB
                 .channel('active-ride')
                 .on('postgres_changes', {
@@ -701,10 +737,116 @@
                 }, (payload) => {
                     console.log('🔄 تحديث الرحلة:', payload.new.status);
                     if (payload.new.status !== currentStatus) {
-                        updateUIStatus(payload.new.status);
+                        // Check if cancelled by passenger
+                        if (payload.new.status === 'cancelled_by_customer') {
+                            showCancellationAlertByPassenger();
+                        } else {
+                            updateUIStatus(payload.new.status);
+                        }
                     }
                 })
                 .subscribe();
+            
+            // =====================================================
+            // BroadcastChannel for immediate cancellation notifications
+            // =====================================================
+            if (window.BroadcastChannel) {
+                try {
+                    const driverChannel = new BroadcastChannel('driver_ride_channel');
+                    driverChannel.onmessage = (event) => {
+                        console.log('📨Received message:', event.data);
+                        
+                        if (event.data.type === 'RIDE_CANCELLED_BY_PASSENGER' && 
+                            event.data.rideId === currentRideId) {
+                            showCancellationAlertByPassenger();
+                        }
+                    };
+                    console.log('✅ Driver BroadcastChannel listener ready');
+                } catch (e) {
+                    console.warn('BroadcastChannel not supported:', e);
+                }
+            }
+        }
+
+        // =====================================================
+        // عرض تنبيه إلغاء الرحلة من قبل الراكب
+        // =====================================================
+        function showCancellationAlertByPassenger() {
+            // Create modal overlay
+            const overlay = document.createElement('div');
+            overlay.id = 'cancellation-alert-overlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.9);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 999999;
+                animation: fadeIn 0.3s ease;
+            `;
+            
+            overlay.innerHTML = `
+                <div style="
+                    background: white;
+                    padding: 40px 30px;
+                    border-radius: 20px;
+                    text-align: center;
+                    max-width: 90%;
+                    box-shadow: 0 20px 60px rgba(239, 68, 68, 0.3);
+                ">
+                    <i class="ph-bold ph-warning-circle" style="font-size: 70px; color: #ef4444; margin-bottom: 20px;"></i>
+                    <h2 style="color: #ef4444; font-size: 24px; margin-bottom: 15px; font-weight: 800;">
+                        ⚠️ تم إلغاء الرحلة
+                    </h2>
+                    <p style="color: #4b5563; font-size: 18px; margin-bottom: 25px; line-height: 1.6;">
+                        تم إلغاء الرحلة بواسطة الراكب
+                    </p>
+                    <button onclick="handlePassengerCancellation()" 
+                            style="
+                                background: linear-gradient(135deg, #16a34a, #15803d);
+                                color: white;
+                                border: none;
+                                padding: 15px 40px;
+                                border-radius: 12px;
+                                font-size: 18px;
+                                font-weight: 700;
+                                cursor: pointer;
+                                font-family: 'Tajawal', sans-serif;
+                            ">
+                        إغلاق وتوجيه للرئيسية
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(overlay);
+            
+            // Play alert sound
+            if (window.soundManager) {
+                window.soundManager.playRideRequestSound?.();
+            }
+            
+            // Prevent closing by clicking outside
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    e.preventDefault();
+                }
+            });
+        }
+
+        // =====================================================
+        // معالجة إلغاء الراكب
+        // =====================================================
+        async function handlePassengerCancellation() {
+            // Clear active ride data
+            localStorage.removeItem('active_ride_id');
+            localStorage.removeItem('active_ride_status');
+            
+            // Redirect to driver dashboard
+            window.location.href = 'index.html';
         }
 
         // الاشتراك في تحديثات موقع السائق
@@ -732,22 +874,113 @@
 
         // إلغاء الرحلة
         async function cancelRide() {
-            if (confirm('هل أنت متأكد من إلغاء الرحلة؟')) {
+            // Show warning about penalty
+            const confirmed = confirm('⚠️ تحذير非常重要的警告: إذا قمت بإلغاء الرحلة، سيتم خصم رسوم الإلغاء (تعادل عمولة الرحلة) من رصيدك. هل أنت متأكد من الإلغاء؟');
+            
+            if (!confirmed) return;
+
+            try {
+                // Get current ride details
+                const { data: rideData, error: rideError } = await tarhalDB
+                    .from('rides')
+                    .select('*, drivers(*)')
+                    .eq('id', currentRideId)
+                    .single();
+
+                if (rideError) throw rideError;
+
+                // Calculate commission amount (10% of ride amount)
+                const rideAmount = rideData?.amount || 0;
+                const commissionAmount = Math.floor(rideAmount * 0.10);
+
+                // Update ride status to cancelled_by_driver
                 const { error } = await tarhalDB
                     .from('rides')
                     .update({
                         status: 'cancelled_by_driver',
+                        cancelled_at: new Date().toISOString(),
+                        cancellation_reason: 'إلغاء السائق',
                         updated_at: new Date().toISOString()
                     })
                     .eq('id', currentRideId);
 
-                if (!error) {
-                    window.location.href = 'index.html';
-                } else {
-                    alert('❌ خطأ في الإلغاء: ' + error.message);
+                if (error) throw error;
+
+                // Convert held commission to permanent penalty (deduction)
+                // The commission was already held when driver accepted the ride
+                // Now we convert it to a permanent deduction
+                
+                if (rideData.drivers && commissionAmount > 0) {
+                    // Record the permanent penalty transaction
+                    await tarhalDB.from('balance_transactions').insert({
+                        driver_id: rideData.driver_id,
+                        ride_id: currentRideId,
+                        amount: -commissionAmount,
+                        type: 'cancellation_penalty',
+                        description: 'خصم رسوم إلغاء الرحلة - تم إجمال العمولة المجمدة كخصم نهائي',
+                        created_at: new Date().toISOString()
+                    });
+
+                    console.log(`💰 تم تحويل العمولة المجمدة ${commissionAmount} لخصم نهائي`);
                 }
+
+                // Show penalty message
+                alert(`❌ تم إلغاء الرحلة.\n\n💰 تم خصم رسوم إلغاء تعادل ${commissionAmount} من رصيدك (عمولة الرحلة).\n\n⚠️ يرجى عدم قبول الرحلات إلا إذا كنت تنوي إكمالها عبر التطبيق.`);
+                
+                // Clear active ride from localStorage
+                localStorage.removeItem('active_ride_id');
+                localStorage.removeItem('active_ride_status');
+
+                // Redirect to driver dashboard
+                window.location.href = 'index.html';
+
+            } catch (error) {
+                console.error('Cancel ride error:', error);
+                alert('❌ خطأ في الإلغاء: ' + error.message);
             }
         }
+
+        // =====================================================
+        // نظام منع الرجوع (Back Button Block)
+        // =====================================================
+        window.history.pushState(null, null, window.location.href);
+        window.addEventListener('popstate', function(event) {
+            // منع الرجوع للخلف - إعادة توجيه للرحلة النشطة
+            event.preventDefault();
+            window.history.pushState(null, null, window.location.href);
+            
+            // عرض رسالة للمستخدم
+            const backModal = document.createElement('div');
+            backModal.id = 'back-block-modal';
+            backModal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.8);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 999999;
+            `;
+            backModal.innerHTML = `
+                <div style="background: white; padding: 30px; border-radius: 16px; text-align: center; max-width: 90%;">
+                    <i class="ph-bold ph-warning" style="font-size: 50px; color: var(--danger); margin-bottom: 15px;"></i>
+                    <h3 style="color: var(--danger); margin-bottom: 10px;">🚫 ممنوع العودة</h3>
+                    <p style="color: #4b5563; font-size: 16px;">
+                        لا يمكنك العودة للشاشة الرئيسية طالما لديك رحلة نشطة.<br>
+                        أكمل الرحلة أو إلغائها من الأزرار أدناه.
+                    </p>
+                </div>
+            `;
+            document.body.appendChild(backModal);
+            
+            // إخفاء النافذة بعد 3 ثوانٍ
+            setTimeout(() => {
+                backModal.remove();
+            }, 3000);
+        });
 
         // تنظيف عند إغلاق الصفحة
         window.addEventListener('beforeunload', function() {
