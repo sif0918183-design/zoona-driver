@@ -4185,34 +4185,26 @@ function formatAddress(address) {
     
     // قائمة المعالم القابلة للتعريب
     const landmarkTranslations = {
-        'School': 'مدرسة',
-        'Mosque': 'مسجد',
-        'University': 'جامعة',
-        'Hospital': 'مستشفى',
-        'Market': 'سوق',
-        'Mall': 'مول',
-        'Restaurant': 'مطعم',
-        'Cafe': 'مقهى',
-        'Bank': 'بنك',
-        'Hotel': 'فندق',
-        'Park': 'حديقة',
-        'Station': 'محطة',
-        'Stop': 'محطة',
-        'College': 'كلية'
+        'School': 'مدرسة', 'Primary School': 'مدرسة ابتدائية',
+        'Mosque': 'مسجد', 'Masjid': 'مسجد',
+        'University': 'جامعة', 'College': 'كلية', 'Institute': 'معهد',
+        'Hospital': 'مستشفى', 'Clinic': 'عيادة', 'Medical': 'مركز طبي',
+        'Market': 'سوق', 'Mall': 'مول', 'Shopping': 'مجمع تجاري',
+        'Restaurant': 'مطعم', 'Cafe': 'مقهى', 'Coffee': 'قهوة', 'Hotel': 'فندق',
+        'Bank': 'بنك', 'Park': 'حديقة', 'Garden': 'منتزه',
+        'Station': 'محطة', 'Stop': 'محطة', 'Bus Stop': 'محطة حافلات',
+        'Police': 'شرطة', 'Fire': 'إطفاء', 'Post': 'بريد', 'Library': 'مكتبة', 'Stadium': 'استاد'
     };
     
     // تقسيم العنوان إلى أجزاء
     let parts = address.split(',').map(p => p.trim()).filter(p => p);
     
-    // استخراج المدينة (عادة آخر جزء قبل الدولة)
+    // استخراج المدينة
     let city = '';
+    const cityList = ['الخرطم', 'أم درمان', 'بحري', 'شرق النيل', 'جبل أولياء', 'أم بدة', 'كرري', 'Omdurman', 'Khartoum', 'Bahri'];
     for (const part of parts) {
-        const cityList = ['الخرطوم', 'أم درمان', 'بحري', 'شرق النيل', 'جبل أولياء', 'أم بدة', 'كرري', 'Omdurman', 'Khartoum', 'Bahri'];
         for (const c of cityList) {
-            if (part.includes(c)) {
-                city = c;
-                break;
-            }
+            if (part.toLowerCase().includes(c.toLowerCase())) { city = c; break; }
         }
         if (city) break;
     }
@@ -4223,36 +4215,40 @@ function formatAddress(address) {
     
     for (let i = 0; i < parts.length; i++) {
         const part = parts[i];
+        const partLower = part.toLowerCase();
         
         // البحث عن معلم
         for (const [eng, arb] of Object.entries(landmarkTranslations)) {
-            if (part.toLowerCase().includes(eng.toLowerCase())) {
-                landmark = arb;
-                break;
-            }
+            if (partLower.includes(eng.toLowerCase())) { landmark = arb; break; }
         }
+        if (landmark) break;
         
         // البحث عن اسم شارع
-        if (!streetName && !landmark && part.length > 3) {
-            if (!part.toLowerCase().includes('unnamed') && !part.match(/^[\d\s]+$/)) {
-                streetName = part;
-            }
+        if (!streetName && !landmark && part.length > 2 && part.length < 40) {
+            const isUnwanted = partLower.includes('unnamed') || partLower.includes('road') || 
+                partLower.includes('street') || partLower.includes('ave') || part.match(/^[\d\s\-\.]+$/) ||
+                (part.match(/[a-z]/i) && part.length > 15);
+            if (!isUnwanted && !part.match(/^\d+[a-z]?$/)) streetName = part;
         }
     }
     
     // بناء العنوان المنسق
     let formattedAddress = '';
     
-    if (landmark) {
-        formattedAddress = `جوار ${landmark}`;
-    } else if (streetName && streetName !== city) {
-        formattedAddress = streetName;
-    }
+    if (landmark) formattedAddress = 'جوار ' + landmark;
+    else if (streetName && streetName.length > 2) formattedAddress = streetName;
     
     // إضافة المدينة
-    if (city && city !== formattedAddress) {
-        formattedAddress = formattedAddress ? `${formattedAddress} - ${city}` : city;
+    if (city) {
+        let cityDisplay = city;
+        if (city === 'Khartoum') cityDisplay = 'الخرريط';
+        else if (city === 'Omdurman') cityDisplay = 'أم درمان';
+        else if (city === 'Bahri') cityDisplay = 'بحري';
+        
+        formattedAddress = formattedAddress ? formattedAddress + ' - ' + cityDisplay : cityDisplay;
     }
+    
+    if (!formattedAddress && parts.length > 0) formattedAddress = parts[0].substring(0, 25);
     
     return formattedAddress || address.substring(0, 30);
 }
