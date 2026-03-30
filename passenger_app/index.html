@@ -294,18 +294,38 @@
         }
 
         .register-text {
-            margin-bottom: 6px;
-            color: var(--gray);
-            font-size: 12px;
-            font-weight: 400;
+            margin-bottom: 8px;
+            color: var(--gray-600);
+            font-size: 13px;
+            font-weight: 500;
         }
 
         .register-card {
-            margin: 0 0 8px 0 !important;
+            margin: 0 0 10px 0 !important;
             text-align: center;
-            background: transparent;
-            border: none;
-            padding: 8px;
+            background: var(--gray-100);
+            border: 1px solid var(--gray-200);
+            padding: 12px;
+            border-radius: var(--radius);
+        }
+
+        .register-link {
+            color: var(--driver) !important;
+            font-weight: 600 !important;
+            font-size: 14px !important;
+            text-decoration: none !important;
+            padding: 8px 16px;
+            display: inline-block;
+            background: var(--driver-light);
+            border-radius: var(--radius);
+            transition: all 0.2s ease;
+        }
+
+        .register-link:hover {
+            background: var(--driver);
+            color: white !important;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         }
 
         .terms-text {
@@ -1743,7 +1763,7 @@
             </div>
 
             <div class="card register-card">
-                <p class="register-text">ليس لديك حساب؟ <a href="#" onclick="showCustomerRegister();return false;" style="color:var(--primary);text-decoration:none;font-weight:500;">سجل حساب جديد الآن</a></p>
+                <p class="register-text">ليس لديك حساب؟ <a href="#" onclick="showCustomerRegister();return false;" class="register-link">سجل حساب جديد الآن</a></p>
             </div>
             
             <div class="security-badge">
