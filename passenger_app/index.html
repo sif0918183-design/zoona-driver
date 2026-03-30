@@ -294,17 +294,18 @@
         }
 
         .register-text {
-            margin-bottom: 10px;
-            color: var(--dark);
-            font-size: 14px;
-            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--gray);
+            font-size: 12px;
+            font-weight: 400;
         }
 
         .register-card {
-            margin: 0 0 12px 0 !important;
+            margin: 0 0 8px 0 !important;
             text-align: center;
-            background: white;
-            border: 2px dashed var(--driver);
+            background: transparent;
+            border: none;
+            padding: 8px;
         }
 
         .terms-text {
@@ -1742,11 +1743,7 @@
             </div>
 
             <div class="card register-card">
-                <p class="register-text">ليس لديك حساب؟</p>
-                <button type="button" class="btn btn-outline" onclick="showCustomerRegister()">
-                    <i class="ph-light ph-user-plus neon-icon-emerald"></i>
-                    سجل حساب جديد الآن
-                </button>
+                <p class="register-text">ليس لديك حساب؟ <a href="#" onclick="showCustomerRegister();return false;" style="color:var(--primary);text-decoration:none;font-weight:500;">سجل حساب جديد الآن</a></p>
             </div>
             
             <div class="security-badge">

@@ -209,7 +209,7 @@
         }
         .ride-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem; }
         .ride-route { font-size:1.25rem; font-weight:800; color:var(--primary); display:flex; align-items:center; gap:0.5rem; }
-        .ride-price { font-size:1.5rem; font-weight:800; color:var(--success); background:var(--secondary-light); padding:0.5rem 1rem; border-radius:var(--radius); }
+        .ride-price { font-size:1.125rem; font-weight:700; color:var(--success); background:var(--secondary-light); padding:0.375rem 0.75rem; border-radius:var(--radius); }
         .ride-details { display:grid; gap:0.75rem; margin-bottom:1rem; }
         .ride-detail { display:flex; align-items:center; gap:0.75rem; color:var(--gray-600); font-size:0.95rem; }
         .ride-detail i { width:20px; color:var(--primary); }
@@ -1198,7 +1198,7 @@ async function showActiveTripModal(trip) {
     document.getElementById('atp-from').textContent = trip.from_city || '—';
     document.getElementById('atp-to').textContent = trip.to_city || '—';
     document.getElementById('atp-category').textContent = trip.vehicle_category || '';
-    document.getElementById('atp-price').textContent = `${(trip.final_price||0).toLocaleString()} ج`;
+    document.getElementById('atp-price').textContent = `${Math.floor(trip.final_price||0).toLocaleString('en-SA')} ج`;
     document.getElementById('atp-status').textContent = statusLabels[trip.status] || trip.status;
 
     // Contact info based on user type
@@ -1224,10 +1224,10 @@ async function showActiveTripModal(trip) {
         const commission = Math.round(price * COMMISSION_RATE / 100);
         const {data:driverBalance} = await travelSupabase.from('drivers').select('balance').eq('id',currentUser.id).single();
         const balance = driverBalance?.balance || 0;
-        document.getElementById('atp-comm-price').textContent = `${price.toLocaleString()} ج`;
-        document.getElementById('atp-comm-amount').textContent = `${commission.toLocaleString()} ج`;
-        document.getElementById('atp-comm-balance').textContent = `${balance.toLocaleString()} ج`;
-        document.getElementById('atp-comm-after').textContent = `${(balance - commission).toLocaleString()} ج`;
+        document.getElementById('atp-comm-price').textContent = `${Math.floor(price).toLocaleString('en-SA')} ج`;
+        document.getElementById('atp-comm-amount').textContent = `${Math.floor(commission).toLocaleString('en-SA')} ج`;
+        document.getElementById('atp-comm-balance').textContent = `${Math.floor(balance).toLocaleString('en-SA')} ج`;
+        document.getElementById('atp-comm-after').textContent = `${Math.floor(balance - commission).toLocaleString('en-SA')} ج`;
         document.getElementById('atp-commission-box').style.display = 'block';
         renderDriverTripActions(trip);
     }
@@ -1743,9 +1743,9 @@ function calculateRidePrice(category) {
     const final = Math.round(base * mult);
     pricePreview.classList.remove('hidden');
     priceDetails.innerHTML = `
-        <div class="price-item"><span>السعر الأساسي:</span><span>${base.toLocaleString()} ج</span></div>
+        <div class="price-item"><span>السعر الأساسي:</span><span>${Math.floor(base).toLocaleString('en-SA')} ج</span></div>
         <div class="price-item"><span>فئة السيارة (${category.name_ar || category.name}):</span><span>× ${mult}</span></div>
-        <div class="price-total"><span>السعر المتوقع:</span><span>${final.toLocaleString()} ج</span></div>
+        <div class="price-total"><span>السعر المتوقع:</span><span>${Math.floor(final).toLocaleString('en-SA')} ج</span></div>
     `;
 }
 
@@ -1930,7 +1930,7 @@ function displayPassengerRides() {
         el.innerHTML = `
             <div class="ride-header">
                 <div class="ride-route"><i class="ph-light ph-map-trifold"></i> ${ride.from_city} → ${ride.to_city}</div>
-                <div class="ride-price">${(ride.final_price||0).toLocaleString()} ج</div>
+                <div class="ride-price">${Math.floor(ride.final_price||0).toLocaleString('en-SA')} ج</div>
             </div>
             <div class="ride-details">
                 <div class="ride-detail"><i class="ph-light ph-car"></i><span>${ride.vehicle_category||'غير محدد'}</span></div>
@@ -2260,7 +2260,7 @@ function displayAvailableRides() {
         el.innerHTML = `
             <div class="ride-header">
                 <div class="ride-route"><i class="ph-light ph-map-trifold"></i> ${ride.from_city} → ${ride.to_city}</div>
-                <div class="ride-price">${(ride.estimated_price||0).toLocaleString()} ج</div>
+                <div class="ride-price">${Math.floor(ride.estimated_price||0).toLocaleString('en-SA')} ج</div>
             </div>
             <div class="ride-details">
                 <div class="ride-detail"><i class="ph-light ph-car"></i><span>${ride.vehicle_category||'غير محدد'}</span></div>
@@ -2383,7 +2383,7 @@ function displayDriverAcceptedRides(acceptances) {
         el.innerHTML = `
             <div class="ride-header">
                 <div class="ride-route">${ride.from_city||'—'} → ${ride.to_city||'—'}</div>
-                <div class="ride-price">${(ride.estimated_price||0).toLocaleString()} ج</div>
+                <div class="ride-price">${Math.floor(ride.estimated_price||0).toLocaleString('en-SA')} ج</div>
             </div>
             <div class="ride-details">
                 <div class="ride-detail"><i class="ph-light ph-info"></i><span>حالة قبولك: ${acc.status||'—'}</span></div>
@@ -2471,7 +2471,7 @@ function displayDriverRides(rides) {
         el.innerHTML = `
             <div class="ride-header">
                 <div class="ride-route"><i class="ph-light ph-map-trifold"></i> ${ride.from_city||'—'} → ${ride.to_city||'—'}</div>
-                <div class="ride-price">${(ride.final_price||0).toLocaleString()} ج</div>
+                <div class="ride-price">${Math.floor(ride.final_price||0).toLocaleString('en-SA')} ج</div>
             </div>
             <div class="ride-details">
                 <div class="ride-detail"><i class="ph-light ph-car"></i><span>${ride.vehicle_category||'—'}</span></div>
