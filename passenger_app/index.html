@@ -294,17 +294,38 @@
         }
 
         .register-text {
-            margin-bottom: 10px;
-            color: var(--dark);
-            font-size: 14px;
-            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--gray-600);
+            font-size: 13px;
+            font-weight: 500;
         }
 
         .register-card {
-            margin: 0 0 12px 0 !important;
+            margin: 0 0 10px 0 !important;
             text-align: center;
-            background: white;
-            border: 2px dashed var(--driver);
+            background: var(--gray-100);
+            border: 1px solid var(--gray-200);
+            padding: 12px;
+            border-radius: var(--radius);
+        }
+
+        .register-link {
+            color: var(--driver) !important;
+            font-weight: 600 !important;
+            font-size: 14px !important;
+            text-decoration: none !important;
+            padding: 8px 16px;
+            display: inline-block;
+            background: var(--driver-light);
+            border-radius: var(--radius);
+            transition: all 0.2s ease;
+        }
+
+        .register-link:hover {
+            background: var(--driver);
+            color: white !important;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         }
 
         .terms-text {
@@ -1693,66 +1714,44 @@
     
     <!-- Customer Login Screen -->
     <section id="customer-login-screen" class="screen">
-        <div class="login-container">
-            <div class="card">
-                <h2 class="card-title">
-                    <i class="ph-light ph-user-circle neon-icon-emerald"></i>
-                    تسجيل الدخول
-                </h2>
-                
-                <div class="welcome-text">
-                   مرحباً بك في تراكا 
+        <div class="card">
+            <h2 class="card-title">
+                <i class="ph-light ph-user-circle neon-icon-emerald"></i>
+                تسجيل الدخول
+            </h2>
+
+            <form class="login-form" id="customerLoginForm">
+                <div class="form-group">
+                    <label class="form-label" for="customer-phone">رقم الواتساب</label>
+                    <input type="tel" id="customer-phone" class="form-input" 
+                           placeholder="رقم الواتساب المسجل" required>
                 </div>
                 
-                <form class="login-form" id="customerLoginForm">
-                    <div class="form-group">
-                        <label class="form-label" for="customer-phone">
-                            <i class="ph-light ph-phone neon-icon-emerald"></i>
-                            رقم الواتساب
-                        </label>
-                        <input type="tel" id="customer-phone" class="form-input" 
-                               placeholder="ادخل رقم الواتساب" required
-                               inputmode="numeric" pattern="[0-9]*">
+                <div class="form-group">
+                    <label class="form-label" for="customer-password">كلمة المرور</label>
+                    <div class="password-input-container">
+                        <input type="password" id="customer-password" class="form-input" 
+                               placeholder="كلمة مرور الراكب" required>
+                        <button type="button" class="toggle-password" onclick="togglePassword('customer-password')">
+                            <i class="ph-light ph-eye"></i>
+                        </button>
                     </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label" for="customer-password">
-                            <i class="ph-light ph-lock neon-icon-emerald"></i>
-                            كلمة المرور
-                        </label>
-                        <div class="password-input-container">
-                            <input type="password" id="customer-password" class="form-input" 
-                                   placeholder="أدخل كلمة المرور" required>
-                            <button type="button" class="toggle-password" onclick="togglePassword('customer-password')">
-                                <i class="ph-light ph-eye"></i>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <button type="button" class="btn btn-primary btn-large" onclick="loginCustomer()">
-                        <i class="ph-light ph-sign-in"></i>
-                        تسجيل الدخول
-                    </button>
-                    
-                    <p class="terms-text" style="text-align: center;">
-                        عند تسجيل الدخول، فإنك توافق على
-                        <a href="#">الشروط والأحكام</a> وسياسة الخصوصية
-                    </p>
-                </form>
-            </div>
+                </div>
+                
+                <button type="button" class="btn btn-driver" onclick="loginCustomer()">
+                    <i class="ph-bold ph-sign-in"></i>
+                    تسجيل الدخول
+                </button>
+            </form>
 
             <div class="card register-card">
-                <p class="register-text">ليس لديك حساب؟</p>
-                <button type="button" class="btn btn-outline" onclick="showCustomerRegister()">
-                    <i class="ph-light ph-user-plus neon-icon-emerald"></i>
-                    سجل حساب جديد الآن
-                </button>
+                <p class="register-text">ليس لديك حساب؟ <a href="#" onclick="showCustomerRegister();return false;" class="register-link">سجل حساب جديد الآن</a></p>
             </div>
-            
-            <div class="security-badge">
-                <i class="ph-light ph-shield-check neon-icon-emerald"></i>
-                <span>نضمن خصوصية وأمان بياناتك</span>
-            </div>
+        </div>
+        
+        <div class="security-badge">
+            <i class="ph-light ph-shield-check neon-icon-emerald"></i>
+            <span>نضمن خصوصية وأمان بياناتك</span>
         </div>
     </section>
         
