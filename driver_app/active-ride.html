@@ -406,7 +406,42 @@
                     // جلب آخر موقع معروف للسائق
                     fetchDriverCurrentLocation();
                 }
+                
+                // حفظ بيانات الرحلة في localStorage
+                saveRideToLocalStorage(data);
             }
+        }
+
+        // ==============================================
+        // حفظ بيانات الرحلة في localStorage
+        // ==============================================
+        function saveRideToLocalStorage(ride) {
+            const rideData = {
+                id: ride.id,
+                status: ride.status,
+                passenger_id: ride.passenger_id,
+                driver_id: ride.driver_id,
+                pickup_location: ride.pickup_location,
+                dropoff_location: ride.dropoff_location,
+                pickup_lat: ride.pickup_lat,
+                pickup_lng: ride.pickup_lng,
+                destination_lat: ride.destination_lat,
+                destination_lng: ride.destination_lng,
+                amount: ride.amount,
+                distance_km: ride.distance_km,
+                accepted_at: ride.accepted_at,
+                passenger: ride.passenger ? {
+                    id: ride.passenger.id,
+                    full_name: ride.passenger.full_name,
+                    phone: ride.passenger.phone,
+                    phone2: ride.passenger.phone2
+                } : null
+            };
+            
+            localStorage.setItem('active_ride_data', JSON.stringify(rideData));
+            localStorage.setItem('active_ride_id', ride.id);
+            localStorage.setItem('active_ride_status', ride.status);
+            console.log('✅ تم حفظ بيانات الرحلة في localStorage');
         }
 
         // جلب آخر موقع معروف للسائق
@@ -511,6 +546,9 @@
             currentStatus = status;
             const btn = document.getElementById('main-action-btn');
             const statusText = document.getElementById('ride-status-text');
+            
+            // تحديث localStorage بحالة الرحلة
+            localStorage.setItem('active_ride_status', status);
 
             if (status === 'accepted') {
                 statusText.textContent = 'في الطريق للراكب';
@@ -844,6 +882,7 @@
             // Clear active ride data
             localStorage.removeItem('active_ride_id');
             localStorage.removeItem('active_ride_status');
+            localStorage.removeItem('active_ride_data');
             
             // Redirect to driver dashboard
             window.location.href = 'index.html';
@@ -930,6 +969,7 @@
                 // Clear active ride from localStorage
                 localStorage.removeItem('active_ride_id');
                 localStorage.removeItem('active_ride_status');
+                localStorage.removeItem('active_ride_data');
 
                 // Redirect to driver dashboard
                 window.location.href = 'index.html';
