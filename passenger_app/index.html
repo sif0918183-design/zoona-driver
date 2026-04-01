@@ -2251,7 +2251,24 @@ document.addEventListener('DOMContentLoaded', async function() {
         try {
             const passengerData = JSON.parse(passengerDataStr);
             
-            // التحقق من وجود رحلة نشطة في Supabase
+            // =====================================================
+            // الخطوة 1: التحقق من localStorage أولاً
+            // =====================================================
+            const localRideId = localStorage.getItem('active_ride_id');
+            const localRideStatus = localStorage.getItem('active_ride_status');
+            const localRideData = localStorage.getItem('active_ride_data');
+            
+            if (localRideId && localRideStatus && ['accepted', 'arrived', 'ongoing'].includes(localRideStatus)) {
+                console.log('🚨 اكتشاف رحلة نشطة من localStorage!');
+                
+                // توجيه إجباري للرحلة النشطة
+                window.location.href = `ride-accepted.html?id=${localRideId}`;
+                return;
+            }
+            
+            // =====================================================
+            // الخطوة 2: التحقق من Supabase (مزامنة الحالة)
+            // =====================================================
             const { data: activeRide, error } = await tarhalDB
                 .from('rides')
                 .select('id, status, driver_id, pickup_location, dropoff_location, amount')
@@ -2262,13 +2279,18 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (activeRide) {
                 console.log('🚨 اكتشاف رحلة نشطة! توجيه الراكب لـ ride-accepted.html');
                 
-                // تخزين بيانات الرحلة لتجاوز التحقق في الصفحة التالية
+                // تخزين بيانات الرحلة في localStorage
                 localStorage.setItem('active_ride_id', activeRide.id);
                 localStorage.setItem('active_ride_status', activeRide.status);
                 
                 // توجيه إجباري للرحلة النشطة
                 window.location.href = 'ride-accepted.html';
-                return; // إيقاف التنفيذ
+                return;
+            } else {
+                // الرحلة انتهت أو لم تكن موجودة - تنظيف localStorage
+                localStorage.removeItem('active_ride_id');
+                localStorage.removeItem('active_ride_status');
+                localStorage.removeItem('active_ride_data');
             }
         } catch (e) {
             console.error('خطأ في فحص الرحلة النشطة:', e);
