@@ -11,8 +11,6 @@
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    <link rel="stylesheet" href="../shared/theme.css">
-
     <style>
         :root {
             --primary: #008B5E;
@@ -25,7 +23,7 @@
         
         body {
             font-family: 'Tajawal', sans-serif;
-            background: #F3F4F6; /* الخلفية الفاتحة حسب الثيم الجديد */
+            background: #F3F4F6;
             height: 100vh;
             color: #111827;
             display: flex;
@@ -40,7 +38,6 @@
             padding: 16px;
         }
 
-        /* تعديل الهيدر ليظهر اللوقو بشكل احترافي */
         .app-header {
             background: linear-gradient(180deg, #008B5E 0%, #005F41 100%);
             margin: -16px -16px 16px -16px;
@@ -125,6 +122,7 @@
             justify-content: center;
             gap: 10px;
             font-family: 'Tajawal', sans-serif;
+            cursor: pointer;
         }
         
         .btn-accept {
@@ -208,7 +206,13 @@
         let countdownValue = 60;
         let timerInterval = null;
 
-        // ✅ التعديل الجوهري: هذه الدالة الآن تتوافق مع كود Flutter (main.dart)
+        // ✅ دالة إيقاف التنبيهات في فلاتر
+        function stopAppAlerts() {
+            if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+                window.flutter_inappwebview.callHandler('stopAlerts');
+            }
+        }
+
         window.handleRideRequest = function(data) {
             console.log('Data received from Flutter:', data);
             if (data) {
@@ -218,12 +222,10 @@
             }
         };
 
-        // دعم المسمى الآخر لزيادة الأمان
         window.handleIncomingRide = window.handleRideRequest;
 
         document.addEventListener('DOMContentLoaded', function() {
             const urlParams = new URLSearchParams(window.location.search);
-            // ✅ التعديل: استلام id كما يرسله Flutter بالضبط
             currentRideId = urlParams.get('id') || urlParams.get('rideId') || urlParams.get('ride_id');
 
             if (currentRideId) {
@@ -261,12 +263,19 @@
             timerInterval = setInterval(() => {
                 countdownValue--;
                 document.getElementById('countdown').textContent = countdownValue;
-                if (countdownValue <= 0) { clearInterval(timerInterval); handleDecline(); }
+                if (countdownValue <= 0) { 
+                    clearInterval(timerInterval); 
+                    handleDecline(); 
+                }
             }, 1000);
         }
 
         async function handleAccept() {
             if (!currentRideId) return;
+            
+            // ✅ إيقاف الصوت فوراً
+            stopAppAlerts();
+
             document.getElementById('accept-btn').disabled = true;
             document.getElementById('accept-btn').textContent = "جاري القبول...";
 
@@ -280,10 +289,16 @@
                     showToast('✅ تم القبول', 'success');
                     window.location.replace(`active-ride.html?rideId=${currentRideId}`);
                 }
-            } catch (err) { showToast('خطأ في القبول', 'error'); }
+            } catch (err) { 
+                showToast('خطأ في القبول', 'error'); 
+                document.getElementById('accept-btn').disabled = false;
+                document.getElementById('accept-btn').textContent = "قبول الرحلة";
+            }
         }
 
         function handleDecline() {
+            // ✅ إيقاف الصوت فوراً
+            stopAppAlerts();
             window.location.replace('index.html');
         }
 
