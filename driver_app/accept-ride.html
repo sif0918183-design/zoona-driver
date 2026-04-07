@@ -11,6 +11,8 @@
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
+    <link rel="stylesheet" href="../shared/theme.css">
+
     <style>
         :root {
             --primary: #008B5E;
@@ -23,7 +25,7 @@
         
         body {
             font-family: 'Tajawal', sans-serif;
-            background: #F3F4F6;
+            background: #F3F4F6; /* الخلفية الفاتحة حسب الثيم الجديد */
             height: 100vh;
             color: #111827;
             display: flex;
@@ -38,6 +40,7 @@
             padding: 16px;
         }
 
+        /* تعديل الهيدر ليظهر اللوقو بشكل احترافي */
         .app-header {
             background: linear-gradient(180deg, #008B5E 0%, #005F41 100%);
             margin: -16px -16px 16px -16px;
@@ -122,7 +125,6 @@
             justify-content: center;
             gap: 10px;
             font-family: 'Tajawal', sans-serif;
-            cursor: pointer;
         }
         
         .btn-accept {
@@ -206,18 +208,7 @@
         let countdownValue = 60;
         let timerInterval = null;
 
-        // ✅ وظيفة إيقاف التنبيهات مع التأكيد
-        async function stopAppAlerts() {
-            console.log("إرسال طلب إيقاف الصوت إلى فلاتر...");
-            if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
-                try {
-                    await window.flutter_inappwebview.callHandler('stopAlerts');
-                } catch (e) {
-                    console.error("فشل إرسال طلب الإيقاف:", e);
-                }
-            }
-        }
-
+        // ✅ التعديل الجوهري: هذه الدالة الآن تتوافق مع كود Flutter (main.dart)
         window.handleRideRequest = function(data) {
             console.log('Data received from Flutter:', data);
             if (data) {
@@ -227,10 +218,12 @@
             }
         };
 
+        // دعم المسمى الآخر لزيادة الأمان
         window.handleIncomingRide = window.handleRideRequest;
 
         document.addEventListener('DOMContentLoaded', function() {
             const urlParams = new URLSearchParams(window.location.search);
+            // ✅ التعديل: استلام id كما يرسله Flutter بالضبط
             currentRideId = urlParams.get('id') || urlParams.get('rideId') || urlParams.get('ride_id');
 
             if (currentRideId) {
@@ -268,19 +261,12 @@
             timerInterval = setInterval(() => {
                 countdownValue--;
                 document.getElementById('countdown').textContent = countdownValue;
-                if (countdownValue <= 0) { 
-                    clearInterval(timerInterval); 
-                    handleDecline(); 
-                }
+                if (countdownValue <= 0) { clearInterval(timerInterval); handleDecline(); }
             }, 1000);
         }
 
         async function handleAccept() {
             if (!currentRideId) return;
-            
-            // ✅ إيقاف الصوت فوراً قبل البدء بأي عملية برمجية أخرى
-            await stopAppAlerts();
-
             document.getElementById('accept-btn').disabled = true;
             document.getElementById('accept-btn').textContent = "جاري القبول...";
 
@@ -291,21 +277,13 @@
                     .eq('id', currentRideId);
 
                 if (!error) {
-                    // ✅ محاولة إيقاف إضافية للتأكد
-                    await stopAppAlerts();
                     showToast('✅ تم القبول', 'success');
                     window.location.replace(`active-ride.html?rideId=${currentRideId}`);
                 }
-            } catch (err) { 
-                showToast('خطأ في القبول', 'error'); 
-                document.getElementById('accept-btn').disabled = false;
-                document.getElementById('accept-btn').textContent = "قبول الرحلة";
-            }
+            } catch (err) { showToast('خطأ في القبول', 'error'); }
         }
 
-        async function handleDecline() {
-            // ✅ إيقاف الصوت فوراً
-            await stopAppAlerts();
+        function handleDecline() {
             window.location.replace('index.html');
         }
 
