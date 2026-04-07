@@ -206,10 +206,15 @@
         let countdownValue = 60;
         let timerInterval = null;
 
-        // ✅ دالة إيقاف التنبيهات في فلاتر
-        function stopAppAlerts() {
+        // ✅ وظيفة إيقاف التنبيهات مع التأكيد
+        async function stopAppAlerts() {
+            console.log("إرسال طلب إيقاف الصوت إلى فلاتر...");
             if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
-                window.flutter_inappwebview.callHandler('stopAlerts');
+                try {
+                    await window.flutter_inappwebview.callHandler('stopAlerts');
+                } catch (e) {
+                    console.error("فشل إرسال طلب الإيقاف:", e);
+                }
             }
         }
 
@@ -273,8 +278,8 @@
         async function handleAccept() {
             if (!currentRideId) return;
             
-            // ✅ إيقاف الصوت فوراً
-            stopAppAlerts();
+            // ✅ إيقاف الصوت فوراً قبل البدء بأي عملية برمجية أخرى
+            await stopAppAlerts();
 
             document.getElementById('accept-btn').disabled = true;
             document.getElementById('accept-btn').textContent = "جاري القبول...";
@@ -286,6 +291,8 @@
                     .eq('id', currentRideId);
 
                 if (!error) {
+                    // ✅ محاولة إيقاف إضافية للتأكد
+                    await stopAppAlerts();
                     showToast('✅ تم القبول', 'success');
                     window.location.replace(`active-ride.html?rideId=${currentRideId}`);
                 }
@@ -296,9 +303,9 @@
             }
         }
 
-        function handleDecline() {
+        async function handleDecline() {
             // ✅ إيقاف الصوت فوراً
-            stopAppAlerts();
+            await stopAppAlerts();
             window.location.replace('index.html');
         }
 
