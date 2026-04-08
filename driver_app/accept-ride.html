@@ -208,10 +208,14 @@
         let countdownValue = 60;
         let timerInterval = null;
 
-        // ✅ وظيفة إيقاف الصوت في تطبيق فلاتر
-        function stopFlutterAlerts() {
+        // ✅ وظيفة إيقاف الصوت في تطبيق فلاتر مع ضمان اكتمال الاستدعاء قبل التنقل
+        async function stopFlutterAlerts() {
             if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
-                window.flutter_inappwebview.callHandler('stopAlerts');
+                try {
+                    await window.flutter_inappwebview.callHandler('stopAlerts');
+                } catch (e) {
+                    console.warn('stopAlerts bridge error:', e);
+                }
             }
         }
 
@@ -272,11 +276,11 @@
         async function handleAccept() {
             if (!currentRideId) return;
 
-            // ✅ إيقاف الرنين فوراً عند الضغط
-            stopFlutterAlerts();
-
             document.getElementById('accept-btn').disabled = true;
             document.getElementById('accept-btn').textContent = "جاري القبول...";
+
+            // ✅ إيقاف الرنين أولاً وانتظار اكتمال الاستدعاء قبل أي إجراء آخر
+            await stopFlutterAlerts();
 
             try {
                 const { error } = await tarhalDB
@@ -295,9 +299,9 @@
             }
         }
 
-        function handleDecline() {
-            // ✅ إيقاف الرنين عند الرفض أيضاً
-            stopFlutterAlerts();
+        async function handleDecline() {
+            // ✅ إيقاف الرنين وانتظار اكتمال الاستدعاء قبل التنقل
+            await stopFlutterAlerts();
             window.location.replace('index.html');
         }
 
