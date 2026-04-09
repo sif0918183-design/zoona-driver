@@ -10,7 +10,7 @@
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
+    
     <link rel="stylesheet" href="../shared/theme.css">
 
     <style>
@@ -22,7 +22,7 @@
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
-
+        
         body {
             font-family: 'Tajawal', sans-serif;
             background: #F3F4F6; /* الخلفية الفاتحة حسب الثيم الجديد */
@@ -32,7 +32,7 @@
             flex-direction: column;
             overflow: hidden;
         }
-
+        
         .full-screen-container {
             flex: 1;
             display: flex;
@@ -113,7 +113,7 @@
             gap: 10px;
             margin-top: 15px;
         }
-
+        
         .btn {
             height: 58px;
             border-radius: var(--radius);
@@ -126,13 +126,13 @@
             gap: 10px;
             font-family: 'Tajawal', sans-serif;
         }
-
+        
         .btn-accept {
             background: var(--primary);
             color: white;
             box-shadow: 0 4px 15px rgba(0, 139, 94, 0.3);
         }
-
+        
         .btn-decline {
             background: #E5E7EB;
             color: #4B5563;
@@ -158,7 +158,7 @@
         <header class="app-header">
             <img src="../shared/logo.png" class="logo-img" alt="Tracka">
         </header>
-
+        
         <div class="countdown-container">
             <div style="font-size: 14px;">الوقت المتبقي للرد</div>
             <div class="timer-value" id="countdown">60</div>
@@ -208,17 +208,7 @@
         let countdownValue = 60;
         let timerInterval = null;
 
-        // ✅ وظيفة إيقاف الصوت في تطبيق فلاتر مع ضمان اكتمال الاستدعاء قبل التنقل
-        async function stopFlutterAlerts() {
-            if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
-                try {
-                    await window.flutter_inappwebview.callHandler('stopAlerts');
-                } catch (e) {
-                    console.warn('stopAlerts bridge error:', e);
-                }
-            }
-        }
-
+        // ✅ التعديل الجوهري: هذه الدالة الآن تتوافق مع كود Flutter (main.dart)
         window.handleRideRequest = function(data) {
             console.log('Data received from Flutter:', data);
             if (data) {
@@ -228,10 +218,12 @@
             }
         };
 
+        // دعم المسمى الآخر لزيادة الأمان
         window.handleIncomingRide = window.handleRideRequest;
 
         document.addEventListener('DOMContentLoaded', function() {
             const urlParams = new URLSearchParams(window.location.search);
+            // ✅ التعديل: استلام id كما يرسله Flutter بالضبط
             currentRideId = urlParams.get('id') || urlParams.get('rideId') || urlParams.get('ride_id');
 
             if (currentRideId) {
@@ -275,12 +267,8 @@
 
         async function handleAccept() {
             if (!currentRideId) return;
-
             document.getElementById('accept-btn').disabled = true;
             document.getElementById('accept-btn').textContent = "جاري القبول...";
-
-            // ✅ إيقاف الرنين أولاً وانتظار اكتمال الاستدعاء قبل أي إجراء آخر
-            await stopFlutterAlerts();
 
             try {
                 const { error } = await tarhalDB
@@ -292,16 +280,10 @@
                     showToast('✅ تم القبول', 'success');
                     window.location.replace(`active-ride.html?rideId=${currentRideId}`);
                 }
-            } catch (err) {
-                showToast('خطأ في القبول', 'error');
-                document.getElementById('accept-btn').disabled = false;
-                document.getElementById('accept-btn').textContent = "قبول الرحلة";
-            }
+            } catch (err) { showToast('خطأ في القبول', 'error'); }
         }
 
-        async function handleDecline() {
-            // ✅ إيقاف الرنين وانتظار اكتمال الاستدعاء قبل التنقل
-            await stopFlutterAlerts();
+        function handleDecline() {
             window.location.replace('index.html');
         }
 
