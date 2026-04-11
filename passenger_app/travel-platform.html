@@ -2075,6 +2075,14 @@ async function passengerSelectsDriver(rideId, driverId) {
             localStorage.setItem('tarhal_active_trip_id', newTrip.id);
         }
 
+        sendTravelPush({
+            type: 'DRIVER_SELECTED',
+            driverId: driverId,
+            rideId: rideId,
+            fromCity: rideReq.from_city,
+            toCity: rideReq.to_city
+        });
+
         closeDriverOffers();
         showNotification(`تم اختيار السائق ${driverInfo.full_name} بنجاح! تواصلا بأمان.`, 'success');
 
@@ -2342,6 +2350,8 @@ async function driverAcceptsRide(rideId) {
             status: 'accepted',
             accepted_at: new Date().toISOString()
         }]);
+
+        sendTravelPush({ type: 'DRIVER_OFFER', rideId: rideId });
 
         const driverNumber = (existing?.length || 0) + 1;
         showNotification(`تم قبول الرحلة! أنت السائق رقم ${driverNumber}`, 'success');
@@ -2708,6 +2718,14 @@ function filterChatMessage(message) {
     return {filtered, hasViolation};
 }
 
+function sendTravelPush(payload) {
+    fetch('/api/travel-push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    }).catch(() => {});
+}
+
 async function sendMessage() {
     const input = document.getElementById('chat-input');
     const message = input.value.trim();
@@ -2724,14 +2742,23 @@ async function sendMessage() {
     }
 
     try {
+        const rideIdForChat = currentChat.ride_id || currentChat.id;
         await travelSupabase.from('ride_chats').insert([{
-            ride_id: currentChat.ride_id || currentChat.id,
+            ride_id: rideIdForChat,
             sender_id: currentUser.id,
             sender_name: currentUser.full_name || (userType === 'passenger' ? 'راكب' : 'سائق'),
             sender_type: userType,
             message: message,
             created_at: new Date().toISOString()
         }]);
+
+        sendTravelPush({
+            type: 'NEW_CHAT_MESSAGE',
+            rideId: rideIdForChat,
+            senderType: userType,
+            senderName: currentUser.full_name || (userType === 'passenger' ? 'راكب' : 'سائق'),
+            messagePreview: message.substring(0, 60)
+        });
 
         const container = document.getElementById('chat-messages');
         const el = document.createElement('div');
