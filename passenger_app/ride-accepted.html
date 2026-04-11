@@ -994,7 +994,7 @@
                 // Get ride details
                 const { data: rideData, error: rideError } = await tarhalDB
                     .from('rides')
-                    .select('*, drivers(*)')
+                    .select('*')
                     .eq('id', currentRideId)
                     .single();
 
