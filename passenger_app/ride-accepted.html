@@ -1150,19 +1150,21 @@
                 }, 1000);
 
                 // =====================================================
-                // إرسال إشعار للسائق بالإلغاء
+                // إرسال إشعار للسائق بالإلغاء عبر BroadcastChannel (نفس الجهاز)
+                // المسار الرئيسي هو Supabase Realtime - هذا دعم إضافي
                 // =====================================================
-                // The driver will receive this via the active ride page's realtime subscription
-                // For now, we'll use localStorage + BroadcastChannel
                 try {
                     const driverChannel = new BroadcastChannel('driver_ride_channel');
                     driverChannel.postMessage({
                         type: 'RIDE_CANCELLED_BY_PASSENGER',
                         rideId: currentRideId,
-                        message: 'تم إلغاء الرحلة بواسطة الراكب'
+                        finalStatus: finalStatus,
+                        commissionAmount: commissionAmount,
+                        cancellationReason: cancellationReason,
+                        message: cancellationReason
                     });
                 } catch (e) {
-                    console.log('تعذر إرسال إشعار للسائق:', e);
+                    console.log('تعذر إرسال إشعار BroadcastChannel للسائق:', e);
                 }
 
                 // Clear active ride
