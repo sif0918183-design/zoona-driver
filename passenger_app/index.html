@@ -2284,7 +2284,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 localStorage.setItem('active_ride_status', activeRide.status);
                 
                 // توجيه إجباري للرحلة النشطة
-                window.location.href = 'ride-accepted.html';
+                window.location.href = `ride-accepted.html?id=${activeRide.id}`;
                 return;
             } else {
                 // الرحلة انتهت أو لم تكن موجودة - تنظيف localStorage
@@ -2825,7 +2825,7 @@ function initRealtime() {
                 document.getElementById('ride-loading-overlay').classList.add('hidden');
 
                 setTimeout(() => {
-                    window.location.href = `ride-accepted.html?rideId=${ride.id}`;
+                    window.location.href = `ride-accepted.html?id=${ride.id}`;
                 }, 1500);
             } else if (ride.status === 'cancelled_by_driver') {
                 showNotification('⚠️ نأسف، السائق قام بإلغاء الطلب. جاري البحث عن بديل...', 'warning');
@@ -2856,7 +2856,7 @@ async function checkForActiveRide() {
 
             if (['accepted', 'arrived', 'ongoing'].includes(data.status)) {
                 localStorage.setItem('tarhal_current_ride_id', data.id);
-                window.location.href = `ride-accepted.html?rideId=${data.id}`;
+                window.location.href = `ride-accepted.html?id=${data.id}`;
                 return true;
             } else if (['searching', 'awaiting_driver_acceptance'].includes(data.status)) {
                 // Resume search UI
@@ -3986,7 +3986,7 @@ function startRideStatusPolling(rideId) {
             if (data && ['accepted', 'arrived', 'ongoing'].includes(data.status)) {
                 console.log('✅ Polling: Ride accepted/active, redirecting...');
                 clearInterval(rideStatusInterval);
-                window.location.href = `ride-accepted.html?rideId=${rideId}`;
+                window.location.href = `ride-accepted.html?id=${rideId}`;
             }
         } catch (err) {
             console.error('Polling error:', err);
