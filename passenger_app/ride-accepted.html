@@ -1037,12 +1037,12 @@
                 const rideAmount = rideData?.amount || 0;
                 const commissionAmount = Math.floor(rideAmount * 0.10);
 
-                let cancellationResult = '';
+                let finalStatus = 'cancelled_by_customer';
+                let cancellationReason = '';
 
                 if (elapsedMinutes <= 2) {
                     // Within 2 minutes: Return commission to driver (full refund)
                     if (rideData.driver_id) {
-                        // Return held commission to driver
                         const { data: driver } = await tarhalDB
                             .from('drivers')
                             .select('balance')
@@ -1050,21 +1050,12 @@
                             .single();
                         
                         if (driver && commissionAmount > 0) {
-                            // Try to return the held commission
                             try {
                                 await tarhalDB
                                     .from('drivers')
-                                    .update({
-                                        balance: (driver.balance || 0) + commissionAmount
-                                    })
+                                    .update({ balance: (driver.balance || 0) + commissionAmount })
                                     .eq('id', rideData.driver_id);
-                                console.log('✅ تم تحديث رصيد السائق');
-                            } catch (e) {
-                                console.warn('⚠️ تعذر تحديث رصيد السائق:', e);
-                            }
 
-                            // Try to record the refund transaction
-                            try {
                                 await tarhalDB.from('balance_transactions').insert({
                                     driver_id: rideData.driver_id,
                                     ride_id: currentRideId,
@@ -1073,31 +1064,17 @@
                                     description: 'استرجاع عمولة الرحلة - إلغاء الراكب خلال دقيقتين',
                                     created_at: new Date().toISOString()
                                 });
-                            } catch (e) {
-                                console.warn('⚠️ تعذر تسجيل العملية:', e);
-                            }
+                            } catch (e) { console.warn('⚠️ تعذر تحديث رصيد السائق:', e); }
                         }
                     }
-                    cancellationResult = 'تم استرجاع العمولة للسائق (إلغاء خلال دقيقتين)';
+                    cancellationReason = 'تم استرجاع العمولة للسائق (إلغاء خلال دقيقتين)';
                     console.log('✅ تم استرجاع العمولة للسائق - إلغاء خلال دقيقتين');
                     
                 } else if (driverWithinRange) {
                     // After 2 minutes + driver is nearby (within 200m): Keep commission, mark as completed
-                    cancellationResult = 'السائق كان بالقرب من نقطة الاستلام - تم إبقاء العمولة';
-                    console.log('⚠️ السائق كان قريباً - العمولة تحولت لخصم');
-                    
-                    // Update ride to completed status
-                    try {
-                        await tarhalDB
-                            .from('rides')
-                            .update({
-                                status: 'completed',
-                                completed_at: new Date().toISOString()
-                            })
-                            .eq('id', currentRideId);
-                    } catch (e) {
-                        console.warn('⚠️ تعذر تحديث حالة الرحلة:', e);
-                    }
+                    finalStatus = 'completed';
+                    cancellationReason = 'السائق كان بالقرب من نقطة الاستلام - تم إبقاء العمولة للشركة';
+                    console.log('⚠️ السائق كان قريباً - الرحلة ستظهر كمكتملة لخصم العمولة');
                     
                 } else {
                     // After 2 minutes + driver NOT nearby: Return commission to driver
@@ -1112,15 +1089,9 @@
                             try {
                                 await tarhalDB
                                     .from('drivers')
-                                    .update({
-                                        balance: (driver.balance || 0) + commissionAmount
-                                    })
+                                    .update({ balance: (driver.balance || 0) + commissionAmount })
                                     .eq('id', rideData.driver_id);
-                            } catch (e) {
-                                console.warn('⚠️ تعذر تحديث رصيد السائق:', e);
-                            }
 
-                            try {
                                 await tarhalDB.from('balance_transactions').insert({
                                     driver_id: rideData.driver_id,
                                     ride_id: currentRideId,
@@ -1129,24 +1100,31 @@
                                     description: 'استرجاع عمولة الرحلة - إلغاء بعد دقيقتين والسائق بعيد',
                                     created_at: new Date().toISOString()
                                 });
-                            } catch (e) {
-                                console.warn('⚠️ تعذر تسجيل العملية:', e);
-                            }
+                            } catch (e) { console.warn('⚠️ تعذر تحديث رصيد السائق:', e); }
                         }
                     }
-                    cancellationResult = 'تم استرجاع العمولة للسائق (السائق لم يكن قريباً)';
+                    cancellationReason = 'تم استرجاع العمولة للسائق (السائق لم يكن قريباً)';
                     console.log('✅ تم استرجاع العمولة للسائق - السائق بعيد');
                 }
 
-                // Update ride status - this is the critical operation
+                // Update ride status - Perform a SINGLE database update
+                const updatePayload = {
+                    status: finalStatus,
+                    updated_at: new Date().toISOString()
+                };
+
+                if (finalStatus === 'completed') {
+                    updatePayload.completed_at = new Date().toISOString();
+                } else {
+                    updatePayload.cancelled_at = new Date().toISOString();
+                }
+
+                // Always store the reason for record keeping and driver notification
+                updatePayload.cancellation_reason = cancellationReason;
+
                 const { error: updateError } = await tarhalDB
                     .from('rides')
-                    .update({
-                        status: 'cancelled_by_customer',
-                        cancelled_at: new Date().toISOString(),
-                        cancellation_reason: cancellationResult,
-                        updated_at: new Date().toISOString()
-                    })
+                    .update(updatePayload)
                     .eq('id', currentRideId);
 
                 if (updateError) {

@@ -14,6 +14,12 @@
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Sound Manager -->
+    <script src="../sound-manager.js"></script>
+
     <style>
         :root {
             --primary: #16a34a;
@@ -305,7 +311,7 @@
 
             if (currentRideId) {
                 loadGoogleMaps();
-                fetchRideDetails();
+                await fetchRideDetails();
                 initRealtime();
             }
         });
@@ -764,23 +770,39 @@
 
         // الاستماع للتحديثات المباشرة على الرحلة
         function initRealtime() {
+            console.log('📡 بدء نظام المزامنة الفورية للرحلة:', currentRideId);
+
             // Supabase Realtime for ride status changes
             tarhalDB
-                .channel('active-ride')
+                .channel(`ride-status-${currentRideId}`)
                 .on('postgres_changes', {
                     event: 'UPDATE',
                     schema: 'public',
                     table: 'rides',
                     filter: `id=eq.${currentRideId}`
                 }, (payload) => {
-                    console.log('🔄 تحديث الرحلة:', payload.new.status);
-                    if (payload.new.status !== currentStatus) {
-                        // Check if cancelled by passenger
-                        if (payload.new.status === 'cancelled_by_customer') {
-                            showCancellationAlertByPassenger();
-                        } else {
-                            updateUIStatus(payload.new.status);
-                        }
+                    const newStatus = payload.new.status;
+                    const oldStatus = currentStatus;
+                    const reason = payload.new.cancellation_reason || '';
+
+                    console.log(`🔄 تحديث الحالة: ${oldStatus} -> ${newStatus}`);
+                    console.log('📝 السبب:', reason);
+
+                    // Robust Cancellation Detection
+                    // 1. Explicit cancellation by passenger
+                    // 2. Status is completed BUT the reason mentions passenger cancellation or "near pickup" rule
+                    const isPassengerCancel =
+                        newStatus === 'cancelled_by_customer' ||
+                        (newStatus === 'completed' && reason.includes('الاستلام') && reason.includes('العمولة'));
+
+                    if (isPassengerCancel) {
+                        console.log('🚨 تم اكتشاف إلغاء/إغلاق من طرف الراكب!');
+                        showCancellationAlertByPassenger(reason);
+                        return;
+                    }
+
+                    if (newStatus !== oldStatus) {
+                        updateUIStatus(newStatus);
                     }
                 })
                 .subscribe();
@@ -792,16 +814,15 @@
                 try {
                     const driverChannel = new BroadcastChannel('driver_ride_channel');
                     driverChannel.onmessage = (event) => {
-                        console.log('📨Received message:', event.data);
+                        console.log('📨 Received Broadcast message:', event.data);
                         
                         if (event.data.type === 'RIDE_CANCELLED_BY_PASSENGER' && 
                             event.data.rideId === currentRideId) {
-                            showCancellationAlertByPassenger();
+                            showCancellationAlertByPassenger(event.data.message);
                         }
                     };
-                    console.log('✅ Driver BroadcastChannel listener ready');
                 } catch (e) {
-                    console.warn('BroadcastChannel not supported:', e);
+                    console.warn('BroadcastChannel error:', e);
                 }
             }
         }
@@ -809,7 +830,11 @@
         // =====================================================
         // عرض تنبيه إلغاء الرحلة من قبل الراكب
         // =====================================================
-        function showCancellationAlertByPassenger() {
+        function showCancellationAlertByPassenger(reason = '') {
+            // Remove any existing overlay
+            const existing = document.getElementById('cancellation-alert-overlay');
+            if (existing) existing.remove();
+
             // Create modal overlay
             const overlay = document.createElement('div');
             overlay.id = 'cancellation-alert-overlay';
@@ -819,43 +844,68 @@
                 left: 0;
                 right: 0;
                 bottom: 0;
-                background: rgba(0,0,0,0.9);
+                background: rgba(0,0,0,0.95);
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 z-index: 999999;
                 animation: fadeIn 0.3s ease;
+                backdrop-filter: blur(5px);
             `;
             
+            const displayReason = reason || 'تم إلغاء الرحلة بواسطة الراكب';
+
             overlay.innerHTML = `
                 <div style="
                     background: white;
                     padding: 40px 30px;
-                    border-radius: 20px;
+                    border-radius: 24px;
                     text-align: center;
                     max-width: 90%;
-                    box-shadow: 0 20px 60px rgba(239, 68, 68, 0.3);
+                    width: 400px;
+                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+                    border: 2px solid #ef4444;
                 ">
-                    <i class="ph-bold ph-warning-circle" style="font-size: 70px; color: #ef4444; margin-bottom: 20px;"></i>
-                    <h2 style="color: #ef4444; font-size: 24px; margin-bottom: 15px; font-weight: 800;">
-                        ⚠️ تم إلغاء الرحلة
+                    <div style="
+                        width: 80px;
+                        height: 80px;
+                        background: #fee2e2;
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        margin: 0 auto 20px;
+                    ">
+                        <i class="ph-bold ph-warning-circle" style="font-size: 40px; color: #ef4444;"></i>
+                    </div>
+
+                    <h2 style="color: #111827; font-size: 24px; margin-bottom: 10px; font-weight: 800;">
+                        تم إلغاء الرحلة
                     </h2>
-                    <p style="color: #4b5563; font-size: 18px; margin-bottom: 25px; line-height: 1.6;">
-                        تم إلغاء الرحلة بواسطة الراكب
+
+                    <p style="color: #ef4444; font-size: 16px; margin-bottom: 20px; font-weight: 700; line-height: 1.5;">
+                        ${displayReason}
                     </p>
+
+                    <p style="color: #6b7280; font-size: 14px; margin-bottom: 30px; line-height: 1.6;">
+                        نأسف لذلك، يمكنك العودة للشاشة الرئيسية لاستقبال طلبات جديدة.
+                    </p>
+
                     <button onclick="handlePassengerCancellation()" 
                             style="
                                 background: linear-gradient(135deg, #16a34a, #15803d);
                                 color: white;
                                 border: none;
-                                padding: 15px 40px;
+                                width: 100%;
+                                padding: 16px;
                                 border-radius: 12px;
                                 font-size: 18px;
                                 font-weight: 700;
                                 cursor: pointer;
                                 font-family: 'Tajawal', sans-serif;
+                                box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
                             ">
-                        إغلاق وتوجيه للرئيسية
+                        العودة للرئيسية
                     </button>
                 </div>
             `;
@@ -864,7 +914,9 @@
             
             // Play alert sound
             if (window.soundManager) {
-                window.soundManager.playRideRequestSound?.();
+                try {
+                    window.soundManager.playRideRequestSound();
+                } catch(e) {}
             }
             
             // Prevent closing by clicking outside
