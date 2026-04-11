@@ -768,11 +768,46 @@
             }
         }
 
+        // =====================================================
+        // مراقبة حالة الرحلة بشكل دوري كنسخة احتياطية عن Realtime
+        // =====================================================
+        let rideStatusPollTimer = null;
+        function startRideStatusPolling() {
+            if (rideStatusPollTimer) return;
+            rideStatusPollTimer = setInterval(async () => {
+                if (!currentRideId) return;
+                if (document.getElementById('cancellation-alert-overlay')) return;
+                try {
+                    const { data } = await tarhalDB
+                        .from('rides')
+                        .select('status, cancellation_reason')
+                        .eq('id', currentRideId)
+                        .single();
+                    if (!data) return;
+                    const newStatus = data.status;
+                    const reason = data.cancellation_reason || '';
+                    const isPassengerCancel =
+                        newStatus === 'cancelled_by_customer' ||
+                        (newStatus === 'completed' && reason && reason.includes('الاستلام'));
+                    if (isPassengerCancel) {
+                        clearInterval(rideStatusPollTimer);
+                        rideStatusPollTimer = null;
+                        showCancellationAlertByPassenger(reason, newStatus);
+                    } else if (!['accepted','arrived','ongoing'].includes(newStatus)) {
+                        clearInterval(rideStatusPollTimer);
+                        rideStatusPollTimer = null;
+                    }
+                } catch (e) {
+                    console.warn('⚠️ خطأ في polling حالة الرحلة:', e);
+                }
+            }, 8000);
+        }
+
         // الاستماع للتحديثات المباشرة على الرحلة
         function initRealtime() {
             console.log('📡 بدء نظام المزامنة الفورية للرحلة:', currentRideId);
 
-            // Supabase Realtime for ride status changes
+            // Supabase Realtime - المسار الرئيسي للإشعارات
             tarhalDB
                 .channel(`ride-status-${currentRideId}`)
                 .on('postgres_changes', {
@@ -788,16 +823,14 @@
                     console.log(`🔄 تحديث الحالة: ${oldStatus} -> ${newStatus}`);
                     console.log('📝 السبب:', reason);
 
-                    // Robust Cancellation Detection
-                    // 1. Explicit cancellation by passenger
-                    // 2. Status is completed BUT the reason mentions passenger cancellation or "near pickup" rule
+                    // كشف إلغاء الراكب: حالة صريحة أو completed مع سبب قرب نقطة الاستلام
                     const isPassengerCancel =
                         newStatus === 'cancelled_by_customer' ||
-                        (newStatus === 'completed' && reason.includes('الاستلام') && reason.includes('العمولة'));
+                        (newStatus === 'completed' && reason && reason.includes('الاستلام'));
 
                     if (isPassengerCancel) {
-                        console.log('🚨 تم اكتشاف إلغاء/إغلاق من طرف الراكب!');
-                        showCancellationAlertByPassenger(reason);
+                        console.log('🚨 تم اكتشاف إلغاء من طرف الراكب عبر Realtime!');
+                        showCancellationAlertByPassenger(reason, newStatus);
                         return;
                     }
 
@@ -805,20 +838,30 @@
                         updateUIStatus(newStatus);
                     }
                 })
-                .subscribe();
+                .subscribe((status) => {
+                    console.log('📡 حالة Realtime:', status);
+                    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                        console.warn('⚠️ Realtime غير متوفر، تفعيل النسخة الاحتياطية');
+                        startRideStatusPolling();
+                    }
+                });
             
-            // =====================================================
-            // BroadcastChannel for immediate cancellation notifications
-            // =====================================================
+            // بدء polling كطبقة احتياطية إضافية
+            startRideStatusPolling();
+
+            // BroadcastChannel - للإشعار الفوري على نفس الجهاز فقط
             if (window.BroadcastChannel) {
                 try {
                     const driverChannel = new BroadcastChannel('driver_ride_channel');
                     driverChannel.onmessage = (event) => {
-                        console.log('📨 Received Broadcast message:', event.data);
-                        
-                        if (event.data.type === 'RIDE_CANCELLED_BY_PASSENGER' && 
-                            event.data.rideId === currentRideId) {
-                            showCancellationAlertByPassenger(event.data.message);
+                        console.log('📨 BroadcastChannel:', event.data);
+                        if (event.data.type === 'RIDE_CANCELLED_BY_PASSENGER' &&
+                            event.data.rideId === currentRideId &&
+                            !document.getElementById('cancellation-alert-overlay')) {
+                            showCancellationAlertByPassenger(
+                                event.data.cancellationReason || event.data.message,
+                                event.data.finalStatus
+                            );
                         }
                     };
                 } catch (e) {
@@ -828,115 +871,140 @@
         }
 
         // =====================================================
-        // عرض تنبيه إلغاء الرحلة من قبل الراكب
+        // عرض تنبيه إلغاء الرحلة من قبل الراكب - نسخة متقدمة
         // =====================================================
-        function showCancellationAlertByPassenger(reason = '') {
-            // Remove any existing overlay
-            const existing = document.getElementById('cancellation-alert-overlay');
-            if (existing) existing.remove();
+        async function showCancellationAlertByPassenger(reason = '', finalStatus = 'cancelled_by_customer') {
+            if (document.getElementById('cancellation-alert-overlay')) return;
 
-            // Create modal overlay
+            // إيقاف polling
+            if (rideStatusPollTimer) {
+                clearInterval(rideStatusPollTimer);
+                rideStatusPollTimer = null;
+            }
+
+            // تحليل السبب لتحديد وضع العمولة
+            let commissionHTML = '';
+            const isNearPickup = finalStatus === 'completed' ||
+                (reason && reason.includes('الاستلام'));
+            const isRefundedWithinTime = reason && reason.includes('دقيقتين');
+            const isRefundedFarDriver = reason && reason.includes('بعيد');
+
+            if (isNearPickup) {
+                commissionHTML = `
+                    <div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:12px;padding:12px 15px;margin-bottom:12px;text-align:right;">
+                        <div style="font-weight:800;color:#dc2626;font-size:15px;margin-bottom:4px;">💸 تم خصم العمولة</div>
+                        <div style="color:#991b1b;font-size:13px;line-height:1.6;">ألغى الراكب الرحلة بعد وصولك لنقطة الاستلام، لذلك تم احتساب عمولة الرحلة لصالح الشركة.</div>
+                    </div>`;
+            } else if (isRefundedWithinTime) {
+                commissionHTML = `
+                    <div style="background:#dcfce7;border:1px solid #86efac;border-radius:12px;padding:12px 15px;margin-bottom:12px;text-align:right;">
+                        <div style="font-weight:800;color:#16a34a;font-size:15px;margin-bottom:4px;">✅ تم إرجاع العمولة</div>
+                        <div style="color:#166534;font-size:13px;line-height:1.6;">ألغى الراكب خلال دقيقتين من القبول، تم إعادة العمولة كاملة لرصيدك.</div>
+                    </div>`;
+            } else if (isRefundedFarDriver) {
+                commissionHTML = `
+                    <div style="background:#dcfce7;border:1px solid #86efac;border-radius:12px;padding:12px 15px;margin-bottom:12px;text-align:right;">
+                        <div style="font-weight:800;color:#16a34a;font-size:15px;margin-bottom:4px;">✅ تم إرجاع العمولة</div>
+                        <div style="color:#166534;font-size:13px;line-height:1.6;">لم تكن قريباً من نقطة الاستلام، تم إعادة العمولة كاملة لرصيدك.</div>
+                    </div>`;
+            } else {
+                commissionHTML = `
+                    <div style="background:#f3f4f6;border:1px solid #d1d5db;border-radius:12px;padding:12px 15px;margin-bottom:12px;text-align:right;">
+                        <div style="font-weight:800;color:#374151;font-size:15px;margin-bottom:4px;">📋 حالة العمولة</div>
+                        <div style="color:#6b7280;font-size:13px;line-height:1.6;">${reason || 'تم إلغاء الرحلة بواسطة الراكب.'}</div>
+                    </div>`;
+            }
+
+            // التحقق من الحظر
+            let banHTML = '';
+            if (currentDriverId) {
+                try {
+                    const { data: driverData } = await tarhalDB
+                        .from('drivers')
+                        .select('is_banned, ban_reason, ban_until')
+                        .eq('id', currentDriverId)
+                        .single();
+                    if (driverData?.is_banned) {
+                        const banDate = driverData.ban_until
+                            ? new Date(driverData.ban_until).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' })
+                            : 'غير محدد';
+                        banHTML = `
+                            <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:12px;padding:12px 15px;margin-bottom:12px;text-align:right;">
+                                <div style="font-weight:800;color:#b45309;font-size:15px;margin-bottom:4px;">🚫 تم تعليق حسابك</div>
+                                <div style="color:#92400e;font-size:13px;line-height:1.6;">
+                                    السبب: ${driverData.ban_reason || 'مخالفة سياسة التطبيق'}<br>
+                                    حتى تاريخ: ${banDate}
+                                </div>
+                            </div>`;
+                    }
+                } catch (e) { console.warn('تعذر التحقق من الحظر:', e); }
+            }
+
             const overlay = document.createElement('div');
             overlay.id = 'cancellation-alert-overlay';
             overlay.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0,0,0,0.95);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 999999;
-                animation: fadeIn 0.3s ease;
-                backdrop-filter: blur(5px);
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.92);
+                display: flex; align-items: center; justify-content: center;
+                z-index: 999999; backdrop-filter: blur(6px);
             `;
-            
-            const displayReason = reason || 'تم إلغاء الرحلة بواسطة الراكب';
 
             overlay.innerHTML = `
                 <div style="
-                    background: white;
-                    padding: 40px 30px;
-                    border-radius: 24px;
-                    text-align: center;
-                    max-width: 90%;
-                    width: 400px;
-                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-                    border: 2px solid #ef4444;
+                    background: white; padding: 30px 24px; border-radius: 24px;
+                    text-align: center; max-width: 92%; width: 420px;
+                    box-shadow: 0 24px 64px rgba(0,0,0,0.5); border: 2px solid #ef4444;
+                    max-height: 90vh; overflow-y: auto;
                 ">
                     <div style="
-                        width: 80px;
-                        height: 80px;
-                        background: #fee2e2;
-                        border-radius: 50%;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        margin: 0 auto 20px;
+                        width: 72px; height: 72px; background: #fee2e2; border-radius: 50%;
+                        display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;
                     ">
-                        <i class="ph-bold ph-warning-circle" style="font-size: 40px; color: #ef4444;"></i>
+                        <i class="ph-bold ph-warning-circle" style="font-size: 36px; color: #ef4444;"></i>
                     </div>
 
-                    <h2 style="color: #111827; font-size: 24px; margin-bottom: 10px; font-weight: 800;">
-                        تم إلغاء الرحلة
+                    <h2 style="color: #111827; font-size: 22px; margin-bottom: 6px; font-weight: 800;">
+                        ألغى الراكب الرحلة
                     </h2>
-
-                    <p style="color: #ef4444; font-size: 16px; margin-bottom: 20px; font-weight: 700; line-height: 1.5;">
-                        ${displayReason}
+                    <p style="color: #6b7280; font-size: 14px; margin-bottom: 20px;">
+                        قام الراكب بإلغاء هذه الرحلة
                     </p>
 
-                    <p style="color: #6b7280; font-size: 14px; margin-bottom: 30px; line-height: 1.6;">
-                        نأسف لذلك، يمكنك العودة للشاشة الرئيسية لاستقبال طلبات جديدة.
-                    </p>
+                    ${commissionHTML}
+                    ${banHTML}
 
-                    <button onclick="handlePassengerCancellation()" 
-                            style="
-                                background: linear-gradient(135deg, #16a34a, #15803d);
-                                color: white;
-                                border: none;
-                                width: 100%;
-                                padding: 16px;
-                                border-radius: 12px;
-                                font-size: 18px;
-                                font-weight: 700;
-                                cursor: pointer;
-                                font-family: 'Tajawal', sans-serif;
-                                box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
-                            ">
-                        العودة للرئيسية
+                    <button onclick="handlePassengerCancellation()"
+                        style="
+                            background: linear-gradient(135deg, #16a34a, #15803d);
+                            color: white; border: none; width: 100%;
+                            padding: 15px; border-radius: 12px;
+                            font-size: 17px; font-weight: 700; cursor: pointer;
+                            font-family: 'Tajawal', sans-serif;
+                            box-shadow: 0 4px 12px rgba(22,163,74,0.3); margin-top: 8px;
+                        ">
+                        حسناً، العودة للرئيسية
                     </button>
                 </div>
             `;
-            
+
             document.body.appendChild(overlay);
-            
-            // Play alert sound
+
             if (window.soundManager) {
-                try {
-                    window.soundManager.playRideRequestSound();
-                } catch(e) {}
+                try { window.soundManager.playRideRequestSound(); } catch(e) {}
             }
-            
-            // Prevent closing by clicking outside
+
             overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) {
-                    e.preventDefault();
-                }
+                if (e.target === overlay) e.preventDefault();
             });
         }
 
         // =====================================================
-        // معالجة إلغاء الراكب
+        // معالجة إلغاء الراكب والعودة للرئيسية
         // =====================================================
         async function handlePassengerCancellation() {
-            // Clear active ride data
             localStorage.removeItem('active_ride_id');
             localStorage.removeItem('active_ride_status');
             localStorage.removeItem('active_ride_data');
-            
-            // Redirect to driver dashboard
             window.location.href = 'index.html';
         }
 
