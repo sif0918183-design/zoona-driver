@@ -1091,14 +1091,14 @@
         // تحديث الرصيد فوراً عند بدء التشغيل
         refreshDriverBalance();
         
-        // تحديث الرصيد كل 3 ثوانٍ
+        // تحديث الرصيد كل 10 ثوانٍ
         balancePollingInterval = setInterval(() => {
             if (currentDriver && currentDriver.id) {
                 refreshDriverBalance();
             }
-        }, 3000);
+        }, 10000);
         
-        console.log('🔄 Balance polling started (every 3 seconds)');
+        console.log('🔄 Balance polling started (every 10 seconds)');
     }
     
     function stopBalancePolling() {
