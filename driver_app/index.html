@@ -1074,6 +1074,39 @@
         
         // تهيئة مستمع تحديث الرصيد
         setupBalanceUpdateListener();
+        
+        // إضافة تحديث تلقائي للرصيد كل 3 ثوانٍ لضمان التحديث الفوري
+        startBalancePolling();
+    }
+    
+    // ============ تحديث الرصيد التلقائي ============
+    let balancePollingInterval = null;
+    
+    function startBalancePolling() {
+        // إيقاف أي polling سابق
+        if (balancePollingInterval) {
+            clearInterval(balancePollingInterval);
+        }
+        
+        // تحديث الرصيد فوراً عند بدء التشغيل
+        refreshDriverBalance();
+        
+        // تحديث الرصيد كل 10 ثوانٍ
+        balancePollingInterval = setInterval(() => {
+            if (currentDriver && currentDriver.id) {
+                refreshDriverBalance();
+            }
+        }, 10000);
+        
+        console.log('🔄 Balance polling started (every 10 seconds)');
+    }
+    
+    function stopBalancePolling() {
+        if (balancePollingInterval) {
+            clearInterval(balancePollingInterval);
+            balancePollingInterval = null;
+            console.log('🔄 Balance polling stopped');
+        }
     }
 
     /**
