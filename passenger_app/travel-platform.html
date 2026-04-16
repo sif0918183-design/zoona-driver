@@ -508,6 +508,44 @@
             color:var(--tech-text);
             background:#fff;
         }
+        .btn-outline-danger {
+            background:transparent;
+            border:1.5px solid var(--danger);
+            color:var(--danger);
+            padding:0.5rem 1.5rem;
+            font-size:0.85rem;
+            border-radius:var(--radius);
+            font-weight:600;
+            display:inline-flex;
+            margin:0 auto;
+        }
+        .btn-outline-danger:active {
+            background:rgba(239, 68, 68, 0.05);
+            transform:scale(0.98);
+        }
+        .driver-asked-container {
+            background:var(--gray-50);
+            padding:0.75rem;
+            border-radius:var(--radius);
+            margin-bottom:0.75rem;
+            display:flex;
+            align-items:center;
+            gap:0.75rem;
+            border:1px solid var(--gray-200);
+            text-align: right;
+        }
+        .driver-asked-container input[type="checkbox"] {
+            width:1.2rem;
+            height:1.2rem;
+            accent-color:var(--Tracka-primary);
+            cursor: pointer;
+        }
+        .driver-asked-label {
+            font-size:0.85rem;
+            color:var(--tech-text);
+            font-weight:600;
+            cursor: pointer;
+        }
 
         /* ===========================
            CANCELLATION ALERT OVERLAY
@@ -866,12 +904,30 @@
         </div>
 
         <!-- Cancel Section -->
-        <div class="cancel-section" id="atp-cancel-section">
-            <div class="cancel-section-title">إلغاء الرحلة (يُسجَّل في السجلات)</div>
-            <textarea class="cancel-reason-input" id="cancel-reason-input" placeholder="سبب الإلغاء (اختياري)..." rows="2"></textarea>
-            <button class="btn btn-danger btn-block btn-sm" id="atp-cancel-btn" onclick="initiateCancel()">
+        <div class="cancel-section" id="atp-cancel-section" style="text-align:center;">
+            <button class="btn btn-outline-danger btn-sm" id="atp-cancel-init-btn" onclick="toggleCancelDetails(true)">
                 <i class="ph-light ph-x-circle"></i> إلغاء الرحلة
             </button>
+
+            <div id="atp-cancel-details" class="hidden" style="text-align:right;">
+                <div class="cancel-section-title">تفاصيل الإلغاء</div>
+
+                <div class="driver-asked-container">
+                    <input type="checkbox" id="driver-asked-check">
+                    <label for="driver-asked-check" class="driver-asked-label">هل السائق هو من طلب الإلغاء؟</label>
+                </div>
+
+                <textarea class="cancel-reason-input" id="cancel-reason-input" placeholder="سبب الإلغاء (اختياري)..." rows="2"></textarea>
+
+                <div style="display:flex; gap:0.5rem;">
+                    <button class="btn btn-danger btn-sm" id="atp-cancel-btn" onclick="initiateCancel()" style="flex:2;">
+                         تأكيد الإلغاء
+                    </button>
+                    <button class="btn btn-sm" onclick="toggleCancelDetails(false)" style="flex:1; background:#e2e8f0; color:#334155;">
+                        تراجع
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -1165,9 +1221,28 @@ async function fetchAndShowActiveTripFromDB() {
     }
 }
 
+function toggleCancelDetails(show) {
+    const initBtn = document.getElementById('atp-cancel-init-btn');
+    const details = document.getElementById('atp-cancel-details');
+    if (show) {
+        initBtn.classList.add('hidden');
+        details.classList.remove('hidden');
+    } else {
+        initBtn.classList.remove('hidden');
+        details.classList.add('hidden');
+    }
+}
+
 async function showActiveTripModal(trip) {
     activeTripData = trip;
     localStorage.setItem('tarhal_active_trip_id', trip.id);
+
+    // Reset cancel UI
+    toggleCancelDetails(false);
+    const reasonInput = document.getElementById('cancel-reason-input');
+    if (reasonInput) reasonInput.value = '';
+    const driverAskedCheck = document.getElementById('driver-asked-check');
+    if (driverAskedCheck) driverAskedCheck.checked = false;
 
     // Fetch related ride_request for full details
     let rideReq = null;
@@ -1396,7 +1471,13 @@ async function driverCompletedTrip(tripId) {
 }
 
 function initiateCancel() {
-    const reason = document.getElementById('cancel-reason-input').value.trim();
+    let reason = document.getElementById('cancel-reason-input').value.trim();
+    const driverAsked = document.getElementById('driver-asked-check')?.checked;
+
+    if (driverAsked) {
+        reason = reason ? `السائق طلب الإلغاء - ${reason}` : 'السائق طلب الإلغاء';
+    }
+
     if (!activeTripData) return;
 
     if (userType === 'driver') {

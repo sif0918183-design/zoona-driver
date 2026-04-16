@@ -508,6 +508,21 @@
             color:var(--tech-text);
             background:#fff;
         }
+        .btn-outline-danger {
+            background:transparent;
+            border:1.5px solid var(--danger);
+            color:var(--danger);
+            padding:0.5rem 1.5rem;
+            font-size:0.85rem;
+            border-radius:var(--radius);
+            font-weight:600;
+            display:inline-flex;
+            margin:0 auto;
+        }
+        .btn-outline-danger:active {
+            background:rgba(239, 68, 68, 0.05);
+            transform:scale(0.98);
+        }
 
         /* ===========================
            CANCELLATION ALERT OVERLAY
@@ -869,10 +884,8 @@
         </div>
 
         <!-- Cancel Section -->
-        <div class="cancel-section" id="atp-cancel-section">
-            <div class="cancel-section-title">إلغاء الرحلة (يُسجَّل في السجلات)</div>
-            <textarea class="cancel-reason-input" id="cancel-reason-input" placeholder="سبب الإلغاء (اختياري)..." rows="2"></textarea>
-            <button class="btn btn-danger btn-block btn-sm" id="atp-cancel-btn" onclick="initiateCancel()">
+        <div class="cancel-section" id="atp-cancel-section" style="text-align:center;">
+            <button class="btn btn-outline-danger btn-sm" id="atp-cancel-btn" onclick="initiateCancel()">
                 <i class="ph-light ph-x-circle"></i> إلغاء الرحلة
             </button>
         </div>
@@ -1399,7 +1412,8 @@ async function driverCompletedTrip(tripId) {
 }
 
 function initiateCancel() {
-    const reason = document.getElementById('cancel-reason-input').value.trim();
+    const reasonInput = document.getElementById('cancel-reason-input');
+    const reason = reasonInput ? reasonInput.value.trim() : 'إلغاء من السائق';
     if (!activeTripData) return;
 
     if (userType === 'driver') {
