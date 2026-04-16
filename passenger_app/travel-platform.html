@@ -1488,7 +1488,6 @@ function initiateCancel() {
 }
 
 async function passengerCancelsTrip(tripId, reason) {
-    if (!confirm('هل أنت متأكد من إلغاء الرحلة؟')) return;
     try {
         const {error} = await travelSupabase.from('travel_trips').update({
             status: 'cancelled',
@@ -1512,7 +1511,6 @@ async function passengerCancelsTrip(tripId, reason) {
 }
 
 async function driverCancelsTrip(tripId, reason) {
-    if (!confirm('هل أنت متأكد من إلغاء الرحلة؟ قد تُطبَّق غرامة.')) return;
     try {
         const {error} = await travelSupabase.from('travel_trips').update({
             status: 'cancelled',

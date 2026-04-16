@@ -885,9 +885,23 @@
 
         <!-- Cancel Section -->
         <div class="cancel-section" id="atp-cancel-section" style="text-align:center;">
-            <button class="btn btn-outline-danger btn-sm" id="atp-cancel-btn" onclick="initiateCancel()">
+            <button class="btn btn-outline-danger btn-sm" id="atp-cancel-init-btn" onclick="toggleCancelDetails(true)">
                 <i class="ph-light ph-x-circle"></i> إلغاء الرحلة
             </button>
+
+            <div id="atp-cancel-details" class="hidden" style="text-align:center; background: #fff1f2; padding: 1rem; border-radius: var(--radius); border: 1px solid #fecaca; margin-top: 0.5rem;">
+                <div style="color: #b91c1c; font-weight: 600; margin-bottom: 0.75rem; font-size: 0.9rem;">
+                    <i class="ph-bold ph-warning"></i> هل أنت متأكد من الإلغاء؟ قد تُطبَّق غرامة مالية.
+                </div>
+                <div style="display:flex; gap:0.5rem; justify-content: center;">
+                    <button class="btn btn-danger btn-sm" id="atp-cancel-btn" onclick="initiateCancel()" style="flex:1;">
+                        تأكيد الإلغاء
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="toggleCancelDetails(false)" style="flex:1;">
+                        تراجع
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -1254,8 +1268,24 @@ async function showActiveTripModal(trip) {
     // Show the modal
     document.getElementById('active-trip-modal').classList.remove('hidden');
 
+    // Reset cancel UI
+    toggleCancelDetails(false);
+
     // Subscribe to real-time changes on this trip
     setupTripRealtimeListener(trip.id);
+}
+
+function toggleCancelDetails(show) {
+    const initBtn = document.getElementById('atp-cancel-init-btn');
+    const details = document.getElementById('atp-cancel-details');
+    if (!initBtn || !details) return;
+    if (show) {
+        initBtn.classList.add('hidden');
+        details.classList.remove('hidden');
+    } else {
+        initBtn.classList.remove('hidden');
+        details.classList.add('hidden');
+    }
 }
 
 function updateProgressBar(status) {
@@ -1412,8 +1442,7 @@ async function driverCompletedTrip(tripId) {
 }
 
 function initiateCancel() {
-    const reasonInput = document.getElementById('cancel-reason-input');
-    const reason = reasonInput ? reasonInput.value.trim() : 'إلغاء من السائق';
+    const reason = 'إلغاء من السائق';
     if (!activeTripData) return;
 
     if (userType === 'driver') {
@@ -1424,7 +1453,6 @@ function initiateCancel() {
 }
 
 async function passengerCancelsTrip(tripId, reason) {
-    if (!confirm('هل أنت متأكد من إلغاء الرحلة؟')) return;
     try {
         const {error} = await travelSupabase.from('travel_trips').update({
             status: 'cancelled',
@@ -1448,7 +1476,6 @@ async function passengerCancelsTrip(tripId, reason) {
 }
 
 async function driverCancelsTrip(tripId, reason) {
-    if (!confirm('هل أنت متأكد من إلغاء الرحلة؟ قد تُطبَّق غرامة.')) return;
     try {
         const {error} = await travelSupabase.from('travel_trips').update({
             status: 'cancelled',
