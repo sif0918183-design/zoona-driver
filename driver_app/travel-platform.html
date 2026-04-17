@@ -418,15 +418,37 @@
             align-items:center;
             gap:0.5rem;
         }
+        .contact-phone-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+            background: #f0fdf4;
+            padding: 0.5rem 0.75rem;
+            border-radius: 12px;
+            border: 1px solid #d1fae5;
+        }
         .contact-phone-number {
-            font-size:1.4rem;
+            font-size:1.2rem;
             font-weight:800;
             color:#059669;
             letter-spacing:1px;
             direction:ltr;
-            display:block;
-            margin-bottom:0.5rem;
         }
+        .btn-call-small {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--Tracka-primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            box-shadow: 0 2px 4px rgba(0,139,94,0.2);
+        }
+        .btn-call-small i { font-size: 1.2rem; }
         .contact-name {
             font-size:1rem;
             font-weight:600;
@@ -854,7 +876,17 @@
                 <i class="ph-bold ph-phone"></i>
                 <span id="atp-contact-label">بيانات التواصل</span>
             </div>
-            <span class="contact-phone-number" id="atp-contact-phone">—</span>
+            <div id="atp-phone-list">
+                <!-- Phone rows injected here -->
+                <div class="contact-phone-row" id="atp-phone1-row">
+                    <span class="contact-phone-number" id="atp-contact-phone">—</span>
+                    <a href="#" class="btn-call-small" id="atp-call1"><i class="ph-bold ph-phone-call"></i></a>
+                </div>
+                <div class="contact-phone-row" id="atp-phone2-row" style="display:none;">
+                    <span class="contact-phone-number" id="atp-contact-phone2">—</span>
+                    <a href="#" class="btn-call-small" id="atp-call2"><i class="ph-bold ph-phone-call"></i></a>
+                </div>
+            </div>
             <div class="contact-name" id="atp-contact-name">—</div>
         </div>
 
@@ -1209,11 +1241,11 @@ async function showActiveTripModal(trip) {
     // Fetch driver info
     let driverInfo = null, passengerInfo = null;
     if (trip.driver_id) {
-        const {data} = await travelSupabase.from('drivers').select('full_name,phone,car_type,car_model').eq('id',trip.driver_id).single();
+        const {data} = await travelSupabase.from('drivers').select('full_name,phone,whatsapp_number,car_type,car_model').eq('id',trip.driver_id).single();
         driverInfo = data;
     }
     if (trip.passenger_id) {
-        const {data} = await travelSupabase.from('customers').select('full_name,phone').eq('id',trip.passenger_id).single();
+        const {data} = await travelSupabase.from('customers').select('full_name,phone,phone2').eq('id',trip.passenger_id).single();
         passengerInfo = data;
     }
 
@@ -1236,7 +1268,21 @@ async function showActiveTripModal(trip) {
         document.getElementById('atp-title').textContent = 'رحلتك جارية الآن';
         document.getElementById('atp-subtitle').textContent = 'تفاصيل رحلتك وبيانات التواصل مع السائق';
         document.getElementById('atp-contact-label').textContent = 'بيانات السائق';
-        document.getElementById('atp-contact-phone').textContent = driverInfo?.phone || rideReq?.driver_phone || '—';
+
+        const p1 = driverInfo?.phone || rideReq?.driver_phone;
+        const p2 = driverInfo?.whatsapp_number;
+
+        document.getElementById('atp-contact-phone').textContent = p1 || '—';
+        document.getElementById('atp-call1').href = p1 ? `tel:${p1}` : '#';
+
+        if (p2 && p2 !== p1) {
+            document.getElementById('atp-contact-phone2').textContent = p2;
+            document.getElementById('atp-call2').href = `tel:${p2}`;
+            document.getElementById('atp-phone2-row').style.display = 'flex';
+        } else {
+            document.getElementById('atp-phone2-row').style.display = 'none';
+        }
+
         document.getElementById('atp-contact-name').textContent = driverInfo
             ? `${driverInfo.full_name} | ${driverInfo.car_type || ''} ${driverInfo.car_model || ''}`
             : (rideReq?.driver_name || '—');
@@ -1246,7 +1292,21 @@ async function showActiveTripModal(trip) {
         document.getElementById('atp-title').textContent = 'رحلتك النشطة';
         document.getElementById('atp-subtitle').textContent = 'لا يمكن مغادرة هذه الشاشة حتى تأكيد الوصول النهائي';
         document.getElementById('atp-contact-label').textContent = 'بيانات الراكب';
-        document.getElementById('atp-contact-phone').textContent = passengerInfo?.phone || rideReq?.passenger_phone || '—';
+
+        const p1 = passengerInfo?.phone || rideReq?.passenger_phone;
+        const p2 = passengerInfo?.phone2;
+
+        document.getElementById('atp-contact-phone').textContent = p1 || '—';
+        document.getElementById('atp-call1').href = p1 ? `tel:${p1}` : '#';
+
+        if (p2 && p2 !== p1) {
+            document.getElementById('atp-contact-phone2').textContent = p2;
+            document.getElementById('atp-call2').href = `tel:${p2}`;
+            document.getElementById('atp-phone2-row').style.display = 'flex';
+        } else {
+            document.getElementById('atp-phone2-row').style.display = 'none';
+        }
+
         document.getElementById('atp-contact-name').textContent = passengerInfo?.full_name || rideReq?.passenger_name || '—';
 
         // Commission preview
