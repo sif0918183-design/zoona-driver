@@ -418,15 +418,36 @@
             align-items:center;
             gap:0.5rem;
         }
-        .contact-phone-number {
-            font-size:1.4rem;
-            font-weight:800;
-            color:#059669;
-            letter-spacing:1px;
-            direction:ltr;
-            display:block;
-            margin-bottom:0.5rem;
+        .contact-phone-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+            background: rgba(255,255,255,0.5);
+            padding: 0.5rem 0.75rem;
+            border-radius: var(--radius);
         }
+        .contact-phone-val {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #059669;
+            letter-spacing: 1px;
+            direction: ltr;
+        }
+        .btn-call-small {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #10b981;
+            color: white;
+            text-decoration: none;
+            box-shadow: 0 2px 4px rgba(16,185,129,0.3);
+            transition: all 0.2s ease;
+        }
+        .btn-call-small:active { transform: scale(0.9); }
         .contact-name {
             font-size:1rem;
             font-weight:600;
@@ -874,7 +895,11 @@
                 <i class="ph-bold ph-phone"></i>
                 <span id="atp-contact-label">بيانات التواصل</span>
             </div>
-            <span class="contact-phone-number" id="atp-contact-phone">—</span>
+            <div id="atp-contact-phones-list">
+                <div class="contact-phone-row">
+                    <span class="contact-phone-val">—</span>
+                </div>
+            </div>
             <div class="contact-name" id="atp-contact-name">—</div>
         </div>
 
@@ -1254,11 +1279,11 @@ async function showActiveTripModal(trip) {
     // Fetch driver info
     let driverInfo = null, passengerInfo = null;
     if (trip.driver_id) {
-        const {data} = await travelSupabase.from('drivers').select('full_name,phone,car_type,car_model').eq('id',trip.driver_id).single();
+        const {data} = await travelSupabase.from('drivers').select('full_name,phone,whatsapp_number,car_type,car_model').eq('id',trip.driver_id).single();
         driverInfo = data;
     }
     if (trip.passenger_id) {
-        const {data} = await travelSupabase.from('customers').select('full_name,phone').eq('id',trip.passenger_id).single();
+        const {data} = await travelSupabase.from('customers').select('full_name,phone,phone2').eq('id',trip.passenger_id).single();
         passengerInfo = data;
     }
 
@@ -1277,11 +1302,30 @@ async function showActiveTripModal(trip) {
     document.getElementById('atp-status').textContent = statusLabels[trip.status] || trip.status;
 
     // Contact info based on user type
+    const phonesContainer = document.getElementById('atp-contact-phones-list');
+    phonesContainer.innerHTML = '';
+
     if (userType === 'passenger') {
         document.getElementById('atp-title').textContent = 'رحلتك جارية الآن';
         document.getElementById('atp-subtitle').textContent = 'تفاصيل رحلتك وبيانات التواصل مع السائق';
         document.getElementById('atp-contact-label').textContent = 'بيانات السائق';
-        document.getElementById('atp-contact-phone').textContent = driverInfo?.phone || rideReq?.driver_phone || '—';
+
+        const driverPhones = [];
+        if (driverInfo?.phone) driverPhones.push(driverInfo.phone);
+        if (driverInfo?.whatsapp_number) driverPhones.push(driverInfo.whatsapp_number);
+        if (driverPhones.length === 0 && rideReq?.driver_phone) driverPhones.push(rideReq.driver_phone);
+
+        if (driverPhones.length > 0) {
+            driverPhones.forEach(ph => {
+                const row = document.createElement('div');
+                row.className = 'contact-phone-row';
+                row.innerHTML = `<span class="contact-phone-val">${ph}</span><a href="tel:${ph}" class="btn-call-small"><i class="ph-bold ph-phone"></i></a>`;
+                phonesContainer.appendChild(row);
+            });
+        } else {
+            phonesContainer.innerHTML = '<div class="contact-phone-row"><span class="contact-phone-val">—</span></div>';
+        }
+
         document.getElementById('atp-contact-name').textContent = driverInfo
             ? `${driverInfo.full_name} | ${driverInfo.car_type || ''} ${driverInfo.car_model || ''}`
             : (rideReq?.driver_name || '—');
@@ -1291,7 +1335,23 @@ async function showActiveTripModal(trip) {
         document.getElementById('atp-title').textContent = 'رحلتك النشطة';
         document.getElementById('atp-subtitle').textContent = 'لا يمكن مغادرة هذه الشاشة حتى تأكيد الوصول النهائي';
         document.getElementById('atp-contact-label').textContent = 'بيانات الراكب';
-        document.getElementById('atp-contact-phone').textContent = passengerInfo?.phone || rideReq?.passenger_phone || '—';
+
+        const passengerPhones = [];
+        if (passengerInfo?.phone) passengerPhones.push(passengerInfo.phone);
+        if (passengerInfo?.phone2) passengerPhones.push(passengerInfo.phone2);
+        if (passengerPhones.length === 0 && rideReq?.passenger_phone) passengerPhones.push(rideReq.passenger_phone);
+
+        if (passengerPhones.length > 0) {
+            passengerPhones.forEach(ph => {
+                const row = document.createElement('div');
+                row.className = 'contact-phone-row';
+                row.innerHTML = `<span class="contact-phone-val">${ph}</span><a href="tel:${ph}" class="btn-call-small"><i class="ph-bold ph-phone"></i></a>`;
+                phonesContainer.appendChild(row);
+            });
+        } else {
+            phonesContainer.innerHTML = '<div class="contact-phone-row"><span class="contact-phone-val">—</span></div>';
+        }
+
         document.getElementById('atp-contact-name').textContent = passengerInfo?.full_name || rideReq?.passenger_name || '—';
 
         // Commission preview
