@@ -161,7 +161,7 @@
         .btn-primary { background:var(--grad-emerald); color:#fff; border:none; box-shadow:0 4px 15px var(--Tracka-emerald-glow); }
         .btn-primary:hover:not(:disabled) { background:var(--grad-emerald-tech); box-shadow:0 0 25px var(--Tracka-emerald-glow); transform:translateY(-2px); }
         .btn-secondary { background:linear-gradient(135deg,var(--secondary) 0%,#047857 100%); color:#fff; border:1px solid var(--secondary); }
-        .btn-outline { background:transparent; color:var(--primary); border:2px solid var(--primary); }
+        .btn-outline { background:#fff; color:var(--primary); border:2px solid var(--primary); box-shadow: var(--tech-shadow); }
         .btn-outline:hover { background:var(--primary-light); box-shadow:0 4px 12px var(--Tracka-emerald-glow); }
         .btn-danger { background:linear-gradient(135deg,var(--danger) 0%,#dc2626 100%); color:#fff; }
         .btn-danger:hover { box-shadow:0 4px 12px rgba(239,68,68,0.25); }
@@ -530,8 +530,8 @@
             background:#fff;
         }
         .btn-outline-danger {
-            background:transparent;
-            border:1.5px solid var(--danger);
+            background:#fff;
+            border:2px solid var(--danger);
             color:var(--danger);
             padding:0.5rem 1.5rem;
             font-size:0.85rem;
@@ -972,7 +972,7 @@
 </div>
 
 <!-- Chat Modal -->
-<div id="chat-modal" class="modal-overlay hidden">
+<div id="chat-modal" class="modal-overlay hidden" style="z-index: 2000;">
     <div class="modal-content">
         <div class="modal-header">
             <h3 class="modal-title" id="chat-title">محادثة</h3>
