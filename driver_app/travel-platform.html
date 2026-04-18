@@ -1448,13 +1448,25 @@ async function passengerCancelsTrip(tripId, reason) {
 }
 
 async function driverCancelsTrip(tripId, reason) {
-    if (!confirm('هل أنت متأكد من إلغاء الرحلة؟ قد تُطبَّق غرامة.')) return;
+    if (!confirm('هل أنت متأكد من إلغاء الرحلة؟ سيتم خصم غرامة تعادل قيمة العمولة من رصيدك.')) return;
     try {
+        const price = activeTripData.final_price || 0;
+        const penalty = Math.round(price * COMMISSION_RATE / 100);
+
+        // Deduct penalty from balance
+        const {data:driver, error:dErr} = await travelSupabase.from('drivers').select('balance').eq('id',currentUser.id).single();
+        if (dErr) throw dErr;
+
+        const newBalance = (driver.balance || 0) - penalty;
+        await travelSupabase.from('drivers').update({balance: newBalance}).eq('id', currentUser.id);
+
         const {error} = await travelSupabase.from('travel_trips').update({
             status: 'cancelled',
             cancelled_by: 'driver',
             cancelled_at: new Date().toISOString(),
-            cancellation_reason: reason || 'لم يحدد'
+            cancellation_reason: reason || 'لم يحدد',
+            commission_deducted: true,
+            commission_amount: penalty
         }).eq('id', tripId);
         if (error) throw error;
 
@@ -1468,13 +1480,14 @@ async function driverCancelsTrip(tripId, reason) {
                 driver_id: currentUser.id,
                 trip_id: tripId,
                 violation_type: 'driver_cancelled_after_contact',
-                description: reason || 'إلغاء من السائق بعد ظهور بيانات التواصل'
+                description: reason || 'إلغاء من السائق مع خصم غرامة'
             }]);
         } catch(ve) { console.warn('Could not log violation:', ve); }
 
         localStorage.removeItem('tarhal_active_trip_id');
         closeActiveTripModal();
-        showNotification('تم إلغاء الرحلة وتسجيل الحادثة', 'warning');
+        showNotification('تم إلغاء الرحلة وخصم غرامة. إذا لم تكن مستعداً للرحلة، يرجى عدم قبولها من البداية.', 'warning');
+        updateDriverBalanceDisplay();
         await loadDriverRides();
     } catch(err) {
         showNotification('خطأ في الإلغاء: ' + err.message, 'error');
