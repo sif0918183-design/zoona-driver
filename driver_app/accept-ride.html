@@ -10,6 +10,7 @@
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/api/supabase-config"></script>
 
     <link rel="stylesheet" href="../shared/theme.css">
 
@@ -200,9 +201,7 @@
     <div id="notification"></div>
 
     <script>
-        const SB_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
-        const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
-        const tarhalDB = supabase.createClient(SB_URL, SB_KEY);
+        const tarhalDB = supabase.createClient(window.SB_URL, window.SB_KEY);
 
         let currentRideId = null;
         let countdownValue = 60;

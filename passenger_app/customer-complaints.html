@@ -12,6 +12,8 @@
     <link rel="stylesheet" href="../shared/theme.css">
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Dynamic Supabase Config -->
+    <script src="/api/supabase-config"></script>
     <!-- Shared Supabase Config -->
     <script src="../shared/supabase-config.js"></script>
     <style>
@@ -1118,7 +1120,7 @@
 
     <script>
         // Initialize Supabase client
-        const supabase = window.supabase.createClient(SB_URL, SB_KEY);
+        const supabase = window.supabase.createClient(window.SB_URL, window.SB_KEY);
 
         // Check if user is logged in (driver or passenger)
         let currentUser = null;
