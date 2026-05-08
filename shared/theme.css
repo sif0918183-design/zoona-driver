@@ -141,3 +141,18 @@ i.ph {
     color: #6B7280;
     font-size: 0.85rem;
 }
+
+/* Navigation Header Styles */
+.header-content {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+.back-btn {
+    color: white;
+    text-decoration: none;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
