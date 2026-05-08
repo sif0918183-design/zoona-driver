@@ -702,10 +702,15 @@
 <div class="app-container">
     <!-- Header -->
     <header class="app-header">
-        <h1 class="app-title">
-            <img src="/assets/branding/icon-512x512.png" alt="تراكا للنقل" class="logo-img">
-            تراكا - السائقين
-        </h1>
+        <div class="header-content">
+            <a href="../landing.html" class="back-btn" id="header-back-btn" style="display: none;">
+                <i class="ph-light ph-caret-right"></i>
+            </a>
+            <h1 class="app-title">
+                <img src="/assets/branding/icon-512x512.png" alt="تراكا للنقل" class="logo-img">
+                تراكا - السائقين
+            </h1>
+        </div>
     </header>
 
     <!-- Driver Login Screen -->
@@ -823,9 +828,9 @@
                 دخول منصة الرحلات السفرية
             </button>
 
-            <button class="btn btn-driver mt-2" onclick="showDriverProfile()">
-                <i class="ph-light ph-user-circle"></i>
-                الملف الشخصي
+            <button class="btn btn-driver mt-2" onclick="window.open('https://wa.me/249100979529', '_blank')">
+                <i class="ph-bold ph-whatsapp-logo"></i>
+                شحن الرصيد و الدعم الفني
             </button>
 
             <button class="btn btn-driver mt-2" onclick="showComplaintsModal()">
@@ -1166,6 +1171,16 @@
             screen.classList.add('hidden');
         });
         document.getElementById(screenId).classList.remove('hidden');
+
+        // إظهار أو إخفاء زر العودة
+        const backBtn = document.getElementById('header-back-btn');
+        if (backBtn) {
+            if (screenId === 'driver-login-screen' || screenId === 'driver-register-info-screen') {
+                backBtn.style.display = 'flex';
+            } else {
+                backBtn.style.display = 'none';
+            }
+        }
     }
 
     function showDriverLogin() {
@@ -1753,10 +1768,6 @@
     }
 
     // Placeholder Functions
-    function showDriverProfile() {
-        showNotification('قريباً: الملف الشخصي للسائق', 'info');
-    }
-
     async function logoutDriver() {
         if (isDriverOnline) {
             await toggleDriverStatus();
