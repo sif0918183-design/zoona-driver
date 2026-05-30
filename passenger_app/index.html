@@ -2145,47 +2145,47 @@
 </div>
 
 <!-- Settings Modal -->
-<div id="settings-modal" class="modal-overlay hidden">
-  <div class="agreement-modal" style="max-width: 450px; position: relative; z-index: 100001;">
-    <div class="agreement-header">
+<div id="settings-modal" class="modal-overlay hidden" style="font-family: 'Tajawal', sans-serif !important;">
+  <div class="agreement-modal" style="max-width: 450px; position: relative; z-index: 100001; font-family: 'Tajawal', sans-serif !important;">
+    <div class="agreement-header" style="font-family: 'Tajawal', sans-serif !important;">
       <i class="ph-light ph-gear"></i>
-      <h3>إعدادات الحساب</h3>
-      <p class="modal-subtitle">تعديل بياناتك الشخصية</p>
+      <h3 style="font-family: 'Tajawal', sans-serif !important;">إعدادات الحساب</h3>
+      <p class="modal-subtitle" style="font-family: 'Tajawal', sans-serif !important;">تعديل بياناتك الشخصية</p>
     </div>
 
-    <div class="agreement-content" style="background: white; flex: none;">
-        <div class="form-group">
-            <label class="form-label">الاسم الكامل</label>
-            <input type="text" id="settings-name" class="form-input" disabled style="background: #f9fafb; color: #6b7280; border-style: dashed;">
+    <div class="agreement-content" style="background: white; flex: none; font-family: 'Tajawal', sans-serif !important;">
+        <div class="form-group" style="font-family: 'Tajawal', sans-serif !important;">
+            <label class="form-label" style="font-family: 'Tajawal', sans-serif !important;">الاسم الكامل</label>
+            <input type="text" id="settings-name" class="form-input" disabled style="background: #f9fafb; color: #6b7280; border-style: dashed; font-family: 'Tajawal', sans-serif !important;">
         </div>
 
-        <div class="form-group">
-            <label class="form-label">رقم الواتساب (رقم الحساب)</label>
-            <input type="text" id="settings-whatsapp" class="form-input" disabled style="background: #f9fafb; color: #6b7280; border-style: dashed;">
+        <div class="form-group" style="font-family: 'Tajawal', sans-serif !important;">
+            <label class="form-label" style="font-family: 'Tajawal', sans-serif !important;">رقم الواتساب (رقم الحساب)</label>
+            <input type="text" id="settings-whatsapp" class="form-input" disabled style="background: #f9fafb; color: #6b7280; border-style: dashed; font-family: 'Tajawal', sans-serif !important;">
         </div>
 
-        <div class="form-group">
-            <label class="form-label">رقم الإتصال (قابل للتعديل)</label>
-            <input type="tel" id="settings-phone2" class="form-input" placeholder="أدخل رقم إضافي للإتصال" dir="ltr">
+        <div class="form-group" style="font-family: 'Tajawal', sans-serif !important;">
+            <label class="form-label" style="font-family: 'Tajawal', sans-serif !important;">رقم الإتصال (قابل للتعديل)</label>
+            <input type="tel" id="settings-phone2" class="form-input" placeholder="أدخل رقم إضافي للإتصال" dir="ltr" style="font-family: 'Tajawal', sans-serif !important;">
         </div>
     </div>
 
-    <div class="agreement-actions" style="display: flex; flex-direction: column; gap: 10px; padding: 20px;">
-      <button class="btn-agree" onclick="saveSettings()" style="width: 100%;">
+    <div class="agreement-actions" style="display: flex; flex-direction: column; gap: 10px; padding: 20px; font-family: 'Tajawal', sans-serif !important;">
+      <button class="btn-agree" onclick="saveSettings()" style="width: 100%; font-family: 'Tajawal', sans-serif !important;">
         <i class="ph-bold ph-floppy-disk"></i>
         حفظ التعديلات
       </button>
-      <button class="btn-disagree" onclick="closeSettings()" style="width: 100%; background: var(--gray) !important;">
+      <button class="btn-disagree" onclick="closeSettings()" style="width: 100%; background: var(--gray) !important; font-family: 'Tajawal', sans-serif !important;">
         <i class="ph-bold ph-x"></i>
         إغلاق
       </button>
 
-      <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--gray-light); width: 100%;">
-        <button class="btn-disagree" onclick="initiateDeleteAccount()" style="width: 100%;">
+      <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--gray-light); width: 100%; font-family: 'Tajawal', sans-serif !important;">
+        <button class="btn-disagree" onclick="initiateDeleteAccount()" style="width: 100%; font-family: 'Tajawal', sans-serif !important;">
             <i class="ph-bold ph-user-minus"></i>
-            حذف الحساب نهائياً
+            حذف الحساب
         </button>
-        <p style="font-size: 11px; color: var(--danger); text-align: center; margin-top: 8px; font-weight: 600;">تحذير: هذا الإجراء لا يمكن التراجع عنه</p>
+        <p style="font-size: 11px; color: var(--danger); text-align: center; margin-top: 8px; font-weight: 600; font-family: 'Tajawal', sans-serif !important;">تحذير: سيتم توجيهك لصفحة حذف الحساب</p>
       </div>
     </div>
   </div>
@@ -4467,11 +4467,7 @@ async function saveSettings() {
 }
 
 function initiateDeleteAccount() {
-    if (confirm('⚠️ هل أنت متأكد من رغبتك في حذف الحساب نهائياً؟\nسيتم حذف جميع بياناتك ولا يمكن استعادتها.')) {
-        if (confirm('تأكيد نهائي: هل تريد حقاً المتابعة لحذف الحساب؟')) {
-            window.open('https://tracka.sd/delete-account-request', '_blank');
-        }
-    }
+    window.location.href = 'delete-account.html';
 }
 
 function openTravelPlatform() {

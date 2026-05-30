@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>تراكا للنقل - حذف الحساب</title>
+
+    <!-- Tajawal Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        :root {
+            --Tracka-primary: #008B5E;
+            --Tracka-emerald-glow: rgba(0, 139, 94, 0.3);
+            --danger: #ef4444;
+            --gray: #6b7280;
+            --gray-light: #f3f4f6;
+            --dark: #111827;
+            --radius: 16px;
+            --shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: #f9fafb;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: var(--dark);
+        }
+
+        .container {
+            width: 90%;
+            max-width: 450px;
+            background: white;
+            padding: 30px;
+            border-radius: 24px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .icon-box {
+            width: 80px;
+            height: 80px;
+            background: #fee2e2;
+            color: var(--danger);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            margin: 0 auto 20px;
+        }
+
+        h1 {
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 10px;
+            color: var(--dark);
+        }
+
+        p {
+            font-size: 15px;
+            color: var(--gray);
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+
+        .warning-box {
+            background: #fff7ed;
+            border: 1px solid #ffedd5;
+            padding: 15px;
+            border-radius: var(--radius);
+            margin-bottom: 30px;
+            text-align: right;
+        }
+
+        .warning-title {
+            color: #9a3412;
+            font-weight: 700;
+            font-size: 14px;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .warning-text {
+            color: #c2410c;
+            font-size: 13px;
+        }
+
+        .btn-delete {
+            width: 100%;
+            padding: 16px;
+            border-radius: var(--radius);
+            border: none;
+            background: var(--danger);
+            color: white;
+            font-family: 'Tajawal', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-delete:active {
+            transform: scale(0.97);
+        }
+
+        .btn-back {
+            width: 100%;
+            padding: 16px;
+            border-radius: var(--radius);
+            border: 1px solid var(--gray-light);
+            background: white;
+            color: var(--gray);
+            font-family: 'Tajawal', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-back:hover {
+            background: var(--gray-light);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="icon-box">
+            <i class="ph-bold ph-warning-octagon"></i>
+        </div>
+
+        <h1>حذف الحساب</h1>
+        <p>نحن حزينون لرؤيتك ترحل. هل أنت متأكد من رغبتك في حذف حسابك في تراكا؟</p>
+
+        <div class="warning-box">
+            <div class="warning-title">
+                <i class="ph-bold ph-warning"></i>
+                تنبيه هام
+            </div>
+            <div class="warning-text">
+                عند حذف الحساب، سيتم مسح جميع بياناتك، سجل الرحلات، وأي مبالغ في المحفظة نهائياً. لا يمكن التراجع عن هذا الإجراء.
+            </div>
+        </div>
+
+        <button class="btn-delete" onclick="confirmDelete()">
+            <i class="ph-bold ph-trash"></i>
+            تأكيد حذف الحساب نهائياً
+        </button>
+
+        <button class="btn-back" onclick="window.location.href='index.html'">
+            تراجع والعودة للتطبيق
+        </button>
+    </div>
+
+    <script>
+        function confirmDelete() {
+            if (confirm('⚠️ هل أنت متأكد تماماً؟ هذا الإجراء سيقوم بحذف جميع بياناتك من تراكا.')) {
+                if (confirm('تأكيد أخير: هل تريد الانتقال لصفحة طلب حذف البيانات؟')) {
+                    window.location.href = 'https://tracka.sd/delete-account-request';
+                }
+            }
+        }
+    </script>
+</body>
+</html>
