@@ -2144,6 +2144,53 @@
     </div>
 </div>
 
+<!-- Settings Modal -->
+<div id="settings-modal" class="modal-overlay hidden">
+  <div class="agreement-modal" style="max-width: 450px; position: relative; z-index: 100001;">
+    <div class="agreement-header">
+      <i class="ph-light ph-gear"></i>
+      <h3>إعدادات الحساب</h3>
+      <p class="modal-subtitle">تعديل بياناتك الشخصية</p>
+    </div>
+
+    <div class="agreement-content" style="background: white; flex: none;">
+        <div class="form-group">
+            <label class="form-label">الاسم الكامل</label>
+            <input type="text" id="settings-name" class="form-input" disabled style="background: #f9fafb; color: #6b7280; border-style: dashed;">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">رقم الواتساب (رقم الحساب)</label>
+            <input type="text" id="settings-whatsapp" class="form-input" disabled style="background: #f9fafb; color: #6b7280; border-style: dashed;">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">رقم الإتصال (قابل للتعديل)</label>
+            <input type="tel" id="settings-phone2" class="form-input" placeholder="أدخل رقم إضافي للإتصال" dir="ltr">
+        </div>
+    </div>
+
+    <div class="agreement-actions" style="display: flex; flex-direction: column; gap: 10px; padding: 20px;">
+      <button class="btn-agree" onclick="saveSettings()" style="width: 100%;">
+        <i class="ph-bold ph-floppy-disk"></i>
+        حفظ التعديلات
+      </button>
+      <button class="btn-disagree" onclick="closeSettings()" style="width: 100%; background: var(--gray) !important;">
+        <i class="ph-bold ph-x"></i>
+        إغلاق
+      </button>
+
+      <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--gray-light); width: 100%;">
+        <button class="btn-disagree" onclick="initiateDeleteAccount()" style="width: 100%;">
+            <i class="ph-bold ph-user-minus"></i>
+            حذف الحساب نهائياً
+        </button>
+        <p style="font-size: 11px; color: var(--danger); text-align: center; margin-top: 8px; font-weight: 600;">تحذير: هذا الإجراء لا يمكن التراجع عنه</p>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Page Transition Loader -->
 <div id="page-transition-loader" class="page-transition-loader hidden">
     <div class="loader-content">
@@ -4357,8 +4404,74 @@ function showMyRides() {
     showNotification('قريباً: عرض الرحلات السابقة', 'info');
 }
 
-function showSettings() {
-    showNotification('قريباً: الإعدادات', 'info');
+async function showSettings() {
+    if (!currentUser) {
+        showNotification('يرجى تسجيل الدخول أولاً', 'error');
+        return;
+    }
+
+    try {
+        // إظهار النافذة فوراً مع البيانات المحلية كبداية
+        document.getElementById('settings-name').value = currentUser.full_name || '';
+        document.getElementById('settings-whatsapp').value = currentUser.phone || '';
+        document.getElementById('settings-phone2').value = currentUser.phone2 || '';
+
+        document.getElementById('settings-modal').classList.remove('hidden');
+
+        // تحديث البيانات من قاعدة البيانات لضمان دقتها
+        const { data, error } = await tarhalDB
+            .from('customers')
+            .select('*')
+            .eq('id', currentUser.id)
+            .single();
+
+        if (data && !error) {
+            currentUser = data;
+            localStorage.setItem('tarhal_passenger', JSON.stringify(currentUser));
+            localStorage.setItem('tarhal_customer', JSON.stringify(currentUser));
+            document.getElementById('settings-phone2').value = currentUser.phone2 || '';
+        }
+    } catch (err) {
+        console.error('Error fetching settings:', err);
+    }
+}
+
+function closeSettings() {
+    document.getElementById('settings-modal').classList.add('hidden');
+}
+
+async function saveSettings() {
+    const phone2 = document.getElementById('settings-phone2').value.trim();
+
+    if (!currentUser) return;
+
+    try {
+        const { error } = await tarhalDB
+            .from('customers')
+            .update({ phone2: phone2 })
+            .eq('id', currentUser.id);
+
+        if (error) throw error;
+
+        // تحديث الحالة المحلية
+        currentUser.phone2 = phone2;
+        localStorage.setItem('tarhal_passenger', JSON.stringify(currentUser));
+        localStorage.setItem('tarhal_customer', JSON.stringify(currentUser));
+
+        showNotification('✅ تم حفظ التعديلات بنجاح', 'success');
+        closeSettings();
+    } catch (err) {
+        console.error('Error saving settings:', err);
+        showNotification('❌ فشل حفظ التعديلات. يرجى المحاولة مرة أخرى.', 'error');
+    }
+}
+
+function initiateDeleteAccount() {
+    if (confirm('⚠️ هل أنت متأكد من رغبتك في حذف الحساب نهائياً؟\nسيتم حذف جميع بياناتك ولا يمكن استعادتها.')) {
+        if (confirm('تأكيد نهائي: هل تريد حقاً المتابعة لحذف الحساب؟')) {
+            window.open('https://tracka.sd/delete-account-request', '_blank');
+        }
+    }
 }
 
 function openTravelPlatform() {
