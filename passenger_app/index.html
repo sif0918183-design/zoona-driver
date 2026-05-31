@@ -1553,27 +1553,33 @@
             width: 100%;
             height: 100%;
             background: rgba(0, 0, 0, 0.85);
-            z-index: 99999;
+            z-index: 100000;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
-            padding: 20px;
-            backdrop-filter: blur(5px);
+            padding: 20px 10px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             animation: fadeIn 0.3s ease;
+            overflow-y: auto;
         }
 
         .agreement-modal {
             background: white;
             width: 95%;
             max-width: 450px;
-            max-height: 85vh;
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-lg);
+            margin: auto 0;
+            max-height: 90vh;
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
             display: flex;
             flex-direction: column;
             overflow: hidden;
             animation: slideUp 0.4s ease;
-            border: 1px solid var(--gray-light);
+            border: 1px solid rgba(255,255,255,0.1);
+            position: relative;
+            z-index: 100001;
+            font-family: 'Tajawal', sans-serif;
         }
 
         .agreement-header {
@@ -2142,6 +2148,53 @@
         </div>
         <div id="trip-details"></div>
     </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settings-modal" class="modal-overlay hidden">
+  <div class="agreement-modal" style="max-width: 450px; position: relative; z-index: 100001; max-height: none;">
+    <div class="agreement-header">
+      <i class="ph-light ph-gear"></i>
+      <h3>إعدادات الحساب</h3>
+      <p class="modal-subtitle">تعديل بياناتك الشخصية</p>
+    </div>
+
+    <div class="agreement-content" style="background: white; flex: none;">
+        <div class="form-group">
+            <label class="form-label">الاسم الكامل</label>
+            <input type="text" id="settings-name" class="form-input" disabled style="background: #f9fafb; color: #6b7280; border-style: dashed;">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">رقم الواتساب (رقم الحساب)</label>
+            <input type="text" id="settings-whatsapp" class="form-input" disabled style="background: #f9fafb; color: #6b7280; border-style: dashed;">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">رقم الإتصال (قابل للتعديل)</label>
+            <input type="tel" id="settings-phone2" class="form-input" placeholder="أدخل رقم إضافي للإتصال" dir="ltr">
+        </div>
+    </div>
+
+    <div class="agreement-actions" style="display: flex; flex-direction: column; gap: 10px; padding: 20px;">
+      <button class="btn-agree" onclick="saveSettings()" style="width: 100%;">
+        <i class="ph-bold ph-floppy-disk"></i>
+        حفظ التعديلات
+      </button>
+      <button class="btn-disagree" onclick="closeSettings()" style="width: 100%; background: var(--gray) !important;">
+        <i class="ph-bold ph-x"></i>
+        إغلاق
+      </button>
+
+      <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--gray-light); width: 100%;">
+        <button class="btn-disagree" onclick="initiateDeleteAccount()" style="width: 100%;">
+            <i class="ph-bold ph-user-minus"></i>
+            حذف الحساب
+        </button>
+        <p style="font-size: 11px; color: var(--danger); text-align: center; margin-top: 8px; font-weight: 600;">تحذير: سيتم توجيهك لصفحة حذف الحساب</p>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Page Transition Loader -->
@@ -4357,8 +4410,70 @@ function showMyRides() {
     showNotification('قريباً: عرض الرحلات السابقة', 'info');
 }
 
-function showSettings() {
-    showNotification('قريباً: الإعدادات', 'info');
+async function showSettings() {
+    if (!currentUser) {
+        showNotification('يرجى تسجيل الدخول أولاً', 'error');
+        return;
+    }
+
+    try {
+        // إظهار النافذة فوراً مع البيانات المحلية كبداية
+        document.getElementById('settings-name').value = currentUser.full_name || '';
+        document.getElementById('settings-whatsapp').value = currentUser.phone || '';
+        document.getElementById('settings-phone2').value = currentUser.phone2 || '';
+
+        document.getElementById('settings-modal').classList.remove('hidden');
+
+        // تحديث البيانات من قاعدة البيانات لضمان دقتها
+        const { data, error } = await tarhalDB
+            .from('customers')
+            .select('*')
+            .eq('id', currentUser.id)
+            .single();
+
+        if (data && !error) {
+            currentUser = data;
+            localStorage.setItem('tarhal_passenger', JSON.stringify(currentUser));
+            localStorage.setItem('tarhal_customer', JSON.stringify(currentUser));
+            document.getElementById('settings-phone2').value = currentUser.phone2 || '';
+        }
+    } catch (err) {
+        console.error('Error fetching settings:', err);
+    }
+}
+
+function closeSettings() {
+    document.getElementById('settings-modal').classList.add('hidden');
+}
+
+async function saveSettings() {
+    const phone2 = document.getElementById('settings-phone2').value.trim();
+
+    if (!currentUser) return;
+
+    try {
+        const { error } = await tarhalDB
+            .from('customers')
+            .update({ phone2: phone2 })
+            .eq('id', currentUser.id);
+
+        if (error) throw error;
+
+        // تحديث الحالة المحلية
+        currentUser.phone2 = phone2;
+        localStorage.setItem('tarhal_passenger', JSON.stringify(currentUser));
+        localStorage.setItem('tarhal_customer', JSON.stringify(currentUser));
+
+        showNotification('✅ تم حفظ التعديلات بنجاح', 'success');
+        closeSettings();
+    } catch (err) {
+        console.error('Error saving settings:', err);
+        showNotification('❌ فشل حفظ التعديلات. يرجى المحاولة مرة أخرى.', 'error');
+    }
+}
+
+function initiateDeleteAccount() {
+    window.location.href = 'delete-account.html';
 }
 
 function openTravelPlatform() {
