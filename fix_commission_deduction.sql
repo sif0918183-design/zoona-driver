@@ -75,11 +75,10 @@ RETURNS VOID AS $$
 DECLARE
     v_driver_id UUID;
     v_amount DECIMAL;
-    v_commission_held DECIMAL;
     v_commission DECIMAL;
 BEGIN
     -- 1. Get ride details
-    SELECT driver_id, amount, COALESCE(commission_held, 0) INTO v_driver_id, v_amount, v_commission_held
+    SELECT driver_id, amount INTO v_driver_id, v_amount
     FROM public.rides
     WHERE id = p_ride_id;
 
@@ -87,12 +86,8 @@ BEGIN
         RAISE EXCEPTION 'Ride not found or no driver assigned';
     END IF;
 
-    -- 2. Calculate commission (10% as per app standard)
-    IF v_commission_held > 0 THEN
-        v_commission := v_commission_held;
-    ELSE
-        v_commission := FLOOR(COALESCE(v_amount, 0) * 0.10);
-    END IF;
+    -- 2. Calculate commission (10% as per the app code)
+    v_commission := COALESCE(v_amount, 0) * 0.10;
 
     -- 3. Update ride status and commission
     UPDATE public.rides
@@ -102,114 +97,29 @@ BEGIN
         updated_at = NOW()
     WHERE id = p_ride_id;
 
-    -- 4. Deduct commission from driver's balance if not already held
-    IF v_commission_held <= 0 THEN
-        UPDATE public.drivers
-        SET balance = COALESCE(balance, 0) - v_commission
-        WHERE id = v_driver_id;
-
-        -- 5. Record the transaction
-        INSERT INTO balance_transactions (driver_id, amount, type, ride_id, description, created_at)
-        VALUES (v_driver_id, -v_commission, 'commission_deduction', p_ride_id, 'خصم عمولة الرحلة', NOW());
-    ELSE
-        -- If already held, update the transaction description to reflect completion
-        UPDATE public.balance_transactions
-        SET type = 'commission_deduction',
-            description = 'خصم عمولة الرحلة (محولة من عمولة مجمدة)'
-        WHERE ride_id = p_ride_id AND type = 'commission_held';
-    END IF;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-
--- ============================================================================
--- الخطوة 8: إنشاء دالة accept_immediate_ride لضمان ذرية العملية
--- ============================================================================
-CREATE OR REPLACE FUNCTION accept_immediate_ride(p_ride_id UUID, p_driver_id UUID)
-RETURNS JSON AS $$
-DECLARE
-    v_amount DECIMAL;
-    v_commission DECIMAL;
-    v_driver_balance DECIMAL;
-    v_status TEXT;
-BEGIN
-    -- 1. Check ride status and get amount
-    SELECT status, amount INTO v_status, v_amount
-    FROM public.rides
-    WHERE id = p_ride_id;
-
-    IF v_status IS NULL THEN
-        RETURN json_build_object('success', false, 'message', 'الرحلة غير موجودة');
-    END IF;
-
-    IF v_status != 'searching' AND v_status != 'pending' AND v_status != 'awaiting_driver_acceptance' THEN
-        RETURN json_build_object('success', false, 'message', 'عذراً، تم قبول هذه الرحلة بالفعل من قبل سائق آخر');
-    END IF;
-
-    -- 2. Check driver balance
-    SELECT balance INTO v_driver_balance
-    FROM public.drivers
-    WHERE id = p_driver_id;
-
-    IF v_driver_balance IS NULL THEN
-        RETURN json_build_object('success', false, 'message', 'بيانات السائق غير موجودة');
-    END IF;
-
-    -- 3. Calculate 10% commission
-    v_commission := FLOOR(COALESCE(v_amount, 0) * 0.10);
-
-    IF v_driver_balance < v_commission THEN
-        RETURN json_build_object('success', false, 'message', 'رصيدك غير كافٍ لخصم عمولة الرحلة');
-    END IF;
-
-    -- 4. Atomic Updates
-    UPDATE public.rides
-    SET status = 'accepted',
-        driver_id = p_driver_id,
-        driver_accepted = true,
-        accepted_at = NOW(),
-        commission_held = v_commission,
-        commission_held_at = NOW(),
-        updated_at = NOW()
-    WHERE id = p_ride_id;
-
+    -- 4. Deduct commission from driver's balance in drivers table
+    -- استخدام COALESCE للتعامل مع الـ NULL
     UPDATE public.drivers
-    SET balance = v_driver_balance - v_commission
-    WHERE id = p_driver_id;
+    SET balance = COALESCE(balance, 0) - v_commission
+    WHERE id = v_driver_id;
 
-    INSERT INTO public.balance_transactions (driver_id, ride_id, amount, type, description, created_at)
-    VALUES (p_driver_id, p_ride_id, -v_commission, 'commission_held', 'تجميد عمولة الرحلة (سيتم خصمها عند الإكمال أو الإلغاء)', NOW());
-
-    RETURN json_build_object(
-        'success', true,
-        'message', 'تم قبول الرحلة بنجاح',
-        'commission_deducted', v_commission,
-        'new_balance', v_driver_balance - v_commission
-    );
+    -- 5. Record the transaction (مهم للتتبع الصحيح)
+    INSERT INTO balance_transactions (driver_id, amount, type, ride_id, created_at)
+    VALUES (v_driver_id, -v_commission, 'commission_deduction', p_ride_id, NOW());
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
 -- ============================================================================
--- الخطوة 9: إعادة إنشاء دالة handle_cancellation_penalty للتعامل مع إلغاء السائق
+-- الخطوة 8: إعادة إنشاء دالة handle_cancellation_penalty للتعامل مع إلغاء السائق
 -- ============================================================================
 CREATE OR REPLACE FUNCTION handle_cancellation_penalty(p_ride_id UUID, p_driver_id UUID, p_amount DECIMAL)
 RETURNS VOID AS $$
 DECLARE
     v_commission DECIMAL;
-    v_commission_held DECIMAL;
 BEGIN
-    -- Get held commission
-    SELECT COALESCE(commission_held, 0) INTO v_commission_held
-    FROM public.rides
-    WHERE id = p_ride_id;
-
-    -- Calculate commission (10% of ride amount) if not held
-    IF v_commission_held > 0 THEN
-        v_commission := v_commission_held;
-    ELSE
-        v_commission := FLOOR(COALESCE(p_amount, 0) * 0.10);
-    END IF;
+    -- Calculate commission (10% of ride amount)
+    v_commission := COALESCE(p_amount, 0) * 0.10;
 
     -- Update ride with cancellation info
     UPDATE public.rides
@@ -219,22 +129,14 @@ BEGIN
         updated_at = NOW()
     WHERE id = p_ride_id;
 
-    -- Deduct the commission as penalty if not already held
-    IF v_commission_held <= 0 THEN
-        UPDATE public.drivers
-        SET balance = COALESCE(balance, 0) - v_commission
-        WHERE id = p_driver_id;
+    -- Deduct the commission as penalty from driver's balance
+    UPDATE public.drivers
+    SET balance = COALESCE(balance, 0) - v_commission
+    WHERE id = p_driver_id;
 
-        -- Record the cancellation penalty transaction
-        INSERT INTO balance_transactions (driver_id, ride_id, amount, type, description, created_at)
-        VALUES (p_driver_id, p_ride_id, -v_commission, 'cancellation_penalty', 'خصم رسوم إلغاء الرحلة', NOW());
-    ELSE
-        -- Update transaction description if already held
-        UPDATE balance_transactions
-        SET type = 'cancellation_penalty',
-            description = 'خصم رسوم إلغاء الرحلة (محولة من عمولة مجمدة)'
-        WHERE ride_id = p_ride_id AND type = 'commission_held';
-    END IF;
+    -- Record the cancellation penalty transaction
+    INSERT INTO balance_transactions (driver_id, ride_id, amount, type, description, created_at)
+    VALUES (p_driver_id, p_ride_id, -v_commission, 'cancellation_penalty', 'خصم رسوم إلغاء الرحلة', NOW());
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

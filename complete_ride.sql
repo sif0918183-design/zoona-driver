@@ -4,11 +4,10 @@ RETURNS VOID AS $$
 DECLARE
     v_driver_id UUID;
     v_amount DECIMAL;
-    v_commission_held DECIMAL;
     v_commission DECIMAL;
 BEGIN
     -- 1. Get ride details
-    SELECT driver_id, amount, COALESCE(commission_held, 0) INTO v_driver_id, v_amount, v_commission_held
+    SELECT driver_id, amount INTO v_driver_id, v_amount
     FROM public.rides
     WHERE id = p_ride_id;
 
@@ -16,12 +15,8 @@ BEGIN
         RAISE EXCEPTION 'Ride not found or no driver assigned';
     END IF;
 
-    -- 2. Calculate commission (10% as per app standard)
-    IF v_commission_held > 0 THEN
-        v_commission := v_commission_held;
-    ELSE
-        v_commission := FLOOR(COALESCE(v_amount, 0) * 0.10);
-    END IF;
+    -- 2. Calculate commission (5% as per travel-platform.html)
+    v_commission := COALESCE(v_amount, 0) * 0.05;
 
     -- 3. Update ride status and commission
     UPDATE public.rides
@@ -31,21 +26,13 @@ BEGIN
         updated_at = NOW()
     WHERE id = p_ride_id;
 
-    -- 4. Deduct commission from driver's balance if not already held
-    IF v_commission_held <= 0 THEN
-        UPDATE public.drivers
-        SET balance = COALESCE(balance, 0) - v_commission
-        WHERE id = v_driver_id;
+    -- 4. Deduct commission from driver's balance in drivers table
+    UPDATE public.drivers
+    SET balance = COALESCE(balance, 0) - v_commission
+    WHERE id = v_driver_id;
 
-        -- 5. Record the transaction
-        INSERT INTO balance_transactions (driver_id, amount, type, ride_id, description, created_at)
-        VALUES (v_driver_id, -v_commission, 'commission_deduction', p_ride_id, 'خصم عمولة الرحلة', NOW());
-    ELSE
-        -- If already held, update the transaction description to reflect completion
-        UPDATE public.balance_transactions
-        SET type = 'commission_deduction',
-            description = 'خصم عمولة الرحلة (محولة من عمولة مجمدة)'
-        WHERE ride_id = p_ride_id AND type = 'commission_held';
-    END IF;
+    -- 5. Record the transaction (optional but recommended if table exists)
+    -- INSERT INTO balance_transactions (driver_id, amount, type, ride_id, created_at)
+    -- VALUES (v_driver_id, -v_commission, 'commission_deduction', p_ride_id, NOW());
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
