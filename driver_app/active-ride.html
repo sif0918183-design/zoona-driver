@@ -1039,49 +1039,26 @@
             if (!confirmed) return;
 
             try {
-                // Get current ride details
+                // Get current ride details for amount display
                 const { data: rideData, error: rideError } = await tarhalDB
                     .from('rides')
-                    .select('*, drivers(*)')
+                    .select('amount, driver_id')
                     .eq('id', currentRideId)
                     .single();
 
                 if (rideError) throw rideError;
 
-                // Calculate commission amount (10% of ride amount)
                 const rideAmount = rideData?.amount || 0;
                 const commissionAmount = Math.floor(rideAmount * 0.10);
 
-                // Update ride status to cancelled_by_driver
-                const { error } = await tarhalDB
-                    .from('rides')
-                    .update({
-                        status: 'cancelled_by_driver',
-                        cancelled_at: new Date().toISOString(),
-                        cancellation_reason: 'إلغاء السائق',
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', currentRideId);
+                // استخدام RPC لضمان ذرية العملية (Atomic Operation)
+                const { error } = await tarhalDB.rpc('handle_cancellation_penalty', {
+                    p_ride_id: currentRideId,
+                    p_driver_id: currentDriverId,
+                    p_amount: rideAmount
+                });
 
                 if (error) throw error;
-
-                // Convert held commission to permanent penalty (deduction)
-                // The commission was already held when driver accepted the ride
-                // Now we convert it to a permanent deduction
-                
-                if (rideData.drivers && commissionAmount > 0) {
-                    // Record the permanent penalty transaction
-                    await tarhalDB.from('balance_transactions').insert({
-                        driver_id: rideData.driver_id,
-                        ride_id: currentRideId,
-                        amount: -commissionAmount,
-                        type: 'cancellation_penalty',
-                        description: 'خصم رسوم إلغاء الرحلة - تم إجمال العمولة المجمدة كخصم نهائي',
-                        created_at: new Date().toISOString()
-                    });
-
-                    console.log(`💰 تم تحويل العمولة المجمدة ${commissionAmount} لخصم نهائي`);
-                }
 
                 // Show penalty message
                 alert(`❌ تم إلغاء الرحلة.\n\n💰 تم خصم رسوم إلغاء تعادل ${commissionAmount} من رصيدك (عمولة الرحلة).\n\n⚠️ يرجى عدم قبول الرحلات إلا إذا كنت تنوي إكمالها عبر التطبيق.`);

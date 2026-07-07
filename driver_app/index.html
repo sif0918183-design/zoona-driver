@@ -1559,7 +1559,7 @@
         const data = window.currentIncomingRide;
         if (!data || !data.ride_id) return;
 
-        // Get driver data for commission freeze
+        // Get driver data
         const driverDataStr = localStorage.getItem('tarhal_driver');
         let driverData = null;
         if (driverDataStr) {
@@ -1570,61 +1570,34 @@
             }
         }
 
+        if (!driverData) {
+            showNotification('يجب تسجيل الدخول أولاً', 'error');
+            return;
+        }
+
         try {
-            // Get ride details for commission calculation
-            const { data: rideData, error: rideError } = await tarhalDB
-                .from('rides')
-                .select('amount')
-                .eq('id', data.ride_id)
-                .single();
-
-            if (rideError) throw rideError;
-
-            // Calculate 10% commission to freeze
-            const rideAmount = rideData?.amount || 0;
-            const commissionAmount = Math.floor(rideAmount * 0.10);
-
-            // Update ride status in Supabase
-            const { error } = await tarhalDB
-                .from('rides')
-                .update({
-                    status: 'accepted',
-                    driver_accepted: true,
-                    accepted_at: new Date().toISOString(),
-                    commission_held: commissionAmount,
-                    commission_held_at: new Date().toISOString()
-                })
-                .eq('id', data.ride_id);
+            // استخدام RPC لضمان ذرية العملية (Atomic Operation)
+            const { data: result, error } = await tarhalDB.rpc('accept_immediate_ride', {
+                p_ride_id: data.ride_id,
+                p_driver_id: driverData.id
+            });
 
             if (error) throw error;
 
-            // Freeze commission: deduct from driver balance temporarily
-            // This creates a "hold" on the commission amount
-            if (driverData && commissionAmount > 0) {
-                // Add held commission record
-                await tarhalDB.from('balance_transactions').insert({
-                    driver_id: driverData.id,
-                    ride_id: data.ride_id,
-                    amount: -commissionAmount,
-                    type: 'commission_held',
-                    description: 'تجميد عمولة الرحلة (سيتم خصمها عند الإكمال أو الإلغاء)',
-                    created_at: new Date().toISOString()
-                });
+            if (result && result.success) {
+                // تحديث البيانات المحلية
+                driverData.balance = result.new_balance;
+                localStorage.setItem('tarhal_driver', JSON.stringify(driverData));
 
-                // Update driver balance (hold the amount)
-                const { error: balanceError } = await tarhalDB
-                    .from('drivers')
-                    .update({
-                        balance: (driverData.balance || 0) - commissionAmount
-                    })
-                    .eq('id', driverData.id);
+                // تحديث الواجهة
+                const balanceEl = document.getElementById('driver-balance');
+                if (balanceEl) balanceEl.textContent = Math.floor(driverData.balance);
 
-                if (!balanceError) {
-                    // Update local storage
-                    driverData.balance = (driverData.balance || 0) - commissionAmount;
-                    localStorage.setItem('tarhal_driver', JSON.stringify(driverData));
-                    console.log(`💰 تم تجميد ${commissionAmount} من رصيد السائق`);
-                }
+                showNotification('✅ ' + result.message, 'success');
+            } else {
+                showNotification('❌ ' + (result?.message || 'فشل قبول الرحلة'), 'error');
+                document.getElementById('incoming-ride-modal').classList.add('hidden');
+                return;
             }
 
             document.getElementById('incoming-ride-modal').classList.add('hidden');
