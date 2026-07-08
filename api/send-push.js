@@ -77,7 +77,7 @@ export default async function handler(req, res) {
             android: {
                 priority: 'high',
                 notification: {
-                    // ✅ استخدام قناة الطوارئ المخصصة
+                    // ✅ قناة الطوارئ المخصصة
                     channelId: 'emergency_channel_default',
                     // ✅ استخدام صوت النظام الافتراضي (المرتفع)
                     sound: 'default',
