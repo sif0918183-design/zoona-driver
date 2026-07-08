@@ -204,6 +204,7 @@
         const tarhalDB = supabase.createClient(window.SB_URL, window.SB_KEY);
 
         let currentRideId = null;
+        let currentRideAmount = 0;
         let countdownValue = 60;
         let timerInterval = null;
 
@@ -244,6 +245,7 @@
                     .single();
 
                 if (data) {
+                    currentRideAmount = data.amount || 0;
                     updateUI({
                         customer_name: data.passenger_name || data.customer_name,
                         amount: data.amount,
@@ -256,7 +258,10 @@
 
         function updateUI(data) {
             if (data.customer_name) document.getElementById('customer-name').textContent = data.customer_name;
-            if (data.amount) document.getElementById('amount').textContent = data.amount;
+            if (data.amount) {
+                document.getElementById('amount').textContent = data.amount;
+                currentRideAmount = parseFloat(data.amount) || 0;
+            }
             if (data.pickup_address) document.getElementById('pickup-location').textContent = data.pickup_address;
         }
 
@@ -271,6 +276,13 @@
         async function handleAccept() {
             if (!currentRideId) return;
 
+            const driverDataStr = localStorage.getItem('tarhal_driver');
+            if (!driverDataStr) {
+                showToast('يجب تسجيل الدخول أولاً', 'error');
+                return;
+            }
+            let driverData = JSON.parse(driverDataStr);
+
             // ✅ إيقاف الرنين فوراً عند الضغط
             stopFlutterAlerts();
 
@@ -278,17 +290,30 @@
             document.getElementById('accept-btn').textContent = "جاري القبول...";
 
             try {
-                const { error } = await tarhalDB
-                    .from('rides')
-                    .update({ status: 'accepted', accepted_at: new Date().toISOString() })
-                    .eq('id', currentRideId);
+                // استخدام RPC لضمان ذرية العملية (Atomic Operation)
+                const { data: result, error } = await tarhalDB.rpc('accept_immediate_ride', {
+                    p_ride_id: currentRideId,
+                    p_driver_id: driverData.id
+                });
 
-                if (!error) {
-                    showToast('✅ تم القبول', 'success');
+                if (error) throw error;
+
+                if (result && result.success) {
+                    // تحديث البيانات المحلية
+                    driverData.balance = result.new_balance;
+                    localStorage.setItem('tarhal_driver', JSON.stringify(driverData));
+
+                    showToast('✅ ' + result.message, 'success');
                     window.location.replace(`active-ride.html?rideId=${currentRideId}`);
+                } else {
+                    showToast('❌ ' + (result?.message || 'فشل قبول الرحلة'), 'error');
+                    document.getElementById('accept-btn').disabled = false;
+                    document.getElementById('accept-btn').textContent = "قبول الرحلة";
                 }
+
             } catch (err) {
-                showToast('خطأ في القبول', 'error');
+                console.error(err);
+                showToast('خطأ في الاتصال بالخادم', 'error');
                 document.getElementById('accept-btn').disabled = false;
                 document.getElementById('accept-btn').textContent = "قبول الرحلة";
             }
