@@ -13,7 +13,9 @@ if (!admin.apps.length) {
                 credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT))
             });
         }
-    } catch (error) { console.error('Firebase Error'); }
+    } catch (error) { 
+        console.error('Firebase Error:', error); 
+    }
 }
 
 export default async function handler(req, res) {
@@ -35,7 +37,6 @@ export default async function handler(req, res) {
                 .eq('id', rideId)
                 .single();
 
-            // القائمة المسموح لها بإرسال إشعارات فقط
             const allowedStatuses = ['searching', 'pending', 'awaiting_driver_acceptance'];
             
             if (ride && !allowedStatuses.includes(ride.status)) {
@@ -54,35 +55,90 @@ export default async function handler(req, res) {
             .eq('id', driverId)
             .single();
 
-        if (dbError || !driver?.fcm_token) return res.status(404).json({ error: 'Token missing' });
+        if (dbError || !driver?.fcm_token) {
+            return res.status(404).json({ error: 'Token missing' });
+        }
 
-        // بناء الرسالة بناءً على نسختك المستقرة
+        // ✅ بناء الرسالة المحسّنة لإشعارات الرحلات الجديدة
         const message = {
             token: driver.fcm_token,
             notification: {
-                title: '🚖 طلب رحلة جديد - تراكا',
+                title: '🚨 طلب رحلة جديد - تراكا',
                 body: `عميل: ${customerName || 'عميل'}\nالأجرة: ${amount || '0'} SDG`,
             },
             data: {
                 ride_id: String(rideId || ''),
                 type: 'RIDE_REQUEST',
-                click_action: 'FLUTTER_NOTIFICATION_CLICK'
+                click_action: 'FLUTTER_NOTIFICATION_CLICK',
+                customer_name: customerName || 'عميل',
+                amount: String(amount || '0'),
+                vehicle_type: vehicleType || '',
             },
             android: {
                 priority: 'high',
                 notification: {
-                    sound: 'ride_request_sound',
-                    channelId: 'urgent_alerts_v5',
-                    clickAction: 'FLUTTER_NOTIFICATION_CLICK'
+                    // ✅ استخدام قناة الطوارئ المخصصة
+                    channelId: 'emergency_channel_default',
+                    // ✅ استخدام صوت النظام الافتراضي (المرتفع)
+                    sound: 'default',
+                    // ✅ أعلى أولوية ممكنة
+                    priority: 'max',
+                    // ✅ استخدام الاهتزاز الافتراضي
+                    defaultVibrateTimings: true,
+                    // ✅ نمط اهتزاز مخصص (قوي ومتكرر)
+                    vibrateTimings: [0, 500, 300, 500, 300, 500, 300, 500, 300, 500],
+                    // ✅ إشعار يظهر على شاشة القفل
+                    visibility: 'public',
+                    // ✅ إشعار مستمر لا يمكن إزالته بسهولة
+                    ongoing: true,
+                    // ✅ إشعار محلي فقط
+                    localOnly: true,
+                    // ✅ إظهار الإشعار حتى عند قفل الشاشة
+                    showWhen: true,
+                    // ✅ عدم انتهاء صلاحية الإشعار
+                    timeoutAfter: null,
+                    // ✅ إجراء النقر
+                    clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+                }
+            },
+            apns: {
+                payload: {
+                    aps: {
+                        sound: 'default',
+                        badge: 1,
+                        'mutable-content': 1,
+                        category: 'RIDE_REQUEST_CATEGORY',
+                        'interruption-level': 'critical',
+                        'relevance-score': 1.0,
+                    }
                 }
             }
         };
 
-        await admin.messaging().send(message);
+        // ✅ إرسال الإشعار مع محاولة إعادة المحاولة عند الفشل
+        let response;
+        let retries = 3;
+        while (retries > 0) {
+            try {
+                response = await admin.messaging().send(message);
+                console.log('✅ تم إرسال الإشعار:', response);
+                break;
+            } catch (error) {
+                retries--;
+                console.log(`⚠️ محاولة إعادة الإرسال (${3 - retries}/3):`, error.message);
+                if (retries === 0) throw error;
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        }
         
-        return res.status(200).json({ success: true, message: 'تم الإرسال بنجاح ومنع التكرار مستقبلاً.' });
+        return res.status(200).json({ 
+            success: true, 
+            message: 'تم الإرسال بنجاح',
+            response: response
+        });
 
     } catch (error) {
+        console.error('❌ خطأ في إرسال الإشعار:', error);
         return res.status(500).json({ error: error.message });
     }
 }
