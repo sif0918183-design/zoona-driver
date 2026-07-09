@@ -59,7 +59,7 @@ export default async function handler(req, res) {
             return res.status(404).json({ error: 'Token missing' });
         }
 
-        // ✅ بناء الرسالة المحسّنة لإشعارات الرحلات الجديدة
+        // ✅ بناء الرسالة المحسّنة
         const message = {
             token: driver.fcm_token,
             notification: {
@@ -77,27 +77,11 @@ export default async function handler(req, res) {
             android: {
                 priority: 'high',
                 notification: {
-                    // ✅ قناة الطوارئ المخصصة
                     channelId: 'emergency_channel_default',
-                    // ✅ استخدام صوت النظام الافتراضي (المرتفع)
                     sound: 'default',
-                    // ✅ أعلى أولوية ممكنة
                     priority: 'max',
-                    // ✅ استخدام الاهتزاز الافتراضي
                     defaultVibrateTimings: true,
-                    // ✅ نمط اهتزاز مخصص (قوي ومتكرر)
-                    vibrateTimings: [0, 500, 300, 500, 300, 500, 300, 500, 300, 500],
-                    // ✅ إشعار يظهر على شاشة القفل
                     visibility: 'public',
-                    // ✅ إشعار مستمر لا يمكن إزالته بسهولة
-                    ongoing: true,
-                    // ✅ إشعار محلي فقط
-                    localOnly: true,
-                    // ✅ إظهار الإشعار حتى عند قفل الشاشة
-                    showWhen: true,
-                    // ✅ عدم انتهاء صلاحية الإشعار
-                    timeoutAfter: null,
-                    // ✅ إجراء النقر
                     clickAction: 'FLUTTER_NOTIFICATION_CLICK',
                 }
             },
