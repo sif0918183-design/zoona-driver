@@ -53,7 +53,7 @@ export default async function handler(req, res) {
                 return res.status(403).json({ success: false, error: 'الحساب غير مفعل' });
             }
 
-            // Create ride
+            // Create ride using the exact schema column names (vehicle_category instead of car_type)
             const { data, error } = await supabase
                 .from('rides')
                 .insert([{
@@ -68,7 +68,7 @@ export default async function handler(req, res) {
                     status: 'searching',
                     distance_km: distanceKm,
                     duration_mins: durationMins,
-                    car_type: carType,
+                    vehicle_category: carType,
                     created_at: new Date().toISOString()
                 }])
                 .select()
