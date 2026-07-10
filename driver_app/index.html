@@ -1325,6 +1325,9 @@
         localStorage.setItem('tarhal_driver', JSON.stringify(driver));
         localStorage.setItem('driver_id', driver.id);
         localStorage.setItem('tarhal_driver_id', driver.id);
+        if (resData.token) {
+            localStorage.setItem('tarhal_session_token', resData.token);
+        }
 
         // مزامنة مع Flutter
         FlutterBridge.postMessage('pwa_login', {

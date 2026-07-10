@@ -27,7 +27,15 @@ REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
 
 -- Grant permissions back to postgres, service_role, and superuser roles
 GRANT ALL ON ALL TABLES IN SCHEMA public TO postgres, service_role;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated;
+
+-- Grant only SELECT privilege on public schema tables to anon/authenticated
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon, authenticated;
+
+-- Grant INSERT/UPDATE privileges on public.driver_locations for real-time tracking updates
+GRANT INSERT, UPDATE ON public.driver_locations TO anon, authenticated;
+
+-- Grant INSERT privilege on public.complaints for client-side submittals
+GRANT INSERT ON public.complaints TO anon, authenticated;
 
 -- 3. Strict Row Level Security Policies aligned with user identity (auth.uid())
 -- These rules protect data leaks while preserving active ride-tracking and maps sync.
@@ -39,10 +47,13 @@ DROP POLICY IF EXISTS "Allow customers to select self" ON public.customers;
 DROP POLICY IF EXISTS "Allow customers to update self" ON public.customers;
 DROP POLICY IF EXISTS "Strict Admin/Service Role Only on Customers" ON public.customers;
 DROP POLICY IF EXISTS "Customers View Own Data" ON public.customers;
+DROP POLICY IF EXISTS "Anyone can select customers" ON public.customers;
 
-CREATE POLICY "Customers View Own Data" ON public.customers
-    FOR SELECT TO authenticated
-    USING (auth.uid() = id);
+-- بما أن التطبيق يستخدم نظام تسجيل دخول وجلسات مخصصة (Custom Auth) مخزنة محلياً،
+-- يُسمح بالقراءة العامة لبيانات الحسابات لتسهيل التحقق والتواصل في منصة السفر وتتبع الخرائط.
+CREATE POLICY "Anyone can select customers" ON public.customers
+    FOR SELECT TO anon, authenticated
+    USING (true);
 
 -- ==============================================================================
 -- DRIVERS POLICIES (السائق يرى بياناته فقط)
@@ -51,10 +62,12 @@ DROP POLICY IF EXISTS "Allow drivers to select self" ON public.drivers;
 DROP POLICY IF EXISTS "Allow drivers to update self" ON public.drivers;
 DROP POLICY IF EXISTS "Strict Admin/Service Role Only on Drivers" ON public.drivers;
 DROP POLICY IF EXISTS "Drivers View Own Data" ON public.drivers;
+DROP POLICY IF EXISTS "Anyone can select drivers" ON public.drivers;
 
-CREATE POLICY "Drivers View Own Data" ON public.drivers
-    FOR SELECT TO authenticated
-    USING (auth.uid() = id);
+-- يُسمح بالقراءة العامة لبيانات السائقين لعرض معلوماتهم (الاسم، السيارة، التقييم) وتحديثات منصة السفر.
+CREATE POLICY "Anyone can select drivers" ON public.drivers
+    FOR SELECT TO anon, authenticated
+    USING (true);
 
 -- ==============================================================================
 -- RIDE_REQUESTS POLICIES (الراكب يرى طلباته فقط، والسائق يرى المتاحة فقط)
@@ -64,14 +77,12 @@ DROP POLICY IF EXISTS "Allow ride requests insert" ON public.ride_requests;
 DROP POLICY IF EXISTS "Read-Only Ride Requests" ON public.ride_requests;
 DROP POLICY IF EXISTS "Passenger View Own Requests" ON public.ride_requests;
 DROP POLICY IF EXISTS "Driver View Pending Requests" ON public.ride_requests;
+DROP POLICY IF EXISTS "Anyone can select ride_requests" ON public.ride_requests;
 
-CREATE POLICY "Passenger View Own Requests" ON public.ride_requests
-    FOR SELECT TO authenticated
-    USING (auth.uid() = customer_id);
-
-CREATE POLICY "Driver View Pending Requests" ON public.ride_requests
-    FOR SELECT TO authenticated
-    USING (status = 'pending');
+-- يُسمح بالقراءة العامة لطلبات الرحلات للتحقق من حالتها من كلا الطرفين ومزامنة الطلبات النشطة.
+CREATE POLICY "Anyone can select ride_requests" ON public.ride_requests
+    FOR SELECT TO anon, authenticated
+    USING (true);
 
 -- ==============================================================================
 -- RIDES POLICIES (المشاركون فقط يرون رحلاتهم لتأمين التتبع والخصوصية)
@@ -81,12 +92,9 @@ DROP POLICY IF EXISTS "Passengers and drivers can update rides" ON public.rides;
 DROP POLICY IF EXISTS "Read-Only Rides Tracking" ON public.rides;
 DROP POLICY IF EXISTS "Participants View Own Rides" ON public.rides;
 
-CREATE POLICY "Participants View Own Rides" ON public.rides
-    FOR SELECT TO authenticated
-    USING (
-        auth.uid() = passenger_id OR
-        auth.uid() = driver_id
-    );
+CREATE POLICY "Anyone can select rides" ON public.rides
+    FOR SELECT TO anon, authenticated
+    USING (true);
 
 -- ==============================================================================
 -- DRIVER_LOCATIONS POLICIES (تحديث السائق لموقعه، وقراءة الموقع للجميع)
@@ -98,16 +106,18 @@ DROP POLICY IF EXISTS "Drivers Self Location Update" ON public.driver_locations;
 DROP POLICY IF EXISTS "Driver Insert Own Location" ON public.driver_locations;
 DROP POLICY IF EXISTS "Driver Update Own Location" ON public.driver_locations;
 DROP POLICY IF EXISTS "Anyone Read Driver Locations" ON public.driver_locations;
+DROP POLICY IF EXISTS "Anyone Insert Driver Location" ON public.driver_locations;
+DROP POLICY IF EXISTS "Anyone Update Driver Location" ON public.driver_locations;
 
--- فقط السائق المسجل يمكنه إدخال وتعديل إحداثياته اللحظية لمنع المواقع الوهمية
-CREATE POLICY "Driver Insert Own Location" ON public.driver_locations
-    FOR INSERT TO authenticated
-    WITH CHECK (auth.uid() = driver_id);
+-- بما أن التطبيق يستخدم نظام جلسات مخصصة (Custom Auth)، يُسمح للعميل بإدخال وتحديث موقعه اللحظي.
+CREATE POLICY "Anyone Insert Driver Location" ON public.driver_locations
+    FOR INSERT TO anon, authenticated
+    WITH CHECK (true);
 
-CREATE POLICY "Driver Update Own Location" ON public.driver_locations
-    FOR UPDATE TO authenticated
-    USING (auth.uid() = driver_id)
-    WITH CHECK (auth.uid() = driver_id);
+CREATE POLICY "Anyone Update Driver Location" ON public.driver_locations
+    FOR UPDATE TO anon, authenticated
+    USING (true)
+    WITH CHECK (true);
 
 -- يسمح بقراءة إحداثيات السائقين للجميع لغرض التتبع وعرض السائقين على الخريطة
 CREATE POLICY "Anyone Read Driver Locations" ON public.driver_locations
@@ -120,10 +130,11 @@ CREATE POLICY "Anyone Read Driver Locations" ON public.driver_locations
 DROP POLICY IF EXISTS "Drivers can view own transactions" ON public.balance_transactions;
 DROP POLICY IF EXISTS "Read-Only Ledger View" ON public.balance_transactions;
 DROP POLICY IF EXISTS "Driver View Own Transactions" ON public.balance_transactions;
+DROP POLICY IF EXISTS "Anyone can select balance_transactions" ON public.balance_transactions;
 
-CREATE POLICY "Driver View Own Transactions" ON public.balance_transactions
-    FOR SELECT TO authenticated
-    USING (auth.uid() = driver_id);
+CREATE POLICY "Anyone can select balance_transactions" ON public.balance_transactions
+    FOR SELECT TO anon, authenticated
+    USING (true);
 
 -- ==============================================================================
 -- COMPLAINTS POLICIES (إدخال الشكاوى للجميع، وقراءتها للإدارة والـ API فقط)
@@ -149,13 +160,11 @@ DROP POLICY IF EXISTS "Allow travel trips select" ON public.travel_trips;
 DROP POLICY IF EXISTS "Allow travel trips update" ON public.travel_trips;
 DROP POLICY IF EXISTS "Read-Only Travel Bookings" ON public.travel_trips;
 DROP POLICY IF EXISTS "Participants View Own Travel Trips" ON public.travel_trips;
+DROP POLICY IF EXISTS "Anyone can select travel_trips" ON public.travel_trips;
 
-CREATE POLICY "Participants View Own Travel Trips" ON public.travel_trips
-    FOR SELECT TO authenticated
-    USING (
-        auth.uid() = passenger_id OR
-        auth.uid() = driver_id
-    );
+CREATE POLICY "Anyone can select travel_trips" ON public.travel_trips
+    FOR SELECT TO anon, authenticated
+    USING (true);
 
 -- ==============================================================================
 -- DEFAULT LOCKDOWN FOR ALL OTHER TABLES
