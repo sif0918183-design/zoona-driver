@@ -857,18 +857,32 @@
     </div>
 
     <script>
-        // --- Supabase Configuration ---
-        const SB_URL = 'https://zsmlyiygjagmhnglrhoa.supabase.co';
-        const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDc3NjMsImV4cCI6MjA4MTUyMzc2M30.QviVinAng-ILq0umvI5UZCFEvNpP3nI0kW_hSaXxNps';
-
-        // التصحيح: استخدام اسم مختلف عن supabase
-        const tarhalDB = supabase.createClient(SB_URL, SB_KEY);
-
         // --- Application State ---
         let adminLoggedIn = false;
         let currentSelectedDriverId = null;
         let allCustomers = [];
         let allDrivers = [];
+
+        // --- Secure API Helper ---
+        async function callAdminAPI(action, params = {}) {
+            const token = localStorage.getItem('tarhal_admin_token');
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const response = await fetch('/api/admin', {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ action, ...params })
+            });
+
+            const resData = await response.json();
+            if (!response.ok || !resData.success) {
+                throw new Error(resData.error || 'فشل تنفيذ العملية الإدارية');
+            }
+            return resData;
+        }
 
         // --- Initialization ---
         document.addEventListener('DOMContentLoaded', function() {
@@ -894,44 +908,23 @@
             loginBtn.disabled = true;
 
             try {
-                // Fetch password from system_settings
-                const { data: settings, error } = await tarhalDB
-                    .from('system_settings')
-                    .select('value')
-                    .eq('key', 'staff_passcode')
-                    .single();
+                const res = await callAdminAPI('login', { password });
+                adminLoggedIn = true;
+                localStorage.setItem('tarhal_admin_token', res.token);
 
-                if (error) {
-                    showNotification('خطأ في التحقق من كلمة المرور', 'error');
-                    loginBtn.innerHTML = originalText;
-                    loginBtn.disabled = false;
-                    return;
-                }
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
 
-                if (settings.value === password) {
-                    adminLoggedIn = true;
+                // Load all data
+                loadDashboardStats();
+                loadCustomers();
+                loadDrivers();
+                updateSystemInfo();
 
-                    // Save token to localStorage
-                    const token = btoa(Date.now() + ':' + password);
-                    localStorage.setItem('tarhal_admin_token', token);
-
-                    document.getElementById('login-screen').classList.add('hidden');
-                    document.getElementById('dashboard').classList.remove('hidden');
-
-                    // Load all data
-                    loadDashboardStats();
-                    loadCustomers();
-                    loadDrivers();
-                    updateSystemInfo();
-
-                    showNotification('مرحباً بك في لوحة التحكم', 'success');
-                } else {
-                    showNotification('كلمة المرور غير صحيحة', 'error');
-                }
-
+                showNotification('مرحباً بك في لوحة التحكم', 'success');
             } catch (error) {
                 console.error('Admin login error:', error);
-                showNotification('حدث خطأ أثناء الدخول', 'error');
+                showNotification(error.message || 'كلمة المرور غير صحيحة', 'error');
             } finally {
                 loginBtn.innerHTML = originalText;
                 loginBtn.disabled = false;
@@ -940,27 +933,21 @@
 
         async function verifyAdminToken(token) {
             try {
-                // Verify token is valid (simplified check)
-                const decoded = atob(token).split(':')[1];
+                const res = await callAdminAPI('get_stats');
+                adminLoggedIn = true;
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
 
-                const { data: settings, error } = await tarhalDB
-                    .from('system_settings')
-                    .select('value')
-                    .eq('key', 'staff_passcode')
-                    .single();
+                // Set dashboard counters
+                document.getElementById('total-customers').textContent = res.stats.customers;
+                document.getElementById('total-drivers').textContent = res.stats.drivers;
+                document.getElementById('active-rides').textContent = res.stats.activeRides;
+                document.getElementById('total-earnings').textContent = res.stats.earnings.toLocaleString();
+                document.getElementById('admin-whatsapp').value = res.adminWhatsapp;
 
-                if (!error && settings.value === decoded) {
-                    adminLoggedIn = true;
-                    document.getElementById('login-screen').classList.add('hidden');
-                    document.getElementById('dashboard').classList.remove('hidden');
-
-                    loadDashboardStats();
-                    loadCustomers();
-                    loadDrivers();
-                    updateSystemInfo();
-                } else {
-                    localStorage.removeItem('tarhal_admin_token');
-                }
+                loadCustomers();
+                loadDrivers();
+                updateSystemInfo();
             } catch (error) {
                 localStorage.removeItem('tarhal_admin_token');
             }
@@ -969,45 +956,12 @@
         // --- Dashboard Functions ---
         async function loadDashboardStats() {
             try {
-                // Load total customers
-                const { count: customerCount, error: custError } = await tarhalDB
-                    .from('customers')
-                    .select('*', { count: 'exact', head: true });
-
-                if (!custError) {
-                    document.getElementById('total-customers').textContent = customerCount || 0;
-                }
-
-                // Load total drivers
-                const { count: driverCount, error: driverError } = await tarhalDB
-                    .from('drivers')
-                    .select('*', { count: 'exact', head: true });
-
-                if (!driverError) {
-                    document.getElementById('total-drivers').textContent = driverCount || 0;
-                }
-
-                // Load active rides
-                const { count: activeRidesCount, error: ridesError } = await tarhalDB
-                    .from('rides')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('status', 'driver_accepted');
-
-                if (!ridesError) {
-                    document.getElementById('active-rides').textContent = activeRidesCount || 0;
-                }
-
-                // Load total earnings
-                const { data: allRides, error: earningsError } = await tarhalDB
-                    .from('rides')
-                    .select('amount')
-                    .eq('status', 'completed');
-
-                if (!earningsError && allRides) {
-                    const totalEarnings = allRides.reduce((sum, ride) => sum + (ride.amount || 0), 0);
-                    document.getElementById('total-earnings').textContent = totalEarnings.toLocaleString();
-                }
-
+                const res = await callAdminAPI('get_stats');
+                document.getElementById('total-customers').textContent = res.stats.customers;
+                document.getElementById('total-drivers').textContent = res.stats.drivers;
+                document.getElementById('active-rides').textContent = res.stats.activeRides;
+                document.getElementById('total-earnings').textContent = res.stats.earnings.toLocaleString();
+                document.getElementById('admin-whatsapp').value = res.adminWhatsapp;
             } catch (error) {
                 console.error('Error loading stats:', error);
             }
@@ -1015,16 +969,9 @@
 
         async function loadCustomers() {
             try {
-                const { data: customers, error } = await tarhalDB
-                    .from('customers')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-
-                if (error) throw error;
-
-                allCustomers = customers || [];
+                const res = await callAdminAPI('list_customers');
+                allCustomers = res.customers || [];
                 renderCustomers(allCustomers);
-
             } catch (error) {
                 console.error('Error loading customers:', error);
                 showNotification('خطأ في تحميل بيانات العملاء', 'error');
@@ -1101,16 +1048,9 @@
 
         async function loadDrivers() {
             try {
-                const { data: drivers, error } = await tarhalDB
-                    .from('drivers')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-
-                if (error) throw error;
-
-                allDrivers = drivers || [];
+                const res = await callAdminAPI('list_drivers');
+                allDrivers = res.drivers || [];
                 renderDrivers(allDrivers);
-
             } catch (error) {
                 console.error('Error loading drivers:', error);
                 showNotification('خطأ في تحميل بيانات السائقين', 'error');
@@ -1221,13 +1161,8 @@
         // --- Customer Management ---
         async function viewCustomerDetails(customerId) {
             try {
-                const { data: customer, error } = await tarhalDB
-                    .from('customers')
-                    .select('*')
-                    .eq('id', customerId)
-                    .single();
-
-                if (error) throw error;
+                const res = await callAdminAPI('get_customer', { id: customerId });
+                const customer = res.customer;
 
                 const detailsContent = document.getElementById('customer-details-content');
                 detailsContent.innerHTML = `
@@ -1287,15 +1222,7 @@
 
         async function verifyCustomer(customerId, fromModal = false) {
             try {
-                const { error } = await tarhalDB
-                    .from('customers')
-                    .update({
-                        is_verified: true
-                    })
-                    .eq('id', customerId);
-
-                if (error) throw error;
-
+                await callAdminAPI('toggle_customer', { id: customerId, is_verified: true });
                 showNotification('تم تفعيل حساب العميل بنجاح', 'success');
 
                 if (fromModal) {
@@ -1321,15 +1248,7 @@
             }
 
             try {
-                const { error } = await tarhalDB
-                    .from('customers')
-                    .update({
-                        is_verified: newStatus
-                    })
-                    .eq('id', customerId);
-
-                if (error) throw error;
-
+                await callAdminAPI('toggle_customer', { id: customerId, is_verified: newStatus });
                 showNotification(`تم ${action} حساب العميل بنجاح`, 'success');
 
                 if (fromModal) {
@@ -1348,21 +1267,9 @@
         // --- Driver Management ---
         async function viewDriverDetails(driverId) {
             try {
-                const { data: driver, error } = await tarhalDB
-                    .from('drivers')
-                    .select('*')
-                    .eq('id', driverId)
-                    .single();
-
-                if (error) throw error;
-
-                // Get driver's recent rides
-                const { data: rides, error: ridesError } = await tarhalDB
-                    .from('rides')
-                    .select('*')
-                    .eq('driver_id', driverId)
-                    .order('created_at', { ascending: false })
-                    .limit(5);
+                const res = await callAdminAPI('get_driver', { id: driverId });
+                const driver = res.driver;
+                const rides = res.rides || [];
 
                 const detailsContent = document.getElementById('driver-details-content');
                 detailsContent.innerHTML = `
@@ -1471,15 +1378,7 @@
             }
 
             try {
-                const { error } = await tarhalDB
-                    .from('drivers')
-                    .update({
-                        is_active: newStatus
-                    })
-                    .eq('id', driverId);
-
-                if (error) throw error;
-
+                await callAdminAPI('toggle_driver', { id: driverId, is_active: newStatus });
                 showNotification(`تم ${action} حساب السائق بنجاح`, 'success');
 
                 if (fromModal) {
@@ -1523,30 +1422,17 @@
             }
 
             try {
-                // Get current balance
-                const { data: driver, error: fetchError } = await tarhalDB
-                    .from('drivers')
-                    .select('balance, full_name')
-                    .eq('id', currentSelectedDriverId)
-                    .single();
+                const res = await callAdminAPI('add_balance', {
+                    driverId: currentSelectedDriverId,
+                    amount: parseInt(amount),
+                    note
+                });
 
-                if (fetchError) throw fetchError;
-
-                // Update balance فقط بدون updated_at
-                const newBalance = (driver.balance || 0) + parseInt(amount);
-                const { error } = await tarhalDB
-                    .from('drivers')
-                    .update({
-                        balance: newBalance
-                    })
-                    .eq('id', currentSelectedDriverId);
-
-                if (error) throw error;
-
-                showNotification(`تم إضافة ${parseInt(amount).toLocaleString()} SDG إلى رصيد السائق ${driver.full_name}`, 'success');
+                showNotification(`تم إضافة ${parseInt(amount).toLocaleString()} SDG إلى رصيد السائق ${res.driverName}`, 'success');
 
                 closeModal('add-balance-modal');
                 loadDrivers();
+                loadDashboardStats();
 
             } catch (error) {
                 console.error('Error adding balance:', error);
@@ -1577,62 +1463,22 @@
                 return;
             }
 
-            // Check for duplicate plate number
-            try {
-                const { data: existingDriver, error } = await tarhalDB
-                    .from('drivers')
-                    .select('id')
-                    .eq('car_plate', carPlate)
-                    .single();
-
-                if (existingDriver) {
-                    showNotification('رقم اللوحة مسجل بالفعل لسائق آخر', 'error');
-                    return;
-                }
-            } catch (error) {
-                // No duplicate found, continue
-            }
-
-            // Check for duplicate phone number
-            try {
-                const { data: existingPhone, error } = await tarhalDB
-                    .from('drivers')
-                    .select('id')
-                    .eq('whatsapp_number', driverPhone)
-                    .single();
-
-                if (existingPhone) {
-                    showNotification('رقم الواتساب مسجل بالفعل', 'error');
-                    return;
-                }
-            } catch (error) {
-                // No duplicate found, continue
-            }
-
             const addBtn = document.querySelector('#add-driver-form .btn');
             const originalText = addBtn.innerHTML;
             addBtn.innerHTML = '<span class="loading"></span> جاري التسجيل...';
             addBtn.disabled = true;
 
             try {
-                const { data, error } = await tarhalDB
-                    .from('drivers')
-                    .insert([{
-                        full_name: driverName,
-                        whatsapp_number: driverPhone,
-                        password: driverPassword,
-                        car_model: carModel,
-                        car_type: carType,
-                        car_plate: carPlate,
-                        car_color: carColor,
-                        balance: parseInt(initialBalance) || 15000,
-                        status: 'OFFLINE',
-                        is_active: true,
-                        created_at: new Date().toISOString()
-                    }])
-                    .select();
-
-                if (error) throw error;
+                await callAdminAPI('add_driver', {
+                    name: driverName,
+                    phone: driverPhone,
+                    password: driverPassword,
+                    carModel,
+                    carType,
+                    carPlate,
+                    carColor,
+                    initialBalance: parseInt(initialBalance) || 15000
+                });
 
                 // Reset form
                 document.getElementById('add-driver-form').reset();
@@ -1705,30 +1551,17 @@
             }
 
             try {
-                const { error } = await tarhalDB
-                    .from('system_settings')
-                    .update({
-                        value: newPassword
-                    })
-                    .eq('key', 'staff_passcode');
-
-                if (error) {
-                    // If key doesn't exist, insert it
-                    await tarhalDB
-                        .from('system_settings')
-                        .insert({
-                            key: 'staff_passcode',
-                            value: newPassword,
-                            created_at: new Date().toISOString()
-                        });
-                }
-
+                await callAdminAPI('update_passcode', { newPasscode: newPassword });
                 showNotification('تم تحديث كلمة مرور الموظفين بنجاح', 'success');
                 document.getElementById('new-staff-password').value = '';
 
+                // Force re-login with the new token
+                const token = btoa(Date.now() + ':' + newPassword);
+                localStorage.setItem('tarhal_admin_token', token);
+
             } catch (error) {
                 console.error('Error changing staff password:', error);
-                showNotification('حدث خطأ أثناء تحديث كلمة المرور', 'error');
+                showNotification('حدث خطأ أثناء تحديث كلمة المرور: ' + error.message, 'error');
             }
         }
 
@@ -1741,30 +1574,11 @@
             }
 
             try {
-                // Update in system_settings بدون updated_at
-                const { error } = await tarhalDB
-                    .from('system_settings')
-                    .update({
-                        value: newNumber
-                    })
-                    .eq('key', 'admin_whatsapp');
-
-                if (error) {
-                    // If key doesn't exist, insert it
-                    await tarhalDB
-                        .from('system_settings')
-                        .insert({
-                            key: 'admin_whatsapp',
-                            value: newNumber,
-                            created_at: new Date().toISOString()
-                        });
-                }
-
+                await callAdminAPI('update_whatsapp', { whatsapp: newNumber });
                 showNotification('تم تحديث رقم واتساب الإدارة بنجاح', 'success');
-
             } catch (error) {
                 console.error('Error updating admin WhatsApp:', error);
-                showNotification('حدث خطأ أثناء تحديث رقم الواتساب', 'error');
+                showNotification('حدث خطأ أثناء تحديث رقم الواتساب: ' + error.message, 'error');
             }
         }
 
@@ -1775,18 +1589,8 @@
                 document.getElementById('last-update').textContent =
                     formatGregorianDateWithTime(now.toISOString());
 
-                // حساب المستخدمين النشطين
-                try {
-                    const { count: activeCount, error: activeError } = await tarhalDB
-                        .from('customers')
-                        .select('*', { count: 'exact', head: true });
-
-                    if (!activeError) {
-                        document.getElementById('active-users').textContent = activeCount || 0;
-                    }
-                } catch (e) {
-                    console.log('Error counting active users:', e);
-                }
+                // استخدام عدد الركاب المحملين كقيمة للمستخدمين النشطين لمنع الاستعلام المباشر
+                document.getElementById('active-users').textContent = allCustomers.length || 0;
 
             } catch (error) {
                 console.error('Error updating system info:', error);

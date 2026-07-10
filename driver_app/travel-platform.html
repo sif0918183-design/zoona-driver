@@ -1422,46 +1422,26 @@ async function driverCompletedTrip(tripId) {
 
     try {
         const price = activeTripData.final_price || 0;
-        const commission = Math.round(price * COMMISSION_RATE / 100);
-
-        // Check commission not already deducted
-        if (activeTripData.commission_deducted) {
-            showNotification('تم خصم العمولة مسبقاً', 'info');
-        } else {
-            // Get current balance
-            const {data:driver, error:dErr} = await travelSupabase.from('drivers').select('balance').eq('id',currentUser.id).single();
-            if (dErr) throw dErr;
-
-            const newBalance = (driver.balance || 0) - commission;
-            if (newBalance < STOP_BALANCE_THRESHOLD) {
-                showNotification(`رصيدك غير كافٍ لخصم العمولة (${commission.toLocaleString()} ج)`, 'error');
-                return;
-            }
-
-            // Deduct commission
-            await travelSupabase.from('drivers').update({balance: newBalance}).eq('id', currentUser.id);
-        }
-
-        // Update travel_trips
-        const {error} = await travelSupabase.from('travel_trips').update({
-            status: 'completed',
-            trip_completed_at: new Date().toISOString(),
-            commission_deducted: true,
-            commission_amount: commission
-        }).eq('id', tripId);
-
-        if (error) throw error;
-
-        // Update ride_requests
-        if (activeTripData?.ride_request_id) {
-            await travelSupabase.from('ride_requests').update({status:'completed'}).eq('id', activeTripData.ride_request_id);
+        const response = await fetch('/api/travel-platform', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'complete_trip',
+                tripId,
+                driverId: currentUser.id,
+                finalPrice: price
+            })
+        });
+        const resData = await response.json();
+        if (!response.ok || !resData.success) {
+            throw new Error(resData.error || 'فشل إكمال الرحلة عبر الخادم');
         }
 
         // Clear localStorage and close modal
         localStorage.removeItem('tarhal_active_trip_id');
         closeActiveTripModal();
 
-        showNotification(`تم اكتمال الرحلة! تم خصم عمولة ${commission.toLocaleString()} ج`, 'success');
+        showNotification(`تم اكتمال الرحلة! تم خصم عمولة ${resData.commission.toLocaleString()} ج`, 'success');
         updateDriverBalanceDisplay();
         await loadDriverRides();
 
@@ -1485,16 +1465,18 @@ function initiateCancel() {
 async function passengerCancelsTrip(tripId, reason) {
     if (!confirm('هل أنت متأكد من إلغاء الرحلة؟')) return;
     try {
-        const {error} = await travelSupabase.from('travel_trips').update({
-            status: 'cancelled',
-            cancelled_by: 'passenger',
-            cancelled_at: new Date().toISOString(),
-            cancellation_reason: reason || 'لم يحدد'
-        }).eq('id', tripId);
-        if (error) throw error;
-
-        if (activeTripData?.ride_request_id) {
-            await travelSupabase.from('ride_requests').update({status:'cancelled'}).eq('id', activeTripData.ride_request_id);
+        const response = await fetch('/api/travel-platform', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'passenger_cancel',
+                tripId,
+                reason: reason || 'لم يحدد'
+            })
+        });
+        const resData = await response.json();
+        if (!response.ok || !resData.success) {
+            throw new Error(resData.error || 'فشل إلغاء الرحلة من خلال الخادم');
         }
 
         localStorage.removeItem('tarhal_active_trip_id');
@@ -1510,27 +1492,20 @@ async function driverCancelsTrip(tripId, reason) {
     if (!confirm('هل أنت متأكد من إلغاء الرحلة؟ سيتم خصم غرامة تعادل قيمة العمولة من رصيدك.')) return;
     try {
         const price = activeTripData.final_price || 0;
-        const penalty = Math.round(price * COMMISSION_RATE / 100);
-
-        // Deduct penalty from balance
-        const {data:driver, error:dErr} = await travelSupabase.from('drivers').select('balance').eq('id',currentUser.id).single();
-        if (dErr) throw dErr;
-
-        const newBalance = (driver.balance || 0) - penalty;
-        await travelSupabase.from('drivers').update({balance: newBalance}).eq('id', currentUser.id);
-
-        const {error} = await travelSupabase.from('travel_trips').update({
-            status: 'cancelled',
-            cancelled_by: 'driver',
-            cancelled_at: new Date().toISOString(),
-            cancellation_reason: reason || 'لم يحدد',
-            commission_deducted: true,
-            commission_amount: penalty
-        }).eq('id', tripId);
-        if (error) throw error;
-
-        if (activeTripData?.ride_request_id) {
-            await travelSupabase.from('ride_requests').update({status:'cancelled'}).eq('id', activeTripData.ride_request_id);
+        const response = await fetch('/api/travel-platform', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'driver_cancel',
+                tripId,
+                driverId: currentUser.id,
+                finalPrice: price,
+                reason: reason || 'لم يحدد'
+            })
+        });
+        const resData = await response.json();
+        if (!response.ok || !resData.success) {
+            throw new Error(resData.error || 'فشل إلغاء الرحلة من خلال الخادم');
         }
 
         // Log violation

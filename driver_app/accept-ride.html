@@ -290,13 +290,26 @@
             document.getElementById('accept-btn').textContent = "جاري القبول...";
 
             try {
-                // استخدام RPC لضمان ذرية العملية (Atomic Operation)
-                const { data: result, error } = await tarhalDB.rpc('accept_immediate_ride', {
-                    p_ride_id: currentRideId,
-                    p_driver_id: driverData.id
+                // استدعاء الـ API الآمن لقبول الرحلة بدلاً من الـ RPC المباشر
+                const response = await fetch('/api/rides', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'accept',
+                        rideId: currentRideId,
+                        driverId: driverData.id
+                    })
                 });
+                const resData = await response.json();
 
-                if (error) throw error;
+                if (!response.ok || !resData.success) {
+                    showToast('❌ ' + (resData.error || 'فشل قبول الرحلة'), 'error');
+                    document.getElementById('accept-btn').disabled = false;
+                    document.getElementById('accept-btn').textContent = "قبول الرحلة";
+                    return;
+                }
+
+                const result = resData.result;
 
                 if (result && result.success) {
                     // تحديث البيانات المحلية

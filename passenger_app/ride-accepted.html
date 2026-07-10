@@ -1033,105 +1033,26 @@
                     console.warn('تعذر جلب موقع السائق:', e);
                 }
 
-                const rideAmount = rideData?.amount || 0;
-                const commissionAmount = Math.floor(rideAmount * 0.10);
+                // إرسال طلب إلغاء الرحلة الآمن إلى API الخلفية
+                const response = await fetch('/api/rides', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'cancel_by_passenger',
+                        rideId: currentRideId,
+                        passengerId: rideData.passenger_id,
+                        elapsedMinutes,
+                        driverLat: locationData ? locationData.lat : null,
+                        driverLng: locationData ? locationData.lng : null
+                    })
+                });
 
-                let finalStatus = 'cancelled_by_customer';
-                let cancellationReason = '';
-
-                if (elapsedMinutes <= 2) {
-                    // Within 2 minutes: Return commission to driver (full refund)
-                    if (rideData.driver_id) {
-                        const { data: driver } = await tarhalDB
-                            .from('drivers')
-                            .select('balance')
-                            .eq('id', rideData.driver_id)
-                            .single();
-                        
-                        if (driver && commissionAmount > 0) {
-                            try {
-                                await tarhalDB
-                                    .from('drivers')
-                                    .update({ balance: (driver.balance || 0) + commissionAmount })
-                                    .eq('id', rideData.driver_id);
-
-                                await tarhalDB.from('balance_transactions').insert({
-                                    driver_id: rideData.driver_id,
-                                    ride_id: currentRideId,
-                                    amount: commissionAmount,
-                                    type: 'cancellation_refund',
-                                    description: 'استرجاع عمولة الرحلة - إلغاء الراكب خلال دقيقتين',
-                                    created_at: new Date().toISOString()
-                                });
-                            } catch (e) { console.warn('⚠️ تعذر تحديث رصيد السائق:', e); }
-                        }
-                    }
-                    cancellationReason = 'تم استرجاع العمولة للسائق (إلغاء خلال دقيقتين)';
-                    console.log('✅ تم استرجاع العمولة للسائق - إلغاء خلال دقيقتين');
-                    
-                } else if (driverWithinRange) {
-                    // After 2 minutes + driver is nearby (within 200m): Keep commission, mark as completed
-                    finalStatus = 'completed';
-                    cancellationReason = 'السائق كان بالقرب من نقطة الاستلام - تم إبقاء العمولة للشركة';
-                    console.log('⚠️ السائق كان قريباً - الرحلة ستظهر كمكتملة لخصم العمولة');
-                    
-                } else {
-                    // After 2 minutes + driver NOT nearby: Return commission to driver
-                    if (rideData.driver_id) {
-                        const { data: driver } = await tarhalDB
-                            .from('drivers')
-                            .select('balance')
-                            .eq('id', rideData.driver_id)
-                            .single();
-                        
-                        if (driver && commissionAmount > 0) {
-                            try {
-                                await tarhalDB
-                                    .from('drivers')
-                                    .update({ balance: (driver.balance || 0) + commissionAmount })
-                                    .eq('id', rideData.driver_id);
-
-                                await tarhalDB.from('balance_transactions').insert({
-                                    driver_id: rideData.driver_id,
-                                    ride_id: currentRideId,
-                                    amount: commissionAmount,
-                                    type: 'cancellation_refund',
-                                    description: 'استرجاع عمولة الرحلة - إلغاء بعد دقيقتين والسائق بعيد',
-                                    created_at: new Date().toISOString()
-                                });
-                            } catch (e) { console.warn('⚠️ تعذر تحديث رصيد السائق:', e); }
-                        }
-                    }
-                    cancellationReason = 'تم استرجاع العمولة للسائق (السائق لم يكن قريباً)';
-                    console.log('✅ تم استرجاع العمولة للسائق - السائق بعيد');
+                const resData = await response.json();
+                if (!response.ok || !resData.success) {
+                    throw new Error(resData.error || 'فشل إلغاء الرحلة من خلال الخادم');
                 }
 
-                // Update ride status - Perform a SINGLE database update
-                const updatePayload = {
-                    status: finalStatus,
-                    updated_at: new Date().toISOString()
-                };
-
-                if (finalStatus === 'completed') {
-                    updatePayload.completed_at = new Date().toISOString();
-                } else {
-                    updatePayload.cancelled_at = new Date().toISOString();
-                }
-
-                // Always store the reason for record keeping and driver notification
-                updatePayload.cancellation_reason = cancellationReason;
-
-                const { error: updateError } = await tarhalDB
-                    .from('rides')
-                    .update(updatePayload)
-                    .eq('id', currentRideId);
-
-                if (updateError) {
-                    console.error('❌ خطأ في تحديث حالة الرحلة:', updateError);
-                    throw new Error('فشل في إلغاء الرحلة');
-                }
-
-                console.log('✅ تم إلغاء الرحلة بنجاح');
+                console.log('✅ تم إلغاء الرحلة بنجاح من الخادم:', resData.finalStatus);
 
                 // =====================================================
                 // سؤال الراكب: هل طلب منك السائق إلغاء الرحلة؟

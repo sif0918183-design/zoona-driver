@@ -2691,41 +2691,37 @@ async function loginCustomer() {
     }, 10);
     
     try {
-        const { data: customer, error } = await tarhalDB
-            .from('customers')
-            .select('*')
-            .eq('phone', phone)
-            .single();
-        
-        if (error || !customer) {
-            showNotification('رقم الواتساب غير مسجل', 'error');
+        const response = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'login', role: 'passenger', phone, password })
+        });
+        const resData = await response.json();
+
+        if (!response.ok || !resData.success) {
+            if (resData.phone && resData.verified === false) {
+                showNotification(resData.error || 'حسابك غير مفعل', 'warning');
+                loginBtn.innerHTML = originalHTML;
+                loginBtn.disabled = false;
+                setTimeout(() => {
+                    if (confirm('هل تريد إعادة إرسال رسالة التفعيل إلى واتساب الإدارة؟')) {
+                        sendVerificationWhatsApp(resData.phone);
+                    }
+                }, 2000);
+                return;
+            }
+            showNotification(resData.error || 'رقم الواتساب غير مسجل أو كلمة المرور غير صحيحة', 'error');
             loginBtn.innerHTML = originalHTML;
             loginBtn.disabled = false;
             return;
         }
-        
-        if (customer.password !== password) {
-            showNotification('كلمة المرور غير صحيحة', 'error');
-            loginBtn.innerHTML = originalHTML;
-            loginBtn.disabled = false;
-            return;
-        }
-        
-        if (!customer.is_verified) {
-            showNotification('حسابك غير مفعل. يرجى تفعيل الحساب عبر واتساب الإدارة', 'warning');
-            loginBtn.innerHTML = originalHTML;
-            loginBtn.disabled = false;
-            
-            setTimeout(() => {
-                if (confirm('هل تريد إعادة إرسال رسالة التفعيل إلى واتساب الإدارة؟')) {
-                    sendVerificationWhatsApp(customer.phone);
-                }
-            }, 2000);
-            return;
-        }
-        
+
+        const customer = resData.user;
         currentUser = customer;
         localStorage.setItem('tarhal_customer', JSON.stringify(customer));
+        if (resData.token) {
+            localStorage.setItem('tarhal_session_token', resData.token);
+        }
         
         // مزامنة مع Flutter
         FlutterBridge.postMessage('pwa_login', {
@@ -2783,35 +2779,19 @@ async function registerCustomer() {
     `;
 
     try {
-        // التحقق من وجود الحساب مسبقاً
-        const { data: existingUser, error: checkError } = await tarhalDB
-            .from('customers')
-            .select('id')
-            .eq('phone', phone)
-            .maybeSingle();
+        const response = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'register', role: 'passenger', fullName, phone, phone2: phone2 || null, password })
+        });
+        const resData = await response.json();
 
-        if (existingUser) {
-            showNotification('هذا الرقم مسجل مسبقاً، يمكنك تسجيل الدخول', 'warning');
+        if (!response.ok || !resData.success) {
+            showNotification(resData.error || 'حدث خطأ أثناء التسجيل', 'error');
             registerBtn.innerHTML = originalHTML;
             registerBtn.disabled = false;
             return;
         }
-
-        // إنشاء الحساب الجديد
-        const { data, error } = await tarhalDB
-            .from('customers')
-            .insert([{
-                full_name: fullName,
-                phone: phone,
-                phone2: phone2 || null,
-                password: password,
-                is_verified: false,
-                created_at: new Date().toISOString()
-            }])
-            .select()
-            .single();
-
-        if (error) throw error;
 
         showNotification('تم إنشاء الحساب بنجاح! يرجى التفعيل عبر واتساب', 'success');
 
@@ -3831,20 +3811,31 @@ async function confirmRide() {
             updated_at: new Date().toISOString()
         };
 
-        // إدخال طلب الرحلة في جدول rides
-        console.log('Inserting ride data:', rideData);
-        const { data: ride, error: rideError } = await tarhalDB
-            .from('rides')
-            .insert([rideData])
-            .select()
-            .single();
-        
-        if (rideError) {
-            console.error('Supabase Insertion Error:', rideError);
-            console.error('Failed Payload:', rideData);
-            throw new Error(`فشل حفظ طلب الرحلة: ${rideError.message}`);
+        // إدخال طلب الرحلة عبر API الخادم الآمنة
+        console.log('Inserting ride data via secure API');
+        const res = await fetch('/api/rides', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'create',
+                passengerId: currentUser.id,
+                pickupLat: parseFloat(userPosition.lat),
+                pickupLng: parseFloat(userPosition.lng),
+                pickupAddress: (currentRoute.startAddress || '').substring(0, 255).trim(),
+                destinationLat: parseFloat(destinationPosition.lat),
+                destinationLng: parseFloat(destinationPosition.lng),
+                destinationAddress: (currentRoute.endAddress || '').substring(0, 255).trim(),
+                amount: totalPrice,
+                distanceKm: parseFloat(distance.toFixed(2)),
+                durationMins: 0,
+                carType: selectedVehicleType
+            })
+        });
+        const resData = await res.json();
+        if (!res.ok || !resData.success) {
+            throw new Error(resData.error || 'فشل حفظ طلب الرحلة');
         }
-        
+        const ride = resData.ride;
         const rideId = ride.id;
         currentRideId = rideId; // حفظ المعرف للاستخدام اللاحق
         localStorage.setItem('tarhal_current_ride_id', rideId);

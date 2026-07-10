@@ -1238,26 +1238,28 @@
             }, 5000);
         }
 
-        // دالة لإرسال البيانات إلى Supabase
+        // دالة لإرسال البيانات إلى Supabase عبر الخادم الآمن
         async function submitComplaint(complaintData) {
             try {
-                const { data, error } = await supabase
-                    .from('complaints')
-                    .insert([{
-                        user_id: currentUser.id,
-                        user_type: userType,
-                        user_name: complaintData.name,
-                        account_type: complaintData.accountType,
+                const response = await fetch('/api/complaints', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: currentUser.id,
+                        userType: userType,
+                        userName: complaintData.name,
+                        accountType: complaintData.accountType,
                         whatsapp: complaintData.whatsapp,
                         phone: complaintData.phone,
-                        complaint_type: complaintData.complaintType,
+                        complaintType: complaintData.complaintType,
                         message: complaintData.message,
-                        rating: complaintData.rating,
-                        status: 'new'
-                    }]);
+                        rating: complaintData.rating
+                    })
+                });
 
-                if (error) {
-                    throw error;
+                const resData = await response.json();
+                if (!response.ok || !resData.success) {
+                    throw new Error(resData.error || 'فشل إرسال الشكوى عبر الخادم');
                 }
 
                 return true;
