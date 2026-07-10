@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -29,9 +30,10 @@ export default async function handler(req, res) {
         // --- 1. CREATE RIDE ---
         if (action === 'create') {
             const {
-                passengerId, pickupLat, pickupLng, pickupAddress,
+                passengerId, requestId, fromCity, toCity, basePrice, finalPrice,
+                pickupLat, pickupLng, pickupAddress,
                 destinationLat, destinationLng, destinationAddress,
-                amount, distanceKm, durationMins, carType
+                amount, distanceKm, carType
             } = req.body;
 
             if (!passengerId || !pickupLat || !pickupLng || !amount) {
@@ -41,7 +43,7 @@ export default async function handler(req, res) {
             // Verify passenger exists and is verified
             const { data: passenger, error: pErr } = await supabase
                 .from('customers')
-                .select('is_verified')
+                .select('id, is_verified, full_name, phone')
                 .eq('id', passengerId)
                 .single();
 
@@ -53,23 +55,46 @@ export default async function handler(req, res) {
                 return res.status(403).json({ success: false, error: 'الحساب غير مفعل' });
             }
 
-            // Create ride using the exact schema column names (vehicle_category instead of car_type)
+            // Generate UUID for request_id if not provided
+            let reqId = requestId;
+            if (!reqId) {
+                try {
+                    reqId = crypto.randomUUID();
+                } catch (e) {
+                    reqId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                        return v.toString(16);
+                    });
+                }
+            }
+
+            // Create ride using the exact schema column names
             const { data, error } = await supabase
                 .from('rides')
                 .insert([{
+                    request_id: reqId,
                     passenger_id: passengerId,
+                    passenger_name: passenger.full_name,
+                    passenger_phone: passenger.phone,
+                    from_city: fromCity || 'غير محدد',
+                    to_city: toCity || 'غير محدد',
+                    vehicle_category: carType,
+                    base_price: basePrice || Math.round(amount),
+                    final_price: finalPrice || Math.round(amount),
+                    amount: amount,
                     pickup_lat: pickupLat,
                     pickup_lng: pickupLng,
                     pickup_address: pickupAddress,
                     destination_lat: destinationLat,
                     destination_lng: destinationLng,
                     destination_address: destinationAddress,
-                    amount: amount,
-                    status: 'searching',
                     distance_km: distanceKm,
-                    duration_mins: durationMins,
-                    vehicle_category: carType,
-                    created_at: new Date().toISOString()
+                    status: 'searching',
+                    search_started_at: new Date().toISOString(),
+                    driver_accepted: false,
+                    driver_rejected: false,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
                 }])
                 .select()
                 .single();

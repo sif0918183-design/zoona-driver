@@ -3819,6 +3819,11 @@ async function confirmRide() {
             body: JSON.stringify({
                 action: 'create',
                 passengerId: currentUser.id,
+                requestId: requestId,
+                fromCity: fromCity || 'غير محدد',
+                toCity: toCity || 'غير محدد',
+                basePrice: basePrice,
+                finalPrice: totalPrice,
                 pickupLat: parseFloat(userPosition.lat),
                 pickupLng: parseFloat(userPosition.lng),
                 pickupAddress: (currentRoute.startAddress || '').substring(0, 255).trim(),
@@ -3827,7 +3832,6 @@ async function confirmRide() {
                 destinationAddress: (currentRoute.endAddress || '').substring(0, 255).trim(),
                 amount: totalPrice,
                 distanceKm: parseFloat(distance.toFixed(2)),
-                durationMins: 0,
                 carType: selectedVehicleType
             })
         });
