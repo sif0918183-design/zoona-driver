@@ -1327,6 +1327,9 @@
         localStorage.setItem('tarhal_driver_id', driver.id);
         if (resData.token) {
             localStorage.setItem('tarhal_session_token', resData.token);
+            localStorage.setItem('session_token', resData.token);
+            localStorage.setItem('user_data', JSON.stringify(driver));
+            localStorage.setItem('user_type', 'driver');
         }
 
         // مزامنة مع Flutter

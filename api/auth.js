@@ -139,8 +139,15 @@ export default async function handler(req, res) {
                     exp: Date.now() + 7 * 24 * 60 * 60 * 1000
                 })).toString('base64');
 
-                // Safe payload
-                const safeUser = { ...customer };
+                // Safe payload compatible with database columns and user requests
+                const safeUser = {
+                    ...customer,
+                    id: customer.id,
+                    name: customer.full_name,
+                    phone: customer.phone,
+                    type: 'passenger',
+                    is_verified: customer.is_verified
+                };
                 delete safeUser.password;
 
                 return res.status(200).json({
@@ -214,8 +221,16 @@ export default async function handler(req, res) {
                     exp: Date.now() + 7 * 24 * 60 * 60 * 1000
                 })).toString('base64');
 
-                // Safe payload
-                const safeUser = { ...driver };
+                // Safe payload compatible with database columns and user requests
+                const safeUser = {
+                    ...driver,
+                    id: driver.id,
+                    name: driver.full_name,
+                    phone: driver.whatsapp_number,
+                    type: 'driver',
+                    is_verified: driver.is_active,
+                    is_active: driver.is_active
+                };
                 delete safeUser.password;
 
                 return res.status(200).json({

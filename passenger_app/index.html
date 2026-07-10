@@ -2721,6 +2721,9 @@ async function loginCustomer() {
         localStorage.setItem('tarhal_customer', JSON.stringify(customer));
         if (resData.token) {
             localStorage.setItem('tarhal_session_token', resData.token);
+            localStorage.setItem('session_token', resData.token);
+            localStorage.setItem('user_data', JSON.stringify(customer));
+            localStorage.setItem('user_type', 'passenger');
         }
         
         // مزامنة مع Flutter

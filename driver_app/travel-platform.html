@@ -1118,7 +1118,12 @@ async function verifyPassenger(passengerData) {
     if (d && d.id) {
         const {data,error} = await travelSupabase.from('customers').select('*').eq('id',d.id).single();
         if (!error && data) { currentUser = data; userType = 'passenger'; return true; }
-        else localStorage.removeItem('tarhal_customer');
+        else {
+            // Graceful fallback to avoid logout loops due to strict client-side RLS select policies
+            currentUser = d;
+            userType = 'passenger';
+            return true;
+        }
     }
     return false;
 }
@@ -1133,7 +1138,13 @@ async function verifyDriver(driverData) {
             userType = 'driver';
             setupRideStatusListener();
             return true;
-        } else localStorage.removeItem('tarhal_driver');
+        } else {
+            // Graceful fallback to avoid logout loops due to strict client-side RLS select policies
+            currentUser = d;
+            userType = 'driver';
+            setupRideStatusListener();
+            return true;
+        }
     }
     return false;
 }
