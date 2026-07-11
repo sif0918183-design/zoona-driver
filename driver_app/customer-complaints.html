@@ -866,9 +866,13 @@
         // دالة لإرسال البيانات إلى Supabase عبر الخادم الآمن
         async function submitComplaint(complaintData) {
             try {
+                const token = localStorage.getItem('session_token');
                 const response = await fetch('/api/complaints', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': token ? `Bearer ${token}` : ''
+                    },
                     body: JSON.stringify({
                         userId: currentUser.id,
                         userType: userType,

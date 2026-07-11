@@ -734,10 +734,14 @@
                 updateData.status = nextStatus;
 
                 let success = false;
+                const token = localStorage.getItem('session_token');
                 if (nextStatus === 'completed') {
                     const response = await fetch('/api/rides', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': token ? `Bearer ${token}` : ''
+                        },
                         body: JSON.stringify({
                             action: 'complete',
                             rideId: currentRideId,
@@ -750,7 +754,10 @@
                 } else {
                     const response = await fetch('/api/rides', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': token ? `Bearer ${token}` : ''
+                        },
                         body: JSON.stringify({
                             action: 'update_status',
                             rideId: currentRideId,
@@ -1068,9 +1075,13 @@
                 const commissionAmount = Math.floor(rideAmount * 0.10);
 
                 // استدعاء الـ API الآمن لإلغاء الرحلة وتطبيق الغرامة
+                const token = localStorage.getItem('session_token');
                 const response = await fetch('/api/rides', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': token ? `Bearer ${token}` : ''
+                    },
                     body: JSON.stringify({
                         action: 'cancel_by_driver',
                         rideId: currentRideId,

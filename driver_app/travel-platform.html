@@ -997,7 +997,14 @@
 // ============================================
 // GLOBAL CONFIG
 // ============================================
-const travelSupabase = supabase.createClient(window.SB_URL, window.SB_KEY);
+const travelToken = localStorage.getItem('session_token');
+const travelSupabase = supabase.createClient(window.SB_URL, window.SB_KEY, {
+    global: {
+        headers: {
+            Authorization: travelToken ? `Bearer ${travelToken}` : undefined
+        }
+    }
+});
 
 // State
 let currentUser = null;
@@ -1433,9 +1440,13 @@ async function driverCompletedTrip(tripId) {
 
     try {
         const price = activeTripData.final_price || 0;
+        const token = localStorage.getItem('session_token');
         const response = await fetch('/api/travel-platform', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': token ? `Bearer ${token}` : ''
+            },
             body: JSON.stringify({
                 action: 'complete_trip',
                 tripId,
@@ -1476,9 +1487,13 @@ function initiateCancel() {
 async function passengerCancelsTrip(tripId, reason) {
     if (!confirm('هل أنت متأكد من إلغاء الرحلة؟')) return;
     try {
+        const token = localStorage.getItem('session_token');
         const response = await fetch('/api/travel-platform', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': token ? `Bearer ${token}` : ''
+            },
             body: JSON.stringify({
                 action: 'passenger_cancel',
                 tripId,
@@ -1503,9 +1518,13 @@ async function driverCancelsTrip(tripId, reason) {
     if (!confirm('هل أنت متأكد من إلغاء الرحلة؟ سيتم خصم غرامة تعادل قيمة العمولة من رصيدك.')) return;
     try {
         const price = activeTripData.final_price || 0;
+        const token = localStorage.getItem('session_token');
         const response = await fetch('/api/travel-platform', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': token ? `Bearer ${token}` : ''
+            },
             body: JSON.stringify({
                 action: 'driver_cancel',
                 tripId,

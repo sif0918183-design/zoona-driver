@@ -6,6 +6,23 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || proce
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+function verifyToken(req) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        throw new Error('المصادقة مطلوبة: رمز الجلسة مفقود أو غير صالح');
+    }
+    const token = authHeader.split(' ')[1];
+    try {
+        const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf-8'));
+        if (decoded.exp && decoded.exp < Date.now()) {
+            throw new Error('انتهت صلاحية رمز الجلسة الخاصة بك، يرجى تسجيل الدخول مرة أخرى');
+        }
+        return decoded;
+    } catch (e) {
+        throw new Error('رمز الجلسة غير صالح');
+    }
+}
+
 export default async function handler(req, res) {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -21,6 +38,14 @@ export default async function handler(req, res) {
     }
 
     try {
+        // التحقق من التوكن في كل الطلبات الواردة إلى Rides API
+        let session;
+        try {
+            session = verifyToken(req);
+        } catch (tokenErr) {
+            return res.status(401).json({ success: false, error: tokenErr.message });
+        }
+
         const { action } = req.body;
 
         if (!action) {

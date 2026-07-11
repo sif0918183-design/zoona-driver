@@ -1034,9 +1034,13 @@
                 }
 
                 // إرسال طلب إلغاء الرحلة الآمن إلى API الخلفية
+                const token = localStorage.getItem('session_token');
                 const response = await fetch('/api/rides', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': token ? `Bearer ${token}` : ''
+                    },
                     body: JSON.stringify({
                         action: 'cancel_by_passenger',
                         rideId: currentRideId,

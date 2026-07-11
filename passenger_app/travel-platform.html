@@ -692,7 +692,7 @@
 
     <!-- Back Button -->
     <div style="padding:0.75rem 1rem;background:var(--tech-bg);border-bottom:1px solid var(--tech-border);display:flex;justify-content:flex-start;">
-        <a href="index.html" style="text-decoration:none;display:inline-flex;align-items:center;gap:0.5rem;padding:0.5rem 1rem;background:rgba(22,163,74,0.15);border:1px solid rgba(22,163,74,0.3);border-radius:8px;color:#16a34a;font-weight:600;font-size:11px;transition:all 0.3s ease;">
+        <a href="index.html" onclick="localStorage.removeItem('is_searching'); localStorage.removeItem('ride_request_id'); localStorage.removeItem('tarhal_current_ride_id'); localStorage.removeItem('active_ride_id'); localStorage.removeItem('active_ride_status');" style="text-decoration:none;display:inline-flex;align-items:center;gap:0.5rem;padding:0.5rem 1rem;background:rgba(22,163,74,0.15);border:1px solid rgba(22,163,74,0.3);border-radius:8px;color:#16a34a;font-weight:600;font-size:11px;transition:all 0.3s ease;">
             <i class="ph-bold ph-arrow-right" style="font-size:14px;"></i>
             <span>عودة</span>
         </a>
@@ -1037,7 +1037,14 @@
 // ============================================
 // GLOBAL CONFIG
 // ============================================
-const travelSupabase = supabase.createClient(window.SB_URL, window.SB_KEY);
+const travelToken = localStorage.getItem('session_token');
+const travelSupabase = supabase.createClient(window.SB_URL, window.SB_KEY, {
+    global: {
+        headers: {
+            Authorization: travelToken ? `Bearer ${travelToken}` : undefined
+        }
+    }
+});
 
 // State
 let currentUser = null;
@@ -1492,9 +1499,13 @@ async function driverCompletedTrip(tripId) {
 
     try {
         const price = activeTripData.final_price || 0;
+        const token = localStorage.getItem('session_token');
         const response = await fetch('/api/travel-platform', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': token ? `Bearer ${token}` : ''
+            },
             body: JSON.stringify({
                 action: 'complete_trip',
                 tripId,
@@ -1540,9 +1551,13 @@ function initiateCancel() {
 async function passengerCancelsTrip(tripId, reason) {
     if (!confirm('هل أنت متأكد من إلغاء الرحلة؟')) return;
     try {
+        const token = localStorage.getItem('session_token');
         const response = await fetch('/api/travel-platform', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': token ? `Bearer ${token}` : ''
+            },
             body: JSON.stringify({
                 action: 'passenger_cancel',
                 tripId,
@@ -1567,9 +1582,13 @@ async function driverCancelsTrip(tripId, reason) {
     if (!confirm('هل أنت متأكد من إلغاء الرحلة؟ سيتم خصم غرامة تعادل قيمة العمولة من رصيدك.')) return;
     try {
         const price = activeTripData.final_price || 0;
+        const token = localStorage.getItem('session_token');
         const response = await fetch('/api/travel-platform', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': token ? `Bearer ${token}` : ''
+            },
             body: JSON.stringify({
                 action: 'driver_cancel',
                 tripId,
