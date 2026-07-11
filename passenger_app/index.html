@@ -2211,7 +2211,14 @@
    ============================================ */
 
 // Supabase Configuration (from shared config)
-const tarhalDB = supabase.createClient(window.SB_URL, window.SB_KEY);
+const sessionToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_admin_token');
+const tarhalDB = supabase.createClient(window.SB_URL, window.SB_KEY, {
+    global: {
+        headers: {
+            'x-session-token': sessionToken || ''
+        }
+    }
+});
 
 // Application State
 let currentUser = null;

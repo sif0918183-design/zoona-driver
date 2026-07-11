@@ -1001,7 +1001,7 @@ const travelToken = localStorage.getItem('session_token');
 const travelSupabase = supabase.createClient(window.SB_URL, window.SB_KEY, {
     global: {
         headers: {
-            Authorization: travelToken ? `Bearer ${travelToken}` : undefined
+            'x-session-token': travelToken || ''
         }
     }
 });

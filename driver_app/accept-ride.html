@@ -201,7 +201,14 @@
     <div id="notification"></div>
 
     <script>
-        const tarhalDB = supabase.createClient(window.SB_URL, window.SB_KEY);
+        const sessionToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_admin_token');
+        const tarhalDB = supabase.createClient(window.SB_URL, window.SB_KEY, {
+            global: {
+                headers: {
+                    'x-session-token': sessionToken || ''
+                }
+            }
+        });
 
         let currentRideId = null;
         let currentRideAmount = 0;

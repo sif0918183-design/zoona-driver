@@ -53,24 +53,37 @@ BEGIN
         RETURN NULL;
     END IF;
 
-    -- Extract Authorization header
     auth_header := NULL;
 
     -- Check if it is a JSON array (PostgREST standard)
     IF headers LIKE '[%' THEN
         BEGIN
+            -- Try x-session-token first
             auth_header := (
                 SELECT x.val->>'value'
                 FROM json_array_elements(headers::json) AS x(val)
-                WHERE lower(x.val->>'key') = 'authorization'
+                WHERE lower(x.val->>'key') = 'x-session-token'
                 LIMIT 1
             );
+
+            -- Fallback to authorization
+            IF auth_header IS NULL THEN
+                auth_header := (
+                    SELECT x.val->>'value'
+                    FROM json_array_elements(headers::json) AS x(val)
+                    WHERE lower(x.val->>'key') = 'authorization'
+                    LIMIT 1
+                );
+            END IF;
         EXCEPTION WHEN OTHERS THEN
             auth_header := NULL;
         END;
     ELSIF headers LIKE '{%' THEN
         BEGIN
-            auth_header := headers::json->>'authorization';
+            auth_header := headers::json->>'x-session-token';
+            IF auth_header IS NULL THEN
+                auth_header := headers::json->>'authorization';
+            END IF;
             IF auth_header IS NULL THEN
                 auth_header := headers::json->>'Authorization';
             END IF;
@@ -82,13 +95,21 @@ BEGIN
     -- Fallback regex search if JSON parsing failed or wasn't array/object
     IF auth_header IS NULL THEN
         BEGIN
+            auth_header := substring(headers from '"x-session-token"\s*:\s*"([^"]+)"');
+        EXCEPTION WHEN OTHERS THEN
+            auth_header := NULL;
+        END;
+    END IF;
+
+    IF auth_header IS NULL THEN
+        BEGIN
             auth_header := substring(headers from '"[aA]uthorization"\s*:\s*"Bearer\s+([^"]+)"');
         EXCEPTION WHEN OTHERS THEN
             auth_header := NULL;
         END;
     END IF;
 
-    -- Extract token from "Bearer <token>"
+    -- Extract token from "Bearer <token>" or raw base64
     IF auth_header IS NULL THEN
         RETURN NULL;
     END IF;
