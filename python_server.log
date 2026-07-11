@@ -1,6 +1,0 @@
-127.0.0.1 - - [10/Jul/2026 09:32:54] "GET /passenger_app/travel-platform.html HTTP/1.1" 200 -
-127.0.0.1 - - [10/Jul/2026 09:32:54] "GET /shared/theme.css HTTP/1.1" 200 -
-127.0.0.1 - - [10/Jul/2026 13:37:53] "GET /passenger_app/travel-platform.html HTTP/1.1" 200 -
-127.0.0.1 - - [10/Jul/2026 13:37:53] "GET /shared/theme.css HTTP/1.1" 200 -
-127.0.0.1 - - [10/Jul/2026 15:24:12] "GET /passenger_app/travel-platform.html HTTP/1.1" 200 -
-127.0.0.1 - - [10/Jul/2026 15:24:12] "GET /shared/theme.css HTTP/1.1" 200 -

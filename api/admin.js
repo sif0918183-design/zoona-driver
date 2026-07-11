@@ -211,10 +211,10 @@ export default async function handler(req, res) {
             return res.status(200).json({ success: true });
         }
 
-        // --- ADD DRIVER BALANCE ---
+        // --- ADD DRIVER BALANCE (SUPPORT ADD & SUBTRACT) ---
         if (action === 'add_balance') {
-            const { driverId, amount, note } = req.body;
-            if (!driverId || !amount || amount <= 0) {
+            const { driverId, amount, note, balanceAction } = req.body;
+            if (!driverId || !amount) {
                 return res.status(400).json({ success: false, error: 'بيانات غير صالحة' });
             }
 
@@ -226,7 +226,12 @@ export default async function handler(req, res) {
 
             if (fErr) throw fErr;
 
-            const newBalance = (driver.balance || 0) + parseInt(amount);
+            let changeAmount = parseInt(amount);
+            if (balanceAction === 'subtract') {
+                changeAmount = -Math.abs(changeAmount);
+            }
+
+            const newBalance = (driver.balance || 0) + changeAmount;
 
             const { error: uErr } = await supabase
                 .from('drivers')
@@ -240,12 +245,101 @@ export default async function handler(req, res) {
                 .from('balance_transactions')
                 .insert([{
                     driver_id: driverId,
-                    amount: parseInt(amount),
-                    type: 'admin_topup',
-                    description: note || 'إضافة رصيد من لوحة التحكم'
+                    amount: changeAmount,
+                    type: balanceAction === 'subtract' ? 'admin_subtract' : 'admin_add',
+                    description: note || `عملية إدارية: ${balanceAction === 'subtract' ? 'خصم' : 'إضافة'} ${amount} جنيـه`
                 }]);
 
             return res.status(200).json({ success: true, newBalance, driverName: driver.full_name });
+        }
+
+        // --- SAVE SYSTEM SETTINGS ---
+        if (action === 'save_settings') {
+            const { settings } = req.body;
+            if (!settings || !Array.isArray(settings)) {
+                return res.status(400).json({ success: false, error: 'Settings array is required' });
+            }
+
+            const promises = settings.map(async (setting) => {
+                const { error } = await supabase
+                    .from('system_settings')
+                    .upsert({ key: setting.key, value: setting.value }, {
+                        onConflict: 'key',
+                        ignoreDuplicates: false
+                    });
+
+                if (error) throw error;
+                return true;
+            });
+
+            await Promise.all(promises);
+            return res.status(200).json({ success: true });
+        }
+
+        // --- DELETE RIDE OR REQUEST ---
+        if (action === 'delete_ride') {
+            const { rideId } = req.body;
+            if (!rideId) {
+                return res.status(400).json({ success: false, error: 'rideId is required' });
+            }
+
+            if (typeof rideId === 'string' && rideId.startsWith('req_')) {
+                const realId = rideId.replace('req_', '');
+                const { error } = await supabase
+                    .from('ride_requests')
+                    .delete()
+                    .eq('id', realId);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase
+                    .from('rides')
+                    .delete()
+                    .eq('id', rideId);
+                if (error) throw error;
+            }
+
+            return res.status(200).json({ success: true });
+        }
+
+        // --- ADD VEHICLE CATEGORY ---
+        if (action === 'add_category') {
+            const { name, description, multiplier, sort_order } = req.body;
+            if (!name || !multiplier) {
+                return res.status(400).json({ success: false, error: 'Name and multiplier are required' });
+            }
+
+            const { data, error } = await supabase
+                .from('vehicle_categories')
+                .insert([{
+                    name_ar: name,
+                    description_ar: description || '',
+                    price_multiplier: parseFloat(multiplier),
+                    is_active: true,
+                    sort_order: sort_order || 1
+                }])
+                .select()
+                .single();
+
+            if (error) throw error;
+            return res.status(200).json({ success: true, category: data });
+        }
+
+        // --- UPDATE VEHICLE CATEGORY ---
+        if (action === 'update_category') {
+            const { id, updates } = req.body;
+            if (!id || !updates) {
+                return res.status(400).json({ success: false, error: 'Category ID and updates are required' });
+            }
+
+            const { data, error } = await supabase
+                .from('vehicle_categories')
+                .update(updates)
+                .eq('id', id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            return res.status(200).json({ success: true, category: data });
         }
 
         // --- ADD NEW DRIVER (SECURE BCRYPT) ---
