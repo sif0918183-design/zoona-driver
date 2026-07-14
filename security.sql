@@ -18,6 +18,8 @@ ALTER TABLE IF EXISTS public.device_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.balance_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.complaints ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.travel_trips ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.ride_driver_acceptances ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.ride_chats ENABLE ROW LEVEL SECURITY;
 
 -- Revoke all modifications from anon/authenticated
 REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
@@ -31,6 +33,8 @@ GRANT INSERT, UPDATE ON public.driver_locations TO anon, authenticated;
 -- Grant INSERT, UPDATE, DELETE permissions on travel-platform related tables
 GRANT INSERT, UPDATE, DELETE ON public.ride_requests TO anon, authenticated;
 GRANT INSERT, UPDATE, DELETE ON public.travel_trips TO anon, authenticated;
+GRANT INSERT, UPDATE, DELETE ON public.ride_driver_acceptances TO anon, authenticated;
+GRANT INSERT, UPDATE, DELETE ON public.ride_chats TO anon, authenticated;
 
 -- ==============================================================================
 -- HELPER FUNCTION TO EXTRACT CUSTOM SESSION ID FROM REQUEST HEADERS
@@ -263,3 +267,59 @@ CREATE POLICY "Participants Update Travel Trips" ON public.travel_trips
         driver_id = public.get_custom_session_id()
     )
     WITH CHECK (true);
+
+-- ==============================================================================
+-- RIDE_DRIVER_ACCEPTANCES - عروض السائقين
+-- ==============================================================================
+DROP POLICY IF EXISTS "Participants View Acceptances" ON public.ride_driver_acceptances;
+DROP POLICY IF EXISTS "Driver Insert Acceptances" ON public.ride_driver_acceptances;
+DROP POLICY IF EXISTS "Participants Update Acceptances" ON public.ride_driver_acceptances;
+
+CREATE POLICY "Participants View Acceptances" ON public.ride_driver_acceptances
+    FOR SELECT TO anon, authenticated
+    USING (
+        driver_id = public.get_custom_session_id() OR
+        EXISTS (
+            SELECT 1 FROM public.ride_requests
+            WHERE id = ride_id AND (customer_id = public.get_custom_session_id() OR driver_id = public.get_custom_session_id())
+        )
+    );
+
+CREATE POLICY "Driver Insert Acceptances" ON public.ride_driver_acceptances
+    FOR INSERT TO anon, authenticated
+    WITH CHECK (
+        driver_id = public.get_custom_session_id()
+    );
+
+CREATE POLICY "Participants Update Acceptances" ON public.ride_driver_acceptances
+    FOR UPDATE TO anon, authenticated
+    USING (
+        driver_id = public.get_custom_session_id() OR
+        EXISTS (
+            SELECT 1 FROM public.ride_requests
+            WHERE id = ride_id AND (customer_id = public.get_custom_session_id() OR driver_id = public.get_custom_session_id())
+        )
+    )
+    WITH CHECK (true);
+
+-- ==============================================================================
+-- RIDE_CHATS - الرسائل والمحادثات
+-- ==============================================================================
+DROP POLICY IF EXISTS "Participants View Chat Messages" ON public.ride_chats;
+DROP POLICY IF EXISTS "Participants Insert Chat Messages" ON public.ride_chats;
+
+CREATE POLICY "Participants View Chat Messages" ON public.ride_chats
+    FOR SELECT TO anon, authenticated
+    USING (
+        sender_id = public.get_custom_session_id() OR
+        EXISTS (
+            SELECT 1 FROM public.ride_requests
+            WHERE id = ride_id AND (customer_id = public.get_custom_session_id() OR driver_id = public.get_custom_session_id())
+        )
+    );
+
+CREATE POLICY "Participants Insert Chat Messages" ON public.ride_chats
+    FOR INSERT TO anon, authenticated
+    WITH CHECK (
+        sender_id = public.get_custom_session_id()
+    );
