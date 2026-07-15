@@ -887,7 +887,14 @@
     // ============================================
 
     // Supabase Configuration (from shared config)
-    const tarhalDB = supabase.createClient(window.SB_URL, window.SB_KEY);
+    const sessionToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_admin_token');
+    const tarhalDB = supabase.createClient(window.SB_URL, window.SB_KEY, {
+        global: {
+            headers: {
+                'x-session-token': sessionToken || ''
+            }
+        }
+    });
 
     // Application State
     let currentDriver = null;
@@ -1303,48 +1310,20 @@
     loginBtn.disabled = true;
 
     try {
-        // 3. الاستعلام من قاعدة بيانات Supabase
-        const { data: driver, error } = await tarhalDB
-            .from('drivers')
-            .select('*')
-            .eq('whatsapp_number', phone)
-            .eq('is_active', true)
-            .single();
+        // 3. الاستعلام عبر API الخادم الآمنة
+        const response = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'login', role: 'driver', phone, password })
+        });
+        const resData = await response.json();
 
-        // 4. معالجة أخطاء الاستعلام
-        if (error || !driver) {
-            showNotification('رقم الواتساب غير مسجل أو الحساب غير مفعل', 'error');
+        if (!response.ok || !resData.success) {
+            showNotification(resData.error || 'رقم الواتساب غير مسجل أو كلمة المرور غير صحيحة', 'error');
             return;
         }
 
-        // 5. التحقق من كلمة المرور
-        if (driver.password !== password) {
-            showNotification('كلمة المرور غير صحيحة', 'error');
-            return;
-        }
-
-        // 6. التحقق من حالة الحظر
-        if (driver.is_banned && driver.ban_until) {
-            const banEndTime = new Date(driver.ban_until);
-            const now = new Date();
-            
-            if (banEndTime > now) {
-                const remainingHours = Math.ceil((banEndTime - now) / (1000 * 60 * 60));
-                showNotification(`🚫 حسابك محظور حتى ${banEndTime.toLocaleDateString('ar-SA')}`, 'error');
-                return;
-            } else {
-                // مدة الحظر انتهت - إلغاء الحظر تلقائياً
-                await tarhalDB
-                    .from('drivers')
-                    .update({
-                        is_banned: false,
-                        ban_reason: null,
-                        ban_until: null
-                    })
-                    .eq('id', driver.id);
-                console.log('✅ تم إلغاء الحظر تلقائياً');
-            }
-        }
+        const driver = resData.user;
 
         // === نجاح تسجيل الدخول ===
         currentDriver = driver;
@@ -1353,6 +1332,12 @@
         localStorage.setItem('tarhal_driver', JSON.stringify(driver));
         localStorage.setItem('driver_id', driver.id);
         localStorage.setItem('tarhal_driver_id', driver.id);
+        if (resData.token) {
+            localStorage.setItem('tarhal_session_token', resData.token);
+            localStorage.setItem('session_token', resData.token);
+            localStorage.setItem('user_data', JSON.stringify(driver));
+            localStorage.setItem('user_type', 'driver');
+        }
 
         // مزامنة مع Flutter
         FlutterBridge.postMessage('pwa_login', {
@@ -1576,13 +1561,25 @@
         }
 
         try {
-            // استخدام RPC لضمان ذرية العملية (Atomic Operation)
-            const { data: result, error } = await tarhalDB.rpc('accept_immediate_ride', {
-                p_ride_id: data.ride_id,
-                p_driver_id: driverData.id
+            // استدعاء الـ API الآمن لقبول الرحلة بدلاً من الـ RPC المباشر
+            const response = await fetch('/api/rides', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'accept',
+                    rideId: data.ride_id,
+                    driverId: driverData.id
+                })
             });
+            const resData = await response.json();
 
-            if (error) throw error;
+            if (!response.ok || !resData.success) {
+                showNotification('❌ ' + (resData.error || 'فشل قبول الرحلة'), 'error');
+                document.getElementById('incoming-ride-modal').classList.add('hidden');
+                return;
+            }
+
+            const result = resData.result;
 
             if (result && result.success) {
                 // تحديث البيانات المحلية

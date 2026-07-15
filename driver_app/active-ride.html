@@ -242,7 +242,14 @@
         // ==============================================
         // ✅ Supabase Configuration
         // ==============================================
-        const tarhalDB = supabase.createClient(window.SB_URL, window.SB_KEY);
+        const sessionToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_admin_token');
+        const tarhalDB = supabase.createClient(window.SB_URL, window.SB_KEY, {
+            global: {
+                headers: {
+                    'x-session-token': sessionToken || ''
+                }
+            }
+        });
 
         // متغيرات عامة
         let currentRideId = null;
@@ -734,17 +741,40 @@
                 updateData.status = nextStatus;
 
                 let success = false;
+                const token = localStorage.getItem('session_token');
                 if (nextStatus === 'completed') {
-                    const { error } = await tarhalDB.rpc('complete_ride', { p_ride_id: currentRideId });
-                    if (!error) success = true;
-                    else alert('❌ خطأ في إنهاء الرحلة: ' + error.message);
+                    const response = await fetch('/api/rides', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': token ? `Bearer ${token}` : ''
+                        },
+                        body: JSON.stringify({
+                            action: 'complete',
+                            rideId: currentRideId,
+                            driverId: currentDriverId
+                        })
+                    });
+                    const resData = await response.json();
+                    if (response.ok && resData.success) success = true;
+                    else alert('❌ خطأ في إنهاء الرحلة: ' + (resData.error || 'حدث خطأ'));
                 } else {
-                    const { error } = await tarhalDB
-                        .from('rides')
-                        .update(updateData)
-                        .eq('id', currentRideId);
-                    if (!error) success = true;
-                    else alert('❌ خطأ في تحديث الحالة: ' + error.message);
+                    const response = await fetch('/api/rides', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': token ? `Bearer ${token}` : ''
+                        },
+                        body: JSON.stringify({
+                            action: 'update_status',
+                            rideId: currentRideId,
+                            driverId: currentDriverId,
+                            status: nextStatus
+                        })
+                    });
+                    const resData = await response.json();
+                    if (response.ok && resData.success) success = true;
+                    else alert('❌ خطأ في تحديث الحالة: ' + (resData.error || 'حدث خطأ'));
                 }
 
                 if (success) {
@@ -1051,14 +1081,25 @@
                 const rideAmount = rideData?.amount || 0;
                 const commissionAmount = Math.floor(rideAmount * 0.10);
 
-                // استخدام RPC لضمان ذرية العملية (Atomic Operation)
-                const { error } = await tarhalDB.rpc('handle_cancellation_penalty', {
-                    p_ride_id: currentRideId,
-                    p_driver_id: currentDriverId,
-                    p_amount: rideAmount
+                // استدعاء الـ API الآمن لإلغاء الرحلة وتطبيق الغرامة
+                const token = localStorage.getItem('session_token');
+                const response = await fetch('/api/rides', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': token ? `Bearer ${token}` : ''
+                    },
+                    body: JSON.stringify({
+                        action: 'cancel_by_driver',
+                        rideId: currentRideId,
+                        driverId: currentDriverId,
+                        amount: rideAmount
+                    })
                 });
-
-                if (error) throw error;
+                const resData = await response.json();
+                if (!response.ok || !resData.success) {
+                    throw new Error(resData.error || 'فشل إلغاء الرحلة عبر الخادم');
+                }
 
                 // Show penalty message
                 alert(`❌ تم إلغاء الرحلة.\n\n💰 تم خصم رسوم إلغاء تعادل ${commissionAmount} من رصيدك (عمولة الرحلة).\n\n⚠️ يرجى عدم قبول الرحلات إلا إذا كنت تنوي إكمالها عبر التطبيق.`);

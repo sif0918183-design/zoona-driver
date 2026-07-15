@@ -1989,6 +1989,34 @@
         // ============================================
         const adminSupabase = supabase.createClient(window.SB_URL, window.SB_KEY);
 
+        async function adminApiCall(action, extraParams = {}) {
+            const adminSession = localStorage.getItem('tarhal_admin');
+            let token = '';
+            if (adminSession) {
+                try {
+                    const parsed = JSON.parse(adminSession);
+                    token = parsed.token || '';
+                } catch(e) {}
+            }
+            if (!token) {
+                token = localStorage.getItem('tarhal_admin_token') || '';
+            }
+
+            const res = await fetch('/api/admin', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': token ? `Bearer ${token}` : ''
+                },
+                body: JSON.stringify({ action, ...extraParams })
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'فشلت العملية الإدارية');
+            }
+            return data;
+        }
+
         // Application State
         let currentAdmin = null;
         let allRides = [];
@@ -2037,65 +2065,24 @@
             
             try {
                 const adminData = JSON.parse(adminSession);
+                const passcode = adminData.passcode;
                 
-                // Try to get passcode from database
-                try {
-                    const { data: settings, error } = await adminSupabase
-                        .from('system_settings')
-                        .select('value')
-                        .eq('key', 'staff_passcode')
-                        .single();
-                        
-                    if (error || !settings) {
-                        // Use default passcode
-                        if (adminData.passcode === '1234' || adminData.passcode === 'admin' || adminData.passcode === '1253') {
-                            currentAdmin = {
-                                id: 1,
-                                name: adminData.name || 'مدير النظام',
-                                role: 'مسؤول',
-                                passcode: adminData.passcode
-                            };
-                            showDashboard();
-                        } else {
-                            localStorage.removeItem('tarhal_admin');
-                            showLoginSection();
-                        }
-                        return;
-                    }
-                    
-                    if (adminData.passcode === settings.value) {
-                        currentAdmin = {
-                            id: 1,
-                            name: adminData.name || 'مدير النظام',
-                            role: 'مسؤول',
-                            passcode: adminData.passcode
-                        };
-                        showDashboard();
-                    } else {
-                        localStorage.removeItem('tarhal_admin');
-                        showLoginSection();
-                    }
-                    
-                } catch (dbError) {
-                    // Database error - use default passcode
-                    console.warn('Database error, using default passcode:', dbError);
-                    if (adminData.passcode === '1234' || adminData.passcode === 'admin') {
-                        currentAdmin = {
-                            id: 1,
-                            name: adminData.name || 'مدير النظام',
-                            role: 'مسؤول',
-                            passcode: adminData.passcode
-                        };
-                        showDashboard();
-                    } else {
-                        localStorage.removeItem('tarhal_admin');
-                        showLoginSection();
-                    }
-                }
+                // Verify passcode via the secure backend API
+                const resData = await adminApiCall('login', { password: passcode });
                 
+                currentAdmin = {
+                    id: 1,
+                    name: adminData.name || 'مدير النظام',
+                    role: 'مسؤول',
+                    passcode: passcode,
+                    token: resData.token
+                };
+                localStorage.setItem('tarhal_admin_token', resData.token);
+                showDashboard();
             } catch (error) {
                 console.error('Error verifying admin:', error);
                 localStorage.removeItem('tarhal_admin');
+                localStorage.removeItem('tarhal_admin_token');
                 showLoginSection();
             }
         }
@@ -2168,49 +2155,23 @@
             const passcode = document.getElementById('admin-passcode').value;
             
             try {
-                // Get passcode from database
-                const { data: settings, error } = await adminSupabase
-                    .from('system_settings')
-                    .select('value')
-                    .eq('key', 'staff_passcode')
-                    .single();
-                    
-                if (error) {
-                    // If no settings table or passcode, use default
-                    if (passcode === '1234' || passcode === 'admin' || passcode === '1253') {
-                        // Success - Save to localStorage
-                        localStorage.setItem('tarhal_admin', JSON.stringify({
-                            name: adminName,
-                            passcode: passcode,
-                            login_time: new Date().toISOString()
-                        }));
-                        
-                        // Reload page to show dashboard
-                        location.reload();
-                    } else {
-                        document.getElementById('login-error').style.display = 'block';
-                    }
-                    return;
-                }
+                const resData = await adminApiCall('login', { password: passcode });
                 
-                if (passcode === settings.value) {
-                    // Success - Save to localStorage
-                    localStorage.setItem('tarhal_admin', JSON.stringify({
-                        name: adminName,
-                        passcode: passcode,
-                        login_time: new Date().toISOString()
-                    }));
-                    
-                    // Reload page to show dashboard
-                    location.reload();
-                } else {
-                    document.getElementById('login-error').style.display = 'block';
-                }
+                // Success - Save to localStorage
+                localStorage.setItem('tarhal_admin', JSON.stringify({
+                    name: adminName,
+                    passcode: passcode,
+                    login_time: new Date().toISOString(),
+                    token: resData.token
+                }));
+                localStorage.setItem('tarhal_admin_token', resData.token);
                 
+                // Reload page to show dashboard
+                location.reload();
             } catch (error) {
                 console.error('Login error:', error);
                 document.getElementById('login-error').style.display = 'block';
-                document.getElementById('error-message').textContent = 'خطأ في الاتصال بالخادم';
+                document.getElementById('error-message').textContent = error.message || 'كلمة المرور غير صحيحة';
             }
         });
 
@@ -2341,46 +2302,12 @@
 
         async function manageDriverBalance(driverId, action, amount, notes) {
             try {
-                const { data: driver, error: fetchError } = await adminSupabase
-                    .from('drivers')
-                    .select('balance')
-                    .eq('id', driverId)
-                    .single();
-
-                if (fetchError) throw fetchError;
-
-                let newBalance = driver.balance || 0;
-
-                if (action === 'add') {
-                    newBalance += amount;
-                } else if (action === 'subtract') {
-                    newBalance -= amount;
-                }
-
-                const { error: updateError } = await adminSupabase
-                    .from('drivers')
-                    .update({
-                        balance: newBalance,
-                        last_balance_update: new Date().toISOString()
-                    })
-                    .eq('id', driverId);
-
-                if (updateError) throw updateError;
-
-                // تسجيل العملية
-                await adminSupabase
-                    .from('balance_transactions')
-                    .insert([{
-                        driver_id: driverId,
-                        amount: action === 'add' ? amount : -amount,
-                        type: action === 'add' ? 'admin_add' : 'admin_subtract',
-                        previous_balance: driver.balance || 0,
-                        new_balance: newBalance,
-                        admin_id: currentAdmin.id,
-                        notes: notes || `عملية إدارية: ${action === 'add' ? 'إضافة' : 'خصم'} ${amount} جنيـه`,
-                        created_at: new Date().toISOString()
-                    }]);
-
+                const resData = await adminApiCall('add_balance', {
+                    driverId: driverId,
+                    amount: amount,
+                    note: notes,
+                    balanceAction: action
+                });
                 return true;
             } catch (error) {
                 console.error('Error managing balance:', error);
@@ -3231,21 +3158,8 @@
             }
             
             try {
-                // الحذف من قاعدة البيانات
-                if (typeof rideId === 'string' && rideId.startsWith('req_')) {
-                    const realId = rideId.replace('req_', '');
-                    const { error } = await adminSupabase
-                        .from('ride_requests')
-                        .delete()
-                        .eq('id', realId);
-                    if (error) throw error;
-                } else {
-                    const { error } = await adminSupabase
-                        .from('rides')
-                        .delete()
-                        .eq('id', rideId);
-                    if (error) throw error;
-                }
+                // الحذف من قاعدة البيانات عبر الـ API الآمن
+                await adminApiCall('delete_ride', { rideId });
 
                 // الحذف من القائمة المحلية
                 allRides = allRides.filter(ride => ride.id !== rideId);
@@ -3403,42 +3317,17 @@
 
         async function addVehicleCategory(categoryData) {
             try {
-                // Prepare data with correct column names
-                const insertData = {
-                    name_ar: categoryData.name,
-                    description_ar: categoryData.description || '',
-                    price_multiplier: categoryData.multiplier,
-                    is_active: true,
+                // إدخال فئة السيارات عبر الـ API الآمنة
+                const resData = await adminApiCall('add_category', {
+                    name: categoryData.name,
+                    description: categoryData.description || '',
+                    multiplier: categoryData.multiplier,
                     sort_order: categoryData.sort_order || (vehicleCategories.length + 1)
-                };
-
-                const { data, error } = await adminSupabase
-                    .from('vehicle_categories')
-                    .insert([insertData])
-                    .select()
-                    .single();
-
-                if (error) {
-                    console.error('Database error:', error);
-                    // Add locally
-                    const newCategory = {
-                        id: vehicleCategories.length + 1,
-                        name_ar: categoryData.name,
-                        description_ar: categoryData.description || '',
-                        price_multiplier: categoryData.multiplier,
-                        is_active: true,
-                        sort_order: categoryData.sort_order || (vehicleCategories.length + 1)
-                    };
-                    
-                    vehicleCategories.push(newCategory);
-                    displayCategoriesTables();
-                    showNotification('تم إضافة فئة السيارات محلياً (خطأ في قاعدة البيانات)', 'warning');
-                    return newCategory;
-                }
+                });
 
                 showNotification('تم إضافة فئة السيارات بنجاح', 'success');
                 await loadVehicleCategoriesFromDB();
-                return data;
+                return resData.category;
                 
             } catch (error) {
                 console.error('Error adding vehicle category:', error);
@@ -3462,7 +3351,6 @@
 
         async function updateVehicleCategory(categoryId, updates) {
             try {
-                // Make sure we're using the correct column names
                 const formattedUpdates = {};
                 if (updates.name_ar) formattedUpdates.name_ar = updates.name_ar;
                 if (updates.description_ar !== undefined) formattedUpdates.description_ar = updates.description_ar;
@@ -3470,28 +3358,14 @@
                 if (updates.sort_order !== undefined) formattedUpdates.sort_order = updates.sort_order;
                 if (updates.is_active !== undefined) formattedUpdates.is_active = updates.is_active;
 
-                const { data, error } = await adminSupabase
-                    .from('vehicle_categories')
-                    .update(formattedUpdates)
-                    .eq('id', categoryId)
-                    .select()
-                    .single();
-
-                if (error) {
-                    console.error('Database error:', error);
-                    // Update locally
-                    const index = vehicleCategories.findIndex(c => c.id === categoryId);
-                    if (index !== -1) {
-                        vehicleCategories[index] = { ...vehicleCategories[index], ...updates };
-                    }
-                    displayCategoriesTables();
-                    showNotification('تم تحديث فئة السيارات محلياً (خطأ في قاعدة البيانات)', 'warning');
-                    return vehicleCategories[index];
-                }
+                const resData = await adminApiCall('update_category', {
+                    id: categoryId,
+                    updates: formattedUpdates
+                });
 
                 showNotification('تم تحديث فئة السيارات بنجاح', 'success');
                 await loadVehicleCategoriesFromDB();
-                return data;
+                return resData.category;
                 
             } catch (error) {
                 console.error('Error updating vehicle category:', error);
@@ -3509,24 +3383,10 @@
 
         async function toggleCategoryStatus(categoryId, isActive) {
             try {
-                const { error } = await adminSupabase
-                    .from('vehicle_categories')
-                    .update({ 
-                        is_active: isActive
-                    })
-                    .eq('id', categoryId);
-
-                if (error) {
-                    console.error('Database error:', error);
-                    // Update locally
-                    const category = vehicleCategories.find(c => c.id === categoryId);
-                    if (category) {
-                        category.is_active = isActive;
-                    }
-                    displayCategoriesTables();
-                    showNotification('تم تغيير حالة الفئة محلياً (خطأ في قاعدة البيانات)', 'warning');
-                    return;
-                }
+                await adminApiCall('update_category', {
+                    id: categoryId,
+                    updates: { is_active: isActive }
+                });
 
                 showNotification(`تم ${isActive ? 'تفعيل' : 'تعطيل'} فئة السيارات`, 'success');
                 await loadVehicleCategoriesFromDB();
@@ -3814,12 +3674,8 @@
 
         async function toggleDriverStatus(driverId, newStatus) {
             try {
-                const { error } = await adminSupabase
-                    .from('drivers')
-                    .update({ is_active: newStatus })
-                    .eq('id', driverId);
-
-                if (error) throw error;
+                // تعديل حالة السائق عبر الـ API الآمنة
+                await adminApiCall('toggle_driver', { id: driverId, is_active: newStatus });
 
                 const driver = allDrivers.find(d => d.id === driverId);
                 if (driver) driver.is_active = newStatus;
@@ -4083,20 +3939,8 @@
             ];
             
             try {
-                // Save each setting individually
-                const promises = settingsArray.map(async (setting) => {
-                    const { error } = await adminSupabase
-                        .from('system_settings')
-                        .upsert({ key: setting.key, value: setting.value }, { 
-                            onConflict: 'key',
-                            ignoreDuplicates: false 
-                        });
-
-                    if (error) throw error;
-                    return true;
-                });
-
-                await Promise.all(promises);
+                // حفظ الإعدادات عبر الـ API الآمنة
+                await adminApiCall('save_settings', { settings: settingsArray });
                 showNotification('تم حفظ الإعدادات بنجاح في قاعدة البيانات', 'success');
                 
             } catch (error) {
