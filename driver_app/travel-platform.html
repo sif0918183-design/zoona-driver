@@ -1640,7 +1640,7 @@ async function loadInitialData() {
     try {
         await loadCities();
         await loadVehicleCategories();
-        createDefaultRoutes();
+        await loadTravelRoutes();
         if (userType === 'passenger') {
             await loadPassengerRides();
             await loadPassengerChats();
@@ -1726,6 +1726,46 @@ function createDefaultRoutes() {
             routes.push({from_city:t, to_city:f, base_price_eco:DEFAULT_PRICES[rkey]});
         }
     });
+}
+
+let travelPricePerKm = 1000;
+
+async function loadTravelRoutes() {
+    try {
+        // Fetch travel price per km
+        const { data: settingsData, error: sErr } = await travelSupabase
+            .from('system_settings')
+            .select('value')
+            .eq('key', 'travel_price_per_km')
+            .maybeSingle();
+
+        if (!sErr && settingsData) {
+            travelPricePerKm = parseFloat(settingsData.value) || 1000;
+        } else {
+            travelPricePerKm = 1000;
+        }
+
+        // Fetch routes from travel_routes table
+        const { data: routesData, error: rErr } = await travelSupabase
+            .from('travel_routes')
+            .select('*')
+            .eq('is_active', true);
+
+        if (!rErr && routesData && routesData.length > 0) {
+            routes = routesData.map(r => ({
+                id: r.id,
+                from_city: r.from_city,
+                to_city: r.to_city,
+                distance_km: parseFloat(r.distance_km),
+                base_price_eco: parseFloat(r.distance_km) * travelPricePerKm
+            }));
+        } else {
+            createDefaultRoutes();
+        }
+    } catch (e) {
+        console.error('Error loading travel routes:', e);
+        createDefaultRoutes();
+    }
 }
 
 // ============================================
