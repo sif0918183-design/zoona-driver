@@ -1272,14 +1272,18 @@
                             <div class="chart-header">
                                 <h3 class="chart-title">رحلات الشهر الحالي</h3>
                             </div>
-                            <canvas id="ridesChart" height="250"></canvas>
+                            <div style="position: relative; height: 250px; width: 100%;">
+                                <canvas id="ridesChart"></canvas>
+                            </div>
                         </div>
                         
                         <div class="chart-card">
                             <div class="chart-header">
                                 <h3 class="chart-title">الإيرادات حسب الفئة</h3>
                             </div>
-                            <canvas id="revenueChart" height="250"></canvas>
+                            <div style="position: relative; height: 250px; width: 100%;">
+                                <canvas id="revenueChart"></canvas>
+                            </div>
                         </div>
                     </div>
 
@@ -1422,6 +1426,17 @@
                                 </button>
                             </div>
                         </div>
+
+                        <!-- Global price per kilometer box -->
+                        <div style="padding: 1.5rem; border-bottom: 1px solid var(--gray-200); background: var(--gray-50); display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                <label class="form-label" style="margin: 0; white-space: nowrap; font-weight: bold; color: var(--tech-text);">سعر الكيلومتر الموحد لكافة المدن (SDG):</label>
+                                <input type="number" class="form-control" id="global-price-per-km" value="1000" style="width: 150px; max-width: 100%;" min="1" step="100">
+                            </div>
+                            <button class="btn btn-secondary btn-sm" onclick="saveGlobalPricePerKm()">
+                                <i class="ph-light ph-floppy-disk"></i> حفظ سعر الكيلو
+                            </button>
+                        </div>
                         
                         <div class="table-content">
                             <table class="table">
@@ -1429,6 +1444,7 @@
                                     <tr>
                                         <th>المدينة الأصل</th>
                                         <th>المدينة الوجهة</th>
+                                        <th>المسافة (كم)</th>
                                         <th>السعر الأساسي (Eco)</th>
                                         <th>حالة</th>
                                         <th>تاريخ التحديث</th>
@@ -1579,14 +1595,18 @@
                                     <option value="12">ديسمبر</option>
                                 </select>
                             </div>
-                            <canvas id="monthlyRevenueChart" height="250"></canvas>
+                            <div style="position: relative; height: 250px; width: 100%;">
+                                <canvas id="monthlyRevenueChart"></canvas>
+                            </div>
                         </div>
                         
                         <div class="chart-card">
                             <div class="chart-header">
                                 <h3 class="chart-title">أكثر المدن طلباً</h3>
                             </div>
-                            <canvas id="popularCitiesChart" height="250"></canvas>
+                            <div style="position: relative; height: 250px; width: 100%;">
+                                <canvas id="popularCitiesChart"></canvas>
+                            </div>
                         </div>
                     </div>
                     
@@ -1901,8 +1921,13 @@
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label">السعر الأساسي (Eco)</label>
-                    <input type="number" class="form-control" id="base-price" required min="0" step="1000">
+                    <label class="form-label">المسافة بين المدينتين (كم)</label>
+                    <input type="number" class="form-control" id="route-distance" required min="1" step="any" placeholder="أدخل المسافة بالكيلومترات" oninput="calculateModalBasePrice()">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">السعر الأساسي المحسوب (Eco)</label>
+                    <input type="text" class="form-control" id="calculated-base-price" readonly style="background: var(--gray-50); font-weight: bold; color: var(--success);" placeholder="سيتم حسابه تلقائياً">
                 </div>
                 
                 <div class="form-group">
@@ -2022,6 +2047,7 @@
         let allRides = [];
         const STOP_BALANCE_THRESHOLD = 1000;
         let allPrices = [];
+        let travelPricePerKm = 1000;
         let allDrivers = [];
         let allPassengers = [];
         let vehicleCategories = [];
@@ -2694,31 +2720,83 @@
 
         async function loadTravelRoutes() {
             try {
-                // Try to load cities from database
-                let displayCities = cities;
-                if (displayCities.length === 0) {
-                    displayCities = ['الخرطوم', 'مدني', 'القضارف', 'كسلا', 'بورتسودان', 'عطبرة'];
+                // 1. Fetch global price per km
+                const { data: settingsData, error: sError } = await adminSupabase
+                    .from('system_settings')
+                    .select('value')
+                    .eq('key', 'travel_price_per_km')
+                    .maybeSingle();
+
+                if (!sError && settingsData) {
+                    travelPricePerKm = parseFloat(settingsData.value) || 1000;
+                } else {
+                    travelPricePerKm = 1000;
                 }
                 
-                allPrices = [];
-                displayCities.forEach((fromCity, i) => {
-                    displayCities.forEach((toCity, j) => {
-                        if (i !== j) {
-                            const basePrice = calculateEstimatedPrice(fromCity, toCity);
-                            allPrices.push({
-                                id: i * 100 + j,
-                                from_city: fromCity,
-                                to_city: toCity,
-                                base_price_eco: basePrice,
-                                is_active: true,
-                                updated_at: new Date().toISOString()
-                            });
-                        }
+                // Update the input box
+                const inputEl = document.getElementById('global-price-per-km');
+                if (inputEl) inputEl.value = travelPricePerKm;
+
+                // 2. Fetch routes from travel_routes table
+                const { data: routesData, error: rError } = await adminSupabase
+                    .from('travel_routes')
+                    .select('*')
+                    .order('from_city', { ascending: true });
+
+                if (!rError && routesData && routesData.length > 0) {
+                    allPrices = routesData;
+                } else {
+                    console.log('No routes found in travel_routes table, generating default static routes...');
+                    // Fallback to default cities and pricing (divided by 1000 for distance_km)
+                    const displayCities = cities.length > 0 ? cities : ['الخرطوم', 'مدني', 'القضارف', 'كسلا', 'بورتسودان', 'عطبرة'];
+                    allPrices = [];
+                    displayCities.forEach((fromCity) => {
+                        displayCities.forEach((toCity) => {
+                            if (fromCity !== toCity) {
+                                const basePrice = calculateEstimatedPrice(fromCity, toCity);
+                                allPrices.push({
+                                    id: null, // Indicates temporary local route
+                                    from_city: fromCity,
+                                    to_city: toCity,
+                                    distance_km: basePrice / 1000,
+                                    is_active: true,
+                                    updated_at: new Date().toISOString()
+                                });
+                            }
+                        });
                     });
-                });
+                }
                 
             } catch (error) {
                 console.error('Error loading travel routes:', error);
+                showNotification('خطأ في تحميل أسعار الرحلات، تم استخدام الافتراضية', 'warning');
+            }
+        }
+
+        async function saveGlobalPricePerKm() {
+            const inputEl = document.getElementById('global-price-per-km');
+            if (!inputEl) return;
+            const value = parseFloat(inputEl.value);
+            if (!value || value <= 0) {
+                showNotification('الرجاء إدخال سعر صحيح أكبر من الصفر', 'warning');
+                return;
+            }
+
+            try {
+                // Use save_settings action
+                await adminApiCall('save_settings', {
+                    settings: [{ key: 'travel_price_per_km', value: value.toString() }]
+                });
+
+                travelPricePerKm = value;
+                showNotification('تم حفظ سعر الكيلومتر الموحد بنجاح', 'success');
+
+                // Recalculate display prices in table
+                displayPricesTable();
+
+            } catch (e) {
+                console.error('Error saving price per km:', e);
+                showNotification('خطأ في حفظ سعر الكيلومتر: ' + e.message, 'error');
             }
         }
 
@@ -3188,7 +3266,7 @@
             if (allPrices.length === 0) {
                 container.innerHTML = `
                     <tr>
-                        <td colspan="6" style="text-align: center; padding: 2rem;">
+                        <td colspan="7" style="text-align: center; padding: 2rem;">
                             <div class="empty-state" style="padding: 0;">
                                 <div class="empty-icon">💰</div>
                                 <div class="empty-title">لا توجد أسعار</div>
@@ -3200,11 +3278,13 @@
             }
             
             allPrices.forEach(price => {
+                const calculatedEcoPrice = Math.round((parseFloat(price.distance_km) || 0) * travelPricePerKm);
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${price.from_city}</td>
                     <td>${price.to_city}</td>
-                    <td style="font-weight: 700; color: var(--success);">${(price.base_price_eco || 0).toLocaleString()} ج</td>
+                    <td style="font-weight: 600;">${(parseFloat(price.distance_km) || 0).toLocaleString()} كم</td>
+                    <td style="font-weight: 700; color: var(--success);">${calculatedEcoPrice.toLocaleString()} ج</td>
                     <td><span class="badge ${price.is_active ? 'badge-success' : 'badge-danger'}">${price.is_active ? 'نشط' : 'غير نشط'}</span></td>
                     <td>${formatDateShort(price.updated_at)}</td>
                     <td>
@@ -3958,10 +4038,20 @@
         // ============================================
         // PRICE MODAL FUNCTIONS
         // ============================================
+        function calculateModalBasePrice() {
+            const distanceInput = document.getElementById('route-distance');
+            const calculatedEl = document.getElementById('calculated-base-price');
+            if (!distanceInput || !calculatedEl) return;
+            const distance = parseFloat(distanceInput.value) || 0;
+            const calculated = Math.round(distance * travelPricePerKm);
+            calculatedEl.value = distance > 0 ? calculated.toLocaleString() + ' ج' : 'سيتم حسابه تلقائياً';
+        }
+
         function showAddPriceModal() {
             document.getElementById('price-modal-title').textContent = 'إضافة سعر جديد';
             document.getElementById('price-form').reset();
             document.getElementById('price-id').value = '';
+            document.getElementById('calculated-base-price').value = 'سيتم حسابه تلقائياً';
             
             // Populate city dropdowns
             populateModalCityDropdowns();
@@ -3973,7 +4063,7 @@
             const price = allPrices.find(p => p.id === priceId);
             if (!price) return;
             
-            document.getElementById('price-modal-title').textContent = 'تعديل السعر';
+            document.getElementById('price-modal-title').textContent = 'تعديل السعر والمسافة';
             document.getElementById('price-id').value = price.id;
             
             // Populate city dropdowns
@@ -3982,9 +4072,11 @@
             // Set current values
             document.getElementById('price-from-city').value = price.from_city;
             document.getElementById('price-to-city').value = price.to_city;
-            document.getElementById('base-price').value = price.base_price_eco;
+            document.getElementById('route-distance').value = price.distance_km;
             document.getElementById('price-status').value = price.is_active ? 'active' : 'inactive';
             
+            calculateModalBasePrice();
+
             document.getElementById('price-modal').classList.remove('hidden');
         }
 
@@ -4009,50 +4101,70 @@
             }
         }
 
-        document.getElementById('price-form')?.addEventListener('submit', function(e) {
+        document.getElementById('price-form')?.addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const priceId = document.getElementById('price-id').value;
             const fromCity = document.getElementById('price-from-city').value;
             const toCity = document.getElementById('price-to-city').value;
-            const basePrice = document.getElementById('base-price').value;
+            const distance = parseFloat(document.getElementById('route-distance').value);
             const status = document.getElementById('price-status').value;
             
-            if (priceId) {
-                // Update existing price
-                const price = allPrices.find(p => p.id == priceId);
-                if (price) {
-                    price.from_city = fromCity;
-                    price.to_city = toCity;
-                    price.base_price_eco = basePrice;
-                    price.is_active = status === 'active';
-                    price.updated_at = new Date().toISOString();
-                }
-            } else {
-                // Add new price
-                const newPrice = {
-                    id: allPrices.length + 1,
-                    from_city: fromCity,
-                    to_city: toCity,
-                    base_price_eco: basePrice,
-                    is_active: status === 'active',
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                };
-                allPrices.push(newPrice);
+            if (!fromCity || !toCity || !distance || distance <= 0) {
+                showNotification('الرجاء إدخال بيانات صحيحة ومسافة أكبر من صفر', 'warning');
+                return;
             }
-            
-            closePriceModal();
-            displayPricesTable();
-            showNotification(priceId ? 'تم تحديث السعر بنساح' : 'تم إضافة السعر بنساح', 'success');
+
+            try {
+                if (priceId && priceId !== 'null' && priceId !== '') {
+                    // Update existing price securely
+                    await adminApiCall('update_travel_route', {
+                        id: parseInt(priceId),
+                        updates: {
+                            from_city: fromCity,
+                            to_city: toCity,
+                            distance_km: distance,
+                            is_active: status === 'active'
+                        }
+                    });
+                    showNotification('تم تحديث السعر والمسافة بنجاح', 'success');
+                } else {
+                    // Add new price securely
+                    await adminApiCall('add_travel_route', {
+                        fromCity,
+                        toCity,
+                        distanceKm: distance,
+                        isActive: status === 'active'
+                    });
+                    showNotification('تم إضافة السعر والمسافة بنجاح', 'success');
+                }
+
+                closePriceModal();
+                await loadTravelRoutes();
+                displayPricesTable();
+
+            } catch (error) {
+                console.error('Error saving price:', error);
+                showNotification('خطأ في حفظ السعر والمسافة: ' + error.message, 'error');
+            }
         });
 
-        function deletePrice(priceId) {
-            if (!confirm('هل أنت متأكد من حذف هذا السعر؟')) return;
+        async function deletePrice(priceId) {
+            if (!priceId || priceId === 'null' || priceId === '') {
+                showNotification('لا يمكن حذف مسار افتراضي غير مسجل في قاعدة البيانات', 'warning');
+                return;
+            }
+            if (!confirm('هل أنت متأكد من حذف هذا السعر والمسافة نهائياً من قاعدة البيانات؟')) return;
             
-            allPrices = allPrices.filter(price => price.id !== priceId);
-            displayPricesTable();
-            showNotification('تم حذف السعر بنساح', 'success');
+            try {
+                await adminApiCall('delete_travel_route', { id: parseInt(priceId) });
+                showNotification('تم حذف السعر والمسافة بنجاح من قاعدة البيانات', 'success');
+                await loadTravelRoutes();
+                displayPricesTable();
+            } catch (error) {
+                console.error('Error deleting price:', error);
+                showNotification('خطأ في حذف السعر: ' + error.message, 'error');
+            }
         }
 
         function closePriceModal() {

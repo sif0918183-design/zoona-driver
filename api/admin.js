@@ -342,6 +342,70 @@ export default async function handler(req, res) {
             return res.status(200).json({ success: true, category: data });
         }
 
+        // --- ADD TRAVEL ROUTE ---
+        if (action === 'add_travel_route') {
+            const { fromCity, toCity, distanceKm, isActive } = req.body;
+            if (!fromCity || !toCity || distanceKm === undefined) {
+                return res.status(400).json({ success: false, error: 'الرجاء إدخال المدن والمسافة' });
+            }
+
+            const { data, error } = await supabase
+                .from('travel_routes')
+                .insert([{
+                    from_city: fromCity.trim(),
+                    to_city: toCity.trim(),
+                    distance_km: parseFloat(distanceKm),
+                    is_active: isActive !== false,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }])
+                .select()
+                .single();
+
+            if (error) throw error;
+            return res.status(200).json({ success: true, route: data });
+        }
+
+        // --- UPDATE TRAVEL ROUTE ---
+        if (action === 'update_travel_route') {
+            const { id, updates } = req.body;
+            if (!id || !updates) {
+                return res.status(400).json({ success: false, error: 'Route ID and updates are required' });
+            }
+
+            // Convert distance_km if specified
+            const formattedUpdates = { ...updates, updated_at: new Date().toISOString() };
+            if (updates.distance_km !== undefined) {
+                formattedUpdates.distance_km = parseFloat(updates.distance_km);
+            }
+
+            const { data, error } = await supabase
+                .from('travel_routes')
+                .update(formattedUpdates)
+                .eq('id', id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            return res.status(200).json({ success: true, route: data });
+        }
+
+        // --- DELETE TRAVEL ROUTE ---
+        if (action === 'delete_travel_route') {
+            const { id } = req.body;
+            if (!id) {
+                return res.status(400).json({ success: false, error: 'Route ID is required' });
+            }
+
+            const { error } = await supabase
+                .from('travel_routes')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+            return res.status(200).json({ success: true });
+        }
+
         // --- ADD NEW DRIVER (SECURE BCRYPT) ---
         if (action === 'add_driver') {
             const { name, phone, password, carModel, carType, carPlate, carColor, initialBalance } = req.body;
