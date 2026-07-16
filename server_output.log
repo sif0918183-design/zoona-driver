@@ -1,8 +1,0 @@
-127.0.0.1 - - [16/Jul/2026 17:02:28] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [16/Jul/2026 17:02:28] "GET /passenger_app/travel-platform.html HTTP/1.1" 200 -
-127.0.0.1 - - [16/Jul/2026 17:02:28] code 404, message File not found
-127.0.0.1 - - [16/Jul/2026 17:02:28] "GET /api/supabase-config HTTP/1.1" 404 -
-127.0.0.1 - - [16/Jul/2026 17:02:28] "GET /shared/theme.css HTTP/1.1" 200 -
-127.0.0.1 - - [16/Jul/2026 17:04:11] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [16/Jul/2026 17:04:11] "GET /passenger_app/travel-platform.html HTTP/1.1" 200 -
-127.0.0.1 - - [16/Jul/2026 17:04:11] "GET /shared/theme.css HTTP/1.1" 200 -

@@ -747,7 +747,7 @@
                             <div class="form-group">
                                 <label class="form-label">تاريخ الرحلة (يوم/شهر/سنة) <span style="color: red;">*</span></label>
                                 <div style="display: flex; gap: 0.5rem;">
-                                    <select class="form-control form-select" id="travel-day" required style="flex: 1.2;">
+                                    <select class="form-control form-select" id="travel-day" required style="flex: 1.2; padding: 0.5rem 0.25rem; padding-left: 1.25rem; font-size: 0.85rem; background-position: left 0.25rem center; background-size: 0.75rem;">
                                         <option value="">اليوم</option>
                                         <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
                                         <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
@@ -757,26 +757,26 @@
                                         <option value="26">26</option><option value="27">27</option><option value="28">28</option><option value="29">29</option><option value="30">30</option>
                                         <option value="31">31</option>
                                     </select>
-                                    <select class="form-control form-select" id="travel-month" required style="flex: 1.2;">
+                                    <select class="form-control form-select" id="travel-month" required style="flex: 1.2; padding: 0.5rem 0.25rem; padding-left: 1.25rem; font-size: 0.85rem; background-position: left 0.25rem center; background-size: 0.75rem;">
                                         <option value="">الشهر</option>
                                         <option value="1">1 (يناير)</option><option value="2">2 (فبراير)</option><option value="3">3 (مارس)</option>
                                         <option value="4">4 (أبريل)</option><option value="5">5 (مايو)</option><option value="6">6 (يونيو)</option>
                                         <option value="7">7 (يوليو)</option><option value="8">8 (أغسطس)</option><option value="9">9 (سبتمبر)</option>
                                         <option value="10">10 (أكتوبر)</option><option value="11">11 (نوفمبر)</option><option value="12">12 (ديسمبر)</option>
                                     </select>
-                                    <input type="text" class="form-control" id="travel-year" value="2026" readonly style="flex: 0.8; text-align: center; background: #e2e8f0; font-weight: bold; color: #475569;">
+                                    <input type="text" class="form-control" id="travel-year" value="2026" readonly style="flex: 0.8; text-align: center; background: #e2e8f0; font-weight: bold; color: #475569; padding: 0.5rem 0.25rem; font-size: 0.85rem;">
                                 </div>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">وقت الرحلة <span style="color: red;">*</span></label>
                                 <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                    <select class="form-control form-select" id="travel-hour" required style="flex: 1;">
+                                    <select class="form-control form-select" id="travel-hour" required style="flex: 1; padding: 0.5rem 0.25rem; padding-left: 1.25rem; font-size: 0.85rem; background-position: left 0.25rem center; background-size: 0.75rem;">
                                         <option value="">الساعة</option>
                                         <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
                                         <option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option>
                                         <option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option>
                                     </select>
-                                    <select class="form-control form-select" id="travel-minute" required style="flex: 1;">
+                                    <select class="form-control form-select" id="travel-minute" required style="flex: 1; padding: 0.5rem 0.25rem; padding-left: 1.25rem; font-size: 0.85rem; background-position: left 0.25rem center; background-size: 0.75rem;">
                                         <option value="">الدقيقة</option>
                                         <option value="00">00</option><option value="05">05</option><option value="10">10</option><option value="15">15</option>
                                         <option value="20">20</option><option value="25">25</option><option value="30">30</option><option value="35">35</option>
@@ -2016,13 +2016,22 @@ function calculateRidePrice(category) {
     const fromCity = document.getElementById('from-city').value;
     const toCity = document.getElementById('to-city').value;
     if (!fromCity || !toCity) { document.getElementById('price-preview').classList.add('hidden'); return; }
-    const route = routes.find(r => r.from_city === fromCity && r.to_city === toCity);
+    let route = routes.find(r => r.from_city === fromCity && r.to_city === toCity);
     const pricePreview = document.getElementById('price-preview');
     const priceDetails = document.getElementById('price-details');
     if (!route) {
-        pricePreview.classList.remove('hidden');
-        priceDetails.innerHTML = `<div style="background:var(--danger-light);padding:1rem;border-radius:var(--radius);border:1px solid var(--danger);color:var(--danger);font-weight:600;">عذراً، لا توجد رحلة بين ${fromCity} و ${toCity}</div>`;
-        return;
+        if (fromCity === toCity) {
+            pricePreview.classList.remove('hidden');
+            priceDetails.innerHTML = `<div style="background:var(--danger-light);padding:1rem;border-radius:var(--radius);border:1px solid var(--danger);color:var(--danger);font-weight:600;">الرجاء اختيار مدينتين مختلفتين</div>`;
+            return;
+        }
+        route = {
+            from_city: fromCity,
+            to_city: toCity,
+            base_price_eco: 30000,
+            is_fallback: true
+        };
+        routes.push(route);
     }
     const base = route.base_price_eco || 30000;
     const mult = category.price_multiplier || 1;
@@ -2067,8 +2076,20 @@ document.getElementById('ride-request-form')?.addEventListener('submit', async f
     const sel = document.querySelector('.vehicle-category.selected');
     if (!sel) { showNotification('الرجاء اختيار فئة السيارة', 'warning'); return; }
     const cat = vehicleCategories.find(c => c.id == sel.dataset.id);
-    const route = routes.find(r => r.from_city === fromCity && r.to_city === toCity);
-    if (!route) { showNotification('لا توجد رحلة بين هاتين المدينتين', 'error'); return; }
+    let route = routes.find(r => r.from_city === fromCity && r.to_city === toCity);
+    if (!route) {
+        if (fromCity === toCity) {
+            showNotification('الرجاء اختيار مدينتين مختلفتين', 'warning');
+            return;
+        }
+        route = {
+            from_city: fromCity,
+            to_city: toCity,
+            base_price_eco: 30000,
+            is_fallback: true
+        };
+        routes.push(route);
+    }
 
     const finalPrice = Math.round((route.base_price_eco || 30000) * cat.price_multiplier);
     const btn = document.getElementById('submit-ride-btn');
@@ -2450,7 +2471,7 @@ async function loadPassengerChats() {
             const last = msgs[0];
 
             // Get unread count using user_message_reads
-            const unreadCount = await getUnreadCount(req.id, last.id);
+            const unreadCount = await getUnreadCount(req.id, last.id, last.sender_id);
 
             validChats.push({
                 id: req.id, ride_id: req.id,
@@ -2898,7 +2919,7 @@ async function loadDriverChats() {
             const passengerSent = msgs.some(m => m.sender_id !== currentUser.id);
             if (!passengerSent && !isFinal) continue;
 
-            const unreadCount = await getUnreadCount(rideId, last.id);
+            const unreadCount = await getUnreadCount(rideId, last.id, last.sender_id);
             chats.push({
                 id: rideId, ride_id: rideId,
                 other_user_name: displayName,
@@ -3178,7 +3199,8 @@ async function markMessageRead(chatId, lastMessageId) {
     }
 }
 
-async function getUnreadCount(chatId, lastMessageId) {
+async function getUnreadCount(chatId, lastMessageId, lastSenderId) {
+    if (lastSenderId === currentUser.id) return 0;
     try {
         // Try DB first
         const {data:readData} = await travelSupabase
