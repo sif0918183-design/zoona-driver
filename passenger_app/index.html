@@ -2266,6 +2266,7 @@ window.addEventListener('rideRequest', (event) => {
 });
 let selectedVehicleType = null;
 let googleMap = null;
+let mapDriversMarkers = [];
 let markersMap = {
     startMarker: null,
     endMarker: null
@@ -2484,6 +2485,7 @@ function initializeMap() {
     
     // تفعيل الوضع التلقائي مباشرة
     setLocationMode('auto');
+    drawDriversOnMap();
 }
 
 // ============================================
@@ -3410,10 +3412,51 @@ function clearAllMarkers() {
         directionsRenderer.setDirections({ routes: [] });
     }
     
+    if (mapDriversMarkers && mapDriversMarkers.length > 0) {
+        mapDriversMarkers.forEach(m => m.setMap(null));
+    }
+    mapDriversMarkers = [];
+
     userPosition = null;
     destinationPosition = null;
     currentRoute = null;
     routeCalculated = false;
+}
+
+async function drawDriversOnMap() {
+    // Clear old driver markers
+    if (mapDriversMarkers && mapDriversMarkers.length > 0) {
+        mapDriversMarkers.forEach(m => m.setMap(null));
+    }
+    mapDriversMarkers = [];
+
+    if (!googleMap) return;
+    try {
+        const { data: locations, error } = await tarhalDB
+            .from('driver_locations')
+            .select('lat, lng, car_type')
+            .eq('is_online', true)
+            .eq('is_available', true);
+
+        if (!error && locations && locations.length > 0) {
+            locations.forEach(loc => {
+                if (loc.lat && loc.lng) {
+                    const marker = new google.maps.Marker({
+                        position: { lat: parseFloat(loc.lat), lng: parseFloat(loc.lng) },
+                        map: googleMap,
+                        icon: {
+                            url: 'https://cdn-icons-png.flaticon.com/512/3202/3202926.png',
+                            scaledSize: new google.maps.Size(35, 35),
+                            anchor: new google.maps.Point(17, 17)
+                        }
+                    });
+                    mapDriversMarkers.push(marker);
+                }
+            });
+        }
+    } catch (err) {
+        console.error('Error drawing drivers on map:', err);
+    }
 }
 
 function recenterMap() {
@@ -3715,6 +3758,7 @@ function requestRide() {
             clearAllMarkers();
             setLocationMode('auto');
         }
+        drawDriversOnMap();
     }, 100);
 }
 
