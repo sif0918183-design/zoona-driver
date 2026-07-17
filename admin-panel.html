@@ -1908,16 +1908,14 @@
                 
                 <div class="form-group">
                     <label class="form-label">المدينة الأصل</label>
-                    <select class="form-control form-select" id="price-from-city" required>
-                        <option value="">اختر المدينة</option>
-                    </select>
+                    <input type="text" class="form-control" id="price-from-city" list="from-cities-list" required placeholder="اختر المدينة أو اكتب اسماً جديداً">
+                    <datalist id="from-cities-list"></datalist>
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label">المدينة الوجهة</label>
-                    <select class="form-control form-select" id="price-to-city" required>
-                        <option value="">اختر المدينة</option>
-                    </select>
+                    <input type="text" class="form-control" id="price-to-city" list="to-cities-list" required placeholder="اختر المدينة أو اكتب اسماً جديداً">
+                    <datalist id="to-cities-list"></datalist>
                 </div>
                 
                 <div class="form-group">
@@ -4081,22 +4079,31 @@
         }
 
         function populateModalCityDropdowns() {
-            const fromCitySelect = document.getElementById('price-from-city');
-            const toCitySelect = document.getElementById('price-to-city');
-            
-            if (fromCitySelect && toCitySelect) {
-                fromCitySelect.innerHTML = '<option value="">اختر المدينة</option>';
-                toCitySelect.innerHTML = '<option value="">اختر المدينة</option>';
+            const fromDatalist = document.getElementById('from-cities-list');
+            const toDatalist = document.getElementById('to-cities-list');
+
+            if (fromDatalist && toDatalist) {
+                fromDatalist.innerHTML = '';
+                toDatalist.innerHTML = '';
+
+                // Extract all unique cities from both cities array and currently configured prices
+                const uniqueCitiesSet = new Set(cities);
+                if (allPrices && allPrices.length > 0) {
+                    allPrices.forEach(p => {
+                        if (p.from_city) uniqueCitiesSet.add(p.from_city.trim());
+                        if (p.to_city) uniqueCitiesSet.add(p.to_city.trim());
+                    });
+                }
+                const sortedCities = Array.from(uniqueCitiesSet).sort();
                 
-                cities.forEach(city => {
+                sortedCities.forEach(city => {
                     const option1 = document.createElement('option');
                     option1.value = city;
-                    option1.textContent = city;
                     
                     const option2 = option1.cloneNode(true);
                     
-                    fromCitySelect.appendChild(option1);
-                    toCitySelect.appendChild(option2);
+                    fromDatalist.appendChild(option1);
+                    toDatalist.appendChild(option2);
                 });
             }
         }
