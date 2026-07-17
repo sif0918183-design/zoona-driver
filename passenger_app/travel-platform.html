@@ -1076,6 +1076,10 @@
                 <span id="chat-with-name"></span>
                 <span id="chat-ride-info" style="font-size:0.85rem;opacity:0.8;"></span>
             </div>
+            <div id="chat-associated-ride-banner" style="background:#f0fdf4; border-bottom:1px solid #bbf7d0; padding:0.75rem 1rem; font-size:0.85rem; color:#16a34a; font-weight:600; display:flex; gap:0.5rem; align-items:center; text-align:right; direction:rtl;">
+                <i class="ph-bold ph-info" style="font-size:1.1rem; color:var(--Tracka-primary);"></i>
+                <span id="chat-associated-ride-text">جاري تحميل بيانات الرحلة...</span>
+            </div>
             <div class="chat-messages" id="chat-messages"></div>
             <div class="chat-input-container">
                 <input type="text" class="chat-input" id="chat-input" placeholder="اكتب رسالتك هنا...">
@@ -1207,7 +1211,57 @@ function getCategoryRank(categoryName) {
 // ============================================
 document.addEventListener('DOMContentLoaded', async function() {
     await initializeUser();
+    await handleHashRouting();
+    window.addEventListener('hashchange', handleHashRouting);
 });
+
+async function handleHashRouting() {
+    const hash = window.location.hash;
+    if (!hash) {
+        const chatModal = document.getElementById('chat-modal');
+        if (chatModal && !chatModal.classList.contains('hidden')) {
+            chatModal.classList.add('hidden');
+            currentChat = null;
+        }
+        return;
+    }
+
+    if (hash === '#chats') {
+        const chatModal = document.getElementById('chat-modal');
+        if (chatModal && !chatModal.classList.contains('hidden')) {
+            chatModal.classList.add('hidden');
+            currentChat = null;
+        }
+
+        const tabId = userType === 'passenger' ? 'active-chats' : 'driver-chats';
+        const button = document.querySelector(`.tab[onclick*="${tabId}"]`);
+        if (button) showTab(tabId, button);
+    } else if (hash.startsWith('#chat-')) {
+        const rideId = hash.replace('#chat-', '');
+        if (!rideId) return;
+
+        const tabId = userType === 'passenger' ? 'active-chats' : 'driver-chats';
+        const button = document.querySelector(`.tab[onclick*="${tabId}"]`);
+        if (button) await showTab(tabId, button);
+
+        try {
+            const {data:ride} = await travelSupabase.from('ride_requests').select('*').eq('id', rideId).single();
+            if (ride) {
+                if (userType === 'passenger') {
+                    const isFinal = ['driver_selected','confirmed','in_progress'].includes(ride.status);
+                    const displayName = isFinal ? (ride.driver_name || 'سائق تراكا') : 'سائق تراكا';
+                    openChatSimple(rideId, displayName, rideId);
+                } else {
+                    const isFinal = (ride.status === 'driver_selected' || ride.status === 'confirmed' || ride.status === 'in_progress') && ride.driver_id === currentUser.id;
+                    const displayName = isFinal ? (ride.passenger_name || 'راكب تراكا') : 'راكب تراكا';
+                    openDriverChat(rideId, displayName, ride.customer_id, isFinal);
+                }
+            }
+        } catch (err) {
+            console.error('Error handling hash routing for specific chat:', err);
+        }
+    }
+}
 
 async function initializeUser() {
     const loadingScreen = document.getElementById('loading-screen');
@@ -1392,8 +1446,30 @@ async function showActiveTripModal(trip) {
         driverInfo = data;
     }
     if (trip.passenger_id) {
-        const {data} = await travelSupabase.from('customers').select('full_name,phone,phone2').eq('id',trip.passenger_id).single();
-        passengerInfo = data;
+        try {
+            const token = localStorage.getItem('tarhal_session_token') || btoa(JSON.stringify({id: currentUser.id, exp: Date.now() + 86400000}));
+            const res = await fetch('/api/travel-platform', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    action: 'get_trip_passenger_details',
+                    tripId: trip.id
+                })
+            });
+            const resData = await res.json();
+            if (resData.success) {
+                passengerInfo = resData.passengerInfo;
+            }
+        } catch (e) {
+            console.error('Failed to fetch passenger details from secure API:', e);
+        }
+        if (!passengerInfo) {
+            const {data} = await travelSupabase.from('customers').select('full_name,phone,phone2').eq('id',trip.passenger_id).single();
+            passengerInfo = data;
+        }
     }
 
     // Populate modal
@@ -1450,11 +1526,15 @@ async function showActiveTripModal(trip) {
         if (passengerInfo?.phone2) passengerPhones.push(passengerInfo.phone2);
         if (passengerPhones.length === 0 && rideReq?.passenger_phone) passengerPhones.push(rideReq.passenger_phone);
 
-        if (passengerPhones.length > 0) {
-            passengerPhones.forEach(ph => {
+        // Filter empty/duplicate values
+        const uniquePhones = [...new Set(passengerPhones)].filter(Boolean);
+
+        if (uniquePhones.length > 0) {
+            uniquePhones.forEach((ph, idx) => {
                 const row = document.createElement('div');
                 row.className = 'contact-phone-row';
-                row.innerHTML = `<span class="contact-phone-val">${ph}</span><a href="tel:${ph}" class="btn-call-small"><i class="ph-bold ph-phone"></i></a>`;
+                const label = idx === 0 ? 'رقم الراكب الأساسي' : 'رقم إضافي (phone2)';
+                row.innerHTML = `<span style="font-size:0.75rem;color:var(--gray-500);margin-left:0.5rem;font-weight:600;">${label}:</span><span class="contact-phone-val">${ph}</span><a href="tel:${ph}" class="btn-call-small"><i class="ph-bold ph-phone"></i></a>`;
                 phonesContainer.appendChild(row);
             });
         } else {
@@ -2008,6 +2088,16 @@ async function showTab(tabId, button) {
     button.classList.add('active');
     currentTab = tabId;
 
+    if (tabId === 'active-chats' || tabId === 'driver-chats') {
+        if (window.location.hash !== '#chats' && !window.location.hash.startsWith('#chat-')) {
+            window.location.hash = '#chats';
+        }
+    } else {
+        if (window.location.hash === '#chats' || window.location.hash.startsWith('#chat-')) {
+            history.pushState('', document.title, window.location.pathname + window.location.search);
+        }
+    }
+
     const loadMap = {
         'my-rides': loadPassengerRides,
         'active-chats': loadPassengerChats,
@@ -2460,7 +2550,7 @@ async function loadPassengerChats() {
     try {
         const {data:requests} = await travelSupabase
             .from('ride_requests')
-            .select('id,driver_name,status,driver_id')
+            .select('id,driver_name,status,driver_id,from_city,to_city,created_at')
             .eq('customer_id', currentUser.id)
             .in('status', ['pending','driver_selected','confirmed','in_progress']);
 
@@ -2488,7 +2578,10 @@ async function loadPassengerChats() {
                 last_sender_id: last.sender_id,
                 ride_status: req.status,
                 unread_count: unreadCount,
-                is_unread: unreadCount > 0
+                is_unread: unreadCount > 0,
+                from_city: req.from_city,
+                to_city: req.to_city,
+                created_at: req.created_at
             });
         }
 
@@ -2522,7 +2615,11 @@ function displayPassengerChats(chats) {
                 </div>
                 <div style="font-size:0.875rem;color:var(--gray-500);">${chat.last_message_time ? formatTime(chat.last_message_time) : ''}</div>
             </div>
-            <div class="ride-details">
+            <div class="ride-details" style="gap:0.25rem;">
+                <div class="ride-detail" style="font-size:0.8rem;color:var(--Tracka-primary);background:var(--Tracka-primary-light);padding:4px 8px;border-radius:6px;margin-bottom:0.5rem;width:100%;">
+                    <i class="ph-light ph-info"></i>
+                    <span>هذه المحادثة مرتبطة بالرحلة من <b>${chat.from_city || '—'}</b> إلى <b>${chat.to_city || '—'}</b> المنشورة في <b>${formatPublishDateTime(chat.created_at)}</b></span>
+                </div>
                 <div class="ride-detail"><i class="ph-light ph-chat-teardrop-text"></i>
                     <span style="${chat.is_unread ? 'font-weight:700;color:var(--dark);' : ''}">${msg}</span>
                 </div>
@@ -2541,6 +2638,7 @@ function startChatWithDriverFromCard(rideId, driverLabel, driverId) {
     document.getElementById('chat-with-name').textContent = driverLabel;
     document.getElementById('chat-ride-info').textContent = '';
     document.getElementById('chat-modal').classList.remove('hidden');
+    updateChatBannerRideDetails(rideId);
     loadChatMessages(rideId);
 }
 
@@ -2623,7 +2721,7 @@ function displayAvailableRides() {
             <div class="ride-details">
                 <div class="ride-detail"><i class="ph-light ph-car"></i><span>${ride.vehicle_category||'غير محدد'}</span></div>
                 <div class="ride-detail"><i class="ph-light ph-users"></i><span>${ride.accepted_count} / ${MAX_DRIVERS_PER_RIDE} سائقين قبلوا</span></div>
-                <div class="ride-detail"><i class="ph-light ph-calendar-blank"></i><span>${formatDate(ride.created_at)}</span></div>
+                <div class="ride-detail"><i class="ph-light ph-calendar-blank"></i><span><b>تاريخ نشر الطلب:</b> ${formatDate(ride.created_at)} الساعة ${formatTime(ride.created_at)}</span></div>
 
                 ${(() => {
                     const parsed = parseRideNotes(ride.notes);
@@ -2640,10 +2738,7 @@ function displayAvailableRides() {
                 })()}
             </div>
             <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
-                <button class="btn btn-outline btn-sm" style="flex:1;" onclick="startChatBeforeAccept('${ride.id}','${escapeHtml(ride.passenger_name||'راكب').replace(/'/g,"\\'")}')">
-                    <i class="ph-light ph-chat-centered-dots"></i> محادثة
-                </button>
-                <button class="btn btn-primary" style="flex:2;" onclick="driverAcceptsRide('${ride.id}')">
+                <button class="btn btn-primary btn-block btn-sm" onclick="driverAcceptsRide('${ride.id}')">
                     <i class="ph-light ph-check"></i> قبول الرحلة
                 </button>
             </div>
@@ -2732,11 +2827,27 @@ async function loadDriverAcceptedRides() {
     try {
         const {data:acceptances} = await travelSupabase
             .from('ride_driver_acceptances')
-            .select(`id,status,accepted_at,ride_requests!inner(id,passenger_name,from_city,to_city,estimated_price,status)`)
+            .select(`id,status,accepted_at,ride_requests!inner(id,passenger_name,from_city,to_city,estimated_price,status,notes,created_at,customer_id)`)
             .eq('driver_id', currentUser.id)
             .order('accepted_at', {ascending:false});
 
-        displayDriverAcceptedRides(acceptances || []);
+        // Fetch ride chats to check if passenger started conversation
+        const rideIds = (acceptances || []).map(acc => acc.ride_requests?.id).filter(Boolean);
+        let chatsWithPassengerMsgs = new Set();
+        if (rideIds.length > 0) {
+            const {data:chats} = await travelSupabase
+                .from('ride_chats')
+                .select('ride_id,sender_id')
+                .in('ride_id', rideIds);
+
+            (chats || []).forEach(chat => {
+                if (chat.sender_id !== currentUser.id) {
+                    chatsWithPassengerMsgs.add(chat.ride_id);
+                }
+            });
+        }
+
+        displayDriverAcceptedRides(acceptances || [], chatsWithPassengerMsgs);
     } catch(err) {
         console.error('Error loading accepted rides:', err);
     }
@@ -2753,7 +2864,7 @@ function getAcceptanceStatusText(status) {
     return map[status] || status || 'غير محدد';
 }
 
-function displayDriverAcceptedRides(acceptances) {
+function displayDriverAcceptedRides(acceptances, chatsWithPassengerMsgs = new Set()) {
     const container = document.getElementById('accepted-rides-list');
     if (!container) return;
     if (!acceptances || acceptances.length === 0) {
@@ -2763,6 +2874,10 @@ function displayDriverAcceptedRides(acceptances) {
     container.innerHTML = '';
     acceptances.forEach(acc => {
         const ride = acc.ride_requests || {};
+        const isFinal = acc.status === 'selected' || ride.status === 'driver_selected' || ride.status === 'confirmed' || ride.status === 'in_progress';
+        const hasPassengerMsg = chatsWithPassengerMsgs.has(ride.id);
+        const showChatButton = isFinal || hasPassengerMsg;
+
         const el = document.createElement('div');
         el.className = 'ride-card';
         el.innerHTML = `
@@ -2773,6 +2888,7 @@ function displayDriverAcceptedRides(acceptances) {
             <div class="ride-details">
                 <div class="ride-detail"><i class="ph-light ph-info"></i><span>حالة قبولك: ${getAcceptanceStatusText(acc.status)}</span></div>
                 <div class="ride-detail"><i class="ph-light ph-info"></i><span>حالة الرحلة: ${getStatusText(ride.status)}</span></div>
+                <div class="ride-detail"><i class="ph-light ph-calendar-blank"></i><span><b>تاريخ نشر الطلب:</b> ${formatDate(ride.created_at)} الساعة ${formatTime(ride.created_at)}</span></div>
 
                 ${(() => {
                     const parsed = parseRideNotes(ride.notes);
@@ -2788,6 +2904,13 @@ function displayDriverAcceptedRides(acceptances) {
                     }
                 })()}
             </div>
+            ${showChatButton ? `
+                <div style="margin-top:0.75rem;">
+                    <button class="btn btn-outline btn-sm btn-block" onclick="event.stopPropagation(); openDriverChat('${ride.id}', '${escapeHtml(isFinal ? (ride.passenger_name || 'راكب تراكا') : 'راكب تراكا').replace(/'/g, "\\'")}', '${ride.customer_id || ''}', ${isFinal})">
+                        <i class="ph-light ph-chat-centered-dots"></i> محادثة
+                    </button>
+                </div>
+            ` : ''}
         `;
         container.appendChild(el);
     });
@@ -2989,11 +3112,32 @@ function displayDriverChats(chats) {
     });
 }
 
+async function updateChatBannerRideDetails(rideId) {
+    const textEl = document.getElementById('chat-associated-ride-text');
+    if (!textEl) return;
+    try {
+        const {data:ride} = await travelSupabase.from('ride_requests').select('from_city,to_city,created_at').eq('id', rideId).single();
+        if (ride) {
+            textEl.innerHTML = `هذه المحادثة مرتبطة بالرحلة من <b>${ride.from_city || '—'}</b> إلى <b>${ride.to_city || '—'}</b> المنشورة في <b>${formatPublishDateTime(ride.created_at)}</b>`;
+        } else {
+            textEl.textContent = 'لا توجد بيانات لهذه الرحلة';
+        }
+    } catch (e) {
+        textEl.textContent = 'خطأ في تحميل بيانات الرحلة';
+    }
+}
+
 function openDriverChat(rideId, passengerName, passengerId, showFullName = false) {
     currentChat = {id:rideId, other_user_name:passengerName, other_user_id:passengerId, ride_id:rideId, show_full_name:showFullName};
     const title = document.getElementById('chat-with-name');
     title.innerHTML = `${passengerName} ${showFullName ? '<i class="ph-light ph-user-check" style="color:var(--success);"></i>' : '<i class="ph-light ph-user-circle" style="color:var(--gray-400);"></i>'}`;
     document.getElementById('chat-modal').classList.remove('hidden');
+
+    updateChatBannerRideDetails(rideId);
+
+    if (window.location.hash !== '#chat-' + rideId) {
+        window.location.hash = '#chat-' + rideId;
+    }
     loadChatMessages(rideId);
 }
 
@@ -3041,7 +3185,14 @@ function openChatSimple(chatId, userName, rideId) {
     document.getElementById('chat-with-name').textContent = userName;
     document.getElementById('chat-ride-info').textContent = '';
     document.getElementById('chat-modal').classList.remove('hidden');
-    loadChatMessages(rideId || chatId);
+
+    const rideIdForChat = rideId || chatId;
+    updateChatBannerRideDetails(rideIdForChat);
+
+    if (window.location.hash !== '#chat-' + rideIdForChat) {
+        window.location.hash = '#chat-' + rideIdForChat;
+    }
+    loadChatMessages(rideIdForChat);
 }
 
 function startChatWithPassenger(rideId, passengerName) {
@@ -3049,6 +3200,7 @@ function startChatWithPassenger(rideId, passengerName) {
     document.getElementById('chat-with-name').textContent = passengerName;
     document.getElementById('chat-ride-info').textContent = '';
     document.getElementById('chat-modal').classList.remove('hidden');
+    updateChatBannerRideDetails(rideId);
     loadChatMessages(rideId);
 }
 
@@ -3172,6 +3324,11 @@ async function sendMessage() {
 function closeChat() {
     document.getElementById('chat-modal').classList.add('hidden');
     currentChat = null;
+
+    if (window.location.hash !== '#chats') {
+        window.location.hash = '#chats';
+    }
+
     // Reload chats list on closing chat modal to ensure badge is updated immediately
     if (userType === 'passenger') {
         loadPassengerChats();
@@ -3372,6 +3529,21 @@ function renderExpandableNotes(notesText, elementId) {
         <span id="${uniqueId}-full" class="hidden">${escapeHtml(notesText)}</span>
         <button class="btn btn-sm btn-link" style="padding:0; margin-right:5px; color:var(--Tracka-primary); background:none; border:none; cursor:pointer; font-weight:bold; display:inline;" onclick="event.stopPropagation(); document.getElementById('${uniqueId}-short').classList.toggle('hidden'); document.getElementById('${uniqueId}-full').classList.toggle('hidden'); this.textContent = document.getElementById('${uniqueId}-full').classList.contains('hidden') ? 'المزيد' : 'أقل';">المزيد</button>
     `;
+}
+
+function formatPublishDateTime(dateString) {
+    if (!dateString) return 'تاريخ غير معروف';
+    try {
+        const d = new Date(dateString);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const hour = String(d.getHours()).padStart(2, '0');
+        const minute = String(d.getMinutes()).padStart(2, '0');
+        return `${year}/${month}/${day} الساعة ${hour}:${minute}`;
+    } catch(e) {
+        return 'تاريخ غير معروف';
+    }
 }
 
 function formatDate(dateString) {

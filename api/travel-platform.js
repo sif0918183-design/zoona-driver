@@ -290,6 +290,38 @@ export default async function handler(req, res) {
             return res.status(200).json({ success: true, penalty });
         }
 
+        // --- 6. GET TRIP PASSENGER DETAILS ---
+        if (action === 'get_trip_passenger_details') {
+            const { tripId } = req.body;
+
+            if (!tripId) {
+                return res.status(400).json({ success: false, error: 'tripId is required' });
+            }
+
+            // Get trip details
+            const { data: trip, error: tErr } = await supabase
+                .from('travel_trips')
+                .select('passenger_id')
+                .eq('id', tripId)
+                .single();
+
+            if (tErr || !trip) {
+                return res.status(400).json({ success: false, error: 'الرحلة غير موجودة' });
+            }
+
+            let passengerInfo = null;
+            if (trip.passenger_id) {
+                const { data: pData } = await supabase
+                    .from('customers')
+                    .select('full_name, phone, phone2')
+                    .eq('id', trip.passenger_id)
+                    .single();
+                passengerInfo = pData;
+            }
+
+            return res.status(200).json({ success: true, passengerInfo });
+        }
+
         return res.status(400).json({ success: false, error: 'Unknown action' });
 
     } catch (error) {
