@@ -94,10 +94,10 @@
             text-align:center; font-weight:600; 
             color:var(--gray-500); 
             background:transparent; 
-            border:none; 
+            border:2px solid var(--Tracka-primary);
             cursor:pointer; 
             transition:var(--transition-fast); 
-            border-radius:var(--radius); 
+            border-radius:var(--radius-lg);
             font-family:'Tajawal',sans-serif; 
             font-size:0.95rem; 
             white-space:nowrap; 
@@ -107,9 +107,10 @@
             background:var(--Tracka-primary-light); 
         }
         .tab.active { 
-            color:#fff; 
-            background:linear-gradient(135deg,var(--Tracka-primary),var(--Tracka-primary-dark)); 
+            color:#fff !important;
+            background:linear-gradient(135deg,var(--Tracka-primary),var(--Tracka-primary-dark)) !important;
             box-shadow:0 4px 12px var(--Tracka-emerald-glow); 
+            border:2px solid var(--Tracka-primary) !important;
         }
         .tab-content { display:none; animation:fadeIn 0.3s ease; }
         .tab-content.active { display:block; }
@@ -174,9 +175,22 @@
         .btn-lg { padding:1rem 2rem; font-size:1.125rem; }
         .btn-block { width:100%; }
         .vehicle-categories { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1rem; margin:1rem 0; }
-        .vehicle-category { border:1.5px solid var(--gray-light); border-radius:var(--radius-lg); padding:1.25rem; text-align:center; cursor:pointer; transition:var(--transition); display:flex; flex-direction:column; align-items:center; gap:0.75rem; background:rgba(255,255,255,0.4); }
+        .vehicle-category { border:2px solid var(--Tracka-primary); border-radius:var(--radius-lg); padding:1.25rem; text-align:center; cursor:pointer; transition:var(--transition); display:flex; flex-direction:column; align-items:center; gap:0.75rem; background:rgba(255,255,255,0.4); }
         .vehicle-category:hover { transform:translateY(-2px); box-shadow:0 0 15px var(--Tracka-emerald-glow); border-color:var(--Tracka-primary); }
-        .vehicle-category.selected { border-color:var(--Tracka-primary); background:var(--Tracka-primary-light); box-shadow:0 0 20px var(--Tracka-emerald-glow); }
+        .vehicle-category.selected {
+            border: 3px solid var(--Tracka-primary) !important;
+            background: var(--Tracka-primary) !important;
+            box-shadow: 0 4px 20px var(--Tracka-emerald-glow) !important;
+            transform: translateY(-2px);
+        }
+        .vehicle-category.selected .vehicle-name,
+        .vehicle-category.selected .vehicle-icon {
+            color: #fff !important;
+        }
+        .vehicle-category.selected .vehicle-multiplier {
+            background: rgba(255, 255, 255, 0.25) !important;
+            color: #fff !important;
+        }
         .vehicle-icon { font-size:2.5rem; color:var(--primary); margin-bottom:0.5rem; }
         .vehicle-name { font-weight:700; color:var(--gray-800); font-size:1.125rem; }
         .vehicle-multiplier { font-size:0.875rem; color:var(--gray-600); background:var(--gray-100); padding:0.25rem 0.75rem; border-radius:20px; font-weight:600; }
@@ -722,9 +736,87 @@
                             <label class="form-label">فئة السيارة المطلوبة</label>
                             <div class="vehicle-categories" id="vehicle-categories"></div>
                         </div>
+                        <div class="grid grid-2">
+                            <div class="form-group">
+                                <label class="form-label">تاريخ الرحلة (يوم/شهر/سنة) <span style="color: red;">*</span></label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <select class="form-control form-select" id="travel-day" required style="flex: 1.2; padding: 0.5rem 0.25rem; padding-left: 1.25rem; font-size: 0.85rem; background-position: left 0.25rem center; background-size: 0.75rem;">
+                                        <option value="">اليوم</option>
+                                        <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+                                        <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
+                                        <option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option>
+                                        <option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option>
+                                        <option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option>
+                                        <option value="26">26</option><option value="27">27</option><option value="28">28</option><option value="29">29</option><option value="30">30</option>
+                                        <option value="31">31</option>
+                                    </select>
+                                    <select class="form-control form-select" id="travel-month" required style="flex: 1.2; padding: 0.5rem 0.25rem; padding-left: 1.25rem; font-size: 0.85rem; background-position: left 0.25rem center; background-size: 0.75rem;">
+                                        <option value="">الشهر</option>
+                                        <option value="1">1 (يناير)</option><option value="2">2 (فبراير)</option><option value="3">3 (مارس)</option>
+                                        <option value="4">4 (أبريل)</option><option value="5">5 (مايو)</option><option value="6">6 (يونيو)</option>
+                                        <option value="7">7 (يوليو)</option><option value="8">8 (أغسطس)</option><option value="9">9 (سبتمبر)</option>
+                                        <option value="10">10 (أكتوبر)</option><option value="11">11 (نوفمبر)</option><option value="12">12 (ديسمبر)</option>
+                                    </select>
+                                    <input type="text" class="form-control" id="travel-year" value="2026" readonly style="flex: 0.8; text-align: center; background: #e2e8f0; font-weight: bold; color: #475569; padding: 0.5rem 0.25rem; font-size: 0.85rem;">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">وقت الرحلة <span style="color: red;">*</span></label>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <select class="form-control form-select" id="travel-hour" required style="flex: 1; padding: 0.5rem 0.25rem; padding-left: 1.25rem; font-size: 0.85rem; background-position: left 0.25rem center; background-size: 0.75rem;">
+                                        <option value="">الساعة</option>
+                                        <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
+                                        <option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option>
+                                        <option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option>
+                                    </select>
+                                    <select class="form-control form-select" id="travel-minute" required style="flex: 1; padding: 0.5rem 0.25rem; padding-left: 1.25rem; font-size: 0.85rem; background-position: left 0.25rem center; background-size: 0.75rem;">
+                                        <option value="">الدقيقة</option>
+                                        <option value="00">00</option><option value="05">05</option><option value="10">10</option><option value="15">15</option>
+                                        <option value="20">20</option><option value="25">25</option><option value="30">30</option><option value="35">35</option>
+                                        <option value="40">40</option><option value="45">45</option><option value="50">50</option><option value="55">55</option>
+                                    </select>
+                                    <div style="display: flex; gap: 0.25rem; flex: 1.2;">
+                                        <label style="flex: 1; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--Tracka-primary); border-radius: var(--radius); padding: 0.5rem 0.25rem; cursor: pointer; font-size: 0.85rem; font-weight: bold; color: var(--Tracka-primary); background: #f0fdf4; margin: 0;" class="period-option">
+                                            <input type="radio" name="travel-period" value="صباحاً" required style="margin-left: 0.25rem; accent-color: var(--Tracka-primary);"> صباحاً
+                                        </label>
+                                        <label style="flex: 1; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--Tracka-primary); border-radius: var(--radius); padding: 0.5rem 0.25rem; cursor: pointer; font-size: 0.85rem; font-weight: bold; color: var(--Tracka-primary); background: #f0fdf4; margin: 0;" class="period-option">
+                                            <input type="radio" name="travel-period" value="مساءً" required style="margin-left: 0.25rem; accent-color: var(--Tracka-primary);"> مساءً
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-2">
+                            <div class="form-group">
+                                <label class="form-label">عدد الراكبين <span style="color: red;">*</span></label>
+                                <select class="form-control form-select" id="travel-passengers" required>
+                                    <option value="">اختر عدد الركاب</option>
+                                    <option value="1">1 راكب</option><option value="2">2 ركاب</option><option value="3">3 ركاب</option>
+                                    <option value="4">4 ركاب</option><option value="5">5 ركاب</option><option value="6">6 ركاب</option>
+                                    <option value="7">7 ركاب</option><option value="8">8 ركاب</option><option value="9">9 ركاب</option>
+                                    <option value="10">10 ركاب أو أكثر</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">وزن الأمتعة تقريباً <span style="color: red;">*</span></label>
+                                <select class="form-control form-select" id="travel-luggage" required>
+                                    <option value="">اختر الوزن التقريبي</option>
+                                    <option value="0">0 كيلوجرام (بدون حقائب)</option>
+                                    <option value="5">5 كيلوجرام</option>
+                                    <option value="10">10 كيلوجرام</option>
+                                    <option value="15">15 كيلوجرام</option>
+                                    <option value="20">20 كيلوجرام</option>
+                                    <option value="30">30 كيلوجرام</option>
+                                    <option value="40">40 كيلوجرام</option>
+                                    <option value="50">50 كيلوجرام</option>
+                                    <option value="75">75 كيلوجرام</option>
+                                    <option value="100">100 كيلوجرام أو أكثر</option>
+                                </select>
+                            </div>
+                        </div>
                         <div class="form-group">
                             <label class="form-label">ملاحظات إضافية</label>
-                            <textarea class="form-control" id="notes" placeholder="عدد الركاب، الأمتعة، وقت الانطلاق المفضل..." rows="3"></textarea>
+                            <textarea class="form-control" id="notes" placeholder="اكتب هنا أي ملاحظات أو تفاصيل إضافية تريد إخبار السائق بها..." rows="3"></textarea>
                         </div>
                         <div id="price-preview" class="price-preview hidden">
                             <h3 style="margin-bottom:1rem;color:var(--gray-700);">تفاصيل الرحلة</h3>
@@ -765,7 +857,7 @@
         <div id="driver-interface" class="hidden">
             <div class="tabs-container">
                 <button class="tab active" onclick="showTab('available-rides',this)">الرحلات المتاحة</button>
-                <button class="tab" onclick="showTab('accepted-rides',this)">رحلاتي المقبولة</button>
+                <button class="tab" onclick="showTab('accepted-rides',this)">رحلات قبلتها</button>
                 <button class="tab" onclick="showTab('driver-my-rides',this)">رحلاتي</button>
                 <button class="tab" onclick="showTab('driver-chats',this)" style="position:relative;">
                     المحادثات
@@ -809,7 +901,7 @@
             <div id="accepted-rides" class="tab-content">
                 <div class="card">
                     <div class="card-header">
-                        <h2 class="card-title"><i class="ph-light ph-check-circle"></i> رحلاتي المقبولة</h2>
+                        <h2 class="card-title"><i class="ph-light ph-check-circle"></i> رحلات قبلتها</h2>
                     </div>
                     <div id="accepted-rides-list" class="ride-cards"></div>
                 </div>
@@ -1759,6 +1851,15 @@ async function loadTravelRoutes() {
                 distance_km: parseFloat(r.distance_km),
                 base_price_eco: parseFloat(r.distance_km) * travelPricePerKm
             }));
+
+            // Dynamically add all cities from travel_routes that aren't already in cities
+            const allCitiesSet = new Set(cities);
+            routesData.forEach(r => {
+                if (r.from_city) allCitiesSet.add(r.from_city.trim());
+                if (r.to_city) allCitiesSet.add(r.to_city.trim());
+            });
+            cities = Array.from(allCitiesSet).sort();
+            populateCityDropdowns();
         } else {
             createDefaultRoutes();
         }
@@ -1864,12 +1965,19 @@ function calculateRidePrice(category) {
     const fromCity = document.getElementById('from-city').value;
     const toCity = document.getElementById('to-city').value;
     if (!fromCity || !toCity) { document.getElementById('price-preview').classList.add('hidden'); return; }
-    const route = routes.find(r => r.from_city === fromCity && r.to_city === toCity);
     const pricePreview = document.getElementById('price-preview');
     const priceDetails = document.getElementById('price-details');
+
+    if (fromCity === toCity) {
+        pricePreview.classList.remove('hidden');
+        priceDetails.innerHTML = `<div style="background:var(--danger-light);padding:1rem;border-radius:var(--radius);border:1px solid var(--danger);color:var(--danger);font-weight:600;">الرجاء اختيار مدينتين مختلفتين</div>`;
+        return;
+    }
+
+    const route = routes.find(r => r.from_city === fromCity && r.to_city === toCity);
     if (!route) {
         pricePreview.classList.remove('hidden');
-        priceDetails.innerHTML = `<div style="background:var(--danger-light);padding:1rem;border-radius:var(--radius);border:1px solid var(--danger);color:var(--danger);font-weight:600;">عذراً، لا توجد رحلة بين ${fromCity} و ${toCity}</div>`;
+        priceDetails.innerHTML = `<div style="background:var(--danger-light);padding:1rem;border-radius:var(--radius);border:1px solid var(--danger);color:var(--danger);font-weight:600;">عذراً، لا توجد رحلة بين ${fromCity} و ${toCity} حسب أسعار الرحلات المعتمدة</div>`;
         return;
     }
     const base = route.base_price_eco || 30000;
@@ -1902,11 +2010,28 @@ document.getElementById('ride-request-form')?.addEventListener('submit', async f
     const fromCity = document.getElementById('from-city').value;
     const toCity = document.getElementById('to-city').value;
     const notes = document.getElementById('notes').value;
+
+    const travelDay = document.getElementById('travel-day').value;
+    const travelMonth = document.getElementById('travel-month').value;
+    const travelHour = document.getElementById('travel-hour').value;
+    const travelMinute = document.getElementById('travel-minute').value;
+    const travelPeriodEl = document.querySelector('input[name="travel-period"]:checked');
+    const travelPeriod = travelPeriodEl ? travelPeriodEl.value : '';
+    const travelPassengers = document.getElementById('travel-passengers').value;
+    const travelLuggage = document.getElementById('travel-luggage').value;
+
     const sel = document.querySelector('.vehicle-category.selected');
     if (!sel) { showNotification('الرجاء اختيار فئة السيارة', 'warning'); return; }
     const cat = vehicleCategories.find(c => c.id == sel.dataset.id);
+    if (fromCity === toCity) {
+        showNotification('الرجاء اختيار مدينتين مختلفتين', 'warning');
+        return;
+    }
     const route = routes.find(r => r.from_city === fromCity && r.to_city === toCity);
-    if (!route) { showNotification('لا توجد رحلة بين هاتين المدينتين', 'error'); return; }
+    if (!route) {
+        showNotification('عذراً، لا توجد رحلة معتمدة بين هاتين المدينتين في أسعار الرحلات', 'error');
+        return;
+    }
 
     const finalPrice = Math.round((route.base_price_eco || 30000) * cat.price_multiplier);
     const btn = document.getElementById('submit-ride-btn');
@@ -1914,6 +2039,19 @@ document.getElementById('ride-request-form')?.addEventListener('submit', async f
     btn.innerHTML = '<span class="spinner-inline"></span> جاري النشر...';
 
     try {
+        const notesObj = {
+            day: travelDay,
+            month: travelMonth,
+            year: '2026',
+            hour: travelHour,
+            minute: travelMinute,
+            period: travelPeriod,
+            passengers: travelPassengers,
+            luggage: travelLuggage,
+            additional_notes: notes
+        };
+        const notesJson = JSON.stringify(notesObj);
+
         const rideData = {
             customer_id: currentUser.id,
             passenger_name: currentUser.full_name,
@@ -1922,7 +2060,7 @@ document.getElementById('ride-request-form')?.addEventListener('submit', async f
             to_city: toCity,
             vehicle_category: cat.name_ar || cat.name,
             estimated_price: finalPrice,
-            notes: notes,
+            notes: notesJson,
             status: 'pending',
             created_at: new Date().toISOString()
         };
@@ -2070,6 +2208,20 @@ function displayPassengerRides() {
                 <div class="ride-detail"><i class="ph-light ph-car"></i><span>${ride.vehicle_category||'غير محدد'}</span></div>
                 <div class="ride-detail"><i class="ph-light ph-calendar-blank"></i><span>${formatDate(ride.created_at)}</span></div>
                 ${ride.driver_name && isActive ? `<div class="ride-detail"><i class="ph-light ph-user-circle"></i><span>السائق: ${escapeHtml(ride.driver_name)}</span></div>` : ''}
+
+                ${(() => {
+                    const parsed = parseRideNotes(ride.notes);
+                    if (parsed) {
+                        return `
+                            <div class="ride-detail"><i class="ph-light ph-calendar"></i><span><b>زمن الرحلة:</b> ${parsed.day}/${parsed.month}/${parsed.year} - الساعة ${parsed.hour}:${parsed.minute} ${parsed.period}</span></div>
+                            <div class="ride-detail"><i class="ph-light ph-users"></i><span><b>عدد الركاب:</b> ${parsed.passengers}</span></div>
+                            <div class="ride-detail"><i class="ph-light ph-package"></i><span><b>وزن الأمتعة:</b> ${parsed.luggage} كجم</span></div>
+                            <div class="ride-detail"><i class="ph-light ph-note"></i><span><b>ملاحظات إضافية:</b> ${renderExpandableNotes(parsed.additional_notes, 'pass-note-' + ride.id)}</span></div>
+                        `;
+                    } else {
+                        return ride.notes ? `<div class="ride-detail"><i class="ph-light ph-note"></i><span><b>ملاحظات إضافية:</b> ${renderExpandableNotes(ride.notes, 'pass-note-' + ride.id)}</span></div>` : '';
+                    }
+                })()}
             </div>
             <div class="ride-status ${statusClass}"><i class="ph-light ph-circle"></i> ${statusText}</div>
             ${driversSection}
@@ -2261,7 +2413,7 @@ async function loadPassengerChats() {
             const last = msgs[0];
 
             // Get unread count using user_message_reads
-            const unreadCount = await getUnreadCount(req.id, last.id);
+            const unreadCount = await getUnreadCount(req.id, last.id, last.sender_id);
 
             validChats.push({
                 id: req.id, ride_id: req.id,
@@ -2407,7 +2559,21 @@ function displayAvailableRides() {
             <div class="ride-details">
                 <div class="ride-detail"><i class="ph-light ph-car"></i><span>${ride.vehicle_category||'غير محدد'}</span></div>
                 <div class="ride-detail"><i class="ph-light ph-users"></i><span>${ride.accepted_count} / ${MAX_DRIVERS_PER_RIDE} سائقين قبلوا</span></div>
-                <div class="ride-detail"><i class="ph-light ph-calendar"></i><span>${formatDate(ride.created_at)}</span></div>
+                <div class="ride-detail"><i class="ph-light ph-calendar-blank"></i><span>${formatDate(ride.created_at)}</span></div>
+
+                ${(() => {
+                    const parsed = parseRideNotes(ride.notes);
+                    if (parsed) {
+                        return `
+                            <div class="ride-detail"><i class="ph-light ph-calendar"></i><span><b>زمن الرحلة:</b> ${parsed.day}/${parsed.month}/${parsed.year} - الساعة ${parsed.hour}:${parsed.minute} ${parsed.period}</span></div>
+                            <div class="ride-detail"><i class="ph-light ph-users"></i><span><b>عدد الركاب:</b> ${parsed.passengers}</span></div>
+                            <div class="ride-detail"><i class="ph-light ph-package"></i><span><b>وزن الأمتعة:</b> ${parsed.luggage} كجم</span></div>
+                            <div class="ride-detail"><i class="ph-light ph-note"></i><span><b>ملاحظات إضافية:</b> ${renderExpandableNotes(parsed.additional_notes, 'avail-note-' + ride.id)}</span></div>
+                        `;
+                    } else {
+                        return ride.notes ? `<div class="ride-detail"><i class="ph-light ph-note"></i><span><b>ملاحظات إضافية:</b> ${renderExpandableNotes(ride.notes, 'avail-note-' + ride.id)}</span></div>` : '';
+                    }
+                })()}
             </div>
             <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
                 <button class="btn btn-outline btn-sm" style="flex:1;" onclick="startChatBeforeAccept('${ride.id}','${escapeHtml(ride.passenger_name||'راكب').replace(/'/g,"\\'")}')">
@@ -2512,6 +2678,17 @@ async function loadDriverAcceptedRides() {
     }
 }
 
+function getAcceptanceStatusText(status) {
+    const map = {
+        'accepted': 'مقبول (في الانتظار)',
+        'selected': 'تم اختيارك من الراكب',
+        'rejected': 'تم الرفض',
+        'cancelled': 'تم الإلغاء',
+        'completed': 'مكتملة'
+    };
+    return map[status] || status || 'غير محدد';
+}
+
 function displayDriverAcceptedRides(acceptances) {
     const container = document.getElementById('accepted-rides-list');
     if (!container) return;
@@ -2530,8 +2707,22 @@ function displayDriverAcceptedRides(acceptances) {
                 <div class="ride-price">${Math.floor(ride.estimated_price||0).toLocaleString('en-SA')} ج</div>
             </div>
             <div class="ride-details">
-                <div class="ride-detail"><i class="ph-light ph-info"></i><span>حالة قبولك: ${acc.status||'—'}</span></div>
+                <div class="ride-detail"><i class="ph-light ph-info"></i><span>حالة قبولك: ${getAcceptanceStatusText(acc.status)}</span></div>
                 <div class="ride-detail"><i class="ph-light ph-info"></i><span>حالة الرحلة: ${getStatusText(ride.status)}</span></div>
+
+                ${(() => {
+                    const parsed = parseRideNotes(ride.notes);
+                    if (parsed) {
+                        return `
+                            <div class="ride-detail"><i class="ph-light ph-calendar"></i><span><b>زمن الرحلة:</b> ${parsed.day}/${parsed.month}/${parsed.year} - الساعة ${parsed.hour}:${parsed.minute} ${parsed.period}</span></div>
+                            <div class="ride-detail"><i class="ph-light ph-users"></i><span><b>عدد الركاب:</b> ${parsed.passengers}</span></div>
+                            <div class="ride-detail"><i class="ph-light ph-package"></i><span><b>وزن الأمتعة:</b> ${parsed.luggage} كجم</span></div>
+                            <div class="ride-detail"><i class="ph-light ph-note"></i><span><b>ملاحظات إضافية:</b> ${renderExpandableNotes(parsed.additional_notes, 'accept-note-' + ride.id)}</span></div>
+                        `;
+                    } else {
+                        return ride.notes ? `<div class="ride-detail"><i class="ph-light ph-note"></i><span><b>ملاحظات إضافية:</b> ${renderExpandableNotes(ride.notes, 'accept-note-' + ride.id)}</span></div>` : '';
+                    }
+                })()}
             </div>
         `;
         container.appendChild(el);
@@ -2670,7 +2861,7 @@ async function loadDriverChats() {
             const passengerSent = msgs.some(m => m.sender_id !== currentUser.id);
             if (!passengerSent && !isFinal) continue;
 
-            const unreadCount = await getUnreadCount(rideId, last.id);
+            const unreadCount = await getUnreadCount(rideId, last.id, last.sender_id);
             chats.push({
                 id: rideId, ride_id: rideId,
                 other_user_name: displayName,
@@ -2811,6 +3002,12 @@ async function loadChatMessages(chatId) {
                 const last = data[data.length - 1];
                 if (last.sender_id !== currentUser.id) {
                     await markMessageRead(chatId, last.id);
+                    // Refresh chat list immediately to clear badge count
+                    if (userType === 'passenger') {
+                        loadPassengerChats();
+                    } else {
+                        loadDriverChats();
+                    }
                 }
             }
             displayMessages(data.map(m => ({
@@ -2915,6 +3112,12 @@ async function sendMessage() {
 function closeChat() {
     document.getElementById('chat-modal').classList.add('hidden');
     currentChat = null;
+    // Reload chats list on closing chat modal to ensure badge is updated immediately
+    if (userType === 'passenger') {
+        loadPassengerChats();
+    } else {
+        loadDriverChats();
+    }
 }
 
 document.getElementById('chat-input')?.addEventListener('keypress', function(e) {
@@ -2942,7 +3145,8 @@ async function markMessageRead(chatId, lastMessageId) {
     }
 }
 
-async function getUnreadCount(chatId, lastMessageId) {
+async function getUnreadCount(chatId, lastMessageId, lastSenderId) {
+    if (lastSenderId === currentUser.id) return 0;
     try {
         // Try DB first
         const {data:readData} = await travelSupabase
@@ -3022,10 +3226,23 @@ function showRideDetails(ride) {
             <div style="font-size:1.5rem;font-weight:800;color:var(--success);margin-bottom:1.5rem;">${price.toLocaleString()} ج</div>
             <div style="display:grid;gap:0.75rem;">
                 <div class="ride-detail"><i class="ph-light ph-car"></i><span>${ride.vehicle_category||'—'}</span></div>
-                <div class="ride-detail"><i class="ph-light ph-calendar"></i><span>${formatDate(ride.created_at)}</span></div>
+                <div class="ride-detail"><i class="ph-light ph-calendar-blank"></i><span>${formatDate(ride.created_at)}</span></div>
                 ${ride.driver_name ? `<div class="ride-detail"><i class="ph-light ph-user-circle"></i><span>السائق: ${escapeHtml(ride.driver_name)}</span></div>` : ''}
                 ${ride.passenger_name ? `<div class="ride-detail"><i class="ph-light ph-user"></i><span>الراكب: ${escapeHtml(ride.passenger_name)}</span></div>` : ''}
-                ${ride.notes ? `<div class="ride-detail"><i class="ph-light ph-note"></i><span>${escapeHtml(ride.notes)}</span></div>` : ''}
+
+                ${(() => {
+                    const parsed = parseRideNotes(ride.notes);
+                    if (parsed) {
+                        return `
+                            <div class="ride-detail"><i class="ph-light ph-calendar"></i><span><b>زمن الرحلة:</b> ${parsed.day}/${parsed.month}/${parsed.year} - الساعة ${parsed.hour}:${parsed.minute} ${parsed.period}</span></div>
+                            <div class="ride-detail"><i class="ph-light ph-users"></i><span><b>عدد الركاب:</b> ${parsed.passengers}</span></div>
+                            <div class="ride-detail"><i class="ph-light ph-package"></i><span><b>وزن الأمتعة:</b> ${parsed.luggage} كجم</span></div>
+                            <div class="ride-detail"><i class="ph-light ph-note"></i><span><b>ملاحظات إضافية:</b> ${renderExpandableNotes(parsed.additional_notes, 'modal-note-' + ride.id)}</span></div>
+                        `;
+                    } else {
+                        return ride.notes ? `<div class="ride-detail"><i class="ph-light ph-note"></i><span><b>ملاحظات إضافية:</b> ${renderExpandableNotes(ride.notes, 'modal-note-' + ride.id)}</span></div>` : '';
+                    }
+                })()}
             </div>
             <div class="ride-status ${getStatusClass(ride.status)}" style="margin-top:1rem;">${getStatusText(ride.status)}</div>
         </div>
@@ -3065,6 +3282,36 @@ function getStatusClass(status) {
         cancelled: 'status-cancelled'
     };
     return map[status] || 'status-pending';
+}
+
+function parseRideNotes(notesStr) {
+    if (!notesStr) return null;
+    const trimmed = notesStr.trim();
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        try {
+            return JSON.parse(trimmed);
+        } catch(e) {
+            return null;
+        }
+    }
+    return null;
+}
+
+function renderExpandableNotes(notesText, elementId) {
+    if (!notesText || !notesText.trim()) return '—';
+    const words = notesText.trim().split(/\s+/);
+    if (words.length <= 2) {
+        return escapeHtml(notesText);
+    }
+    const firstTwo = words.slice(0, 2).join(' ');
+    const rest = words.slice(2).join(' ');
+    const uniqueId = elementId || ('note-' + Math.random().toString(36).substr(2, 9));
+
+    return `
+        <span id="${uniqueId}-short">${escapeHtml(firstTwo)}...</span>
+        <span id="${uniqueId}-full" class="hidden">${escapeHtml(notesText)}</span>
+        <button class="btn btn-sm btn-link" style="padding:0; margin-right:5px; color:var(--Tracka-primary); background:none; border:none; cursor:pointer; font-weight:bold; display:inline;" onclick="event.stopPropagation(); document.getElementById('${uniqueId}-short').classList.toggle('hidden'); document.getElementById('${uniqueId}-full').classList.toggle('hidden'); this.textContent = document.getElementById('${uniqueId}-full').classList.contains('hidden') ? 'المزيد' : 'أقل';">المزيد</button>
+    `;
 }
 
 function formatDate(dateString) {
