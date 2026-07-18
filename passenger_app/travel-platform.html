@@ -2019,7 +2019,7 @@ async function loadTravelRoutes() {
 function setupMessageListener() {
     if (messageSubscription) return;
     messageSubscription = travelSupabase
-        .channel('new-messages-listener')
+        .channel('new-messages-listener-' + (currentUser?.id || 'anon'))
         .on('postgres_changes', {event:'INSERT', schema:'public', table:'ride_chats'}, (payload) => {
             const msg = payload.new;
             if (msg.sender_id !== currentUser.id) {
@@ -3325,8 +3325,8 @@ function closeChat() {
     document.getElementById('chat-modal').classList.add('hidden');
     currentChat = null;
 
-    if (window.location.hash !== '#chats') {
-        window.location.hash = '#chats';
+    if (window.location.hash) {
+        history.pushState('', document.title, window.location.pathname + window.location.search);
     }
 
     // Reload chats list on closing chat modal to ensure badge is updated immediately

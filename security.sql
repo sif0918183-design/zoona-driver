@@ -282,6 +282,10 @@ CREATE POLICY "Participants View Acceptances" ON public.ride_driver_acceptances
         EXISTS (
             SELECT 1 FROM public.ride_requests
             WHERE id = ride_id AND (customer_id = public.get_custom_session_id() OR driver_id = public.get_custom_session_id())
+        ) OR
+        EXISTS (
+            SELECT 1 FROM public.ride_driver_acceptances
+            WHERE ride_id = ride_chats.ride_id AND driver_id = public.get_custom_session_id() AND status IN ('accepted', 'selected')
         )
     );
 
