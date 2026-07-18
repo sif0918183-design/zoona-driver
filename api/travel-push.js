@@ -132,7 +132,11 @@ export default async function handler(req, res) {
                     passenger.fcm_token,
                     `💬 رسالة من السائق - تراكا`,
                     preview,
-                    { type: 'NEW_CHAT_MESSAGE', ride_id: String(rideId) }
+                {
+                    type: 'NEW_CHAT_MESSAGE',
+                    ride_id: String(rideId),
+                    url: `/passenger_app/travel-platform.html#chat-${rideId}`
+                }
                 );
                 return res.status(200).json({ success: true, ...result });
 
@@ -165,7 +169,11 @@ export default async function handler(req, res) {
                     driver.fcm_token,
                     `💬 رسالة من الراكب - تراكا`,
                     preview,
-                    { type: 'NEW_CHAT_MESSAGE', ride_id: String(rideId) }
+                {
+                    type: 'NEW_CHAT_MESSAGE',
+                    ride_id: String(rideId),
+                    url: `/driver_app/travel-platform.html#chat-${rideId}`
+                }
                 );
                 return res.status(200).json({ success: true, ...result });
             }
