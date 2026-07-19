@@ -1,0 +1,25 @@
+127.0.0.1 - - [19/Jul/2026 10:39:35] "HEAD /passenger_app/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [19/Jul/2026 10:41:01] "GET /passenger_app/ride-accepted.html?id=123 HTTP/1.1" 200 -
+127.0.0.1 - - [19/Jul/2026 10:41:01] code 404, message File not found
+127.0.0.1 - - [19/Jul/2026 10:41:01] code 404, message File not found
+127.0.0.1 - - [19/Jul/2026 10:41:01] "GET /api/supabase-config HTTP/1.1" 404 -
+127.0.0.1 - - [19/Jul/2026 10:41:01] "GET /passenger_app/assets/branding/icon-192x192.png HTTP/1.1" 404 -
+127.0.0.1 - - [19/Jul/2026 10:41:05] "GET /passenger_app/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [19/Jul/2026 10:41:05] "GET /shared/theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [19/Jul/2026 10:41:05] code 404, message File not found
+127.0.0.1 - - [19/Jul/2026 10:41:05] "GET /api/supabase-config HTTP/1.1" 404 -
+127.0.0.1 - - [19/Jul/2026 10:41:05] "GET /assets/branding/icon-512x512.png HTTP/1.1" 200 -
+127.0.0.1 - - [19/Jul/2026 10:41:05] "GET /shared/supabase-config.js HTTP/1.1" 200 -
+127.0.0.1 - - [19/Jul/2026 10:41:05] "GET /sound-manager.js HTTP/1.1" 200 -
+127.0.0.1 - - [19/Jul/2026 10:42:29] "GET /passenger_app/ride-accepted.html?id=123 HTTP/1.1" 200 -
+127.0.0.1 - - [19/Jul/2026 10:42:29] code 404, message File not found
+127.0.0.1 - - [19/Jul/2026 10:42:29] "GET /passenger_app/assets/branding/icon-192x192.png HTTP/1.1" 404 -
+127.0.0.1 - - [19/Jul/2026 10:42:29] code 404, message File not found
+127.0.0.1 - - [19/Jul/2026 10:42:29] "GET /api/supabase-config HTTP/1.1" 404 -
+127.0.0.1 - - [19/Jul/2026 10:42:32] "GET /passenger_app/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [19/Jul/2026 10:42:32] code 404, message File not found
+127.0.0.1 - - [19/Jul/2026 10:42:32] "GET /api/supabase-config HTTP/1.1" 404 -
+127.0.0.1 - - [19/Jul/2026 10:42:32] "GET /sound-manager.js HTTP/1.1" 200 -
+127.0.0.1 - - [19/Jul/2026 10:42:32] "GET /assets/branding/icon-512x512.png HTTP/1.1" 200 -
+127.0.0.1 - - [19/Jul/2026 10:42:32] "GET /shared/supabase-config.js HTTP/1.1" 200 -
+127.0.0.1 - - [19/Jul/2026 10:42:32] "GET /shared/theme.css HTTP/1.1" 200 -
