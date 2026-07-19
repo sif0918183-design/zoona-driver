@@ -26,6 +26,56 @@ async function getPassengerFcm(customerId) {
     return data;
 }
 
+const CITY_COORDINATES = {
+    'الخرطوم': { lat: 15.5007, lng: 32.5599 },
+    'مدني': { lat: 14.4013, lng: 33.5186 },
+    'القضارف': { lat: 14.0345, lng: 35.3901 },
+    'كسلا': { lat: 15.4510, lng: 36.3996 },
+    'شندي': { lat: 16.6946, lng: 33.4243 },
+    'الدامر': { lat: 17.5925, lng: 33.9749 },
+    'عطبرة': { lat: 17.6976, lng: 33.9882 },
+    'الدبة': { lat: 18.0538, lng: 30.9504 },
+    'دنقلا': { lat: 19.1706, lng: 30.4725 },
+    'بورتسودان': { lat: 19.6175, lng: 37.2158 },
+    'سنار': { lat: 13.5684, lng: 33.5672 },
+    'سنجة': { lat: 13.1517, lng: 33.9314 },
+    'الدمازين': { lat: 11.7699, lng: 34.3312 },
+    'كوستي': { lat: 13.1629, lng: 32.6635 },
+    'ابوحمد': { lat: 19.5310, lng: 33.3197 },
+    'سنكات': { lat: 18.8354, lng: 36.8373 },
+    'الحصاحيصا': { lat: 14.7431, lng: 33.2929 },
+    'الأبيض': { lat: 13.1789, lng: 30.2172 }
+};
+
+function getDistanceKm(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Radius of the earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const d = R * c; // Distance in km
+    return d;
+}
+
+function matchCarType(reqCategory, driverCarType) {
+    if (!reqCategory || !driverCarType) return true; // fallback to sending if not specified
+    const rc = reqCategory.toLowerCase();
+    const dc = driverCarType.toLowerCase();
+    if (rc.includes('اقتصادي') || rc.includes('economy')) {
+        return dc.includes('economy') || dc.includes('economic') || dc.includes('اقتصادي');
+    }
+    if (rc.includes('مريح') || rc.includes('سيدان') || rc.includes('صالون') || rc.includes('comfortable') || rc.includes('sedan')) {
+        return dc.includes('sedan') || dc.includes('comfortable') || dc.includes('مريح') || dc.includes('صالون');
+    }
+    if (rc.includes('عالي') || rc.includes('suv') || rc.includes('عائلي') || rc.includes('van') || rc.includes('family')) {
+        return dc.includes('family') || dc.includes('suv') || dc.includes('van') || dc.includes('عالي') || dc.includes('عائلي');
+    }
+    return true; // default fallback to match
+}
+
 async function sendQuietPush(token, title, body, data = {}) {
     if (!token) return { skipped: true, reason: 'no_token' };
     const message = {
@@ -177,6 +227,79 @@ export default async function handler(req, res) {
                 );
                 return res.status(200).json({ success: true, ...result });
             }
+        }
+
+        // ─────────────────────────────────────────────
+        // 4. NEW_TRAVEL_REQUEST → notify all matching drivers in fromCity range
+        // ─────────────────────────────────────────────
+        if (type === 'NEW_TRAVEL_REQUEST') {
+            const { fromCity, toCity, vehicleCategory, rideId } = req.body;
+
+            if (!fromCity) return res.status(400).json({ error: 'fromCity is required' });
+
+            const cityCoords = CITY_COORDINATES[fromCity];
+            if (!cityCoords) {
+                return res.status(200).json({ success: false, reason: `City ${fromCity} coordinates not mapped` });
+            }
+
+            // Get all driver locations
+            const { data: locations, error: locError } = await db
+                .from('driver_locations')
+                .select('driver_id, lat, lng, car_type');
+
+            if (locError) throw locError;
+            if (!locations || locations.length === 0) {
+                return res.status(200).json({ success: true, count: 0, reason: 'No driver locations found' });
+            }
+
+            // Filter drivers whose last known location is within 50 km of cityCoords
+            const targetDrivers = [];
+            for (const loc of locations) {
+                if (loc.lat && loc.lng) {
+                    const dist = getDistanceKm(cityCoords.lat, cityCoords.lng, parseFloat(loc.lat), parseFloat(loc.lng));
+                    if (dist <= 50) { // 50 km radius range
+                        if (matchCarType(vehicleCategory, loc.car_type)) {
+                            targetDrivers.push(loc.driver_id);
+                        }
+                    }
+                }
+            }
+
+            if (targetDrivers.length === 0) {
+                return res.status(200).json({ success: true, count: 0, reason: 'No matching drivers in city range' });
+            }
+
+            // Fetch FCM tokens of those matching drivers
+            const { data: drivers, error: driverError } = await db
+                .from('drivers')
+                .select('fcm_token, full_name')
+                .in('id', targetDrivers);
+
+            if (driverError) throw driverError;
+
+            // Send push to each matching driver
+            let sentCount = 0;
+            for (const driver of drivers) {
+                if (driver.fcm_token) {
+                    try {
+                        await sendQuietPush(
+                            driver.fcm_token,
+                            `🚨 طلب سفر جديد - من ${fromCity}`,
+                            `أحد الركاب نشر طلب رحلة سفرية من ${fromCity} إلى ${toCity || 'وجهته'}. اضغط للتفاصيل.`,
+                            {
+                                type: 'DRIVER_OFFER', // recognized travel platform type in native app
+                                ride_id: String(rideId || ''),
+                                url: '/driver_app/travel-platform.html'
+                            }
+                        );
+                        sentCount++;
+                    } catch (err) {
+                        console.warn(`Failed to send push to driver token ${driver.fcm_token}:`, err.message);
+                    }
+                }
+            }
+
+            return res.status(200).json({ success: true, count: sentCount });
         }
 
         return res.status(400).json({ error: `unknown type: ${type}` });

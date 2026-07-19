@@ -2224,6 +2224,15 @@ document.getElementById('ride-request-form')?.addEventListener('submit', async f
 
         if (data?.id) await syncPassengerIdFromWhatsApp(data.id, currentUser.phone);
 
+        // إرسال إشعار للسائقين القريبين بفئة السيارة وفي نفس المدينة الحالية
+        sendTravelPush({
+            type: 'NEW_TRAVEL_REQUEST',
+            fromCity: fromCity,
+            toCity: toCity,
+            vehicleCategory: cat.name_ar || cat.name,
+            rideId: data.id
+        });
+
         showNotification('تم نشر طلب الرحلة بنجاح!', 'success');
         this.reset();
         document.querySelectorAll('.vehicle-category').forEach(c => c.classList.remove('selected'));
@@ -3313,7 +3322,8 @@ async function sendMessage() {
         el.innerHTML = `<div class="message-content">${escapeHtml(message)}</div><div class="message-time">${new Date().toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'})}</div>`;
         container.appendChild(el);
         input.value = '';
-        container.scrollTop = container.scrollHeight;
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        input.focus();
 
         if (userType === 'driver') loadDriverChats(); else loadPassengerChats();
     } catch(err) {

@@ -3253,7 +3253,8 @@ async function sendMessage() {
         el.innerHTML = `<div class="message-content">${escapeHtml(message)}</div><div class="message-time">${new Date().toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'})}</div>`;
         container.appendChild(el);
         input.value = '';
-        container.scrollTop = container.scrollHeight;
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        input.focus();
 
         if (userType === 'driver') loadDriverChats(); else loadPassengerChats();
     } catch(err) {

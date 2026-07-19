@@ -2894,12 +2894,9 @@ function initRealtime() {
                 if (window.soundManager) window.soundManager.playSuccessSound();
                 showNotification(`✅ تم قبول الرحلة من السائق ${ride.driver_name || 'سائق'}!`, 'success');
 
-                // إخفاء أي واجهات انتظار
+                // إخفاء أي واجهات انتظار فوراً والتوجه لصفحة التتبع النشطة
                 document.getElementById('ride-loading-overlay').classList.add('hidden');
-
-                setTimeout(() => {
-                    window.location.href = `ride-accepted.html?id=${ride.id}`;
-                }, 1500);
+                window.location.href = `ride-accepted.html?id=${ride.id}`;
             } else if (ride.status === 'cancelled_by_driver') {
                 showNotification('⚠️ نأسف، السائق قام بإلغاء الطلب. جاري البحث عن بديل...', 'warning');
                 handleDriverRejection(ride.id);
@@ -2946,7 +2943,7 @@ async function checkForActiveRide() {
                     // If we have driver info in the ride record, show it
                     if (data.driver_name) {
                         document.getElementById('driver-info-section').classList.remove('hidden');
-                        document.getElementById('current-driver-name').textContent = `السائق: ${data.driver_name}`;
+                        document.getElementById('current-driver-name').textContent = `السائق: سائق تراكا`;
                         const vName = VEHICLE_PRICES[data.vehicle_category]?.name || data.vehicle_category;
                         document.getElementById('current-driver-vehicle').textContent = `نوع المركبة: ${vName}`;
                     }
@@ -4067,7 +4064,7 @@ async function confirmRide() {
                 // إظهار واجهة الانتظار للراكب
                 document.getElementById('ride-loading-overlay').classList.remove('hidden');
                 document.getElementById('driver-info-section').classList.remove('hidden');
-                document.getElementById('current-driver-name').textContent = `السائق: ${selectedDriver.name}`;
+                document.getElementById('current-driver-name').textContent = `السائق: سائق تراكا`;
                 document.getElementById('current-driver-vehicle').textContent = `نوع المركبة: ${vehicle.name}`;
                 
                 confirmBtn.innerHTML = `
@@ -4134,6 +4131,7 @@ function startRideStatusPolling(rideId) {
             if (data && ['accepted', 'arrived', 'ongoing'].includes(data.status)) {
                 console.log('✅ Polling: Ride accepted/active, redirecting...');
                 clearInterval(rideStatusInterval);
+                document.getElementById('ride-loading-overlay').classList.add('hidden');
                 window.location.href = `ride-accepted.html?id=${rideId}`;
             }
         } catch (err) {
@@ -4230,7 +4228,7 @@ async function handleDriverRejection(rideId) {
                 // إظهار واجهة الانتظار للراكب
                 document.getElementById('ride-loading-overlay').classList.remove('hidden');
                 document.getElementById('driver-info-section').classList.remove('hidden');
-                document.getElementById('current-driver-name').textContent = `السائق: ${selectedDriver.name}`;
+                document.getElementById('current-driver-name').textContent = `السائق: سائق تراكا`;
                 document.getElementById('current-driver-vehicle').textContent = `نوع المركبة: ${VEHICLE_PRICES[ride.vehicle_category].name}`;
 
             }
