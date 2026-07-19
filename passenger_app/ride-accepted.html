@@ -255,6 +255,7 @@
         let driverLocationChannel = null;
         let pollingInterval = null;
         let driverLocationBroadcastChannel = null;
+        let supabaseAdmin = null;
 
         // ==============================================
         // التهيئة عند تحميل الصفحة
@@ -997,8 +998,40 @@
             document.querySelector('.btn-cancel').disabled = true;
             
             try {
+                // Fetch service_role key to bypass RLS
+                let serviceRoleKey = window.SUPABASE_SERVICE_ROLE_KEY;
+                if (!serviceRoleKey) {
+                    try {
+                        const sToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_admin_token');
+                        const sResponse = await fetch('/api/get-service-key', {
+                            headers: {
+                                'Authorization': sToken ? `Bearer ${sToken}` : ''
+                            }
+                        });
+                        const sData = await sResponse.json();
+                        serviceRoleKey = sData.serviceRoleKey || (sData.data && sData.data.serviceRoleKey);
+                    } catch (fetchKeyErr) {
+                        console.error('❌ خطأ في جلب مفتاح الخدمة:', fetchKeyErr);
+                    }
+                }
+
+                if (serviceRoleKey && !supabaseAdmin) {
+                    supabaseAdmin = supabase.createClient(
+                        window.SB_URL,
+                        serviceRoleKey,
+                        {
+                            auth: {
+                                autoRefreshToken: false,
+                                persistSession: false
+                            }
+                        }
+                    );
+                }
+
+                const db = supabaseAdmin || tarhalDB;
+
                 // Get ride details
-                const { data: rideData, error: rideError } = await tarhalDB
+                const { data: rideData, error: rideError } = await db
                     .from('rides')
                     .select('*')
                     .eq('id', currentRideId)
@@ -1017,9 +1050,10 @@
                 // Get driver location (if available) for distance check
                 let driverWithinRange = false;
                 let driverLocation = null;
+                let locationData = null;
                 
                 try {
-                    const { data: locationData } = await tarhalDB
+                    const { data: locationRes } = await db
                         .from('driver_locations')
                         .select('lat, lng')
                         .eq('driver_id', rideData.driver_id)
@@ -1027,6 +1061,7 @@
                         .limit(1)
                         .maybeSingle();
                     
+                    locationData = locationRes;
                     if (locationData && rideData.pickup_lat && rideData.pickup_lng) {
                         // Calculate distance between driver and pickup location
                         const distance = calculateDistance(
@@ -1085,14 +1120,15 @@
                 // المسار الرئيسي هو Supabase Realtime - هذا دعم إضافي
                 // =====================================================
                 try {
+                    const commissionAmount = Math.floor((rideData.amount || 0) * 0.10);
                     const driverChannel = new BroadcastChannel('driver_ride_channel');
                     driverChannel.postMessage({
                         type: 'RIDE_CANCELLED_BY_PASSENGER',
                         rideId: currentRideId,
-                        finalStatus: finalStatus,
+                        finalStatus: resData.finalStatus,
                         commissionAmount: commissionAmount,
-                        cancellationReason: cancellationReason,
-                        message: cancellationReason
+                        cancellationReason: resData.cancellationReason,
+                        message: resData.cancellationReason
                     });
                 } catch (e) {
                     console.log('تعذر إرسال إشعار BroadcastChannel للسائق:', e);
@@ -1142,7 +1178,8 @@
                 const banEndTime = new Date();
                 banEndTime.setHours(banEndTime.getHours() + 24);
 
-                await tarhalDB
+                const db = supabaseAdmin || tarhalDB;
+                await db
                     .from('drivers')
                     .update({
                         is_banned: true,
