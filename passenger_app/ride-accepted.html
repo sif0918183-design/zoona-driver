@@ -898,19 +898,16 @@
         // إنشاء أيقونة سيارة باستخدام SVG مدمج
         // ==============================================
         function createCarIcon() {
-            const svg = `
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
-                    <!-- دائرة خلفية بلون تراكا الزمردي المميز -->
-                    <circle cx="24" cy="24" r="22" fill="#008B5E" opacity="0.9" stroke="#fff" stroke-width="2"/>
-                    <!-- أيقونة السيارة -->
-                    <path d="M32 16H16c-1.1 0-2 .9-2 2v12c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h2c.55 0 1-.45 1-1V18c0-1.1-.9-2-2-2zm-13 7.5c0 .83-.67 1.5-1.5 1.5s-1.5-.67-1.5-1.5S16.67 22 17.5 22s1.5.67 1.5 1.5zm10 0c0 .83-.67 1.5-1.5 1.5s-1.5-.67-1.5-1.5S27.67 22 28.5 22s1.5.67 1.5 1.5zM19 26l2-6h6l2 6H19z" fill="#fff"/>
-                </svg>
-            `;
-
+            console.log('🎨 [createCarIcon] Compiling native google.maps.Symbol vector icon...');
             return {
-                url: 'data:image/svg+xml,' + encodeURIComponent(svg),
-                scaledSize: new google.maps.Size(44, 44),
-                anchor: new google.maps.Point(22, 22),
+                path: 'M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z',
+                fillColor: '#008B5E', // لون تراكا الأخضر الزمردي المميز
+                fillOpacity: 1,
+                strokeColor: '#FFFFFF', // حدود بيضاء للتوضيح والتباين
+                strokeWeight: 1.5,
+                scale: 1.5, // حجم كبير وواضح للرؤية الاحترافية
+                anchor: new google.maps.Point(12, 12), // توسيط الأيقونة تماماً على الموقع
+                rotation: 0
             };
         }
 
@@ -918,25 +915,45 @@
         // تحديث موقع السائق على الخريطة - نسخة مطابقة لصفحة السائق
         // ==============================================
         function updateDriverMarker(pos) {
-            if (!map) return;
-            if (!pos || !pos.lat || !pos.lng) return;
+            console.log('📍 [updateDriverMarker] Received coordinates update:', pos);
+            if (!map) {
+                console.warn('⚠️ [updateDriverMarker] Map is not initialized yet!');
+                return;
+            }
+            if (!pos || !pos.lat || !pos.lng) {
+                console.warn('⚠️ [updateDriverMarker] Invalid coordinates payload:', pos);
+                return;
+            }
 
             const lat = parseFloat(pos.lat);
             const lng = parseFloat(pos.lng);
-            if (isNaN(lat) || isNaN(lng)) return;
+            console.log(`📍 [updateDriverMarker] Parsed coordinates: Lat=${lat}, Lng=${lng}`);
+            if (isNaN(lat) || isNaN(lng)) {
+                console.error('❌ [updateDriverMarker] Coordinates parsed to NaN!');
+                return;
+            }
 
             const newPos = new google.maps.LatLng(lat, lng);
 
             if (driverMarker) {
+                console.log('📍 [updateDriverMarker] Animating existing driver marker to new position.');
                 animateMarker(driverMarker, newPos);
             } else {
-                driverMarker = new google.maps.Marker({
-                    position: newPos,
-                    map: map,
-                    icon: createCarIcon(),
-                    title: 'موقع السائق',
-                    zIndex: 1000
-                });
+                console.log('📍 [updateDriverMarker] Creating NEW driver marker with custom Google Maps vector symbol...');
+                try {
+                    const carIcon = createCarIcon();
+                    console.log('✅ [updateDriverMarker] Google Maps Symbol compiled successfully:', carIcon);
+                    driverMarker = new google.maps.Marker({
+                        position: newPos,
+                        map: map,
+                        icon: carIcon,
+                        title: 'موقع السائق',
+                        zIndex: 1000
+                    });
+                    console.log('✅ [updateDriverMarker] Marker plotted on map successfully.');
+                } catch (iconErr) {
+                    console.error('❌ [updateDriverMarker] Error creating custom marker:', iconErr);
+                }
             }
             // لا نستخدم setCenter هنا لمنع قفز الخريطة - يتم توسيطها عند رسم المسار
         }
