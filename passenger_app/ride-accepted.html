@@ -895,17 +895,31 @@
         }
 
         // ==============================================
+        // إنشاء أيقونة سيارة باستخدام SVG مدمج
+        // ==============================================
+        function createCarIcon() {
+            const svg = `
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+                    <!-- دائرة خلفية بلون تراكا الزمردي المميز -->
+                    <circle cx="24" cy="24" r="22" fill="#008B5E" opacity="0.9" stroke="#fff" stroke-width="2"/>
+                    <!-- أيقونة السيارة -->
+                    <path d="M32 16H16c-1.1 0-2 .9-2 2v12c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h2c.55 0 1-.45 1-1V18c0-1.1-.9-2-2-2zm-13 7.5c0 .83-.67 1.5-1.5 1.5s-1.5-.67-1.5-1.5S16.67 22 17.5 22s1.5.67 1.5 1.5zm10 0c0 .83-.67 1.5-1.5 1.5s-1.5-.67-1.5-1.5S27.67 22 28.5 22s1.5.67 1.5 1.5zM19 26l2-6h6l2 6H19z" fill="#fff"/>
+                </svg>
+            `;
+
+            return {
+                url: 'data:image/svg+xml,' + encodeURIComponent(svg),
+                scaledSize: new google.maps.Size(44, 44),
+                anchor: new google.maps.Point(22, 22),
+            };
+        }
+
+        // ==============================================
         // تحديث موقع السائق على الخريطة - نسخة مطابقة لصفحة السائق
         // ==============================================
         function updateDriverMarker(pos) {
             if (!map) return;
             if (!pos || !pos.lat || !pos.lng) return;
-
-            const icon = {
-                url: '../assets/branding/driver-icon.png',
-                scaledSize: new google.maps.Size(40, 40),
-                anchor: new google.maps.Point(20, 20)
-            };
 
             const lat = parseFloat(pos.lat);
             const lng = parseFloat(pos.lng);
@@ -919,8 +933,9 @@
                 driverMarker = new google.maps.Marker({
                     position: newPos,
                     map: map,
-                    icon: icon,
-                    title: 'موقع السائق'
+                    icon: createCarIcon(),
+                    title: 'موقع السائق',
+                    zIndex: 1000
                 });
             }
             // لا نستخدم setCenter هنا لمنع قفز الخريطة - يتم توسيطها عند رسم المسار
