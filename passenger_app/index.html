@@ -3954,6 +3954,7 @@ async function confirmRide() {
 async function runSequentialSearch(rideId, requestId, basePrice, totalPrice, distance) {
     const searchRadii = [3, 6, 10];
     triedDriverIds.clear();
+    let driverCounter = 1;
 
     const loadingText = document.querySelector('.ride-loading-text');
     const loadingSubtext = document.querySelector('.ride-loading-subtext');
@@ -4032,6 +4033,7 @@ async function runSequentialSearch(rideId, requestId, basePrice, totalPrice, dis
                         driver_phone: selectedDriver.phone,
                         status: 'awaiting_driver_acceptance',
                         notification_sent: true,
+                        driver_rejected: false, // Reset rejection state for new candidate
                         updated_at: new Date().toISOString()
                     })
                     .eq('id', rideId);
@@ -4077,7 +4079,7 @@ async function runSequentialSearch(rideId, requestId, basePrice, totalPrice, dis
 
             // Update loading overlay with driver info and countdown
             document.getElementById('driver-info-section').classList.remove('hidden');
-            document.getElementById('current-driver-name').textContent = `السائق: سائق تراكا`;
+            document.getElementById('current-driver-name').textContent = `السائق: سائق تراكا ${driverCounter}`;
             document.getElementById('current-driver-vehicle').textContent = `نوع المركبة: ${VEHICLE_PRICES[selectedVehicleType].name}`;
 
             // Wait up to 40 seconds for driver to accept
@@ -4097,7 +4099,7 @@ async function runSequentialSearch(rideId, requestId, basePrice, totalPrice, dis
                 try {
                     const { data: currentRide, error: fetchErr } = await tarhalDB
                         .from('rides')
-                        .select('status, driver_id')
+                        .select('status, driver_id, driver_rejected')
                         .eq('id', rideId)
                         .single();
 
@@ -4105,7 +4107,7 @@ async function runSequentialSearch(rideId, requestId, basePrice, totalPrice, dis
                         if (currentRide.status === 'accepted') {
                             driverAccepted = true;
                             break;
-                        } else if (currentRide.status === 'cancelled_by_driver' || currentRide.status === 'searching') {
+                        } else if (currentRide.status === 'cancelled_by_driver' || currentRide.driver_rejected === true) {
                             driverRejected = true;
                             break;
                         }
@@ -4127,6 +4129,7 @@ async function runSequentialSearch(rideId, requestId, basePrice, totalPrice, dis
             // Driver rejected or timed out
             console.log(`[SequentialSearch] Driver ${selectedDriver.name || selectedDriver.driver_id} rejected or timed out. Trying next...`);
             triedDriverIds.add(selectedDriver.driver_id);
+            driverCounter++;
             
             // Reset ride status back to 'searching' and remove driver info so another driver can be found
             try {
@@ -4137,6 +4140,7 @@ async function runSequentialSearch(rideId, requestId, basePrice, totalPrice, dis
                         driver_name: null,
                         driver_phone: null,
                         status: 'searching',
+                        driver_rejected: false,
                         updated_at: new Date().toISOString()
                     })
                     .eq('id', rideId);
