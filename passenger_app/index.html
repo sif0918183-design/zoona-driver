@@ -2895,12 +2895,10 @@ function initRealtime() {
                 if (window.soundManager) window.soundManager.playSuccessSound();
                 showNotification(`✅ تم قبول الرحلة من السائق ${ride.driver_name || 'سائق'}!`, 'success');
 
-                // إخفاء أي واجهات انتظار
+                // إخفاء أي واجهات انتظار وتوجيه فوري
                 document.getElementById('ride-loading-overlay').classList.add('hidden');
-
-                setTimeout(() => {
-                    window.location.href = `ride-accepted.html?id=${ride.id}`;
-                }, 1500);
+                localStorage.removeItem('is_searching');
+                window.location.href = `ride-accepted.html?id=${ride.id}`;
             } else if (ride.status === 'cancelled_by_driver') {
                 showNotification('⚠️ نأسف، السائق قام بإلغاء الطلب. جاري البحث عن بديل...', 'warning');
                 handleDriverRejection(ride.id);
@@ -3661,6 +3659,26 @@ function selectDriverStrategy(drivers, strategy = 'smart') {
 async function handleNoDriversFound(rideId, userPosition, vehicleType) {
     console.log('⚠️ No drivers found within 10km');
 
+    if (window.rideAcceptedProcessed) {
+        console.log('[handleNoDriversFound] Ignored because ride was already accepted.');
+        return;
+    }
+
+    try {
+        const { data: rideCheck } = await tarhalDB
+            .from('rides')
+            .select('status')
+            .eq('id', rideId)
+            .maybeSingle();
+        if (rideCheck && ['accepted', 'arrived', 'ongoing'].includes(rideCheck.status)) {
+            console.log('[handleNoDriversFound] Ride status is already accepted/active. Bypassing "No drivers" modal.');
+            window.rideAcceptedProcessed = true;
+            return;
+        }
+    } catch (e) {
+        console.error(e);
+    }
+
     // إخفاء شاشة التحميل الحالية
     document.getElementById('ride-loading-overlay').classList.add('hidden');
 
@@ -4106,6 +4124,7 @@ async function runSequentialSearch(rideId, requestId, basePrice, totalPrice, dis
                     if (!fetchErr && currentRide) {
                         if (currentRide.status === 'accepted') {
                             driverAccepted = true;
+                            window.rideAcceptedProcessed = true;
                             break;
                         } else if (currentRide.status === 'cancelled_by_driver' || currentRide.driver_rejected === true) {
                             driverRejected = true;
