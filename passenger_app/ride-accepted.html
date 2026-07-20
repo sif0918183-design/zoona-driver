@@ -895,24 +895,27 @@
         }
 
         // ==============================================
-        // إنشاء أيقونة سيارة باستخدام SVG مدمج
+        // ✅ ✅ ✅ إنشاء أيقونة سيارة - الحل النهائي ✅ ✅ ✅
+        // استخدام google.maps.MarkerImage مع SVG مباشر
         // ==============================================
         function createCarIcon() {
-            console.log('🎨 [createCarIcon] Compiling native google.maps.Symbol vector icon...');
+            const svg = `
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+                    <circle cx="12" cy="12" r="11" fill="#008B5E" stroke="white" stroke-width="2"/>
+                    <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z" fill="white"/>
+                </svg>
+            `;
+            
             return {
-                path: 'M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z',
-                fillColor: '#008B5E', // لون تراكا الأخضر الزمردي المميز
-                fillOpacity: 1,
-                strokeColor: '#FFFFFF', // حدود بيضاء للتوضيح والتباين
-                strokeWeight: 1.5,
-                scale: 1.5, // حجم كبير وواضح للرؤية الاحترافية
-                anchor: new google.maps.Point(12, 12), // توسيط الأيقونة تماماً على الموقع
-                rotation: 0
+                url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+                scaledSize: new google.maps.Size(44, 44),
+                anchor: new google.maps.Point(22, 22),
+                labelOrigin: new google.maps.Point(12, 10),
             };
         }
 
         // ==============================================
-        // تحديث موقع السائق على الخريطة - نسخة مطابقة لصفحة السائق
+        // تحديث موقع السائق على الخريطة
         // ==============================================
         function updateDriverMarker(pos) {
             console.log('📍 [updateDriverMarker] Received coordinates update:', pos);
@@ -939,10 +942,10 @@
                 console.log('📍 [updateDriverMarker] Animating existing driver marker to new position.');
                 animateMarker(driverMarker, newPos);
             } else {
-                console.log('📍 [updateDriverMarker] Creating NEW driver marker with custom Google Maps vector symbol...');
+                console.log('📍 [updateDriverMarker] Creating NEW driver marker with custom Google Maps SVG icon...');
                 try {
                     const carIcon = createCarIcon();
-                    console.log('✅ [updateDriverMarker] Google Maps Symbol compiled successfully:', carIcon);
+                    console.log('✅ [updateDriverMarker] SVG icon compiled successfully:', carIcon);
                     driverMarker = new google.maps.Marker({
                         position: newPos,
                         map: map,
@@ -955,11 +958,10 @@
                     console.error('❌ [updateDriverMarker] Error creating custom marker:', iconErr);
                 }
             }
-            // لا نستخدم setCenter هنا لمنع قفز الخريطة - يتم توسيطها عند رسم المسار
         }
 
         // ==============================================
-        // تحريك السيارة بسلاسة - مطابقة لصفحة السائق
+        // تحريك السيارة بسلاسة
         // ==============================================
         function animateMarker(marker, newPos) {
             const startPos = marker.getPosition();
@@ -981,7 +983,7 @@
         }
 
         // ==============================================
-        // الاشتراك في تحديثات موقع السائق - نسخة مصححة
+        // الاشتراك في تحديثات موقع السائق
         // ==============================================
         function subscribeToDriverLocation() {
             if (!currentDriverId) {
