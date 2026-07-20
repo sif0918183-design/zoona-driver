@@ -2284,6 +2284,7 @@ let locationTimer = null;
 let gpsRetryCount = 0;
 let currentRideId = null;
 let rideStatusInterval = null;
+let triedDriverIds = new Set();
 
 // Vehicle Prices
 const VEHICLE_PRICES = {
@@ -3927,181 +3928,16 @@ async function confirmRide() {
         localStorage.setItem('is_searching', 'true');
         localStorage.setItem('ride_request_id', ride.request_id || requestId);
 
-        // Start polling fallback
-        startRideStatusPolling(rideId);
-        
         // ============================================
-        // نظام البحث الجغرافي التدريجي (3 -> 6 -> 10 كم)
+        // نظام البحث الجغرافي المتسلسل التدريجي (3 -> 6 -> 10 كم)
         // ============================================
-        const searchRadii = [3, 6, 10];
-        let nearbyDrivers = [];
-        let searchRadiusUsed = 0;
-        let selectedDriver = null;
-
         // إظهار واجهة التحميل مبكراً لتحديث النصوص
         document.getElementById('ride-loading-overlay').classList.remove('hidden');
         const loadingText = document.querySelector('.ride-loading-text');
         const loadingSubtext = document.querySelector('.ride-loading-subtext');
 
-        for (const radius of searchRadii) {
-            searchRadiusUsed = radius;
-            loadingText.innerHTML = `<i class="ph-light ph-magnifying-glass"></i> جاري البحث في نطاق ${radius} كم...`;
-            loadingSubtext.innerHTML = `نبحث عن أفضل سائق متاح لنوع ${vehicle.name}...`;
-
-            nearbyDrivers = await findNearbyDrivers(userPosition, selectedVehicleType, radius);
-
-            if (nearbyDrivers.length > 0) {
-                console.log(`[ConfirmRide] Found ${nearbyDrivers.length} potential candidates in ${radius} km`);
-
-                // ترتيب السائقين حسب الأفضلية والتحقق من ربطهم بالإشعارات
-                const sortedCandidates = [...nearbyDrivers].sort((a, b) => {
-                    const scoreA = (100 - (a.distance * 5)) + ((a.rating || 4.5) * 10) + ((a.total_rides || 0) * 0.1);
-                    const scoreB = (100 - (b.distance * 5)) + ((b.rating || 4.5) * 10) + ((b.total_rides || 0) * 0.1);
-                    return scoreB - scoreA;
-                });
-
-                for (const candidate of sortedCandidates) {
-                    console.log(`[ConfirmRide] Checking link status for driver: ${candidate.name || candidate.id}`);
-                    const driverLinked = await checkDriverLinked(candidate.driver_id);
-                    if (driverLinked) {
-                        console.log(`[ConfirmRide] Driver ${candidate.name || candidate.id} is linked and available.`);
-                        selectedDriver = candidate;
-                        break;
-                    } else {
-                        console.warn(`[ConfirmRide] Driver ${candidate.name || candidate.id} is NOT linked (missing push subscription). Skipping...`);
-                    }
-                }
-
-                if (selectedDriver) break;
-
-                console.warn(`[ConfirmRide] No linked drivers found in ${radius} km. Expanding search...`);
-                showNotification(`⚠️ لم نجد سائقين متاحين حالياً في نطاق ${radius} كم. جاري توسيع البحث...`, 'warning');
-            } else {
-                console.log(`[ConfirmRide] No drivers at all found in ${radius} km.`);
-            }
-
-            // انتظار بسيط لمدة ثانية قبل توسيع النطاق لإعطاء انطباع البحث للمستخدم
-            await new Promise(resolve => setTimeout(resolve, 1500));
-        }
-        
-        // إذا لم يتم العثور على سائقين بعد 10 كم
-        if (!selectedDriver) {
-            await handleNoDriversFound(rideId, userPosition, selectedVehicleType);
-            confirmBtn.innerHTML = originalHTML;
-            confirmBtn.disabled = false;
-            return;
-        }
-        
-        console.log('🏆 Selected driver:', selectedDriver.name, 'Distance:', selectedDriver.distance, 'km');
-
-        // تسجيل بيانات البحث (اختياري لغرض التحليل)
-        try {
-            await tarhalDB.from('ride_logs').insert([{
-                ride_id: rideId,
-                search_radius_used: searchRadiusUsed,
-                drivers_found_count: nearbyDrivers.length,
-                selected_driver_id: selectedDriver.id,
-                selection_strategy: 'smart',
-                search_duration: (new Date() - new Date(rideData.search_started_at)) / 1000,
-                timestamp: new Date().toISOString()
-            }]);
-        } catch (e) { /* تجاهل الخطأ إذا كان الجدول غير موجود */ }
-        
-        // إرسال إشعار Web Push للسائق عبر API الخاص بالتطبيق
-        // تجهيز البيانات للإشعار كما هو مطلوب في api/send-push.js
-        const pushPayload = {
-            driverId: selectedDriver.driver_id, // يجب أن يكون UUID السائق
-            rideId: rideId,
-            requestId: requestId,
-            customerName: currentUser.full_name,
-            customerPhone: currentUser.phone,
-            vehicleType: selectedVehicleType,
-            amount: totalPrice,
-            distance: distance.toFixed(1) + ' كم',
-            pickupAddress: currentRoute.startAddress || 'موقع الانطلاق',
-            destinationAddress: currentRoute.endAddress || 'الوجهة',
-            pickupLat: userPosition.lat,
-            pickupLng: userPosition.lng,
-            destinationLat: destinationPosition.lat,
-            destinationLng: destinationPosition.lng,
-            timestamp: new Date().toISOString()
-        };
-
-        console.log('Sending push notification with payload:', pushPayload);
-
-        try {
-            const pushResponse = await fetch('/api/send-push', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify(pushPayload)
-            });
-            
-            if (!pushResponse.ok) {
-                throw new Error(`HTTP error! status: ${pushResponse.status}`);
-            }
-
-            const pushResult = await pushResponse.json();
-            console.log('Push API Response:', pushResult);
-            
-            if (pushResult.success) {
-                showNotification(`✅ تم إرسال الطلب للسائق ${selectedDriver.name}. جاري الانتظار...`, 'success');
-                
-                // تحديث بيانات السائق في الرحلة
-                await tarhalDB
-                    .from('rides')
-                    .update({ 
-                        driver_id: selectedDriver.driver_id, // UUID السائق من جدول drivers
-                        driver_name: selectedDriver.name,
-                        driver_phone: selectedDriver.phone,
-                        status: 'awaiting_driver_acceptance',
-                        notification_sent: true,
-                        notification_id: pushResult.notificationId || null,
-                        search_ended_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', rideId);
-                
-                // إظهار واجهة الانتظار للراكب
-                document.getElementById('ride-loading-overlay').classList.remove('hidden');
-                document.getElementById('driver-info-section').classList.remove('hidden');
-                document.getElementById('current-driver-name').textContent = `السائق: سائق تراكا - ${vehicle.name}`;
-                document.getElementById('current-driver-vehicle').textContent = `نوع المركبة: ${vehicle.name}`;
-                
-                confirmBtn.innerHTML = `
-                    <div style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
-                        <i class="ph-light ph-clock" style="font-size: 14px;"></i>
-                        <span style="font-family: 'Tajawal', sans-serif; font-size: 14px; font-weight: 600;">
-                            في انتظار قبول السائق...
-                        </span>
-                    </div>
-                `;
-                
-            } else {
-                throw new Error(pushResult.error || 'فشل إرسال الإشعار للسائق');
-            }
-            
-        } catch (pushError) {
-            console.error('Push Notification Error:', pushError);
-            
-            // تحديث حالة الرحلة في قاعدة البيانات
-            await tarhalDB
-                .from('rides')
-                .update({ 
-                    status: 'notification_failed',
-                    error_message: pushError.message.substring(0, 200),
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', rideId);
-            
-            showNotification('⚠️ تم طلب الرحلة ولكن تعذر إرسال الإشعار للسائق فوراً', 'warning');
-
-            // يمكنك اختيارياً إظهار خيارات بديلة هنا
-            confirmBtn.innerHTML = originalHTML;
-            confirmBtn.disabled = false;
-        }
+        // تشغيل البحث المتسلسل الذكي
+        await runSequentialSearch(rideId, requestId, basePrice, totalPrice, distance);
         
     } catch (error) {
         console.error('Confirm Ride Error:', error);
@@ -4113,6 +3949,216 @@ async function confirmRide() {
         document.getElementById('ride-loading-overlay').classList.add('hidden');
     }
 }
+
+// دالة البحث المتسلسل عن السائقين (3 -> 6 -> 10 كم بالتتالي)
+async function runSequentialSearch(rideId, requestId, basePrice, totalPrice, distance) {
+    const searchRadii = [3, 6, 10];
+    triedDriverIds.clear();
+
+    const loadingText = document.querySelector('.ride-loading-text');
+    const loadingSubtext = document.querySelector('.ride-loading-subtext');
+    const confirmBtn = document.getElementById('confirm-ride-btn');
+    const originalHTML = `
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
+            <i class="ph-light ph-car"></i>
+            <span style="font-family: 'Tajawal', sans-serif; font-size: 14px; font-weight: 600;">
+                بحث عن سائق
+            </span>
+        </div>
+    `;
+
+    for (const radius of searchRadii) {
+        let radiusDone = false;
+
+        while (!radiusDone) {
+            // Check if user cancelled search
+            if (localStorage.getItem('is_searching') !== 'true') {
+                console.log('[SequentialSearch] Search cancelled.');
+                return;
+            }
+
+            loadingText.innerHTML = `<i class="ph-light ph-magnifying-glass"></i> جاري البحث في نطاق ${radius} كم...`;
+            loadingSubtext.innerHTML = `نبحث عن أفضل سائق متاح...`;
+
+            // Query nearby drivers in this radius
+            const nearbyDrivers = await findNearbyDrivers(userPosition, selectedVehicleType, radius);
+
+            // Filter out already tried drivers
+            const availableDrivers = nearbyDrivers.filter(d => !triedDriverIds.has(d.driver_id));
+
+            if (availableDrivers.length === 0) {
+                // No more untried drivers in this radius, move to the next radius
+                radiusDone = true;
+                break;
+            }
+
+            // Sort available candidates
+            const sortedCandidates = [...availableDrivers].sort((a, b) => {
+                const scoreA = (100 - (a.distance * 5)) + ((a.rating || 4.5) * 10) + ((a.total_rides || 0) * 0.1);
+                const scoreB = (100 - (b.distance * 5)) + ((b.rating || 4.5) * 10) + ((b.total_rides || 0) * 0.1);
+                return scoreB - scoreA;
+            });
+            
+            // Find the first linked driver
+            let selectedDriver = null;
+            for (const candidate of sortedCandidates) {
+                console.log(`[SequentialSearch] Checking link status for driver: ${candidate.name || candidate.id}`);
+                const driverLinked = await checkDriverLinked(candidate.driver_id);
+                if (driverLinked) {
+                    selectedDriver = candidate;
+                    break;
+                } else {
+                    console.warn(`[SequentialSearch] Driver ${candidate.name || candidate.id} is NOT linked. Skipping...`);
+                    triedDriverIds.add(candidate.driver_id); // Skip them in future iterations too
+                }
+            }
+
+            if (!selectedDriver) {
+                // No linked drivers in this batch, move to next radius
+                radiusDone = true;
+                break;
+            }
+            
+            // Try this driver!
+            console.log(`[SequentialSearch] Testing driver: ${selectedDriver.name || selectedDriver.driver_id}`);
+
+            // Update ride record in database
+            try {
+                await tarhalDB
+                    .from('rides')
+                    .update({ 
+                        driver_id: selectedDriver.driver_id,
+                        driver_name: selectedDriver.name,
+                        driver_phone: selectedDriver.phone,
+                        status: 'awaiting_driver_acceptance',
+                        notification_sent: true,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', rideId);
+            } catch (err) {
+                console.error('Error updating ride to awaiting_driver_acceptance:', err);
+                radiusDone = true;
+                break;
+            }
+
+            // Send push notification
+            const pushPayload = {
+                driverId: selectedDriver.driver_id,
+                rideId: rideId,
+                requestId: requestId,
+                customerName: currentUser.full_name,
+                customerPhone: currentUser.phone,
+                vehicleType: selectedVehicleType,
+                amount: totalPrice,
+                distance: distance.toFixed(1) + ' كم',
+                pickupAddress: currentRoute.startAddress || 'موقع الانطلاق',
+                destinationAddress: currentRoute.endAddress || 'الوجهة',
+                pickupLat: userPosition.lat,
+                pickupLng: userPosition.lng,
+                destinationLat: destinationPosition.lat,
+                destinationLng: destinationPosition.lng,
+                timestamp: new Date().toISOString()
+            };
+
+            try {
+                const pushResponse = await fetch('/api/send-push', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(pushPayload)
+                });
+                const pushResult = await pushResponse.json();
+                console.log('Push notification response:', pushResult);
+            } catch (err) {
+                console.error('Error sending push:', err);
+            }
+
+            // Update loading overlay with driver info and countdown
+            document.getElementById('driver-info-section').classList.remove('hidden');
+            document.getElementById('current-driver-name').textContent = `السائق: سائق تراكا`;
+            document.getElementById('current-driver-vehicle').textContent = `نوع المركبة: ${VEHICLE_PRICES[selectedVehicleType].name}`;
+
+            // Wait up to 40 seconds for driver to accept
+            let driverAccepted = false;
+            let driverRejected = false;
+
+            for (let sec = 40; sec > 0; sec--) {
+                // If passenger cancelled the search, break out completely
+                if (localStorage.getItem('is_searching') !== 'true') {
+                    console.log('[SequentialSearch] Search cancelled by passenger.');
+                    return;
+                }
+                
+                loadingText.innerHTML = `<i class="ph-bold ph-clock ph-spin" style="display: inline-block;"></i> في انتظار السائق... (${sec} ثانية)`;
+                
+                // Fetch current status
+                try {
+                    const { data: currentRide, error: fetchErr } = await tarhalDB
+                        .from('rides')
+                        .select('status, driver_id')
+                        .eq('id', rideId)
+                        .single();
+
+                    if (!fetchErr && currentRide) {
+                        if (currentRide.status === 'accepted') {
+                            driverAccepted = true;
+                            break;
+                        } else if (currentRide.status === 'cancelled_by_driver' || currentRide.status === 'searching') {
+                            driverRejected = true;
+                            break;
+                        }
+                    }
+                } catch (e) {
+                    console.warn(e);
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            
+            if (driverAccepted) {
+                console.log('🎉 Driver accepted the ride!');
+                localStorage.removeItem('is_searching');
+                window.location.href = `ride-accepted.html?id=${rideId}`;
+                return;
+            }
+            
+            // Driver rejected or timed out
+            console.log(`[SequentialSearch] Driver ${selectedDriver.name || selectedDriver.driver_id} rejected or timed out. Trying next...`);
+            triedDriverIds.add(selectedDriver.driver_id);
+            
+            // Reset ride status back to 'searching' and remove driver info so another driver can be found
+            try {
+                await tarhalDB
+                    .from('rides')
+                    .update({
+                        driver_id: null,
+                        driver_name: null,
+                        driver_phone: null,
+                        status: 'searching',
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', rideId);
+            } catch (e) {
+                console.error('Error resetting ride status to searching:', e);
+            }
+
+            showNotification(`السائق لم يستجب أو اعتذر عن الرحلة، جاري البحث عن سائق آخر...`, 'warning');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+    }
+
+    // If we reach here, no driver accepted
+    console.log('[SequentialSearch] No driver accepted after trying all available candidates in all radii.');
+    await handleNoDriversFound(rideId, userPosition, selectedVehicleType);
+
+    if (confirmBtn) {
+        confirmBtn.innerHTML = originalHTML;
+        confirmBtn.disabled = false;
+    }
+}
+
 // دالة جديدة لمراقبة حالة الرحلة
 function startRideStatusPolling(rideId) {
     if (rideStatusInterval) clearInterval(rideStatusInterval);

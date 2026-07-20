@@ -48,14 +48,24 @@ export default async function handler(req, res) {
             }
         }
 
-        // جلب توكن السائق
+        // جلب توكن وحالة حظر السائق
         const { data: driver, error: dbError } = await tarhalDB
             .from('drivers')
-            .select('fcm_token')
+            .select('fcm_token, is_banned, ban_until')
             .eq('id', driverId)
             .single();
 
-        if (dbError || !driver?.fcm_token) {
+        if (dbError || !driver) {
+            return res.status(404).json({ error: 'Driver not found' });
+        }
+
+        const isBanned = driver.is_banned && driver.ban_until && new Date(driver.ban_until) > new Date();
+        if (isBanned) {
+            console.log(`🚫 Driver ${driverId} is banned until ${driver.ban_until}. Preventing push notification.`);
+            return res.status(403).json({ success: false, error: 'حساب السائق معلق ومحظور حالياً من العمل.' });
+        }
+
+        if (!driver.fcm_token) {
             return res.status(404).json({ error: 'Token missing' });
         }
 
