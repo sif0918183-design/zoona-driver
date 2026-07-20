@@ -895,22 +895,13 @@
         }
 
         // ==============================================
-        // ✅ ✅ ✅ إنشاء أيقونة سيارة - الحل النهائي ✅ ✅ ✅
-        // استخدام google.maps.MarkerImage مع SVG مباشر
+        // ✅ ✅ ✅ أيقونة السيارة - استخدام رابط CDN (نفس طريقة صفحة السائق) ✅ ✅ ✅
         // ==============================================
         function createCarIcon() {
-            const svg = `
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
-                    <circle cx="12" cy="12" r="11" fill="#008B5E" stroke="white" stroke-width="2"/>
-                    <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z" fill="white"/>
-                </svg>
-            `;
-            
             return {
-                url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+                url: 'https://cdn-icons-png.flaticon.com/512/3202/3202926.png',
                 scaledSize: new google.maps.Size(44, 44),
                 anchor: new google.maps.Point(22, 22),
-                labelOrigin: new google.maps.Point(12, 10),
             };
         }
 
@@ -942,10 +933,10 @@
                 console.log('📍 [updateDriverMarker] Animating existing driver marker to new position.');
                 animateMarker(driverMarker, newPos);
             } else {
-                console.log('📍 [updateDriverMarker] Creating NEW driver marker with custom Google Maps SVG icon...');
+                console.log('📍 [updateDriverMarker] Creating NEW driver marker with CDN icon...');
                 try {
                     const carIcon = createCarIcon();
-                    console.log('✅ [updateDriverMarker] SVG icon compiled successfully:', carIcon);
+                    console.log('✅ [updateDriverMarker] Icon created successfully:', carIcon);
                     driverMarker = new google.maps.Marker({
                         position: newPos,
                         map: map,
@@ -955,7 +946,7 @@
                     });
                     console.log('✅ [updateDriverMarker] Marker plotted on map successfully.');
                 } catch (iconErr) {
-                    console.error('❌ [updateDriverMarker] Error creating custom marker:', iconErr);
+                    console.error('❌ [updateDriverMarker] Error creating marker:', iconErr);
                 }
             }
         }
