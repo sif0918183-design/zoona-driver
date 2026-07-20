@@ -899,6 +899,7 @@
         // ==============================================
         function updateDriverMarker(pos) {
             if (!map) return;
+            if (!pos || !pos.lat || !pos.lng) return;
 
             const icon = {
                 url: 'https://cdn-icons-png.flaticon.com/512/3202/3202926.png',
@@ -906,7 +907,11 @@
                 anchor: new google.maps.Point(20, 20)
             };
 
-            const newPos = new google.maps.LatLng(pos.lat, pos.lng);
+            const lat = parseFloat(pos.lat);
+            const lng = parseFloat(pos.lng);
+            if (isNaN(lat) || isNaN(lng)) return;
+
+            const newPos = new google.maps.LatLng(lat, lng);
 
             if (driverMarker) {
                 animateMarker(driverMarker, newPos);
