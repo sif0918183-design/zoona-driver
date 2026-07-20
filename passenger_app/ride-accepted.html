@@ -902,7 +902,7 @@
             if (!pos || !pos.lat || !pos.lng) return;
 
             const icon = {
-                url: 'https://cdn-icons-png.flaticon.com/512/3202/3202926.png',
+                url: '../assets/branding/driver-icon.png',
                 scaledSize: new google.maps.Size(40, 40),
                 anchor: new google.maps.Point(20, 20)
             };
@@ -968,28 +968,14 @@
             console.log('🔍 فلتر الاشتراك:', filterString);
             
             driverLocationChannel = db
-                .channel(`driver-location-${currentDriverId}`)
+                .channel(`driver-loc-${currentDriverId}`)
                 .on('postgres_changes', {
-                    event: 'INSERT',
+                    event: '*',
                     schema: 'public',
                     table: 'driver_locations',
                     filter: filterString
                 }, (payload) => {
-                    console.log('📍 إدراج جديد لموقع السائق:', payload.new);
-                    if (payload.new && payload.new.lat && payload.new.lng) {
-                        updateDriverMarker({
-                            lat: payload.new.lat,
-                            lng: payload.new.lng
-                        });
-                    }
-                })
-                .on('postgres_changes', {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'driver_locations',
-                    filter: filterString
-                }, (payload) => {
-                    console.log('📍 تحديث موقع السائق:', payload.new);
+                    console.log('📍 تحديث موقع السائق فوري:', payload.new);
                     if (payload.new && payload.new.lat && payload.new.lng) {
                         updateDriverMarker({
                             lat: payload.new.lat,
