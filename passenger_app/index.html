@@ -2946,8 +2946,8 @@ async function checkForActiveRide() {
                     // If we have driver info in the ride record, show it
                     if (data.driver_name) {
                         document.getElementById('driver-info-section').classList.remove('hidden');
-                        document.getElementById('current-driver-name').textContent = `السائق: ${data.driver_name}`;
                         const vName = VEHICLE_PRICES[data.vehicle_category]?.name || data.vehicle_category;
+                        document.getElementById('current-driver-name').textContent = `السائق: سائق تراكا - ${vName}`;
                         document.getElementById('current-driver-vehicle').textContent = `نوع المركبة: ${vName}`;
                     }
 
@@ -4067,7 +4067,7 @@ async function confirmRide() {
                 // إظهار واجهة الانتظار للراكب
                 document.getElementById('ride-loading-overlay').classList.remove('hidden');
                 document.getElementById('driver-info-section').classList.remove('hidden');
-                document.getElementById('current-driver-name').textContent = `السائق: ${selectedDriver.name}`;
+                document.getElementById('current-driver-name').textContent = `السائق: سائق تراكا - ${vehicle.name}`;
                 document.getElementById('current-driver-vehicle').textContent = `نوع المركبة: ${vehicle.name}`;
                 
                 confirmBtn.innerHTML = `
@@ -4230,7 +4230,7 @@ async function handleDriverRejection(rideId) {
                 // إظهار واجهة الانتظار للراكب
                 document.getElementById('ride-loading-overlay').classList.remove('hidden');
                 document.getElementById('driver-info-section').classList.remove('hidden');
-                document.getElementById('current-driver-name').textContent = `السائق: ${selectedDriver.name}`;
+                document.getElementById('current-driver-name').textContent = `السائق: سائق تراكا - ${VEHICLE_PRICES[ride.vehicle_category].name}`;
                 document.getElementById('current-driver-vehicle').textContent = `نوع المركبة: ${VEHICLE_PRICES[ride.vehicle_category].name}`;
 
             }
