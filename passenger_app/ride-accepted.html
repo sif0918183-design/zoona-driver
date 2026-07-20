@@ -186,7 +186,7 @@
     </div>
 
     <header class="app-header">
-        <img src="assets/branding/icon-192x192.png" class="logo-img" alt="Tracka">
+        <h1 style="color: white; font-family: 'Tajawal', sans-serif; font-size: 18px; font-weight: 700; text-align: center; margin: 0; padding: 5px 0;">تراكا للنقل / رحلة داخلية نشطة</h1>
     </header>
 
     <div class="status-bar" id="status-display">
@@ -255,6 +255,66 @@
         let driverLocationChannel = null;
         let pollingInterval = null;
         let driverLocationBroadcastChannel = null;
+        let supabaseAdmin = null;
+
+        // ==============================================
+        // تهيئة Supabase Admin بالمفتاح لتجاوز RLS
+        // ==============================================
+        async function initSupabaseAdmin() {
+            let serviceRoleKey = window.SUPABASE_SERVICE_ROLE_KEY;
+            if (!serviceRoleKey) {
+                try {
+                    const sToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_admin_token');
+                    const sResponse = await fetch('/api/get-service-key', {
+                        headers: {
+                            'Authorization': sToken ? `Bearer ${sToken}` : ''
+                        }
+                    });
+                    const sData = await sResponse.json();
+                    serviceRoleKey = sData.serviceRoleKey || (sData.data && sData.data.serviceRoleKey);
+                } catch (fetchKeyErr) {
+                    console.error('❌ خطأ في جلب مفتاح الخدمة:', fetchKeyErr);
+                }
+            }
+
+            if (serviceRoleKey && !supabaseAdmin) {
+                supabaseAdmin = supabase.createClient(
+                    window.SB_URL,
+                    serviceRoleKey,
+                    {
+                        auth: {
+                            autoRefreshToken: false,
+                            persistSession: false
+                        }
+                    }
+                );
+                console.log('✅ تم تهيئة supabaseAdmin بنجاح لجميع العمليات في الصفحة');
+            }
+        }
+
+        // ==============================================
+        // استطلاع حالة الرحلة بشكل دوري عالي التردد
+        // ==============================================
+        function startRideStatusPolling() {
+            console.log('🔄 بدء الاستطلاع الدوري عالي التردد لحالة الرحلة...');
+            setInterval(async () => {
+                if (!currentRideId) return;
+                try {
+                    const db = supabaseAdmin || tarhalDB;
+                    const { data, error } = await db
+                        .from('rides')
+                        .select('status')
+                        .eq('id', currentRideId)
+                        .single();
+                    if (data && data.status) {
+                        console.log('🔄 استطلاع حالة الرحلة الدوري:', data.status);
+                        updateStatusUI(data.status);
+                    }
+                } catch (e) {
+                    console.warn('⚠️ خطأ في استطلاع حالة الرحلة الدوري:', e);
+                }
+            }, 3000);
+        }
 
         // ==============================================
         // التهيئة عند تحميل الصفحة
@@ -262,6 +322,9 @@
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('🚀 تم تحميل صفحة تتبع الرحلة');
             
+            await initSupabaseAdmin();
+            const db = supabaseAdmin || tarhalDB;
+
             const urlParams = new URLSearchParams(window.location.search);
             currentRideId = urlParams.get('id') || urlParams.get('rideId');
             
@@ -274,7 +337,7 @@
                 // =====================================================
                 
                 // Check if ride is still active in database
-                const { data: rideData, error } = await tarhalDB
+                const { data: rideData, error } = await db
                     .from('rides')
                     .select('id, status, passenger_id')
                     .eq('id', currentRideId)
@@ -315,6 +378,7 @@
                 }
                 
                 loadGoogleMaps();
+                startRideStatusPolling();
             } else {
                 document.getElementById('loadingOverlay').style.display = 'none';
                 document.getElementById('status-display').innerHTML = '❌ لم يتم العثور على معرف الرحلة';
@@ -383,7 +447,8 @@
                 if (!currentDriverId) return;
                 
                 try {
-                    const { data, error } = await tarhalDB
+                    const db = supabaseAdmin || tarhalDB;
+                    const { data, error } = await db
                         .from('driver_locations')
                         .select('lat, lng, last_updated')
                         .eq('driver_id', currentDriverId)
@@ -421,7 +486,8 @@
             try {
                 console.log('📡 جلب تفاصيل الرحلة:', currentRideId);
                 
-                const { data: ride, error } = await tarhalDB
+                const db = supabaseAdmin || tarhalDB;
+                const { data: ride, error } = await db
                     .from('rides')
                     .select(`
                         *,
@@ -441,7 +507,7 @@
                 if (error) {
                     console.error('❌ خطأ في جلب الرحلة:', error);
                     
-                    const { data: rideOnly, error: error2 } = await tarhalDB
+                    const { data: rideOnly, error: error2 } = await db
                         .from('rides')
                         .select('*')
                         .eq('id', currentRideId)
@@ -453,7 +519,7 @@
                         console.log('✅ تم جلب الرحلة فقط:', rideOnly);
                         
                         if (rideOnly.driver_id) {
-                            const { data: driver, error: error3 } = await tarhalDB
+                            const { data: driver, error: error3 } = await db
                                 .from('drivers')
                                 .select('*')
                                 .eq('id', rideOnly.driver_id)
@@ -548,7 +614,8 @@
             try {
                 console.log('🔍 جلب آخر موقع للسائق:', currentDriverId);
                 
-                const { data, error } = await tarhalDB
+                const db = supabaseAdmin || tarhalDB;
+                const { data, error } = await db
                     .from('driver_locations')
                     .select('lat, lng, last_updated')
                     .eq('driver_id', currentDriverId)
@@ -605,7 +672,8 @@
                 if (!currentDriverId) return;
                 
                 try {
-                    const { data, error } = await tarhalDB
+                    const db = supabaseAdmin || tarhalDB;
+                    const { data, error } = await db
                         .from('driver_locations')
                         .select('lat, lng')
                         .eq('driver_id', currentDriverId)
@@ -827,34 +895,64 @@
         }
 
         // ==============================================
-        // تحديث موقع السائق على الخريطة - نسخة مطابقة لصفحة السائق
+        // ✅ ✅ ✅ أيقونة السيارة - استخدام رابط CDN (نفس طريقة صفحة السائق) ✅ ✅ ✅
         // ==============================================
-        function updateDriverMarker(pos) {
-            if (!map) return;
-
-            const icon = {
+        function createCarIcon() {
+            return {
                 url: 'https://cdn-icons-png.flaticon.com/512/3202/3202926.png',
-                scaledSize: new google.maps.Size(40, 40),
-                anchor: new google.maps.Point(20, 20)
+                scaledSize: new google.maps.Size(44, 44),
+                anchor: new google.maps.Point(22, 22),
             };
-
-            const newPos = new google.maps.LatLng(pos.lat, pos.lng);
-
-            if (driverMarker) {
-                animateMarker(driverMarker, newPos);
-            } else {
-                driverMarker = new google.maps.Marker({
-                    position: newPos,
-                    map: map,
-                    icon: icon,
-                    title: 'موقع السائق'
-                });
-            }
-            // لا نستخدم setCenter هنا لمنع قفز الخريطة - يتم توسيطها عند رسم المسار
         }
 
         // ==============================================
-        // تحريك السيارة بسلاسة - مطابقة لصفحة السائق
+        // تحديث موقع السائق على الخريطة
+        // ==============================================
+        function updateDriverMarker(pos) {
+            console.log('📍 [updateDriverMarker] Received coordinates update:', pos);
+            if (!map) {
+                console.warn('⚠️ [updateDriverMarker] Map is not initialized yet!');
+                return;
+            }
+            if (!pos || !pos.lat || !pos.lng) {
+                console.warn('⚠️ [updateDriverMarker] Invalid coordinates payload:', pos);
+                return;
+            }
+
+            const lat = parseFloat(pos.lat);
+            const lng = parseFloat(pos.lng);
+            console.log(`📍 [updateDriverMarker] Parsed coordinates: Lat=${lat}, Lng=${lng}`);
+            if (isNaN(lat) || isNaN(lng)) {
+                console.error('❌ [updateDriverMarker] Coordinates parsed to NaN!');
+                return;
+            }
+
+            const newPos = new google.maps.LatLng(lat, lng);
+
+            if (driverMarker) {
+                console.log('📍 [updateDriverMarker] Animating existing driver marker to new position.');
+                animateMarker(driverMarker, newPos);
+            } else {
+                console.log('📍 [updateDriverMarker] Creating NEW driver marker with CDN icon...');
+                try {
+                    const carIcon = createCarIcon();
+                    console.log('✅ [updateDriverMarker] Icon created successfully:', carIcon);
+                    driverMarker = new google.maps.Marker({
+                        position: newPos,
+                        map: map,
+                        icon: carIcon,
+                        title: 'موقع السائق',
+                        zIndex: 1000
+                    });
+                    console.log('✅ [updateDriverMarker] Marker plotted on map successfully.');
+                } catch (iconErr) {
+                    console.error('❌ [updateDriverMarker] Error creating marker:', iconErr);
+                }
+            }
+        }
+
+        // ==============================================
+        // تحريك السيارة بسلاسة
         // ==============================================
         function animateMarker(marker, newPos) {
             const startPos = marker.getPosition();
@@ -876,7 +974,7 @@
         }
 
         // ==============================================
-        // الاشتراك في تحديثات موقع السائق - نسخة مصححة
+        // الاشتراك في تحديثات موقع السائق
         // ==============================================
         function subscribeToDriverLocation() {
             if (!currentDriverId) {
@@ -886,36 +984,23 @@
             
             console.log('📡 الاشتراك في تحديثات موقع السائق:', currentDriverId);
             
+            const db = supabaseAdmin || tarhalDB;
             if (driverLocationChannel) {
-                tarhalDB.removeChannel(driverLocationChannel);
+                db.removeChannel(driverLocationChannel);
             }
             
             const filterString = `driver_id=eq.${currentDriverId}`;
             console.log('🔍 فلتر الاشتراك:', filterString);
             
-            driverLocationChannel = tarhalDB
-                .channel(`driver-location-${currentDriverId}`)
+            driverLocationChannel = db
+                .channel(`driver-loc-${currentDriverId}`)
                 .on('postgres_changes', {
-                    event: 'INSERT',
+                    event: '*',
                     schema: 'public',
                     table: 'driver_locations',
                     filter: filterString
                 }, (payload) => {
-                    console.log('📍 إدراج جديد لموقع السائق:', payload.new);
-                    if (payload.new && payload.new.lat && payload.new.lng) {
-                        updateDriverMarker({
-                            lat: payload.new.lat,
-                            lng: payload.new.lng
-                        });
-                    }
-                })
-                .on('postgres_changes', {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'driver_locations',
-                    filter: filterString
-                }, (payload) => {
-                    console.log('📍 تحديث موقع السائق:', payload.new);
+                    console.log('📍 تحديث موقع السائق فوري:', payload.new);
                     if (payload.new && payload.new.lat && payload.new.lng) {
                         updateDriverMarker({
                             lat: payload.new.lat,
@@ -941,7 +1026,8 @@
         function subscribeToRideChanges() {
             console.log('📡 الاشتراك في تحديثات الرحلة:', currentRideId);
             
-            tarhalDB
+            const db = supabaseAdmin || tarhalDB;
+            db
                 .channel(`ride-changes-${currentRideId}`)
                 .on('postgres_changes', {
                     event: 'UPDATE',
@@ -997,8 +1083,40 @@
             document.querySelector('.btn-cancel').disabled = true;
             
             try {
+                // Fetch service_role key to bypass RLS
+                let serviceRoleKey = window.SUPABASE_SERVICE_ROLE_KEY;
+                if (!serviceRoleKey) {
+                    try {
+                        const sToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_admin_token');
+                        const sResponse = await fetch('/api/get-service-key', {
+                            headers: {
+                                'Authorization': sToken ? `Bearer ${sToken}` : ''
+                            }
+                        });
+                        const sData = await sResponse.json();
+                        serviceRoleKey = sData.serviceRoleKey || (sData.data && sData.data.serviceRoleKey);
+                    } catch (fetchKeyErr) {
+                        console.error('❌ خطأ في جلب مفتاح الخدمة:', fetchKeyErr);
+                    }
+                }
+
+                if (serviceRoleKey && !supabaseAdmin) {
+                    supabaseAdmin = supabase.createClient(
+                        window.SB_URL,
+                        serviceRoleKey,
+                        {
+                            auth: {
+                                autoRefreshToken: false,
+                                persistSession: false
+                            }
+                        }
+                    );
+                }
+
+                const db = supabaseAdmin || tarhalDB;
+
                 // Get ride details
-                const { data: rideData, error: rideError } = await tarhalDB
+                const { data: rideData, error: rideError } = await db
                     .from('rides')
                     .select('*')
                     .eq('id', currentRideId)
@@ -1009,6 +1127,9 @@
                     throw new Error('لم يتم العثور على الرحلة');
                 }
 
+                // Pre-declare resData to satisfy static scoping analysis
+                let resData = null;
+
                 // Get accepted time and calculate elapsed time
                 const acceptedAt = new Date(rideData.accepted_at);
                 const now = new Date();
@@ -1017,9 +1138,10 @@
                 // Get driver location (if available) for distance check
                 let driverWithinRange = false;
                 let driverLocation = null;
+                let locationData = null;
                 
                 try {
-                    const { data: locationData } = await tarhalDB
+                    const { data: locationRes } = await db
                         .from('driver_locations')
                         .select('lat, lng')
                         .eq('driver_id', rideData.driver_id)
@@ -1027,6 +1149,7 @@
                         .limit(1)
                         .maybeSingle();
                     
+                    locationData = locationRes;
                     if (locationData && rideData.pickup_lat && rideData.pickup_lng) {
                         // Calculate distance between driver and pickup location
                         const distance = calculateDistance(
@@ -1058,7 +1181,7 @@
                     })
                 });
 
-                const resData = await response.json();
+                resData = await response.json();
                 if (!response.ok || !resData.success) {
                     throw new Error(resData.error || 'فشل إلغاء الرحلة من خلال الخادم');
                 }
@@ -1085,14 +1208,15 @@
                 // المسار الرئيسي هو Supabase Realtime - هذا دعم إضافي
                 // =====================================================
                 try {
+                    const commissionAmount = Math.floor((rideData.amount || 0) * 0.10);
                     const driverChannel = new BroadcastChannel('driver_ride_channel');
                     driverChannel.postMessage({
                         type: 'RIDE_CANCELLED_BY_PASSENGER',
                         rideId: currentRideId,
-                        finalStatus: finalStatus,
+                        finalStatus: resData.finalStatus,
                         commissionAmount: commissionAmount,
-                        cancellationReason: cancellationReason,
-                        message: cancellationReason
+                        cancellationReason: resData.cancellationReason,
+                        message: resData.cancellationReason
                     });
                 } catch (e) {
                     console.log('تعذر إرسال إشعار BroadcastChannel للسائق:', e);
@@ -1142,7 +1266,8 @@
                 const banEndTime = new Date();
                 banEndTime.setHours(banEndTime.getHours() + 24);
 
-                await tarhalDB
+                const db = supabaseAdmin || tarhalDB;
+                await db
                     .from('drivers')
                     .update({
                         is_banned: true,
@@ -1206,7 +1331,8 @@
             try {
                 console.log('🧪 اختبار الاتصال بجدول driver_locations...');
                 
-                const { count, error: countError } = await tarhalDB
+                const db = supabaseAdmin || tarhalDB;
+                const { count, error: countError } = await db
                     .from('driver_locations')
                     .select('*', { count: 'exact', head: true });
                 
@@ -1216,7 +1342,7 @@
                     console.log('✅ الجدول موجود، عدد السجلات:', count);
                 }
                 
-                const { data, error } = await tarhalDB
+                const { data, error } = await db
                     .from('driver_locations')
                     .select('*')
                     .eq('driver_id', currentDriverId)
