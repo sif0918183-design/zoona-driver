@@ -17,7 +17,14 @@ if (!admin.apps.length) {
 }
 
 async function getDriverFcm(driverId) {
-    const { data } = await db.from('drivers').select('fcm_token,full_name').eq('id', driverId).single();
+    const { data } = await db.from('drivers').select('fcm_token,full_name,is_banned,ban_until').eq('id', driverId).single();
+    if (data) {
+        const isBanned = data.is_banned && data.ban_until && new Date(data.ban_until) > new Date();
+        if (isBanned) {
+            console.log(`🚫 Driver ${driverId} is banned until ${data.ban_until}. Preventing travel push notification.`);
+            return null;
+        }
+    }
     return data;
 }
 

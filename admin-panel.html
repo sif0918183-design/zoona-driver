@@ -1524,6 +1524,7 @@
                                         <th>فئة السيارة</th>
                                         <th>موديل السيارة</th>
                                         <th>الحالة</th>
+                                        <th>حالة الحظر</th>
                                         <th>عدد الرحلات</th>
                                         <th>التقييم</th>
                                         <th>الإجراءات</th>
@@ -2655,27 +2656,27 @@
             try {
                 console.log('📊 جاري تحميل البيانات من قاعدة البيانات...');
                 
-                // Load all data in parallel
+                // Load sensitive drivers and customers via backend API to bypass RLS and show banned accounts
+                const driversRes = await adminApiCall('list_drivers');
+                const customersRes = await adminApiCall('list_customers');
+
+                // Load all other data in parallel
                 const [
                     ridesRes, 
-                    driversRes, 
-                    customersRes, 
                     categoriesRes, 
                     citiesRes,
                     requestsRes
                 ] = await Promise.all([
                     adminSupabase.from('rides').select('*').order('created_at', { ascending: false }),
-                    adminSupabase.from('drivers').select('*'),
-                    adminSupabase.from('customers').select('*'),
                     adminSupabase.from('vehicle_categories').select('*').order('sort_order', { ascending: true }),
                     adminSupabase.from('cities').select('name_ar'),
                     adminSupabase.from('ride_requests').select('*').order('created_at', { ascending: false })
                 ]);
 
                 // Handle results
+                if (driversRes.success) allDrivers = driversRes.drivers || [];
+                if (customersRes.success) allPassengers = customersRes.customers || [];
                 if (!ridesRes.error) allRides = ridesRes.data || [];
-                if (!driversRes.error) allDrivers = driversRes.data || [];
-                if (!customersRes.error) allPassengers = customersRes.data || [];
                 if (!categoriesRes.error) vehicleCategories = categoriesRes.data || [];
                 if (!citiesRes.error) cities = citiesRes.data.map(c => c.name_ar) || [];
                 
@@ -3695,7 +3696,7 @@
             if (filteredDrivers.length === 0) {
                 container.innerHTML = `
                     <tr>
-                        <td colspan="8" style="text-align: center; padding: 2rem;">
+                        <td colspan="9" style="text-align: center; padding: 2rem;">
                             <div class="empty-state" style="padding: 0;">
                                 <div class="empty-icon">🚗</div>
                                 <div class="empty-title">لا توجد سائقين</div>
@@ -3707,11 +3708,16 @@
             }
             
             filteredDrivers.forEach(driver => {
+                const isBanned = driver.is_banned && driver.ban_until && new Date(driver.ban_until) > new Date();
+                const banStatusBadge = isBanned
+                    ? `<span class="badge badge-danger" title="السبب: ${driver.ban_reason || ''}">محظور حتى ${formatDateShort(driver.ban_until)}</span>`
+                    : `<span class="badge badge-success">نشط (غير محظور)</span>`;
+
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>
                         <div style="font-weight: 600;">${driver.full_name}</div>
-                        <div style="font-size: 0.875rem; color: var(--gray-500);">DR-${driver.id.toString().padStart(5, '0')}</div>
+                        <div style="font-size: 0.875rem; color: var(--gray-500);">DR-${driver.id.toString().substring(0, 8)}</div>
                     </td>
                     <td>${driver.whatsapp_number}</td>
                     <td><span class="badge badge-primary">${driver.car_type}</span></td>
@@ -3722,7 +3728,8 @@
                         </span>
                         ${driver.verification_status === 'pending' ? '<span class="badge badge-warning" style="margin-right: 0.25rem;">قيد المراجعة</span>' : ''}
                     </td>
-                    <td>${driver.total_rides}</td>
+                    <td>${banStatusBadge}</td>
+                    <td>${driver.total_rides || 0}</td>
                     <td>
                         <div style="display: flex; align-items: center; gap: 0.25rem;">
                             <span style="color: #f59e0b;">
@@ -3732,13 +3739,22 @@
                         </div>
                     </td>
                     <td>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <button class="btn btn-outline btn-sm" onclick="viewDriverDetails('${driver.id}')">
+                        <div style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
+                            <button class="btn btn-outline btn-sm" onclick="viewDriverDetails('${driver.id}')" title="عرض التفاصيل">
                                 <i class="ph-light ph-eye"></i>
                             </button>
-                            <button class="btn btn-primary btn-sm" onclick="toggleDriverStatus('${driver.id}', ${!driver.is_active})">
+                            <button class="btn btn-primary btn-sm" onclick="toggleDriverStatus('${driver.id}', ${!driver.is_active})" title="${driver.is_active ? 'تعطيل' : 'تفعيل'}">
                                 <i class="ph-light ${driver.is_active ? 'ph-prohibit' : 'ph-check'}"></i>
                             </button>
+                            ${isBanned ? `
+                                <button class="btn btn-success btn-sm" onclick="unbanDriver('${driver.id}')" title="إلغاء الحظر" style="padding: 0.5rem 0.75rem; font-size: 0.8rem;">
+                                    <i class="ph-light ph-user-check"></i> إلغاء الحظر
+                                </button>
+                            ` : `
+                                <button class="btn btn-danger btn-sm" onclick="banDriverAdminPrompt('${driver.id}')" title="حظر السائق" style="padding: 0.5rem 0.75rem; font-size: 0.8rem;">
+                                    <i class="ph-light ph-user-minus"></i> حظر
+                                </button>
+                            `}
                         </div>
                     </td>
                 `;
@@ -3748,6 +3764,35 @@
 
         function filterDrivers() {
             displayDriversTable();
+        }
+
+        async function unbanDriver(driverId) {
+            if (!confirm('هل أنت متأكد من إلغاء حظر هذا السائق؟')) return;
+            try {
+                await adminApiCall('unban_driver', { driverId });
+                showNotification('تم إلغاء حظر السائق بنجاح', 'success');
+                await loadAllData();
+            } catch (error) {
+                console.error('Error unbanning driver:', error);
+                showNotification('خطأ في إلغاء الحظر: ' + error.message, 'error');
+            }
+        }
+
+        async function banDriverAdminPrompt(driverId) {
+            const reason = prompt('أدخل سبب الحظر:');
+            if (reason === null) return; // Cancelled
+            const hoursStr = prompt('أدخل مدة الحظر بالساعات (مثال: 24):', '24');
+            if (hoursStr === null) return;
+            const hours = parseInt(hoursStr) || 24;
+
+            try {
+                await adminApiCall('ban_driver', { driverId, reason, hours });
+                showNotification('تم حظر السائق بنجاح', 'success');
+                await loadAllData();
+            } catch (error) {
+                console.error('Error banning driver:', error);
+                showNotification('خطأ في حظر السائق: ' + error.message, 'error');
+            }
         }
 
         async function toggleDriverStatus(driverId, newStatus) {

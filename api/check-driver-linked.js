@@ -26,17 +26,23 @@ export default async function handler(req, res) {
             return res.status(400).json({ success: false, error: 'driverId is required' });
         }
 
-        // التحديث للتحقق من fcm_token بدلاً من push_subscription
-        console.log(`[check-driver-linked] Checking FCM token for driver: ${driverId}`);
+        // التحديث للتحقق من fcm_token وحالة حظر السائق
+        console.log(`[check-driver-linked] Checking FCM token & ban status for driver: ${driverId}`);
         const { data, error } = await supabase
             .from('drivers')
-            .select('fcm_token')
+            .select('fcm_token, is_banned, ban_until')
             .eq('id', driverId)
             .single();
 
         if (error || !data) {
             console.warn(`[check-driver-linked] Driver not found or error: ${driverId}`, error);
             return res.status(200).json({ linked: false });
+        }
+
+        const isBanned = data.is_banned && data.ban_until && new Date(data.ban_until) > new Date();
+        if (isBanned) {
+            console.log(`[check-driver-linked] Driver ${driverId} is banned until ${data.ban_until}. Marking as unlinked.`);
+            return res.status(200).json({ linked: false, is_banned: true });
         }
 
         const fcmToken = data.fcm_token;

@@ -343,9 +343,34 @@
             }
         }
 
-        function handleDecline() {
+        async function handleDecline() {
             // ✅ إيقاف الرنين عند الرفض أيضاً
             stopFlutterAlerts();
+
+            if (currentRideId) {
+                const driverDataStr = localStorage.getItem('tarhal_driver');
+                if (driverDataStr) {
+                    const driverData = JSON.parse(driverDataStr);
+                    try {
+                        const token = localStorage.getItem('session_token');
+                        await fetch('/api/rides', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': token ? `Bearer ${token}` : ''
+                            },
+                            body: JSON.stringify({
+                                action: 'reject',
+                                rideId: currentRideId,
+                                driverId: driverData.id
+                            })
+                        });
+                    } catch (err) {
+                        console.error('Error rejecting ride:', err);
+                    }
+                }
+            }
+
             window.location.replace('index.html');
         }
 

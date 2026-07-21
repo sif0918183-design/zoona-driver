@@ -386,6 +386,45 @@ export default async function handler(req, res) {
             return res.status(200).json({ success: true, banUntil });
         }
 
+        // --- 8. REJECT BY DRIVER ---
+        if (action === 'reject') {
+            const { rideId, driverId } = req.body;
+
+            if (!rideId || !driverId) {
+                return res.status(400).json({ success: false, error: 'rideId and driverId are required' });
+            }
+
+            // Verify if the current driver is indeed the one assigned
+            const { data: ride } = await supabase
+                .from('rides')
+                .select('driver_id')
+                .eq('id', rideId)
+                .single();
+
+            if (ride && ride.driver_id !== driverId) {
+                return res.status(403).json({ success: false, error: 'غير مصرح برفض هذه الرحلة' });
+            }
+
+            // Update the ride status and driver_rejected
+            const { data, error } = await supabase
+                .from('rides')
+                .update({
+                    driver_id: null,
+                    driver_name: null,
+                    driver_phone: null,
+                    status: 'searching',
+                    driver_rejected: true, // Mark that driver has rejected, so sequential search continues immediately!
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', rideId)
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            return res.status(200).json({ success: true, ride: data });
+        }
+
         return res.status(400).json({ success: false, error: 'Unknown action' });
 
     } catch (error) {

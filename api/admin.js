@@ -146,7 +146,7 @@ export default async function handler(req, res) {
         if (action === 'list_drivers') {
             const { data, error } = await supabase
                 .from('drivers')
-                .select('id, full_name, whatsapp_number, car_model, car_type, car_plate, car_color, balance, is_active, created_at')
+                .select('id, full_name, whatsapp_number, car_model, car_type, car_plate, car_color, balance, is_active, is_banned, ban_until, ban_reason, created_at')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -197,6 +197,48 @@ export default async function handler(req, res) {
 
             if (error) throw error;
             return res.status(200).json({ success: true });
+        }
+
+        // --- UNBAN DRIVER ---
+        if (action === 'unban_driver') {
+            const { driverId } = req.body;
+            if (!driverId) {
+                return res.status(400).json({ success: false, error: 'driverId is required' });
+            }
+
+            const { error } = await supabase
+                .from('drivers')
+                .update({
+                    is_banned: false,
+                    ban_until: null,
+                    ban_reason: null
+                })
+                .eq('id', driverId);
+
+            if (error) throw error;
+            return res.status(200).json({ success: true });
+        }
+
+        // --- BAN DRIVER ADMIN ---
+        if (action === 'ban_driver') {
+            const { driverId, reason, hours } = req.body;
+            if (!driverId) {
+                return res.status(400).json({ success: false, error: 'driverId is required' });
+            }
+
+            const banUntil = new Date(Date.now() + (hours || 24) * 60 * 60 * 1000).toISOString();
+
+            const { error } = await supabase
+                .from('drivers')
+                .update({
+                    is_banned: true,
+                    ban_reason: reason || 'مخالفة شروط الخدمة',
+                    ban_until: banUntil
+                })
+                .eq('id', driverId);
+
+            if (error) throw error;
+            return res.status(200).json({ success: true, banUntil });
         }
 
         // --- TOGGLE DRIVER STATUS ---

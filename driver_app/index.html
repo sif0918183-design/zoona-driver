@@ -2200,6 +2200,13 @@ async function toggleDriverStatus() {
         return;
     }
 
+    // Check if driver is banned before allowing them to go online
+    const isBanned = await checkDriverBanStatus();
+    if (isBanned) {
+        showNotification('❌ لا يمكنك تفعيل وضع العمل، الحساب معلق ومحظور حالياً', 'error');
+        return;
+    }
+
     const statusIndicator = document.getElementById('driver-status-indicator');
     const statusText = document.getElementById('driver-status-text');
     const toggleBtn = document.getElementById('toggle-online-btn');
@@ -2479,8 +2486,127 @@ function initRealtime() {
         .subscribe();
 }
 
+// دالة التحقق من الحظر والتعليق للسائق
+async function checkDriverBanStatus() {
+    if (!currentDriver || !currentDriver.id) return false;
+    try {
+        const { data, error } = await tarhalDB
+            .from('drivers')
+            .select('is_banned, ban_until, ban_reason')
+            .eq('id', currentDriver.id)
+            .single();
+
+        if (!error && data) {
+            const isBanned = data.is_banned && data.ban_until && new Date(data.ban_until) > new Date();
+            if (isBanned) {
+                console.log(`Driver is banned until ${data.ban_until}`);
+
+                // Update currentDriver locally
+                currentDriver.is_banned = true;
+                currentDriver.ban_until = data.ban_until;
+                currentDriver.ban_reason = data.ban_reason;
+                localStorage.setItem('tarhal_driver', JSON.stringify(currentDriver));
+
+                // Force offline
+                if (isDriverOnline) {
+                    isDriverOnline = false;
+                    if (foreverOnlineManager) {
+                        await foreverOnlineManager.deactivate();
+                        foreverOnlineManager = null;
+                    }
+                    await forceDriverOfflineInDB();
+                    localStorage.removeItem('driver_forever_online');
+                    localStorage.removeItem('driver_online_since');
+                    localStorage.removeItem('driver_online_id');
+                }
+
+                // Show banner
+                showBanBanner(data.ban_until, data.ban_reason);
+
+                // Disable online toggle button
+                const toggleBtn = document.getElementById('toggle-online-btn');
+                if (toggleBtn) {
+                    toggleBtn.disabled = true;
+                    toggleBtn.style.opacity = '0.5';
+                    toggleBtn.style.pointerEvents = 'none';
+                    toggleBtn.innerHTML = '<i class="ph-bold ph-prohibit"></i> الحساب معلق';
+                }
+
+                // Update indicator
+                const statusIndicator = document.getElementById('driver-status-indicator');
+                const statusText = document.getElementById('driver-status-text');
+                if (statusIndicator && statusText) {
+                    statusIndicator.className = 'status-indicator status-offline';
+                    statusText.textContent = 'معلق / محظور';
+                }
+
+                return true;
+            } else {
+                // Ban expired or not banned
+                if (currentDriver.is_banned) {
+                    currentDriver.is_banned = false;
+                    localStorage.setItem('tarhal_driver', JSON.stringify(currentDriver));
+                }
+                const banner = document.getElementById('ban-banner');
+                if (banner) banner.remove();
+
+                const toggleBtn = document.getElementById('toggle-online-btn');
+                if (toggleBtn) {
+                    toggleBtn.disabled = false;
+                    toggleBtn.style.opacity = '1';
+                    toggleBtn.style.pointerEvents = 'auto';
+                    toggleBtn.innerHTML = '<i class="ph-bold ph-power"></i> تفعيل وضع العمل';
+                }
+            }
+        }
+    } catch (err) {
+        console.error('Error checking ban status:', err);
+    }
+    return false;
+}
+
+function showBanBanner(banUntil, banReason) {
+    const existing = document.getElementById('ban-banner');
+    if (existing) existing.remove();
+
+    const formattedDate = new Date(banUntil).toLocaleString('ar-SA', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+
+    const banner = document.createElement('div');
+    banner.id = 'ban-banner';
+    banner.style.cssText = `
+        background: #fee2e2;
+        color: #991b1b;
+        padding: 12px 15px;
+        text-align: center;
+        font-weight: bold;
+        font-size: 14px;
+        border-bottom: 2px solid #ef4444;
+        width: 100%;
+        box-sizing: border-box;
+        direction: rtl;
+    `;
+    banner.innerHTML = `
+        <i class="ph-bold ph-warning-circle" style="vertical-align: middle; font-size: 18px; margin-left: 6px;"></i>
+        <span>حسابك معلق ومحظور من استقبال الرحلات حتى: <strong>${formattedDate}</strong></span>
+        ${banReason ? `<div style="font-size: 12px; margin-top: 4px; opacity: 0.9;">السبب: ${banReason}</div>` : ''}
+    `;
+
+    const container = document.querySelector('.app-container');
+    if (container) {
+        container.insertBefore(banner, container.firstChild);
+    } else {
+        document.body.insertBefore(banner, document.body.firstChild);
+    }
+}
+
 // تعديل checkAuth لاستعادة الحالة
-function checkAuth() {
+async function checkAuth() {
     const savedDriver = localStorage.getItem('tarhal_driver');
     
     if (savedDriver) {
@@ -2499,10 +2625,15 @@ function checkAuth() {
                 window.setFCMToken(pendingToken);
             }
 
-            // استعادة وضع التشغيل بعد ثانية
-            setTimeout(() => {
-                restoreDriverStatus();
-            }, 1000);
+            // Check driver ban status immediately
+            const isBanned = await checkDriverBanStatus();
+
+            // استعادة وضع التشغيل بعد ثانية إن لم يكن محظوراً
+            if (!isBanned) {
+                setTimeout(() => {
+                    restoreDriverStatus();
+                }, 1000);
+            }
             
         } catch (e) {
             localStorage.removeItem('tarhal_driver');

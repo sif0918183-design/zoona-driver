@@ -1223,6 +1223,85 @@ async function handleHashRouting() {
     }
 }
 
+// دالة التحقق من الحظر والتعليق للسائق في منصة السفر
+async function checkDriverBanStatus() {
+    if (userType !== 'driver' || !currentUser || !currentUser.id) return false;
+    try {
+        const { data, error } = await travelSupabase
+            .from('drivers')
+            .select('is_banned, ban_until, ban_reason')
+            .eq('id', currentUser.id)
+            .single();
+
+        if (!error && data) {
+            const isBanned = data.is_banned && data.ban_until && new Date(data.ban_until) > new Date();
+            if (isBanned) {
+                console.log(`Driver is banned until ${data.ban_until} on Travel Platform`);
+
+                // Update local storage
+                currentUser.is_banned = true;
+                currentUser.ban_until = data.ban_until;
+                currentUser.ban_reason = data.ban_reason;
+                localStorage.setItem('tarhal_driver', JSON.stringify(currentUser));
+
+                // Show banner
+                showBanBanner(data.ban_until, data.ban_reason);
+                return true;
+            } else {
+                if (currentUser.is_banned) {
+                    currentUser.is_banned = false;
+                    localStorage.setItem('tarhal_driver', JSON.stringify(currentUser));
+                }
+                const banner = document.getElementById('ban-banner');
+                if (banner) banner.remove();
+            }
+        }
+    } catch (err) {
+        console.error('Error checking ban status on Travel Platform:', err);
+    }
+    return false;
+}
+
+function showBanBanner(banUntil, banReason) {
+    const existing = document.getElementById('ban-banner');
+    if (existing) existing.remove();
+
+    const formattedDate = new Date(banUntil).toLocaleString('ar-SA', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+
+    const banner = document.createElement('div');
+    banner.id = 'ban-banner';
+    banner.style.cssText = `
+        background: #fee2e2;
+        color: #991b1b;
+        padding: 12px 15px;
+        text-align: center;
+        font-weight: bold;
+        font-size: 14px;
+        border-bottom: 2px solid #ef4444;
+        width: 100%;
+        box-sizing: border-box;
+        direction: rtl;
+    `;
+    banner.innerHTML = `
+        <i class="ph-bold ph-warning-circle" style="vertical-align: middle; font-size: 18px; margin-left: 6px;"></i>
+        <span>حسابك معلق ومحظور من العمل ورؤية الرحلات حتى: <strong>${formattedDate}</strong></span>
+        ${banReason ? `<div style="font-size: 12px; margin-top: 4px; opacity: 0.9;">السبب: ${banReason}</div>` : ''}
+    `;
+
+    const container = document.querySelector('.app-container');
+    if (container) {
+        container.insertBefore(banner, container.firstChild);
+    } else {
+        document.body.insertBefore(banner, document.body.firstChild);
+    }
+}
+
 async function initializeUser() {
     const loadingScreen = document.getElementById('loading-screen');
     const mainContent = document.querySelector('.main-content');
@@ -1249,6 +1328,9 @@ async function initializeUser() {
             if (userType === 'driver') {
                 updateDriverBalanceDisplay();
                 startDriverAutoRefresh();
+
+                // Check if banned
+                await checkDriverBanStatus();
             } else {
                 startPassengerAutoRefresh();
             }
@@ -2576,6 +2658,26 @@ function startChatWithDriverFromCard(rideId, driverLabel, driverId) {
 // ============================================
 async function loadAvailableRides() {
     try {
+        // Block if driver is banned
+        const isBanned = await checkDriverBanStatus();
+        if (isBanned) {
+            const formattedDate = new Date(currentUser.ban_until).toLocaleString('ar-SA', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            document.getElementById('available-rides-list').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">🔒</div>
+                    <div class="empty-title">الحساب معلق</div>
+                    <div class="empty-description">حسابك معلق ومحظور من رؤية الرحلات المتاحة حتى: <strong>${formattedDate}</strong></div>
+                </div>
+            `;
+            return;
+        }
+
         // First check if driver has an active trip in travel_trips
         const {data:activeTrips} = await travelSupabase
             .from('travel_trips')

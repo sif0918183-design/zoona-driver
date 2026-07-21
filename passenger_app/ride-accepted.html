@@ -180,6 +180,33 @@
 </head>
 <body>
 
+    <!-- نافذة تأكيد الإلغاء وحظر السائق -->
+    <div id="cancel-confirm-modal" class="loading-overlay" style="display: none; background: rgba(0,0,0,0.85); z-index: 10000; position: fixed; top: 0; left: 0; right: 0; bottom: 0; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 25px; border-radius: var(--radius); text-align: center; max-width: 90%; width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); font-family: 'Tajawal', sans-serif;">
+            <i class="fas fa-exclamation-triangle" style="font-size: 40px; color: #ef4444; margin-bottom: 15px;"></i>
+            <h3 style="color: #ef4444; margin-bottom: 15px; font-weight: 800;">تأكيد إلغاء الرحلة</h3>
+            <p style="color: #4b5563; font-size: 15px; margin-bottom: 20px; line-height: 1.6;">
+                هل طلب منك السائق إلغاء هذه الرحلة؟
+            </p>
+
+            <div style="display: flex; justify-content: center; gap: 30px; margin-bottom: 25px; direction: rtl;">
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: bold; cursor: pointer; color: #374151;">
+                    <input type="radio" name="driver-requested" value="yes" style="width: 20px; height: 20px; accent-color: var(--primary);">
+                    <span>نعم (تعليق السائق)</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: bold; cursor: pointer; color: #374151;">
+                    <input type="radio" name="driver-requested" value="no" checked style="width: 20px; height: 20px; accent-color: var(--primary);">
+                    <span>لا</span>
+                </label>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-call" onclick="confirmCancelFinal()" style="flex: 1; height: 44px; font-size: 15px; border-radius: 12px; border: none; cursor: pointer;">تأكيد إلغاء الرحلة</button>
+                <button class="btn" onclick="closeCancelConfirmModal()" style="flex: 1; background: #e5e7eb; color: #4b5563; height: 44px; font-size: 15px; border-radius: 12px; border: none; cursor: pointer;">تراجع</button>
+            </div>
+        </div>
+    </div>
+
     <div class="loading-overlay" id="loadingOverlay">
         <div class="pulse" style="width: 40px; height: 40px;"></div>
         <p style="margin-top: 15px; color: var(--primary); font-weight: 700;">جاري تحميل بيانات الرحلة...</p>
@@ -1073,9 +1100,20 @@
         // ==============================================
         // إلغاء الرحلة (مع منطق الخصم المتطور)
         // ==============================================
-        async function cancelRide() {
-            const confirmed = confirm('هل أنت متأكد من إلغاء الرحلة؟');
-            if (!confirmed) return;
+        function cancelRide() {
+            // Open the custom confirmation modal
+            document.getElementById('cancel-confirm-modal').style.display = 'flex';
+        }
+
+        function closeCancelConfirmModal() {
+            document.getElementById('cancel-confirm-modal').style.display = 'none';
+        }
+
+        async function confirmCancelFinal() {
+            const driverRequested = document.querySelector('input[name="driver-requested"]:checked').value;
+
+            // Close modal first
+            document.getElementById('cancel-confirm-modal').style.display = 'none';
             
             // Show loading
             const originalButtonText = document.querySelector('.btn-cancel').innerHTML;
@@ -1137,7 +1175,6 @@
                 
                 // Get driver location (if available) for distance check
                 let driverWithinRange = false;
-                let driverLocation = null;
                 let locationData = null;
                 
                 try {
@@ -1188,20 +1225,10 @@
 
                 console.log('✅ تم إلغاء الرحلة بنجاح من الخادم:', resData.finalStatus);
 
-                // =====================================================
-                // سؤال الراكب: هل طلب منك السائق إلغاء الرحلة؟
-                // =====================================================
-                setTimeout(() => {
-                    const driverRequestedCancel = confirm(
-                        '⚠️ هل طلب منك السائق إلغاء الرحلة؟\n\n' +
-                        'إذا كان نعم، سيتم حظر السائق لمدة 24 ساعة.'
-                    );
-                    
-                    if (driverRequestedCancel && rideData.driver_id) {
-                        // Ban the driver for 24 hours
-                        banDriver(rideData.driver_id);
-                    }
-                }, 1000);
+                if (driverRequested === 'yes' && rideData.driver_id) {
+                    // Ban the driver for 24 hours
+                    await banDriver(rideData.driver_id);
+                }
 
                 // =====================================================
                 // إرسال إشعار للسائق بالإلغاء عبر BroadcastChannel (نفس الجهاز)
@@ -1368,6 +1395,8 @@
         // جعل الدالة متاحة عالمياً
         // ==============================================
         window.cancelRide = cancelRide;
+        window.closeCancelConfirmModal = closeCancelConfirmModal;
+        window.confirmCancelFinal = confirmCancelFinal;
         
         // تشغيل الاختبار بعد 5 ثواني
         setTimeout(() => {
