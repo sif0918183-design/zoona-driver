@@ -13,6 +13,9 @@
     <script src="/api/supabase-config"></script>
 
     <link rel="stylesheet" href="../shared/theme.css">
+    
+    <!-- ✅ استيراد stop_alerts.js -->
+    <script src="stop_alerts.js"></script>
 
     <style>
         :root {
@@ -70,6 +73,18 @@
             font-size: 38px;
             font-weight: 900;
             color: var(--danger);
+            transition: all 0.3s ease;
+        }
+
+        .timer-value.warning {
+            color: #ef4444;
+            font-size: 44px;
+            animation: pulse 0.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.1); }
         }
 
         .ride-card {
@@ -170,6 +185,20 @@
             font-size: 12px;
             font-weight: 700;
         }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -221,38 +250,23 @@
 
     <script>
         // ============================================
-        // ✅ دالة إيقاف الصوت والاهتزاز في Flutter
+        // ✅ المتغيرات
         // ============================================
-        function stopFlutterAlerts() {
-            try {
-                // محاولة إيقاف التنبيهات في Flutter عبر WebView Handler
-                if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
-                    window.flutter_inappwebview.callHandler('stopAlertsFromPWA')
-                        .then(() => {
-                            console.log('✅ تم إيقاف التنبيهات في Flutter (via Handler)');
-                        })
-                        .catch((err) => {
-                            console.log('⚠️ Handler failed:', err);
-                        });
+        const sessionToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_admin_token');
+        const tarhalDB = supabase.createClient(window.SB_URL, window.SB_KEY, {
+            global: {
+                headers: {
+                    'x-session-token': sessionToken || ''
                 }
-                
-                // محاولة إيقاف التنبيهات عبر localStorage (للتواصل بين التطبيقات)
-                localStorage.setItem('stop_alerts', Date.now().toString());
-                
-                // محاولة إيقاف التنبيهات عبر postMessage
-                if (window.parent !== window) {
-                    window.parent.postMessage({
-                        type: 'STOP_ALERTS',
-                        action: 'stop',
-                        timestamp: Date.now()
-                    }, '*');
-                }
-                
-                console.log('✅ تم إرسال طلب إيقاف التنبيهات');
-            } catch (e) {
-                console.log('⚠️ خطأ في إيقاف التنبيهات:', e);
             }
-        }
+        });
+
+        let currentRideId = null;
+        let currentRideAmount = 0;
+        let countdownValue = 35;
+        let timerInterval = null;
+        let isProcessing = false;
+        let isRideAccepted = false;
 
         // ============================================
         // ✅ استقبال البيانات من Flutter
@@ -270,30 +284,11 @@
         window.handleIncomingRide = window.handleRideRequest;
 
         // ============================================
-        // ✅ المتغيرات
-        // ============================================
-        const sessionToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_admin_token');
-        const tarhalDB = supabase.createClient(window.SB_URL, window.SB_KEY, {
-            global: {
-                headers: {
-                    'x-session-token': sessionToken || ''
-                }
-            }
-        });
-
-        let currentRideId = null;
-        let currentRideAmount = 0;
-        let countdownValue = 35;  // ✅ تم تغيير القيمة إلى 35 ثانية
-        let timerInterval = null;
-        let isProcessing = false;
-
-        // ============================================
         // ✅ مراقبة localStorage لإيقاف التنبيهات
         // ============================================
         setInterval(() => {
             const stopTime = localStorage.getItem('stop_alerts');
             if (stopTime) {
-                // إذا مر أكثر من 2 ثانية على طلب الإيقاف
                 if (Date.now() - parseInt(stopTime) > 2000) {
                     localStorage.removeItem('stop_alerts');
                 }
@@ -312,7 +307,7 @@
                 startTimer();
             }
 
-            // إيقاف التنبيهات عند تحميل الصفحة
+            // ✅ إيقاف التنبيهات عند تحميل الصفحة
             stopFlutterAlerts();
         });
 
@@ -354,23 +349,22 @@
         }
 
         // ============================================
-        // ✅ المؤقت (يبدأ من 35 ثانية)
+        // ✅ المؤقت
         // ============================================
         function startTimer() {
             if (timerInterval) {
                 clearInterval(timerInterval);
             }
-            countdownValue = 35;  // ✅ بدء العداد من 35 ثانية
+            countdownValue = 35;
             document.getElementById('countdown').textContent = countdownValue;
+            document.getElementById('countdown').classList.remove('warning');
             
             timerInterval = setInterval(() => {
                 countdownValue--;
                 document.getElementById('countdown').textContent = countdownValue;
                 
-                // تغيير لون العداد عند الوصول إلى 10 ثواني
                 if (countdownValue <= 10) {
-                    document.getElementById('countdown').style.color = '#ef4444';
-                    document.getElementById('countdown').style.fontSize = '44px';
+                    document.getElementById('countdown').classList.add('warning');
                 }
                 
                 if (countdownValue <= 0) {
@@ -384,7 +378,7 @@
         // ✅ قبول الرحلة
         // ============================================
         async function handleAccept() {
-            if (isProcessing) return;
+            if (isProcessing || isRideAccepted) return;
             if (!currentRideId) {
                 showToast('⚠️ لا توجد رحلة للموافقة عليها', 'error');
                 return;
@@ -398,12 +392,14 @@
             
             let driverData = JSON.parse(driverDataStr);
             isProcessing = true;
+            isRideAccepted = true;
 
             // ✅ إيقاف الرنين فوراً عند الضغط
             stopFlutterAlerts();
 
-            document.getElementById('accept-btn').disabled = true;
-            document.getElementById('accept-btn').textContent = "جاري القبول...";
+            const acceptBtn = document.getElementById('accept-btn');
+            acceptBtn.disabled = true;
+            acceptBtn.innerHTML = '<span class="loading-spinner"></span> جاري القبول...';
 
             try {
                 const token = localStorage.getItem('session_token');
@@ -423,9 +419,10 @@
 
                 if (!response.ok || !resData.success) {
                     showToast('❌ ' + (resData.error || 'فشل قبول الرحلة'), 'error');
-                    document.getElementById('accept-btn').disabled = false;
-                    document.getElementById('accept-btn').textContent = "قبول الرحلة";
+                    acceptBtn.disabled = false;
+                    acceptBtn.innerHTML = 'قبول الرحلة';
                     isProcessing = false;
+                    isRideAccepted = false;
                     return;
                 }
 
@@ -437,7 +434,6 @@
 
                     showToast('✅ ' + result.message, 'success');
                     
-                    // إيقاف المؤقت
                     if (timerInterval) {
                         clearInterval(timerInterval);
                         timerInterval = null;
@@ -446,17 +442,19 @@
                     window.location.replace(`active-ride.html?rideId=${currentRideId}`);
                 } else {
                     showToast('❌ ' + (result?.message || 'فشل قبول الرحلة'), 'error');
-                    document.getElementById('accept-btn').disabled = false;
-                    document.getElementById('accept-btn').textContent = "قبول الرحلة";
+                    acceptBtn.disabled = false;
+                    acceptBtn.innerHTML = 'قبول الرحلة';
                     isProcessing = false;
+                    isRideAccepted = false;
                 }
 
             } catch (err) {
                 console.error('❌ خطأ:', err);
                 showToast('❌ خطأ في الاتصال بالخادم', 'error');
-                document.getElementById('accept-btn').disabled = false;
-                document.getElementById('accept-btn').textContent = "قبول الرحلة";
+                acceptBtn.disabled = false;
+                acceptBtn.innerHTML = 'قبول الرحلة';
                 isProcessing = false;
+                isRideAccepted = false;
             }
         }
 
@@ -464,13 +462,12 @@
         // ✅ رفض الرحلة
         // ============================================
         async function handleDecline() {
-            if (isProcessing) return;
+            if (isProcessing || isRideAccepted) return;
             isProcessing = true;
 
             // ✅ إيقاف الرنين عند الرفض
             stopFlutterAlerts();
 
-            // إيقاف المؤقت
             if (timerInterval) {
                 clearInterval(timerInterval);
                 timerInterval = null;
@@ -516,7 +513,7 @@
         }
 
         // ============================================
-        // ✅ عند مغادرة الصفحة - إيقاف التنبيهات
+        // ✅ عند مغادرة الصفحة
         // ============================================
         window.addEventListener('beforeunload', function() {
             stopFlutterAlerts();
@@ -526,9 +523,6 @@
             }
         });
 
-        // ============================================
-        // ✅ منع التنقل بالضغط على زر الرجوع (اختياري)
-        // ============================================
         window.addEventListener('popstate', function(event) {
             stopFlutterAlerts();
         });
