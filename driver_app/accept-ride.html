@@ -269,36 +269,11 @@
                     }, '*');
                 }
                 
-                // ✅ محاولة إيقاف التنبيهات عبر تغيير URL
-                try {
-                    const url = new URL(window.location.href);
-                    url.searchParams.set('stop_alerts', Date.now().toString());
-                    window.history.replaceState({}, '', url.toString());
-                } catch (_) {}
-                
                 console.log('✅ تم إرسال طلب إيقاف التنبيهات');
             } catch (e) {
                 console.log('⚠️ خطأ في إيقاف التنبيهات:', e);
             }
         }
-
-        // ✅ استدعاء الإيقاف فور تحميل الصفحة (عدة مرات للتأكد)
-        document.addEventListener('DOMContentLoaded', function() {
-            // إيقاف فوري
-            stopFlutterAlertsDirect();
-            
-            // إيقاف بعد 100ms
-            setTimeout(stopFlutterAlertsDirect, 100);
-            
-            // إيقاف بعد 500ms
-            setTimeout(stopFlutterAlertsDirect, 500);
-            
-            // إيقاف بعد 1 ثانية
-            setTimeout(stopFlutterAlertsDirect, 1000);
-        });
-
-        // ✅ استدعاء الإيقاف عند تحميل الصفحة (قبل DOMContentLoaded)
-        stopFlutterAlertsDirect();
 
         // ============================================
         // ✅ المتغيرات
@@ -338,36 +313,66 @@
         window.handleIncomingRide = window.handleRideRequest;
 
         // ============================================
-        // ✅ مراقبة localStorage لإيقاف التنبيهات
+        // ✅ تحميل الصفحة
         // ============================================
-        setInterval(() => {
-            const stopTime = localStorage.getItem('stop_alerts');
-            if (stopTime) {
-                if (Date.now() - parseInt(stopTime) > 2000) {
-                    localStorage.removeItem('stop_alerts');
-                }
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📄 DOM loaded');
+            
+            // ✅ استدعاء إيقاف التنبيهات فوراً
+            stopFlutterAlertsDirect();
+            
+            // ✅ محاولة إضافية بعد 500ms
+            setTimeout(stopFlutterAlertsDirect, 500);
+            
+            // ✅ الحصول على rideId من URL
+            const urlParams = new URLSearchParams(window.location.search);
+            currentRideId = urlParams.get('id') || urlParams.get('rideId') || urlParams.get('ride_id');
+            
+            console.log('🔍 Ride ID from URL:', currentRideId);
+            
+            if (currentRideId) {
+                // ✅ جلب تفاصيل الرحلة من Supabase
+                fetchRideDetails(currentRideId);
+                startTimer();
+            } else {
+                console.log('⚠️ لا يوجد rideId في URL');
+                // محاولة انتظار البيانات من Flutter
+                setTimeout(() => {
+                    if (!document.getElementById('accept-btn').disabled) {
+                        console.log('⏳ انتظار البيانات من Flutter...');
+                    }
+                }, 2000);
             }
-        }, 1000);
+        });
 
         // ============================================
         // ✅ جلب تفاصيل الرحلة من Supabase
         // ============================================
         async function fetchRideDetails(rideId) {
             try {
+                console.log('📤 جلب تفاصيل الرحلة:', rideId);
                 const { data, error } = await tarhalDB
                     .from('rides')
                     .select('*')
                     .eq('id', rideId)
                     .single();
 
+                if (error) {
+                    console.error('❌ خطأ في جلب الرحلة:', error);
+                    return;
+                }
+
                 if (data) {
+                    console.log('✅ تم جلب بيانات الرحلة:', data);
                     currentRideAmount = data.amount || 0;
                     updateUI({
-                        customer_name: data.passenger_name || data.customer_name,
-                        amount: data.amount,
-                        pickup_address: data.pickup_address
+                        customer_name: data.passenger_name || data.customer_name || 'عميل',
+                        amount: data.amount || 0,
+                        pickup_address: data.pickup_address || 'غير محدد'
                     });
                     document.getElementById('accept-btn').disabled = false;
+                } else {
+                    console.log('⚠️ لا توجد بيانات للرحلة');
                 }
             } catch (err) { 
                 console.error('❌ خطأ في جلب تفاصيل الرحلة:', err); 
@@ -378,12 +383,17 @@
         // ✅ تحديث واجهة المستخدم
         // ============================================
         function updateUI(data) {
-            if (data.customer_name) document.getElementById('customer-name').textContent = data.customer_name;
+            console.log('🔄 تحديث واجهة المستخدم:', data);
+            if (data.customer_name) {
+                document.getElementById('customer-name').textContent = data.customer_name;
+            }
             if (data.amount) {
                 document.getElementById('amount').textContent = data.amount;
                 currentRideAmount = parseFloat(data.amount) || 0;
             }
-            if (data.pickup_address) document.getElementById('pickup-location').textContent = data.pickup_address;
+            if (data.pickup_address) {
+                document.getElementById('pickup-location').textContent = data.pickup_address;
+            }
         }
 
         // ============================================
