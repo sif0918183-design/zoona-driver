@@ -178,14 +178,6 @@
             font-weight: bold;
         }
 
-        .status-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 700;
-        }
-
         .loading-spinner {
             display: inline-block;
             width: 20px;
@@ -250,6 +242,65 @@
 
     <script>
         // ============================================
+        // ✅ دالة إيقاف الصوت والاهتزاز في Flutter (مباشرة)
+        // ============================================
+        function stopFlutterAlertsDirect() {
+            try {
+                // محاولة إيقاف التنبيهات عبر WebView Handler
+                if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+                    window.flutter_inappwebview.callHandler('stopAlertsFromPWA')
+                        .then(() => {
+                            console.log('✅ تم إيقاف التنبيهات في Flutter (via Handler)');
+                        })
+                        .catch((err) => {
+                            console.log('⚠️ Handler failed:', err);
+                        });
+                }
+                
+                // محاولة إيقاف التنبيهات عبر localStorage
+                localStorage.setItem('stop_alerts', Date.now().toString());
+                
+                // محاولة إيقاف التنبيهات عبر postMessage
+                if (window.parent !== window) {
+                    window.parent.postMessage({
+                        type: 'STOP_ALERTS',
+                        action: 'stop',
+                        timestamp: Date.now()
+                    }, '*');
+                }
+                
+                // ✅ محاولة إيقاف التنبيهات عبر تغيير URL
+                try {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('stop_alerts', Date.now().toString());
+                    window.history.replaceState({}, '', url.toString());
+                } catch (_) {}
+                
+                console.log('✅ تم إرسال طلب إيقاف التنبيهات');
+            } catch (e) {
+                console.log('⚠️ خطأ في إيقاف التنبيهات:', e);
+            }
+        }
+
+        // ✅ استدعاء الإيقاف فور تحميل الصفحة (عدة مرات للتأكد)
+        document.addEventListener('DOMContentLoaded', function() {
+            // إيقاف فوري
+            stopFlutterAlertsDirect();
+            
+            // إيقاف بعد 100ms
+            setTimeout(stopFlutterAlertsDirect, 100);
+            
+            // إيقاف بعد 500ms
+            setTimeout(stopFlutterAlertsDirect, 500);
+            
+            // إيقاف بعد 1 ثانية
+            setTimeout(stopFlutterAlertsDirect, 1000);
+        });
+
+        // ✅ استدعاء الإيقاف عند تحميل الصفحة (قبل DOMContentLoaded)
+        stopFlutterAlertsDirect();
+
+        // ============================================
         // ✅ المتغيرات
         // ============================================
         const sessionToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_admin_token');
@@ -278,6 +329,9 @@
                 updateUI(data);
                 document.getElementById('accept-btn').disabled = false;
                 startTimer();
+                
+                // ✅ إيقاف التنبيهات عند استلام البيانات
+                stopFlutterAlertsDirect();
             }
         };
 
@@ -294,22 +348,6 @@
                 }
             }
         }, 1000);
-
-        // ============================================
-        // ✅ تحميل الصفحة
-        // ============================================
-        document.addEventListener('DOMContentLoaded', function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            currentRideId = urlParams.get('id') || urlParams.get('rideId') || urlParams.get('ride_id');
-
-            if (currentRideId) {
-                fetchRideDetails(currentRideId);
-                startTimer();
-            }
-
-            // ✅ إيقاف التنبيهات عند تحميل الصفحة
-            stopFlutterAlerts();
-        });
 
         // ============================================
         // ✅ جلب تفاصيل الرحلة من Supabase
@@ -395,7 +433,7 @@
             isRideAccepted = true;
 
             // ✅ إيقاف الرنين فوراً عند الضغط
-            stopFlutterAlerts();
+            stopFlutterAlertsDirect();
 
             const acceptBtn = document.getElementById('accept-btn');
             acceptBtn.disabled = true;
@@ -466,7 +504,7 @@
             isProcessing = true;
 
             // ✅ إيقاف الرنين عند الرفض
-            stopFlutterAlerts();
+            stopFlutterAlertsDirect();
 
             if (timerInterval) {
                 clearInterval(timerInterval);
@@ -516,7 +554,7 @@
         // ✅ عند مغادرة الصفحة
         // ============================================
         window.addEventListener('beforeunload', function() {
-            stopFlutterAlerts();
+            stopFlutterAlertsDirect();
             if (timerInterval) {
                 clearInterval(timerInterval);
                 timerInterval = null;
@@ -524,7 +562,7 @@
         });
 
         window.addEventListener('popstate', function(event) {
-            stopFlutterAlerts();
+            stopFlutterAlertsDirect();
         });
 
         console.log('✅ accept-ride.html loaded successfully');
