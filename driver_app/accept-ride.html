@@ -239,6 +239,69 @@
 
     <script>
         // ============================================
+        // ✅ دالة إيقاف الصوت والاهتزاز في Flutter (محسنة)
+        // ============================================
+        function stopFlutterAlertsDirect() {
+            console.log('🛑 محاولة إيقاف التنبيهات...');
+            
+            // ✅ الطريقة 1: عبر evaluateJavascript (الأكثر موثوقية)
+            try {
+                if (window.flutter_inappwebview && typeof window.flutter_inappwebview.evaluateJavascript === 'function') {
+                    console.log('📤 إرسال طلب إيقاف عبر evaluateJavascript...');
+                    window.flutter_inappwebview.evaluateJavascript(`
+                        (function() {
+                            // استدعاء الدالة في Flutter
+                            if (typeof _stopAlerts === 'function') {
+                                _stopAlerts();
+                                return 'OK';
+                            }
+                            return 'NOT_FOUND';
+                        })()
+                    `).then((result) => {
+                        console.log('✅ نتيجة evaluateJavascript:', result);
+                    }).catch((err) => {
+                        console.log('⚠️ evaluateJavascript فشل:', err);
+                    });
+                }
+            } catch (e) {
+                console.log('⚠️ خطأ في evaluateJavascript:', e);
+            }
+            
+            // ✅ الطريقة 2: عبر callHandler
+            try {
+                if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function') {
+                    window.flutter_inappwebview.callHandler('stopAlertsFromPWA')
+                        .then(() => {
+                            console.log('✅ تم إيقاف التنبيهات عبر callHandler');
+                        })
+                        .catch((err) => {
+                            console.log('⚠️ callHandler فشل:', err);
+                        });
+                }
+            } catch (e) {
+                console.log('⚠️ خطأ في callHandler:', e);
+            }
+            
+            // ✅ الطريقة 3: عبر localStorage
+            try {
+                localStorage.setItem('stop_alerts', Date.now().toString());
+                console.log('📝 تم كتابة stop_alerts في localStorage');
+            } catch (_) {}
+            
+            // ✅ الطريقة 4: عبر postMessage
+            try {
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({
+                        type: 'STOP_ALERTS',
+                        action: 'stop',
+                        timestamp: Date.now()
+                    }, '*');
+                    console.log('📤 تم إرسال postMessage');
+                }
+            } catch (_) {}
+        }
+
+        // ============================================
         // ✅ المتغيرات
         // ============================================
         const sessionToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_admin_token');
@@ -258,128 +321,6 @@
         let isRideAccepted = false;
 
         // ============================================
-        // ✅ دالة تحديث معرّف السائق لإيقاف التنبيه في Flutter
-        // ============================================
-        async function markRideAsOpenedByDriver() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const rideId = urlParams.get('id') || urlParams.get('rideId') || urlParams.get('ride_id');
-            
-            // الحصول على بيانات السائق المسجل في PWA
-            const driverDataStr = localStorage.getItem('tarhal_driver');
-            let driverId = null;
-            
-            if (driverDataStr) {
-                try {
-                    const driverData = JSON.parse(driverDataStr);
-                    driverId = driverData.id;
-                } catch (e) {
-                    console.error('❌ خطأ في قراءة بيانات السائق:', e);
-                }
-            }
-
-            console.log(`📡 تحديث فتح الرحلة: Ride=${rideId}, Driver=${driverId}`);
-
-            if (rideId && driverId) {
-                try {
-                    const { error } = await tarhalDB
-                        .from('rides')
-                        .update({ alert_opened_by_driver_id: driverId })
-                        .eq('id', rideId);
-
-                    if (error) {
-                        console.error('❌ خطأ في تحديث alert_opened_by_driver_id:', error);
-                    } else {
-                        console.log('✅ تم تسجيل driver_id بنجاح لإيقاف الصوت');
-                        
-                        // ✅ إيقاف التنبيهات فوراً بعد تحديث قاعدة البيانات
-                        stopFlutterAlertsDirect();
-                    }
-                } catch (err) {
-                    console.error('❌ استثناء عند تحديث قاعدة البيانات:', err);
-                }
-            }
-        }
-
-        // ============================================
-        // ✅ دالة إيقاف الصوت والاهتزاز في Flutter (محسنة ومضمونة)
-        // ============================================
-        function stopFlutterAlertsDirect() {
-            console.log('🛑 تنفيذ طلب إيقاف التنبيهات المباشر...');
-            
-            // ✅ 1. استدعاء المعالجين المتاحين عبر InAppWebView
-            if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function') {
-                window.flutter_inappwebview.callHandler('stopAlerts')
-                    .then(() => console.log('✅ تم التنفيذ عبر handler: stopAlerts'))
-                    .catch(err => console.log('⚠️ stopAlerts error:', err));
-
-                window.flutter_inappwebview.callHandler('stopAlertsFromPWA')
-                    .then(() => console.log('✅ تم التنفيذ عبر handler: stopAlertsFromPWA'))
-                    .catch(err => console.log('⚠️ stopAlertsFromPWA error:', err));
-            } else {
-                console.log('⚠️ flutter_inappwebview غير متاح حالياً، جاري تحفيز البدائل...');
-                stopFlutterAlertsFallback();
-            }
-
-            // ✅ 2. كتابة إشارة الإيقاف في localStorage
-            try {
-                localStorage.setItem('stop_alerts', Date.now().toString());
-            } catch (_) {}
-
-            // ✅ 3. إرسال postMessage للإطار الأب إن وجد
-            try {
-                if (window.parent && window.parent !== window) {
-                    window.parent.postMessage({
-                        type: 'STOP_ALERTS',
-                        action: 'stop',
-                        timestamp: Date.now()
-                    }, '*');
-                }
-            } catch (_) {}
-        }
-
-        // ============================================
-        // ✅ الطريقة البديلة لإيقاف التنبيهات
-        // ============================================
-        function stopFlutterAlertsFallback() {
-            try {
-                const url = new URL(window.location.href);
-                url.searchParams.set('stop_alerts', Date.now().toString());
-                window.history.replaceState({}, '', url.toString());
-            } catch (_) {}
-
-            try {
-                localStorage.setItem('stop_alerts_force', Date.now().toString());
-            } catch (_) {}
-        }
-
-        // ============================================
-        // ✅ آلية تكرار التحقق والإيقاف لحين جاهزية بيئة Flutter
-        // ============================================
-        function startAlertsStopperLoop() {
-            stopFlutterAlertsDirect();
-            let attempts = 0;
-            const stopInterval = setInterval(() => {
-                attempts++;
-                stopFlutterAlertsDirect();
-                if (attempts >= 10) {
-                    clearInterval(stopInterval);
-                }
-            }, 300);
-        }
-
-        // ============================================
-        // ✅ مراقبة localStorage لإيقاف التنبيهات
-        // ============================================
-        setInterval(() => {
-            const stopTime = localStorage.getItem('stop_alerts');
-            if (stopTime) {
-                if (Date.now() - parseInt(stopTime) > 3000) {
-                    localStorage.removeItem('stop_alerts');
-                }
-            }
-        }, 1000);
-
-        // ============================================
         // ✅ استقبال البيانات من Flutter
         // ============================================
         window.handleRideRequest = function(data) {
@@ -390,8 +331,9 @@
                 document.getElementById('accept-btn').disabled = false;
                 startTimer();
                 
-                // ✅ إيقاف التنبيهات فور استلام البيانات
-                startAlertsStopperLoop();
+                // ✅ إيقاف التنبيهات عند استلام البيانات
+                console.log('🛑 إيقاف التنبيهات بعد استلام البيانات');
+                stopFlutterAlertsDirect();
             }
         };
 
@@ -403,23 +345,30 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('📄 DOM loaded - accept-ride.html');
             
-            // ✅ تحديث قاعدة البيانات فور تحميل الصفحة - أهم جزء
-            markRideAsOpenedByDriver();
-            
             // ✅ الحصول على rideId من URL
             const urlParams = new URLSearchParams(window.location.search);
             currentRideId = urlParams.get('id') || urlParams.get('rideId') || urlParams.get('ride_id');
             
             console.log('🔍 Ride ID from URL:', currentRideId);
             
-            // ✅ إيقاف التنبيهات فوراً عبر التكرار السريع
-            startAlertsStopperLoop();
-
-            // ✅ الاستماع للحدث الخاص بجاهزية WebView
-            window.addEventListener("flutterInAppWebViewPlatformReady", function(event) {
-                console.log('⚡ Flutter WebView Platform Ready');
+            // ✅ إيقاف التنبيهات فوراً (محاولات متعددة)
+            console.log('🛑 محاولة 1: إيقاف التنبيهات فوراً');
+            stopFlutterAlertsDirect();
+            
+            setTimeout(() => {
+                console.log('🛑 محاولة 2: إيقاف التنبيهات بعد 300ms');
                 stopFlutterAlertsDirect();
-            });
+            }, 300);
+            
+            setTimeout(() => {
+                console.log('🛑 محاولة 3: إيقاف التنبيهات بعد 800ms');
+                stopFlutterAlertsDirect();
+            }, 800);
+            
+            setTimeout(() => {
+                console.log('🛑 محاولة 4: إيقاف التنبيهات بعد 1500ms');
+                stopFlutterAlertsDirect();
+            }, 1500);
             
             if (currentRideId) {
                 // ✅ جلب تفاصيل الرحلة من Supabase
@@ -427,17 +376,6 @@
                 startTimer();
             } else {
                 console.log('⚠️ لا يوجد rideId في URL، انتظار البيانات من Flutter');
-                let attempts = 0;
-                const waitForData = setInterval(() => {
-                    attempts++;
-                    if (document.getElementById('accept-btn').disabled === false) {
-                        console.log('✅ تم استلام البيانات من Flutter');
-                        clearInterval(waitForData);
-                    } else if (attempts > 10) {
-                        console.log('⏰ انتهى وقت انتظار البيانات من Flutter');
-                        clearInterval(waitForData);
-                    }
-                }, 500);
             }
         });
 
