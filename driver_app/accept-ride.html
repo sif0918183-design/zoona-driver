@@ -199,7 +199,7 @@
 
         <div class="countdown-container">
             <div style="font-size: 14px;">الوقت المتبقي للرد</div>
-            <div class="timer-value" id="countdown">35</div>
+            <div class="timer-value" id="countdown">30</div>
         </div>
 
         <div class="ride-card">
@@ -239,65 +239,15 @@
 
     <script>
         // ============================================
-        // ✅ دالة إيقاف الصوت والاهتزاز في Flutter (محسنة)
+        // ✅ دالة إيقاف التنبيهات (محاولة خفيفة)
         // ============================================
-        function stopFlutterAlertsDirect() {
-            console.log('🛑 محاولة إيقاف التنبيهات...');
-            
-            // ✅ الطريقة 1: عبر evaluateJavascript (الأكثر موثوقية)
-            try {
-                if (window.flutter_inappwebview && typeof window.flutter_inappwebview.evaluateJavascript === 'function') {
-                    console.log('📤 إرسال طلب إيقاف عبر evaluateJavascript...');
-                    window.flutter_inappwebview.evaluateJavascript(`
-                        (function() {
-                            // استدعاء الدالة في Flutter
-                            if (typeof _stopAlerts === 'function') {
-                                _stopAlerts();
-                                return 'OK';
-                            }
-                            return 'NOT_FOUND';
-                        })()
-                    `).then((result) => {
-                        console.log('✅ نتيجة evaluateJavascript:', result);
-                    }).catch((err) => {
-                        console.log('⚠️ evaluateJavascript فشل:', err);
-                    });
-                }
-            } catch (e) {
-                console.log('⚠️ خطأ في evaluateJavascript:', e);
-            }
-            
-            // ✅ الطريقة 2: عبر callHandler
+        function stopFlutterAlerts() {
             try {
                 if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function') {
                     window.flutter_inappwebview.callHandler('stopAlertsFromPWA')
-                        .then(() => {
-                            console.log('✅ تم إيقاف التنبيهات عبر callHandler');
-                        })
-                        .catch((err) => {
-                            console.log('⚠️ callHandler فشل:', err);
-                        });
+                        .catch(() => {});
                 }
-            } catch (e) {
-                console.log('⚠️ خطأ في callHandler:', e);
-            }
-            
-            // ✅ الطريقة 3: عبر localStorage
-            try {
                 localStorage.setItem('stop_alerts', Date.now().toString());
-                console.log('📝 تم كتابة stop_alerts في localStorage');
-            } catch (_) {}
-            
-            // ✅ الطريقة 4: عبر postMessage
-            try {
-                if (window.parent && window.parent !== window) {
-                    window.parent.postMessage({
-                        type: 'STOP_ALERTS',
-                        action: 'stop',
-                        timestamp: Date.now()
-                    }, '*');
-                    console.log('📤 تم إرسال postMessage');
-                }
             } catch (_) {}
         }
 
@@ -315,7 +265,7 @@
 
         let currentRideId = null;
         let currentRideAmount = 0;
-        let countdownValue = 35;
+        let countdownValue = 30;
         let timerInterval = null;
         let isProcessing = false;
         let isRideAccepted = false;
@@ -331,9 +281,8 @@
                 document.getElementById('accept-btn').disabled = false;
                 startTimer();
                 
-                // ✅ إيقاف التنبيهات عند استلام البيانات
-                console.log('🛑 إيقاف التنبيهات بعد استلام البيانات');
-                stopFlutterAlertsDirect();
+                // محاولة إيقاف التنبيهات عند استلام البيانات
+                stopFlutterAlerts();
             }
         };
 
@@ -345,37 +294,31 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('📄 DOM loaded - accept-ride.html');
             
-            // ✅ الحصول على rideId من URL
             const urlParams = new URLSearchParams(window.location.search);
             currentRideId = urlParams.get('id') || urlParams.get('rideId') || urlParams.get('ride_id');
             
             console.log('🔍 Ride ID from URL:', currentRideId);
             
-            // ✅ إيقاف التنبيهات فوراً (محاولات متعددة)
-            console.log('🛑 محاولة 1: إيقاف التنبيهات فوراً');
-            stopFlutterAlertsDirect();
-            
-            setTimeout(() => {
-                console.log('🛑 محاولة 2: إيقاف التنبيهات بعد 300ms');
-                stopFlutterAlertsDirect();
-            }, 300);
-            
-            setTimeout(() => {
-                console.log('🛑 محاولة 3: إيقاف التنبيهات بعد 800ms');
-                stopFlutterAlertsDirect();
-            }, 800);
-            
-            setTimeout(() => {
-                console.log('🛑 محاولة 4: إيقاف التنبيهات بعد 1500ms');
-                stopFlutterAlertsDirect();
-            }, 1500);
+            // محاولة إيقاف التنبيهات عند تحميل الصفحة
+            stopFlutterAlerts();
             
             if (currentRideId) {
-                // ✅ جلب تفاصيل الرحلة من Supabase
                 fetchRideDetails(currentRideId);
                 startTimer();
             } else {
                 console.log('⚠️ لا يوجد rideId في URL، انتظار البيانات من Flutter');
+                // محاولة انتظار البيانات من Flutter
+                let attempts = 0;
+                const waitForData = setInterval(() => {
+                    attempts++;
+                    if (document.getElementById('accept-btn').disabled === false) {
+                        console.log('✅ تم استلام البيانات من Flutter');
+                        clearInterval(waitForData);
+                    } else if (attempts > 10) {
+                        console.log('⏰ انتهى وقت انتظار البيانات من Flutter');
+                        clearInterval(waitForData);
+                    }
+                }, 500);
             }
         });
 
@@ -431,13 +374,13 @@
         }
 
         // ============================================
-        // ✅ المؤقت
+        // ✅ المؤقت (30 ثانية)
         // ============================================
         function startTimer() {
             if (timerInterval) {
                 clearInterval(timerInterval);
             }
-            countdownValue = 35;
+            countdownValue = 30;
             document.getElementById('countdown').textContent = countdownValue;
             document.getElementById('countdown').classList.remove('warning');
             
@@ -451,6 +394,7 @@
                 
                 if (countdownValue <= 0) {
                     clearInterval(timerInterval);
+                    timerInterval = null;
                     handleDecline();
                 }
             }, 1000);
@@ -476,9 +420,8 @@
             isProcessing = true;
             isRideAccepted = true;
 
-            // ✅ إيقاف الرنين فوراً عند الضغط
-            console.log('🛑 إيقاف التنبيهات عند قبول الرحلة');
-            stopFlutterAlertsDirect();
+            // ✅ إيقاف التنبيهات عند القبول
+            stopFlutterAlerts();
 
             const acceptBtn = document.getElementById('accept-btn');
             acceptBtn.disabled = true;
@@ -548,9 +491,8 @@
             if (isProcessing || isRideAccepted) return;
             isProcessing = true;
 
-            // ✅ إيقاف الرنين عند الرفض
-            console.log('🛑 إيقاف التنبيهات عند رفض الرحلة');
-            stopFlutterAlertsDirect();
+            // ✅ إيقاف التنبيهات عند الرفض
+            stopFlutterAlerts();
 
             if (timerInterval) {
                 clearInterval(timerInterval);
@@ -600,8 +542,7 @@
         // ✅ عند مغادرة الصفحة
         // ============================================
         window.addEventListener('beforeunload', function() {
-            console.log('🚪 مغادرة الصفحة - إيقاف التنبيهات');
-            stopFlutterAlertsDirect();
+            stopFlutterAlerts();
             if (timerInterval) {
                 clearInterval(timerInterval);
                 timerInterval = null;
@@ -609,13 +550,12 @@
         });
 
         window.addEventListener('popstate', function(event) {
-            console.log('🔙 popstate - إيقاف التنبيهات');
-            stopFlutterAlertsDirect();
+            stopFlutterAlerts();
         });
 
         console.log('✅ accept-ride.html loaded successfully');
         console.log('📱 Flutter WebView available:', !!window.flutter_inappwebview);
-        console.log('⏱️ Timer starts at 35 seconds');
+        console.log('⏱️ Timer starts at 30 seconds');
     </script>
 </body>
 </html>
