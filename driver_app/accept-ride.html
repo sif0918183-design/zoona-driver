@@ -258,6 +258,49 @@
         let isRideAccepted = false;
 
         // ============================================
+        // ✅ دالة تحديث معرّف السائق لإيقاف التنبيه في Flutter
+        // ============================================
+        async function markRideAsOpenedByDriver() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const rideId = urlParams.get('id') || urlParams.get('rideId') || urlParams.get('ride_id');
+            
+            // الحصول على بيانات السائق المسجل في PWA
+            const driverDataStr = localStorage.getItem('tarhal_driver');
+            let driverId = null;
+            
+            if (driverDataStr) {
+                try {
+                    const driverData = JSON.parse(driverDataStr);
+                    driverId = driverData.id;
+                } catch (e) {
+                    console.error('❌ خطأ في قراءة بيانات السائق:', e);
+                }
+            }
+
+            console.log(`📡 تحديث فتح الرحلة: Ride=${rideId}, Driver=${driverId}`);
+
+            if (rideId && driverId) {
+                try {
+                    const { error } = await tarhalDB
+                        .from('rides')
+                        .update({ alert_opened_by_driver_id: driverId })
+                        .eq('id', rideId);
+
+                    if (error) {
+                        console.error('❌ خطأ في تحديث alert_opened_by_driver_id:', error);
+                    } else {
+                        console.log('✅ تم تسجيل driver_id بنجاح لإيقاف الصوت');
+                        
+                        // ✅ إيقاف التنبيهات فوراً بعد تحديث قاعدة البيانات
+                        stopFlutterAlertsDirect();
+                    }
+                } catch (err) {
+                    console.error('❌ استثناء عند تحديث قاعدة البيانات:', err);
+                }
+            }
+        }
+
+        // ============================================
         // ✅ دالة إيقاف الصوت والاهتزاز في Flutter (محسنة ومضمونة)
         // ============================================
         function stopFlutterAlertsDirect() {
@@ -359,6 +402,9 @@
         // ============================================
         document.addEventListener('DOMContentLoaded', function() {
             console.log('📄 DOM loaded - accept-ride.html');
+            
+            // ✅ تحديث قاعدة البيانات فور تحميل الصفحة - أهم جزء
+            markRideAsOpenedByDriver();
             
             // ✅ الحصول على rideId من URL
             const urlParams = new URLSearchParams(window.location.search);
