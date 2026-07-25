@@ -545,6 +545,72 @@ export default async function handler(req, res) {
             return res.status(200).json({ success: true });
         }
 
+        // --- GET INSTANT VEHICLE PRICES ---
+        if (action === 'get_instant_vehicles') {
+            const { data, error } = await supabase
+                .from('system_settings')
+                .select('value')
+                .eq('key', 'instant_vehicle_prices')
+                .maybeSingle();
+
+            const defaultVehicles = [
+                { id: "tuktuk", name: "ركشة", icon: "🛺", base: 5000, perKm: 2000 },
+                { id: "economy", name: "توفير", icon: "🚗", base: 6000, perKm: 3000 },
+                { id: "comfort", name: "مريح", icon: "🚙", base: 7000, perKm: 3500 },
+                { id: "vip", name: "VIP", icon: "🚘", base: 10000, perKm: 5000 }
+            ];
+
+            if (error) {
+                return res.status(200).json({ success: true, vehicles: defaultVehicles });
+            }
+
+            if (!data) {
+                return res.status(200).json({ success: true, vehicles: defaultVehicles });
+            }
+
+            try {
+                const vehicles = JSON.parse(data.value);
+                return res.status(200).json({ success: true, vehicles });
+            } catch (e) {
+                return res.status(200).json({ success: true, vehicles: defaultVehicles });
+            }
+        }
+
+        // --- SAVE INSTANT VEHICLE PRICES ---
+        if (action === 'save_instant_vehicles') {
+            const { vehicles } = req.body;
+            if (!vehicles || !Array.isArray(vehicles)) {
+                return res.status(400).json({ success: false, error: 'الرجاء إرسال مصفوفة المركبات بشكل صحيح' });
+            }
+
+            const valueStr = JSON.stringify(vehicles);
+
+            // Upsert or Update
+            const { error: selectError, data: existingData } = await supabase
+                .from('system_settings')
+                .select('key')
+                .eq('key', 'instant_vehicle_prices')
+                .maybeSingle();
+
+            let saveErr;
+            if (existingData) {
+                const { error } = await supabase
+                    .from('system_settings')
+                    .update({ value: valueStr })
+                    .eq('key', 'instant_vehicle_prices');
+                saveErr = error;
+            } else {
+                const { error } = await supabase
+                    .from('system_settings')
+                    .insert([{ key: 'instant_vehicle_prices', value: valueStr }]);
+                saveErr = error;
+            }
+
+            if (saveErr) throw saveErr;
+
+            return res.status(200).json({ success: true });
+        }
+
         return res.status(400).json({ success: false, error: 'Unknown action' });
 
     } catch (error) {
