@@ -1938,6 +1938,12 @@ async function loadVehicleCategories() {
             if (Array.isArray(parsed) && parsed.length > 0) {
                 // استبعاد الركشة (tuktuk) من السفر بين المدن لأن الركشة لا يمكنها السفر
                 const filtered = parsed.filter(v => v.id !== 'tuktuk');
+                // ترتيب المركبات تصاعدياً حسب نسبة السعر السفرية لضمان ترتيب الرتبة بشكل صحيح
+                filtered.sort((a, b) => {
+                    const multA = a.travelMultiplier !== undefined ? parseFloat(a.travelMultiplier) : 1.0;
+                    const multB = b.travelMultiplier !== undefined ? parseFloat(b.travelMultiplier) : 1.0;
+                    return multA - multB;
+                });
                 vehicleCategories = filtered.map((v, index) => ({
                     id: v.id || `cat_${index}`,
                     name_ar: v.name,
