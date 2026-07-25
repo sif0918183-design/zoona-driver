@@ -1936,7 +1936,9 @@ async function loadVehicleCategories() {
         if (!error && data && data.value) {
             const parsed = JSON.parse(data.value);
             if (Array.isArray(parsed) && parsed.length > 0) {
-                vehicleCategories = parsed.map((v, index) => ({
+                // استبعاد الركشة (tuktuk) من السفر بين المدن لأن الركشة لا يمكنها السفر
+                const filtered = parsed.filter(v => v.id !== 'tuktuk');
+                vehicleCategories = filtered.map((v, index) => ({
                     id: v.id || `cat_${index}`,
                     name_ar: v.name,
                     name: v.name,
