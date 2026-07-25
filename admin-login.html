@@ -682,11 +682,7 @@
                             <div class="form-group">
                                 <label class="form-label">نوع السيارة *</label>
                                 <select id="car-type" class="form-input" required>
-                                    <option value="">اختر النوع</option>
-                                    <option value="tuktuk">توك توك</option>
-                                    <option value="economy">اقتصادية</option>
-                                    <option value="comfort">متوسطة</option>
-                                    <option value="vip">VIP</option>
+                                    <option value="">جاري تحميل الفئات...</option>
                                 </select>
                             </div>
 
@@ -977,6 +973,7 @@
                 document.getElementById('dashboard').classList.remove('hidden');
 
                 // Load all data
+                loadInstantVehicles();
                 loadDashboardStats();
                 loadCustomers();
                 loadDrivers();
@@ -1006,6 +1003,8 @@
                 document.getElementById('total-earnings').textContent = res.stats.earnings.toLocaleString();
                 document.getElementById('admin-whatsapp').value = res.adminWhatsapp;
 
+                // Load all data
+                loadInstantVehicles();
                 loadCustomers();
                 loadDrivers();
                 updateSystemInfo();
@@ -1188,10 +1187,19 @@
         }
 
         function getVehicleTypeName(type) {
+            if (!type) return 'غير محدد';
+
+            // البحث ديناميكياً في فئات السيارات المجلوبة
+            const found = allInstantVehicles.find(v => v.id.toLowerCase() === type.toLowerCase().trim());
+            if (found) {
+                return found.name;
+            }
+
+            // الترجمات الاحتياطية (Fallback)
             const names = {
-                tuktuk: 'توك توك',
-                economy: 'اقتصادية',
-                comfort: 'متوسطة',
+                tuktuk: 'ركشة',
+                economy: 'توفير',
+                comfort: 'مريح',
                 vip: 'VIP'
             };
             return names[type] || type;
@@ -1721,6 +1729,17 @@
                 const res = await callAdminAPI('get_instant_vehicles');
                 allInstantVehicles = res.vehicles || [];
                 renderInstantVehicles();
+
+                // تعبئة خيارات نوع السيارة في نموذج إضافة سائق جديد ديناميكياً
+                const selectElement = document.getElementById('car-type');
+                if (selectElement) {
+                    selectElement.innerHTML = '<option value="">اختر النوع</option>';
+                    allInstantVehicles.forEach(vehicle => {
+                        selectElement.insertAdjacentHTML('beforeend', `
+                            <option value="${vehicle.id}">${vehicle.name}</option>
+                        `);
+                    });
+                }
             } catch (error) {
                 console.error('Error loading instant vehicles:', error);
                 showNotification('خطأ في تحميل بيانات المركبات الفورية', 'error');
