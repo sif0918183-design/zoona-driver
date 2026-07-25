@@ -1945,6 +1945,33 @@ function populateCityDropdowns() {
 
 async function loadVehicleCategories() {
     try {
+        const {data, error} = await travelSupabase
+            .from('system_settings')
+            .select('value')
+            .eq('key', 'instant_vehicle_prices')
+            .maybeSingle();
+
+        if (!error && data && data.value) {
+            const parsed = JSON.parse(data.value);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                vehicleCategories = parsed.map((v, index) => ({
+                    id: v.id || `cat_${index}`,
+                    name_ar: v.name,
+                    name: v.name,
+                    price_multiplier: v.travelMultiplier !== undefined ? parseFloat(v.travelMultiplier) : 1.0,
+                    icon_emoji: v.icon || '🚗',
+                    icon: v.icon || '🚗'
+                }));
+                renderVehicleCategories();
+                return;
+            }
+        }
+    } catch(e) {
+        console.error('Error loading travel categories from settings:', e);
+    }
+
+    // Fallback to legacy database query
+    try {
         const {data, error} = await travelSupabase.from('vehicle_categories').select('*').eq('is_active',true).order('price_multiplier');
         vehicleCategories = (!error && data && data.length > 0) ? data : DEFAULT_CATEGORIES;
     } catch(e) {

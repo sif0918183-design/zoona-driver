@@ -554,10 +554,10 @@ export default async function handler(req, res) {
                 .maybeSingle();
 
             const defaultVehicles = [
-                { id: "tuktuk", name: "ركشة", icon: "🛺", base: 5000, perKm: 2000 },
-                { id: "economy", name: "توفير", icon: "🚗", base: 6000, perKm: 3000 },
-                { id: "comfort", name: "مريح", icon: "🚙", base: 7000, perKm: 3500 },
-                { id: "vip", name: "VIP", icon: "🚘", base: 10000, perKm: 5000 }
+                { id: "tuktuk", name: "ركشة", icon: "🛺", base: 5000, perKm: 2000, travelMultiplier: 1.0 },
+                { id: "economy", name: "توفير", icon: "🚗", base: 6000, perKm: 3000, travelMultiplier: 1.0 },
+                { id: "comfort", name: "مريح", icon: "🚙", base: 7000, perKm: 3500, travelMultiplier: 1.3 },
+                { id: "vip", name: "VIP", icon: "🚘", base: 10000, perKm: 5000, travelMultiplier: 1.6 }
             ];
 
             if (error) {
