@@ -174,13 +174,13 @@
         .btn-sm { padding:0.5rem 1rem; font-size:0.875rem; }
         .btn-lg { padding:1rem 2rem; font-size:1.125rem; }
         .btn-block { width:100%; }
-        .vehicle-categories { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1rem; margin:1rem 0; }
-        .vehicle-category { border:2px solid var(--Tracka-primary); border-radius:var(--radius-lg); padding:1.25rem; text-align:center; cursor:pointer; transition:var(--transition); display:flex; flex-direction:column; align-items:center; gap:0.75rem; background:rgba(255,255,255,0.4); }
-        .vehicle-category:hover { transform:translateY(-2px); box-shadow:0 0 15px var(--Tracka-emerald-glow); border-color:var(--Tracka-primary); }
+        .vehicle-categories { display:grid; grid-template-columns:repeat(auto-fit,minmax(100px,1fr)); gap:0.75rem; margin:1rem 0; }
+        .vehicle-category { border:2px solid var(--Tracka-primary); border-radius:var(--radius); padding:0.6rem 0.5rem; text-align:center; cursor:pointer; transition:var(--transition); display:flex; flex-direction:column; align-items:center; gap:0.4rem; background:rgba(255,255,255,0.4); min-height: 105px; justify-content: center; }
+        .vehicle-category:hover { transform:translateY(-2px); box-shadow:0 0 10px var(--Tracka-emerald-glow); border-color:var(--Tracka-primary); }
         .vehicle-category.selected {
-            border: 3px solid var(--Tracka-primary) !important;
+            border: 2px solid var(--Tracka-primary) !important;
             background: var(--Tracka-primary) !important;
-            box-shadow: 0 4px 20px var(--Tracka-emerald-glow) !important;
+            box-shadow: 0 4px 12px var(--Tracka-emerald-glow) !important;
             transform: translateY(-2px);
         }
         .vehicle-category.selected .vehicle-name,
@@ -191,9 +191,9 @@
             background: rgba(255, 255, 255, 0.25) !important;
             color: #fff !important;
         }
-        .vehicle-icon { font-size:2.5rem; color:var(--primary); margin-bottom:0.5rem; }
-        .vehicle-name { font-weight:700; color:var(--gray-800); font-size:1.125rem; }
-        .vehicle-multiplier { font-size:0.875rem; color:var(--gray-600); background:var(--gray-100); padding:0.25rem 0.75rem; border-radius:20px; font-weight:600; }
+        .vehicle-icon { font-size:1.75rem; color:var(--primary); margin-bottom:0.2rem; }
+        .vehicle-name { font-weight:700; color:var(--gray-800); font-size:0.9rem; }
+        .vehicle-multiplier { font-size:0.75rem; color:var(--gray-600); background:var(--gray-100); padding:0.15rem 0.5rem; border-radius:20px; font-weight:600; }
         .ride-cards { display:grid; gap:1rem; }
         .ride-card { 
             background:#fff; 
