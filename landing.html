@@ -299,47 +299,26 @@
             // Save choice
             localStorage.setItem('user_app_choice', type);
 
-            // Show loading
+            // Show loading overlay
             const overlay = document.getElementById('loading-overlay');
             const loader = document.getElementById('main-loader');
             const loaderText = document.getElementById('loader-text');
 
-            overlay.style.display = 'flex';
-            if(type === 'driver') {
-                loader.style.borderTopColor = 'var(--driver)';
-                loaderText.innerText = 'جاري دخول تطبيق السائق...';
-            } else {
-                loader.style.borderTopColor = 'var(--passenger)';
-                loaderText.innerText = 'جاري دخول تطبيق الراكب...';
-            }
-
-            // Register SW and redirect with safe fail-safe timeouts to prevent frozen screens
-            const swPath = type === 'passenger' ? 'passenger_app/sw-passenger.js' : 'driver_app/sw-driver.js';
-            const targetUrl = type === 'passenger' ? 'passenger_app/index.html' : 'driver_app/index.html';
-
-            let redirected = false;
-            const safeRedirect = () => {
-                if (!redirected) {
-                    redirected = true;
-                    window.location.href = targetUrl;
+            if (overlay && loader && loaderText) {
+                overlay.style.display = 'flex';
+                if(type === 'driver') {
+                    loader.style.borderTopColor = 'var(--driver)';
+                    loaderText.innerText = 'جاري دخول تطبيق السائق...';
+                } else {
+                    loader.style.borderTopColor = 'var(--passenger)';
+                    loaderText.innerText = 'جاري دخول تطبيق الراكب...';
                 }
-            };
-
-            // Hard timeout fallback of 1.2s to guarantee navigation even if SW hangs or is blocked
-            setTimeout(safeRedirect, 1200);
-
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register(swPath)
-                    .then(() => {
-                        setTimeout(safeRedirect, 400);
-                    })
-                    .catch((err) => {
-                        console.warn('Service worker registration failed or blocked:', err);
-                        safeRedirect();
-                    });
-            } else {
-                safeRedirect();
             }
+
+            // Redirect instantly! Navigation is completely decoupled from Service Worker registration
+            // The individual index.html files natively handle registering their own service workers on load
+            const targetUrl = type === 'passenger' ? 'passenger_app/index.html' : 'driver_app/index.html';
+            window.location.href = targetUrl;
         }
 
         // Auto-redirect if returning within same session or specifically desired

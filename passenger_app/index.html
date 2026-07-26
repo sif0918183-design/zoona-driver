@@ -2366,105 +2366,119 @@ function renderPassengerVehicleSelection() {
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🚀 تراكا للنقل - تطبيق الراكب');
     
-    // إخفاء Splash Screen
-    setTimeout(() => {
-        document.getElementById('splash-screen').classList.add('hide');
-    }, 1500);
-    
-    // انتظار جاهزية التخزين (خاص بالـ WebView)
-    await FlutterBridge.waitForStorage();
-
-    // العودة من منصة السفريات تنظف حالات البحث
-    if (document.referrer && document.referrer.includes('travel-platform.html')) {
-        console.log('Returned from travel platform, clearing search states from localStorage...');
-        localStorage.removeItem('is_searching');
-        localStorage.removeItem('ride_request_id');
-        localStorage.removeItem('tarhal_current_ride_id');
-        localStorage.removeItem('active_ride_id');
-        localStorage.removeItem('active_ride_status');
-        localStorage.removeItem('active_ride_data');
-    }
-
-    // =====================================================
-    // نظام الحارس (Gatekeeper) - Strict Lockdown
-    // التحقق من وجود رحلة نشطة فوراً
-    // =====================================================
-    
-    // التحقق من تسجيل الدخول أولاً
-    const passengerDataStr = localStorage.getItem('tarhal_passenger');
-    
-    if (passengerDataStr) {
-        try {
-            const passengerData = JSON.parse(passengerDataStr);
-            
-            // =====================================================
-            // الخطوة 1: التحقق من localStorage أولاً
-            // =====================================================
-            const localRideId = localStorage.getItem('active_ride_id');
-            const localRideStatus = localStorage.getItem('active_ride_status');
-            const localRideData = localStorage.getItem('active_ride_data');
-            
-            if (localRideId && localRideStatus && ['accepted', 'arrived', 'ongoing'].includes(localRideStatus)) {
-                console.log('🚨 اكتشاف رحلة نشطة من localStorage!');
-                
-                // توجيه إجباري للرحلة النشطة
-                window.location.href = `ride-accepted.html?id=${localRideId}`;
-                return;
-            }
-            
-            // =====================================================
-            // الخطوة 2: التحقق من Supabase (مزامنة الحالة مع مهلة أمان)
-            // =====================================================
-            const activeRidePromise = tarhalDB
-                .from('rides')
-                .select('id, status, driver_id, pickup_location, dropoff_location, amount')
-                .eq('passenger_id', passengerData.id)
-                .in('status', ['accepted', 'arrived', 'ongoing'])
-                .maybeSingle();
-
-            // مهلة تجميع قدرها 3 ثوانٍ لمنع تجمد الشاشة عند تعطل الاتصال بالشبكة
-            const { data: activeRide, error } = await Promise.race([
-                activeRidePromise,
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Active ride sync timeout')), 3000))
-            ]).catch(err => {
-                console.warn('⚠️ Supabase Active ride sync timed out or failed:', err);
-                return { data: null, error: err };
-            });
-            
-            if (activeRide) {
-                console.log('🚨 اكتشاف رحلة نشطة! توجيه الراكب لـ ride-accepted.html');
-                
-                // تخزين بيانات الرحلة في localStorage
-                localStorage.setItem('active_ride_id', activeRide.id);
-                localStorage.setItem('active_ride_status', activeRide.status);
-                
-                // توجيه إجباري للرحلة النشطة
-                window.location.href = `ride-accepted.html?id=${activeRide.id}`;
-                return;
-            } else {
-                // الرحلة انتهت أو لم تكن موجودة - تنظيف localStorage
-                localStorage.removeItem('active_ride_id');
-                localStorage.removeItem('active_ride_status');
-                localStorage.removeItem('active_ride_data');
-            }
-        } catch (e) {
-            console.error('خطأ في فحص الرحلة النشطة:', e);
+    const hideSplash = () => {
+        const splash = document.getElementById('splash-screen');
+        if (splash) {
+            splash.classList.add('hide');
+            setTimeout(() => {
+                splash.style.display = 'none';
+            }, 600);
         }
+    };
+
+    // مهلة إجبارية لإخفاء الشاشة بعد ثانيتين ونصف مهما حدث
+    setTimeout(hideSplash, 2500);
+    
+    try {
+        // انتظار جاهزية التخزين (خاص بالـ WebView)
+        await FlutterBridge.waitForStorage().catch(err => console.warn('Storage wait failed:', err));
+
+        // العودة من منصة السفريات تنظف حالات البحث
+        if (document.referrer && document.referrer.includes('travel-platform.html')) {
+            console.log('Returned from travel platform, clearing search states from localStorage...');
+            localStorage.removeItem('is_searching');
+            localStorage.removeItem('ride_request_id');
+            localStorage.removeItem('tarhal_current_ride_id');
+            localStorage.removeItem('active_ride_id');
+            localStorage.removeItem('active_ride_status');
+            localStorage.removeItem('active_ride_data');
+        }
+
+        // =====================================================
+        // نظام الحارس (Gatekeeper) - Strict Lockdown
+        // التحقق من وجود رحلة نشطة فوراً
+        // =====================================================
+
+        const passengerDataStr = localStorage.getItem('tarhal_passenger');
+
+        if (passengerDataStr) {
+            try {
+                const passengerData = JSON.parse(passengerDataStr);
+                
+                // =====================================================
+                // الخطوة 1: التحقق من localStorage أولاً
+                // =====================================================
+                const localRideId = localStorage.getItem('active_ride_id');
+                const localRideStatus = localStorage.getItem('active_ride_status');
+                const localRideData = localStorage.getItem('active_ride_data');
+                
+                if (localRideId && localRideStatus && ['accepted', 'arrived', 'ongoing'].includes(localRideStatus)) {
+                    console.log('🚨 اكتشاف رحلة نشطة من localStorage!');
+                    hideSplash();
+
+                    // توجيه إجباري للرحلة النشطة
+                    window.location.href = `ride-accepted.html?id=${localRideId}`;
+                    return;
+                }
+                
+                // =====================================================
+                // الخطوة 2: التحقق من Supabase (مزامنة الحالة مع مهلة أمان)
+                // =====================================================
+                const activeRidePromise = tarhalDB
+                    .from('rides')
+                    .select('id, status, driver_id, pickup_location, dropoff_location, amount')
+                    .eq('passenger_id', passengerData.id)
+                    .in('status', ['accepted', 'arrived', 'ongoing'])
+                    .maybeSingle();
+
+                const { data: activeRide, error } = await Promise.race([
+                    activeRidePromise,
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Active ride sync timeout')), 2500))
+                ]).catch(err => {
+                    console.warn('⚠️ Supabase Active ride sync timed out or failed:', err);
+                    return { data: null, error: err };
+                });
+
+                if (activeRide) {
+                    console.log('🚨 اكتشاف رحلة نشطة! توجيه الراكب لـ ride-accepted.html');
+                    hideSplash();
+
+                    // تخزين بيانات الرحلة في localStorage
+                    localStorage.setItem('active_ride_id', activeRide.id);
+                    localStorage.setItem('active_ride_status', activeRide.status);
+
+                    // توجيه إجباري للرحلة النشطة
+                    window.location.href = `ride-accepted.html?id=${activeRide.id}`;
+                    return;
+                } else {
+                    // الرحلة انتهت أو لم تكن موجودة - تنظيف localStorage
+                    localStorage.removeItem('active_ride_id');
+                    localStorage.removeItem('active_ride_status');
+                    localStorage.removeItem('active_ride_data');
+                }
+            } catch (e) {
+                console.error('خطأ في فحص الرحلة النشطة:', e);
+            }
+        }
+
+        // =====================================================
+        // نهاية نظام الحارس
+        // =====================================================
+        loadGoogleMaps();
+
+        // جلب أنواع وأسعار المركبات الفورية ديناميكياً
+        await loadDynamicVehiclePrices();
+
+    } catch (err) {
+        console.error('⚠️ Critical initialization error caught in DOMContentLoaded:', err);
+    } finally {
+        // تهيئة التطبيق دائماً وإلغاء شاشة التحميل لمنع تجمدها مهما كانت الأخطاء
+        hideSplash();
+        await checkAuth().catch(e => console.error('Auth check error:', e));
+
+        // إرسال إشعار جاهزية التطبيق لـ Flutter
+        FlutterBridge.postMessage('pwa_ready', { app: 'passenger' });
     }
-    
-    // =====================================================
-    // نهاية نظام الحارس
-    // =====================================================
-    loadGoogleMaps();
-    
-    // جلب أنواع وأسعار المركبات الفورية ديناميكياً
-    await loadDynamicVehiclePrices();
-
-    // تهيئة التطبيق
-    checkAuth();
-
-    // إرسال إشعار جاهزية التطبيق لـ Flutter
-    FlutterBridge.postMessage('pwa_ready', { app: 'passenger' });
 });
 
 // ============================================
