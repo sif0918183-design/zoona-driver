@@ -2,6 +2,12 @@
   "functions": {
     "api/send-push.js": {
       "maxDuration": 10
+    },
+    "api/send-passenger-otp.js": {
+      "maxDuration": 10
+    },
+    "api/verify-passenger-otp.js": {
+      "maxDuration": 10
     }
   },
   "headers": [

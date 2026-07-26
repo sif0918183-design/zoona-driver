@@ -126,16 +126,18 @@ export default async function handler(req, res) {
             return res.status(500).json({ success: false, error: 'فشل في توليد رمز التحقق في النظام' });
         }
 
-        // --- 3. DELIVER VIA RENDER GATEWAY WITH RETRY STRATEGY ---
+        // --- 3. DELIVER VIA RENDER GATEWAY WITH OPTIMIZED RETRY STRATEGY ---
+        // Delays are optimized to run within 10 seconds Vercel Hobby limits
         const targetUrl = `${WHATSAPP_RENDER_URL.replace(/\/$/, '')}/send-otp`;
-        const backoffDelays = [500, 1000, 2000, 4000, 8000];
+        const backoffDelays = [400, 800, 1200, 1600];
         let deliverySuccess = false;
         let lastErrorMsg = '';
 
         for (let attempt = 0; attempt <= backoffDelays.length; attempt++) {
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout for individual fetch
+                // 3.5s timeout is enough to capture response or wait for Render start
+                const timeoutId = setTimeout(() => controller.abort(), 3500);
 
                 const gatewayResponse = await fetch(targetUrl, {
                     method: 'POST',
@@ -165,7 +167,7 @@ export default async function handler(req, res) {
                 console.warn(`Gateway connection failed (attempt ${attempt + 1}):`, lastErrorMsg);
             }
 
-            // Sleep if not the last attempt
+            // Sleep if not the last attempt and total execution is safe
             if (attempt < backoffDelays.length) {
                 console.log(`Sleeping for ${backoffDelays[attempt]}ms before next retry...`);
                 await delay(backoffDelays[attempt]);
