@@ -313,20 +313,32 @@
                 loaderText.innerText = 'جاري دخول تطبيق الراكب...';
             }
 
-            // Register SW and redirect
+            // Register SW and redirect with safe fail-safe timeouts to prevent frozen screens
             const swPath = type === 'passenger' ? 'passenger_app/sw-passenger.js' : 'driver_app/sw-driver.js';
             const targetUrl = type === 'passenger' ? 'passenger_app/index.html' : 'driver_app/index.html';
 
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register(swPath).finally(() => {
-                    setTimeout(() => {
-                        window.location.href = targetUrl;
-                    }, 800);
-                });
-            } else {
-                setTimeout(() => {
+            let redirected = false;
+            const safeRedirect = () => {
+                if (!redirected) {
+                    redirected = true;
                     window.location.href = targetUrl;
-                }, 800);
+                }
+            };
+
+            // Hard timeout fallback of 1.2s to guarantee navigation even if SW hangs or is blocked
+            setTimeout(safeRedirect, 1200);
+
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register(swPath)
+                    .then(() => {
+                        setTimeout(safeRedirect, 400);
+                    })
+                    .catch((err) => {
+                        console.warn('Service worker registration failed or blocked:', err);
+                        safeRedirect();
+                    });
+            } else {
+                safeRedirect();
             }
         }
 

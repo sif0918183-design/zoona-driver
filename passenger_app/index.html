@@ -2306,11 +2306,20 @@ let VEHICLE_PRICES = {
 
 async function loadDynamicVehiclePrices() {
     try {
-        const { data, error } = await tarhalDB
+        const pricesPromise = tarhalDB
             .from('system_settings')
             .select('value')
             .eq('key', 'instant_vehicle_prices')
             .maybeSingle();
+
+        // مهلة تجميع قدرها 3 ثوانٍ لجلب أسعار المركبات
+        const { data, error } = await Promise.race([
+            pricesPromise,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Vehicle prices timeout')), 3000))
+        ]).catch(err => {
+            console.warn('⚠️ Supabase Dynamic vehicle prices fetch timed out or failed:', err);
+            return { data: null, error: err };
+        });
 
         if (!error && data && data.value) {
             const parsed = JSON.parse(data.value);
@@ -2404,14 +2413,23 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
             
             // =====================================================
-            // الخطوة 2: التحقق من Supabase (مزامنة الحالة)
+            // الخطوة 2: التحقق من Supabase (مزامنة الحالة مع مهلة أمان)
             // =====================================================
-            const { data: activeRide, error } = await tarhalDB
+            const activeRidePromise = tarhalDB
                 .from('rides')
                 .select('id, status, driver_id, pickup_location, dropoff_location, amount')
                 .eq('passenger_id', passengerData.id)
                 .in('status', ['accepted', 'arrived', 'ongoing'])
                 .maybeSingle();
+
+            // مهلة تجميع قدرها 3 ثوانٍ لمنع تجمد الشاشة عند تعطل الاتصال بالشبكة
+            const { data: activeRide, error } = await Promise.race([
+                activeRidePromise,
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Active ride sync timeout')), 3000))
+            ]).catch(err => {
+                console.warn('⚠️ Supabase Active ride sync timed out or failed:', err);
+                return { data: null, error: err };
+            });
             
             if (activeRide) {
                 console.log('🚨 اكتشاف رحلة نشطة! توجيه الراكب لـ ride-accepted.html');
@@ -3089,14 +3107,23 @@ async function checkForActiveRide() {
 
     console.log('🔍 Checking for active rides...');
     try {
-        const { data, error } = await tarhalDB
+        const checkPromise = tarhalDB
             .from('rides')
-            .select('id, status')
+            .select('id, status, driver_name, vehicle_category')
             .eq('passenger_id', currentUser.id)
             .in('status', ['searching', 'awaiting_driver_acceptance', 'accepted', 'arrived', 'ongoing'])
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
+
+        // مهلة تجميع قدرها 3 ثوانٍ للتحقق من الرحلات النشطة لمنع تجميد الشاشة
+        const { data, error } = await Promise.race([
+            checkPromise,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Check active ride timeout')), 3000))
+        ]).catch(err => {
+            console.warn('⚠️ Supabase checkForActiveRide timed out or failed:', err);
+            return { data: null, error: err };
+        });
 
         if (error) throw error;
 
