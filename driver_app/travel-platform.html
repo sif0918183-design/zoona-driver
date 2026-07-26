@@ -1159,7 +1159,19 @@ const DEFAULT_CATEGORIES = [
 
 function getCategoryRank(categoryName) {
     if (!categoryName) return 1;
-    const n = categoryName.toLowerCase();
+    const n = categoryName.toLowerCase().trim();
+
+    // محاولة إيجاد الرتبة ديناميكياً من مصفوفة vehicleCategories المحملة
+    const index = vehicleCategories.findIndex(c =>
+        c.id.toLowerCase() === n ||
+        (c.name && c.name.toLowerCase() === n) ||
+        (c.name_ar && c.name_ar.toLowerCase() === n)
+    );
+    if (index !== -1) {
+        return index + 1; // 1, 2, 3... إلخ بناءً على الترتيب التصاعدي في المصفوفة
+    }
+
+    if (n.includes('tuktuk')) return 0;
     if (n.includes('اقتصادي') || n.includes('economy')) return 1;
     if (n.includes('مريح') || n.includes('comfort')) return 2;
     if (n.includes('عالي') || n.includes('suv') || n.includes('vip')) return 3;
@@ -1944,6 +1956,39 @@ function populateCityDropdowns() {
 }
 
 async function loadVehicleCategories() {
+    try {
+        const {data, error} = await travelSupabase
+            .from('system_settings')
+            .select('value')
+            .eq('key', 'instant_vehicle_prices')
+            .maybeSingle();
+
+        if (!error && data && data.value) {
+            const parsed = JSON.parse(data.value);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                // ترتيب المركبات تصاعدياً حسب نسبة السعر السفرية لضمان ترتيب الرتبة بشكل صحيح
+                parsed.sort((a, b) => {
+                    const multA = a.travelMultiplier !== undefined ? parseFloat(a.travelMultiplier) : 1.0;
+                    const multB = b.travelMultiplier !== undefined ? parseFloat(b.travelMultiplier) : 1.0;
+                    return multA - multB;
+                });
+                vehicleCategories = parsed.map((v, index) => ({
+                    id: v.id || `cat_${index}`,
+                    name_ar: v.name,
+                    name: v.name,
+                    price_multiplier: v.travelMultiplier !== undefined ? parseFloat(v.travelMultiplier) : 1.0,
+                    icon_emoji: v.icon || '🚗',
+                    icon: v.icon || '🚗'
+                }));
+                renderVehicleCategories();
+                return;
+            }
+        }
+    } catch(e) {
+        console.error('Error loading travel categories from settings:', e);
+    }
+
+    // Fallback to legacy database query
     try {
         const {data, error} = await travelSupabase.from('vehicle_categories').select('*').eq('is_active',true).order('price_multiplier');
         vehicleCategories = (!error && data && data.length > 0) ? data : DEFAULT_CATEGORIES;

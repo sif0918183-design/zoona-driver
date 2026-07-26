@@ -2287,12 +2287,59 @@ let rideStatusInterval = null;
 let triedDriverIds = new Set();
 
 // Vehicle Prices
-const VEHICLE_PRICES = {
-    tuktuk: { base: 5000, perKm: 2000, name: 'ركشة' },
-    economy: { base: 6000, perKm: 3000, name: 'توفير' },
-    comfort: { base: 7000, perKm: 3500, name: 'مريح' },
-    vip: { base: 10000, perKm: 5000, name: 'VIP' }
+let VEHICLE_PRICES = {
+    tuktuk: { base: 5000, perKm: 2000, name: 'ركشة', icon: '🛺' },
+    economy: { base: 6000, perKm: 3000, name: 'توفير', icon: '🚗' },
+    comfort: { base: 7000, perKm: 3500, name: 'مريح', icon: '🚙' },
+    vip: { base: 10000, perKm: 5000, name: 'VIP', icon: '🚘' }
 };
+
+async function loadDynamicVehiclePrices() {
+    try {
+        const { data, error } = await tarhalDB
+            .from('system_settings')
+            .select('value')
+            .eq('key', 'instant_vehicle_prices')
+            .maybeSingle();
+
+        if (!error && data && data.value) {
+            const parsed = JSON.parse(data.value);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                VEHICLE_PRICES = {};
+                parsed.forEach(v => {
+                    VEHICLE_PRICES[v.id] = {
+                        base: v.base,
+                        perKm: v.perKm,
+                        name: v.name,
+                        icon: v.icon || '🚗'
+                    };
+                });
+            }
+        }
+    } catch (e) {
+        console.error('Error loading dynamic vehicles:', e);
+    }
+    renderPassengerVehicleSelection();
+}
+
+function renderPassengerVehicleSelection() {
+    const grid = document.querySelector('.vehicle-options-grid');
+    if (!grid) return;
+
+    grid.innerHTML = '';
+    Object.entries(VEHICLE_PRICES).forEach(([key, value]) => {
+        const opt = document.createElement('div');
+        opt.className = 'vehicle-option';
+        opt.setAttribute('data-type', key);
+        opt.setAttribute('onclick', `selectVehicle('${key}')`);
+        opt.innerHTML = `
+            <div class="vehicle-icon">${value.icon || '🚗'}</div>
+            <div class="vehicle-name">${value.name}</div>
+            <div class="vehicle-price">${value.base.toLocaleString()} SDG</div>
+        `;
+        grid.appendChild(opt);
+    });
+}
 
 // ============================================
 // Initialization
@@ -2382,6 +2429,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     // =====================================================
     loadGoogleMaps();
     
+    // جلب أنواع وأسعار المركبات الفورية ديناميكياً
+    await loadDynamicVehiclePrices();
+
     // تهيئة التطبيق
     checkAuth();
 
