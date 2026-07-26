@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import https from 'https';
+import http from 'http';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -10,6 +12,64 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 // Helper to delay execution
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Native HTTP/HTTPS client to support all Node.js versions flawlessly
+function sendOtpViaGateway(url, secret, phone, otp) {
+    return new Promise((resolve) => {
+        try {
+            const parsedUrl = new URL(url);
+            const postData = JSON.stringify({ phone, otp });
+
+            const options = {
+                hostname: parsedUrl.hostname,
+                port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
+                path: parsedUrl.pathname + parsedUrl.search,
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Secret-Key': secret,
+                    'Content-Length': Buffer.byteLength(postData)
+                },
+                timeout: 3500 // 3.5 seconds individual timeout
+            };
+
+            const client = parsedUrl.protocol === 'https:' ? https : http;
+
+            const req = client.request(options, (res) => {
+                let data = '';
+                res.on('data', (chunk) => {
+                    data += chunk;
+                });
+                res.on('end', () => {
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        resolve({ ok: true, data });
+                    } else {
+                        let errMsg = '';
+                        try {
+                            const parsed = JSON.parse(data);
+                            errMsg = parsed.error;
+                        } catch (e) {}
+                        resolve({ ok: false, error: errMsg || `HTTP ${res.statusCode}` });
+                    }
+                });
+            });
+
+            req.on('error', (err) => {
+                resolve({ ok: false, error: err.message || 'Connection error' });
+            });
+
+            req.on('timeout', () => {
+                req.destroy();
+                resolve({ ok: false, error: 'Connection timed out' });
+            });
+
+            req.write(postData);
+            req.end();
+        } catch (err) {
+            resolve({ ok: false, error: err.message || 'URL parsing failed' });
+        }
+    });
+}
 
 export default async function handler(req, res) {
     // Enable CORS
@@ -106,7 +166,6 @@ export default async function handler(req, res) {
         }
 
         // --- 2. GENERATE OTP ---
-        // 6 digit code using crypto.randomInt
         const otpCode = crypto.randomInt(100000, 999999).toString();
         const expiresAt = new Date(now.getTime() + 5 * 60 * 1000).toISOString(); // 5 minutes expiration
 
@@ -127,44 +186,20 @@ export default async function handler(req, res) {
         }
 
         // --- 3. DELIVER VIA RENDER GATEWAY WITH OPTIMIZED RETRY STRATEGY ---
-        // Delays are optimized to run within 10 seconds Vercel Hobby limits
         const targetUrl = `${WHATSAPP_RENDER_URL.replace(/\/$/, '')}/send-otp`;
         const backoffDelays = [400, 800, 1200, 1600];
         let deliverySuccess = false;
         let lastErrorMsg = '';
 
         for (let attempt = 0; attempt <= backoffDelays.length; attempt++) {
-            try {
-                const controller = new AbortController();
-                // 3.5s timeout is enough to capture response or wait for Render start
-                const timeoutId = setTimeout(() => controller.abort(), 3500);
+            const sendResult = await sendOtpViaGateway(targetUrl, WHATSAPP_RENDER_SECRET, cleanPhone, otpCode);
 
-                const gatewayResponse = await fetch(targetUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Secret-Key': WHATSAPP_RENDER_SECRET
-                    },
-                    body: JSON.stringify({
-                        phone: cleanPhone,
-                        otp: otpCode
-                    }),
-                    signal: controller.signal
-                });
-
-                clearTimeout(timeoutId);
-
-                if (gatewayResponse.ok) {
-                    deliverySuccess = true;
-                    break;
-                } else {
-                    const resJson = await gatewayResponse.json().catch(() => ({}));
-                    lastErrorMsg = resJson.error || `خطأ من الخادم الخارجي ${gatewayResponse.status}`;
-                    console.warn(`Gateway response error (attempt ${attempt + 1}):`, lastErrorMsg);
-                }
-            } catch (fetchErr) {
-                lastErrorMsg = fetchErr.message || 'فشل الاتصال بخادم الإرسال';
-                console.warn(`Gateway connection failed (attempt ${attempt + 1}):`, lastErrorMsg);
+            if (sendResult.ok) {
+                deliverySuccess = true;
+                break;
+            } else {
+                lastErrorMsg = sendResult.error;
+                console.warn(`Gateway response error (attempt ${attempt + 1}):`, lastErrorMsg);
             }
 
             // Sleep if not the last attempt and total execution is safe
