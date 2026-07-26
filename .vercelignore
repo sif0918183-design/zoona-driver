@@ -6,3 +6,6 @@ whatsapp_otp_setup.sql
 test-results/
 .git/
 node_modules/
+
+# Ignore test files from Vercel compilation to reduce build time
+api/send-test-push.js

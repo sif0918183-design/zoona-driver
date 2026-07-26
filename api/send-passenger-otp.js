@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import https from 'https';
 import http from 'http';
@@ -8,12 +7,76 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || proce
 const WHATSAPP_RENDER_URL = process.env.WHATSAPP_RENDER_URL;
 const WHATSAPP_RENDER_SECRET = process.env.WHATSAPP_RENDER_SECRET;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
 // Helper to delay execution
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Native HTTP/HTTPS client to support all Node.js versions flawlessly
+// Native HTTPS request helper for Supabase REST (Postgrest API) to bypass @supabase/supabase-js package size
+function supabaseRestRequest(path, method, body = null, additionalHeaders = {}) {
+    return new Promise((resolve, reject) => {
+        try {
+            const baseUrl = SUPABASE_URL.replace(/\/$/, '');
+            const url = `${baseUrl}/rest/v1/${path}`;
+            const parsedUrl = new URL(url);
+            const postData = body ? JSON.stringify(body) : null;
+
+            const headers = {
+                'apikey': SUPABASE_SERVICE_ROLE_KEY,
+                'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                'Content-Type': 'application/json',
+                ...additionalHeaders
+            };
+
+            if (postData) {
+                headers['Content-Length'] = Buffer.byteLength(postData);
+            }
+
+            const options = {
+                hostname: parsedUrl.hostname,
+                port: parsedUrl.port || 443,
+                path: parsedUrl.pathname + parsedUrl.search,
+                method: method,
+                headers: headers,
+                timeout: 5000
+            };
+
+            const req = https.request(options, (res) => {
+                let data = '';
+                res.on('data', (chunk) => {
+                    data += chunk;
+                });
+                res.on('end', () => {
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        try {
+                            resolve(data ? JSON.parse(data) : []);
+                        } catch (e) {
+                            resolve(data);
+                        }
+                    } else {
+                        reject(new Error(`Supabase REST Error: HTTP ${res.statusCode} - ${data}`));
+                    }
+                });
+            });
+
+            req.on('error', (err) => {
+                reject(err);
+            });
+
+            req.on('timeout', () => {
+                req.destroy();
+                reject(new Error('Supabase request timed out'));
+            });
+
+            if (postData) {
+                req.write(postData);
+            }
+            req.end();
+        } catch (err) {
+            reject(err);
+        }
+    });
+}
+
+// Native HTTP/HTTPS client to send messages to the WhatsApp Gateway
 function sendOtpViaGateway(url, secret, phone, otp) {
     return new Promise((resolve) => {
         try {
@@ -122,12 +185,11 @@ export default async function handler(req, res) {
         const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
 
         // Check A: Same phone, requested within 1 minute
-        const { data: recentOtps, error: errA } = await supabase
-            .from('passenger_otps')
-            .select('created_at')
-            .eq('phone_number', cleanPhone)
-            .gt('created_at', oneMinuteAgo)
-            .limit(1);
+        // GET /rest/v1/passenger_otps?phone_number=eq.cleanPhone&created_at=gt.oneMinuteAgo&select=created_at
+        const recentOtps = await supabaseRestRequest(
+            `passenger_otps?phone_number=eq.${cleanPhone}&created_at=gt.${oneMinuteAgo}&select=created_at`,
+            'GET'
+        );
 
         if (recentOtps && recentOtps.length > 0) {
             return res.status(429).json({
@@ -137,12 +199,11 @@ export default async function handler(req, res) {
         }
 
         // Check B: Phone limit (Max 5 OTPs per hour)
-        const { data: hourlyLogsForPhone, error: errB } = await supabase
-            .from('otp_logs')
-            .select('id')
-            .eq('phone', cleanPhone)
-            .eq('status', 'success')
-            .gt('sent_at', oneHourAgo);
+        // GET /rest/v1/otp_logs?phone=eq.cleanPhone&status=eq.success&sent_at=gt.oneHourAgo&select=id
+        const hourlyLogsForPhone = await supabaseRestRequest(
+            `otp_logs?phone=eq.${cleanPhone}&status=eq.success&sent_at=gt.${oneHourAgo}&select=id`,
+            'GET'
+        );
 
         if (hourlyLogsForPhone && hourlyLogsForPhone.length >= 5) {
             return res.status(429).json({
@@ -152,11 +213,11 @@ export default async function handler(req, res) {
         }
 
         // Check C: IP limit (Max 30 requests per hour)
-        const { data: hourlyLogsForIp, error: errC } = await supabase
-            .from('otp_logs')
-            .select('id')
-            .eq('ip_address', ip)
-            .gt('sent_at', oneHourAgo);
+        // GET /rest/v1/otp_logs?ip_address=eq.ip&sent_at=gt.oneHourAgo&select=id
+        const hourlyLogsForIp = await supabaseRestRequest(
+            `otp_logs?ip_address=eq.${ip}&sent_at=gt.${oneHourAgo}&select=id`,
+            'GET'
+        );
 
         if (hourlyLogsForIp && hourlyLogsForIp.length >= 30) {
             return res.status(429).json({
@@ -169,21 +230,22 @@ export default async function handler(req, res) {
         const otpCode = crypto.randomInt(100000, 999999).toString();
         const expiresAt = new Date(now.getTime() + 5 * 60 * 1000).toISOString(); // 5 minutes expiration
 
-        // Store OTP in database
-        const { error: otpInsertError } = await supabase
-            .from('passenger_otps')
-            .upsert({
+        // Store OTP in database using native upsert POST
+        // In Postgrest, to upsert on unique constraint, we use Prefer: resolution=merge-duplicates
+        await supabaseRestRequest(
+            'passenger_otps',
+            'POST',
+            {
                 phone_number: cleanPhone,
                 otp_code: otpCode,
                 created_at: now.toISOString(),
                 expires_at: expiresAt,
                 is_verified: false
-            }, { onConflict: 'phone_number, otp_code' });
-
-        if (otpInsertError) {
-            console.error('Error inserting OTP into Supabase:', otpInsertError);
-            return res.status(500).json({ success: false, error: 'فشل في توليد رمز التحقق في النظام' });
-        }
+            },
+            {
+                'Prefer': 'resolution=merge-duplicates, return=representation'
+            }
+        );
 
         // --- 3. DELIVER VIA RENDER GATEWAY WITH OPTIMIZED RETRY STRATEGY ---
         const targetUrl = `${WHATSAPP_RENDER_URL.replace(/\/$/, '')}/send-otp`;
@@ -212,9 +274,10 @@ export default async function handler(req, res) {
         const latency = Date.now() - startTime;
 
         // --- 4. RECORD LOGS ---
-        const { error: logError } = await supabase
-            .from('otp_logs')
-            .insert({
+        await supabaseRestRequest(
+            'otp_logs',
+            'POST',
+            {
                 phone: cleanPhone,
                 sent_at: now.toISOString(),
                 status: deliverySuccess ? 'success' : 'failed',
@@ -222,11 +285,8 @@ export default async function handler(req, res) {
                 provider: 'whatsapp_render',
                 error: deliverySuccess ? null : lastErrorMsg,
                 ip_address: ip
-            });
-
-        if (logError) {
-            console.error('Error saving OTP log:', logError);
-        }
+            }
+        );
 
         if (deliverySuccess) {
             return res.status(200).json({

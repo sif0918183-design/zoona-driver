@@ -1,9 +1,73 @@
-import { createClient } from '@supabase/supabase-js';
+import https from 'https';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+// Native HTTPS request helper for Supabase REST (Postgrest API) to bypass @supabase/supabase-js package size
+function supabaseRestRequest(path, method, body = null, additionalHeaders = {}) {
+    return new Promise((resolve, reject) => {
+        try {
+            const baseUrl = SUPABASE_URL.replace(/\/$/, '');
+            const url = `${baseUrl}/rest/v1/${path}`;
+            const parsedUrl = new URL(url);
+            const postData = body ? JSON.stringify(body) : null;
+
+            const headers = {
+                'apikey': SUPABASE_SERVICE_ROLE_KEY,
+                'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                'Content-Type': 'application/json',
+                ...additionalHeaders
+            };
+
+            if (postData) {
+                headers['Content-Length'] = Buffer.byteLength(postData);
+            }
+
+            const options = {
+                hostname: parsedUrl.hostname,
+                port: parsedUrl.port || 443,
+                path: parsedUrl.pathname + parsedUrl.search,
+                method: method,
+                headers: headers,
+                timeout: 5000
+            };
+
+            const req = https.request(options, (res) => {
+                let data = '';
+                res.on('data', (chunk) => {
+                    data += chunk;
+                });
+                res.on('end', () => {
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        try {
+                            resolve(data ? JSON.parse(data) : []);
+                        } catch (e) {
+                            resolve(data);
+                        }
+                    } else {
+                        reject(new Error(`Supabase REST Error: HTTP ${res.statusCode} - ${data}`));
+                    }
+                });
+            });
+
+            req.on('error', (err) => {
+                reject(err);
+            });
+
+            req.on('timeout', () => {
+                req.destroy();
+                reject(new Error('Supabase request timed out'));
+            });
+
+            if (postData) {
+                req.write(postData);
+            }
+            req.end();
+        } catch (err) {
+            reject(err);
+        }
+    });
+}
 
 export default async function handler(req, res) {
     // Enable CORS
@@ -38,18 +102,13 @@ export default async function handler(req, res) {
     try {
         // Find the active OTP row
         // Conditions: phone_number matched, code matched, is_verified = false
-        const { data: otpRecord, error: otpError } = await supabase
-            .from('passenger_otps')
-            .select('*')
-            .eq('phone_number', cleanPhone)
-            .eq('otp_code', cleanOtp)
-            .eq('is_verified', false)
-            .maybeSingle();
+        // GET /rest/v1/passenger_otps?phone_number=eq.cleanPhone&otp_code=eq.cleanOtp&is_verified=eq.false
+        const otpRecords = await supabaseRestRequest(
+            `passenger_otps?phone_number=eq.${cleanPhone}&otp_code=eq.${cleanOtp}&is_verified=eq.false`,
+            'GET'
+        );
 
-        if (otpError) {
-            console.error('Database query error finding OTP:', otpError);
-            return res.status(500).json({ success: false, error: 'حدث خطأ في النظام أثناء التحقق من الرمز' });
-        }
+        const otpRecord = (otpRecords && otpRecords.length > 0) ? otpRecords[0] : null;
 
         if (!otpRecord) {
             return res.status(400).json({
@@ -74,46 +133,40 @@ export default async function handler(req, res) {
         const nowIso = now.toISOString();
 
         // 1. Mark this OTP as verified to prevent double-use
-        const { error: updateOtpErr } = await supabase
-            .from('passenger_otps')
-            .update({
+        // PATCH /rest/v1/passenger_otps?id=eq.otpRecord.id
+        await supabaseRestRequest(
+            `passenger_otps?id=eq.${otpRecord.id}`,
+            'PATCH',
+            {
                 is_verified: true,
                 verified_at: nowIso
-            })
-            .eq('id', otpRecord.id);
-
-        if (updateOtpErr) {
-            console.error('Error updating OTP record:', updateOtpErr);
-            throw new Error('فشل تحديث حالة الرمز');
-        }
+            }
+        );
 
         // 2. Activate the customer account in 'customers' table
-        const { error: updateCustomerErr } = await supabase
-            .from('customers')
-            .update({
+        // PATCH /rest/v1/customers?phone=eq.cleanPhone
+        await supabaseRestRequest(
+            `customers?phone=eq.${cleanPhone}`,
+            'PATCH',
+            {
                 is_verified: true
-            })
-            .eq('phone', cleanPhone);
-
-        if (updateCustomerErr) {
-            console.error('Error updating customer verified status:', updateCustomerErr);
-            throw new Error('فشل تفعيل حساب الراكب في النظام');
-        }
+            }
+        );
 
         // 3. Delete older OTP codes for this phone number to keep DB tidy
-        const { error: deleteOldErr } = await supabase
-            .from('passenger_otps')
-            .delete()
-            .eq('phone_number', cleanPhone)
-            .neq('id', otpRecord.id);
-
-        if (deleteOldErr) {
+        // DELETE /rest/v1/passenger_otps?phone_number=eq.cleanPhone&id=neq.otpRecord.id
+        try {
+            await supabaseRestRequest(
+                `passenger_otps?phone_number=eq.${cleanPhone}&id=neq.${otpRecord.id}`,
+                'DELETE'
+            );
+        } catch (deleteOldErr) {
             console.warn('Minor error deleting old OTP records:', deleteOldErr);
         }
 
         return res.status(200).json({
             success: true,
-            message: 'تم تفعيل وتوثيق حسابك بنجاح! يمكنك الآن تسجيل الدخول واستخدام التطبيق.'
+            message: 'تم تفعيل وتوثيق حسابك بنجاح! يمكنك الآن تسجيل الدخول واستخدم التطبيق.'
         });
 
     } catch (error) {
