@@ -185,10 +185,21 @@ async function connectToWhatsApp() {
     logger.info('🔌 Starting WhatsApp connection initialization...');
     try {
         const { state, saveCreds } = await useSupabaseAuthState('default');
+        // Fetch latest WhatsApp Web version dynamically to prevent 405 error
+        let version = [2, 3000, 1015971307]; // Fallback version
+        try {
+            const fetched = await (0, baileys_1.fetchLatestBaileysVersion)();
+            version = fetched.version;
+            logger.info(`🌐 Fetched latest Baileys WhatsApp version: ${version.join('.')}`);
+        }
+        catch (verErr) {
+            logger.warn(verErr, '⚠️ Failed to fetch latest WhatsApp version dynamically. Using fallback.');
+        }
         sock = (0, baileys_1.default)({
             auth: state,
+            version: version,
+            browser: ['Ubuntu', 'Chrome', '20.0.04'], // Explicit browser specification to prevent blocks
             logger: (0, pino_1.default)({ level: 'silent' }), // Suppress Baileys internal chatty logs
-            printQRInTerminal: true,
             defaultQueryTimeoutMs: 60000,
             connectTimeoutMs: 60000,
             keepAliveIntervalMs: 30000
@@ -220,10 +231,11 @@ async function connectToWhatsApp() {
             if (connection === 'close') {
                 isConnected = false;
                 const statusCode = lastDisconnect?.error?.output?.statusCode || 0;
-                const shouldReconnect = statusCode !== baileys_1.DisconnectReason.loggedOut;
-                logger.warn({ statusCode, shouldReconnect }, `🔌 Connection closed.`);
-                if (statusCode === baileys_1.DisconnectReason.loggedOut) {
-                    logger.info('🛑 Device logged out. Purging session keys from Supabase...');
+                // Active session corruption / disconnection handling (401: Unauthorized, 405: Bad Session, loggedOut)
+                const isCorruptSession = statusCode === baileys_1.DisconnectReason.loggedOut || statusCode === 401 || statusCode === 405;
+                logger.warn({ statusCode, isCorruptSession }, `🔌 Connection closed.`);
+                if (isCorruptSession) {
+                    logger.info(`🛑 Corrupt session detected (code ${statusCode}). Purging session keys from Supabase...`);
                     isLoggedIn = false;
                     qrCodeString = null;
                     connectionPhone = null;
@@ -232,7 +244,7 @@ async function connectToWhatsApp() {
                         .delete()
                         .like('id', 'default:%');
                     if (error) {
-                        logger.error(error, 'Error deleting session keys after logout');
+                        logger.error(error, 'Error deleting session keys after session corruption');
                     }
                     // Re-init connection immediately to prompt for new QR code
                     setTimeout(() => connectToWhatsApp(), 3000);
