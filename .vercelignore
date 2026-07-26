@@ -1,0 +1,8 @@
+# Ignore Render WhatsApp Gateway folder on Vercel deployment
+whatsapp-gateway/
+
+# Ignore local database setups/scripts if not needed by Vercel
+whatsapp_otp_setup.sql
+test-results/
+.git/
+node_modules/
