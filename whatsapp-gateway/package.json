@@ -1,0 +1,27 @@
+{
+  "name": "whatsapp-gateway-render",
+  "version": "1.0.0",
+  "description": "WhatsApp OTP Gateway using Baileys and Supabase storage",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.35.0",
+    "@whiskeysockets/baileys": "^6.6.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "pino": "^9.1.0",
+    "pino-pretty": "^11.1.0",
+    "qrcode": "^1.5.3"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.12.12",
+    "@types/qrcode": "^1.5.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  }
+}

@@ -1824,20 +1824,30 @@
                 </button>
             </form>
             
-            <div id="verification-section" class="hidden verification-box">
-                <div class="verification-content">
-                    <i class="ph-light ph-check-circle verification-icon neon-icon-emerald"></i>
-                    <h3>تم التسجيل بنجاح!</h3>
-                    <p>لتفعيل حسابك، يرجى الضغط على الزر أدناه لإرسال رسالة تأكيد:</p>
-                    
-                    <button type="button" class="btn btn-secondary" onclick="sendVerificationWhatsApp()">
-                        <i class="ph-light ph-whatsapp-logo"></i>
-                        تأكيد الحساب عبر واتساب
-                    </button>
-                    
-                    <p class="verification-note">
-                        بعد إرسال الرسالة، سيتم تفعيل حسابك تلقائياً خلال دقائق
+            <div id="verification-section" class="hidden verification-box" style="padding: 10px 0;">
+                <div class="verification-content" style="text-align: center;">
+                    <i class="ph-light ph-shield-check verification-icon neon-icon-emerald" style="font-size: 48px; color: var(--driver); margin-bottom: 15px; display: block;"></i>
+                    <h3 style="font-weight: 800; font-size: 18px; color: var(--driver); margin-bottom: 10px;">أدخل رمز التحقق (OTP)</h3>
+                    <p style="color: var(--gray); font-size: 13px; margin-bottom: 20px; line-height: 1.5;">
+                        لقد أرسلنا رمز تحقق مكون من 6 أرقام إلى حساب الواتساب الخاص بك: <br>
+                        <strong id="otp-display-phone" style="color: var(--driver); font-size: 14px;"></strong>
                     </p>
+                    
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <input type="text" id="verification-otp-code" class="form-input"
+                               placeholder="------" pattern="[0-9]*" inputmode="numeric" maxlength="6"
+                               style="text-align: center; letter-spacing: 12px; font-size: 24px; font-weight: 800; direction: ltr; padding: 12px;">
+                    </div>
+                    
+                    <button type="button" id="verify-otp-btn" class="btn btn-primary" onclick="verifyOTP()" style="margin-bottom: 12px;">
+                        <i class="ph-bold ph-check-circle"></i>
+                        تحقق وتفعيل الحساب
+                    </button>
+
+                    <button type="button" id="resend-otp-btn" class="btn btn-outline" onclick="resendOTP()" disabled style="font-size: 13px;">
+                        <i class="ph-bold ph-arrows-clockwise"></i>
+                        إعادة إرسال الرمز (<span id="resend-countdown">60</span>) ثانية
+                    </button>
                 </div>
             </div>
             
@@ -2771,14 +2781,21 @@ async function loginCustomer() {
 
         if (!response.ok || !resData.success) {
             if (resData.phone && resData.verified === false) {
-                showNotification(resData.error || 'حسابك غير مفعل', 'warning');
+                showNotification('حسابك غير مفعل. جاري تحويلك لصفحة التحقق...', 'warning');
                 loginBtn.innerHTML = originalHTML;
                 loginBtn.disabled = false;
+
                 setTimeout(() => {
-                    if (confirm('هل تريد إعادة إرسال رسالة التفعيل إلى واتساب الإدارة؟')) {
-                        sendVerificationWhatsApp(resData.phone);
-                    }
-                }, 2000);
+                    showScreen('customer-register-screen');
+                    document.getElementById('customerRegisterForm').classList.add('hidden');
+                    document.getElementById('verification-section').classList.remove('hidden');
+                    window.registeredPhone = resData.phone;
+                    const displayPhone = document.getElementById('otp-display-phone');
+                    if (displayPhone) displayPhone.textContent = resData.phone;
+
+                    // إرسال الرمز تلقائياً
+                    triggerSendOTP(resData.phone);
+                }, 1500);
                 return;
             }
             showNotification(resData.error || 'رقم الواتساب غير مسجل أو كلمة المرور غير صحيحة', 'error');
@@ -2867,12 +2884,17 @@ async function registerCustomer() {
             return;
         }
 
-        showNotification('تم إنشاء الحساب بنجاح! يرجى التفعيل عبر واتساب', 'success');
+        showNotification('تم إنشاء الحساب بنجاح! جاري إرسال رمز التحقق...', 'success');
 
         // إظهار قسم التفعيل
         document.getElementById('customerRegisterForm').classList.add('hidden');
         document.getElementById('verification-section').classList.remove('hidden');
-        window.registeredPhone = phone; // لحفظ الرقم لرسالة الواتساب
+        window.registeredPhone = phone; // لحفظ الرقم للتحقق
+        const displayPhone = document.getElementById('otp-display-phone');
+        if (displayPhone) displayPhone.textContent = phone;
+
+        // إرسال الرمز تلقائياً
+        triggerSendOTP(phone);
 
     } catch (error) {
         console.error('Registration error:', error);
@@ -2882,16 +2904,121 @@ async function registerCustomer() {
     }
 }
 
-function sendVerificationWhatsApp(phone = null) {
-    const phoneToVerify = phone || registeredPhone;
-    if (!phoneToVerify) return;
-    
-    const adminNumber = "249110269224";
-    const message = "تفعيل تراكا للنقل";
-    const whatsappUrl = `https://wa.me/${adminNumber}?text=${encodeURIComponent(message)}`;
-    
-    window.open(whatsappUrl, '_blank');
-    showNotification('تم فتح واتساب. أرسل الرسالة لتأكيد حسابك', 'info');
+// --- نظام التحقق الجديد بـ OTP ---
+let resendTimer = null;
+let resendSeconds = 60;
+
+function startResendCountdown() {
+    const btn = document.getElementById('resend-otp-btn');
+    const countdownSpan = document.getElementById('resend-countdown');
+    if (!btn || !countdownSpan) return;
+
+    resendSeconds = 60;
+    btn.disabled = true;
+    countdownSpan.textContent = resendSeconds;
+
+    if (resendTimer) clearInterval(resendTimer);
+    resendTimer = setInterval(() => {
+        resendSeconds--;
+        countdownSpan.textContent = resendSeconds;
+        if (resendSeconds <= 0) {
+            clearInterval(resendTimer);
+            btn.disabled = false;
+            btn.innerHTML = `<i class="ph-bold ph-arrows-clockwise"></i> إعادة إرسال الرمز`;
+        }
+    }, 1000);
+}
+
+async function triggerSendOTP(phone) {
+    showPageLoader(true);
+    try {
+        const response = await fetch('/api/send-passenger-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone })
+        });
+        const resData = await response.json();
+        showPageLoader(false);
+
+        if (resData.success) {
+            showNotification('✅ تم إرسال رمز التحقق إلى رقم واتساب الخاص بك.', 'success');
+            startResendCountdown();
+            return true;
+        } else {
+            showNotification(resData.error || 'فشل إرسال رمز التحقق', 'error');
+            return false;
+        }
+    } catch (err) {
+        showPageLoader(false);
+        console.error(err);
+        showNotification('حدث خطأ في الاتصال أثناء إرسال رمز التحقق', 'error');
+        return false;
+    }
+}
+
+async function resendOTP() {
+    const phone = window.registeredPhone;
+    if (!phone) {
+        showNotification('رقم الهاتف غير متوفر لإعادة الإرسال', 'error');
+        return;
+    }
+    const success = await triggerSendOTP(phone);
+    if (success) {
+        startResendCountdown();
+    }
+}
+
+async function verifyOTP() {
+    const otpInput = document.getElementById('verification-otp-code');
+    const code = otpInput ? otpInput.value.trim() : '';
+    const phone = window.registeredPhone;
+
+    if (!code || code.length < 6) {
+        showNotification('الرجاء إدخال رمز التحقق المكون من 6 أرقام', 'warning');
+        return;
+    }
+
+    if (!phone) {
+        showNotification('رقم الهاتف غير معروف، يرجى إعادة التسجيل', 'error');
+        return;
+    }
+
+    const verifyBtn = document.getElementById('verify-otp-btn');
+    const originalHTML = verifyBtn.innerHTML;
+    verifyBtn.disabled = true;
+    verifyBtn.innerHTML = `<i class="ph-light ph-spinner-gap ph-spin"></i> جاري التحقق...`;
+
+    try {
+        const response = await fetch('/api/verify-passenger-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone, otp: code })
+        });
+        const resData = await response.json();
+        verifyBtn.disabled = false;
+        verifyBtn.innerHTML = originalHTML;
+
+        if (resData.success) {
+            showNotification('🎉 ' + resData.message, 'success');
+
+            // نجاح التفعيل: عرض رسالة نجاح مخصصة تتيح التوجه لتسجيل الدخول مباشرة
+            document.getElementById('verification-section').innerHTML = `
+                <div class="verification-content" style="text-align: center; padding: 20px;">
+                    <i class="ph-fill ph-check-circle neon-icon-emerald" style="font-size: 64px; color: var(--driver); margin-bottom: 15px; display: block;"></i>
+                    <h3 style="color: var(--driver); margin-bottom: 10px; font-weight: 800;">تم التوثيق والتفعيل بنجاح!</h3>
+                    <p style="color: var(--gray); margin-bottom: 20px;">حسابك الآن مفعل وموثق بالكامل. يمكنك تسجيل الدخول الآن واستخدام التطبيق.</p>
+                    <button type="button" class="btn btn-primary" onclick="window.location.reload();">الانتقال لتسجيل الدخول</button>
+                </div>
+            `;
+        } else {
+            showNotification(resData.error || 'رمز التحقق غير صحيح', 'error');
+        }
+    } catch (err) {
+        verifyBtn.disabled = false;
+        verifyBtn.innerHTML = originalHTML;
+        console.error(err);
+        showNotification('حدث خطأ في الاتصال أثناء التحقق من الرمز', 'error');
+    }
 }
 
 function updateUserProfile() {
