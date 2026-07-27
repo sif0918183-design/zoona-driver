@@ -1792,8 +1792,8 @@
                         رقم الواتساب (إلزامي)
                     </label>
                     <input type="tel" id="register-phone" class="form-input" 
-                           placeholder="0XXXXXXXXX" required
-                           inputmode="numeric" pattern="[0-9]*">
+                           placeholder="0XXXXXXXXX" required maxlength="10"
+                           inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/\D/g, '').substring(0, 10)">
                 </div>
 
                 <div class="form-group">
@@ -1802,8 +1802,8 @@
                         رقم الإتصال (إلزامي)
                     </label>
                     <input type="tel" id="register-phone2" class="form-input" 
-                           placeholder="0XXXXXXXXX" required
-                           inputmode="numeric" pattern="[0-9]*">
+                           placeholder="0XXXXXXXXX" required maxlength="10"
+                           inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/\D/g, '').substring(0, 10)">
                 </div>
 
                 <div class="form-group">
@@ -2981,13 +2981,13 @@ async function registerCustomer() {
         return;
     }
 
-    if (!isValidSudanesePhone(phone)) {
-        showNotification('الرجاء إدخال رقم واتساب سوداني صحيح', 'error');
+    if (!isValidPassengerPhone(phone)) {
+        showNotification('رقم الواتساب يجب أن يبدأ بـ 09 أو 01 ومكون من 10 أرقام تماماً', 'error');
         return;
     }
 
-    if (!isValidSudanesePhone(phone2)) {
-        showNotification('الرجاء إدخال رقم إتصال سوداني صحيح', 'error');
+    if (!isValidPassengerPhone(phone2)) {
+        showNotification('رقم الإتصال يجب أن يبدأ بـ 09 أو 01 ومكون من 10 أرقام تماماً', 'error');
         return;
     }
 
@@ -4673,6 +4673,14 @@ function isValidSudanesePhone(phone) {
     }
     
     return false;
+}
+
+function isValidPassengerPhone(phone) {
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (cleanPhone.length !== 10) {
+        return false;
+    }
+    return cleanPhone.startsWith('09') || cleanPhone.startsWith('01');
 }
 
 // دالة لاستخراج اسم المدينة من العنوان لضمان وجود قيم في from_city و to_city
