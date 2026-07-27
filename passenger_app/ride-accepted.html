@@ -292,7 +292,7 @@
             if (!serviceRoleKey) {
                 try {
                     const sToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_admin_token');
-                    const sResponse = await fetch('/api/get-service-key', {
+                    const sResponse = await fetch('/api/supabase-service-key', {
                         headers: {
                             'Authorization': sToken ? `Bearer ${sToken}` : ''
                         }
@@ -1126,7 +1126,7 @@
                 if (!serviceRoleKey) {
                     try {
                         const sToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_admin_token');
-                        const sResponse = await fetch('/api/get-service-key', {
+                        const sResponse = await fetch('/api/supabase-service-key', {
                             headers: {
                                 'Authorization': sToken ? `Bearer ${sToken}` : ''
                             }

@@ -1737,7 +1737,7 @@
                 <div class="form-group">
                     <label class="form-label" for="customer-phone">رقم الواتساب</label>
                     <input type="tel" id="customer-phone" class="form-input" 
-                           placeholder="رقم الواتساب المسجل" required>
+                           placeholder="رقم الواتساب المسجل" required onfocus="prewarmWhatsAppGateway()">
                 </div>
                 
                 <div class="form-group">
@@ -1793,7 +1793,7 @@
                     </label>
                     <input type="tel" id="register-phone" class="form-input" 
                            placeholder="0XXXXXXXXX" required
-                           inputmode="numeric" pattern="[0-9]*">
+                           inputmode="numeric" pattern="[0-9]*" onfocus="prewarmWhatsAppGateway()">
                 </div>
 
                 <div class="form-group">
@@ -1824,20 +1824,30 @@
                 </button>
             </form>
             
-            <div id="verification-section" class="hidden verification-box">
-                <div class="verification-content">
-                    <i class="ph-light ph-check-circle verification-icon neon-icon-emerald"></i>
-                    <h3>تم التسجيل بنجاح!</h3>
-                    <p>لتفعيل حسابك، يرجى الضغط على الزر أدناه لإرسال رسالة تأكيد:</p>
-                    
-                    <button type="button" class="btn btn-secondary" onclick="sendVerificationWhatsApp()">
-                        <i class="ph-light ph-whatsapp-logo"></i>
-                        تأكيد الحساب عبر واتساب
-                    </button>
-                    
-                    <p class="verification-note">
-                        بعد إرسال الرسالة، سيتم تفعيل حسابك تلقائياً خلال دقائق
+            <div id="verification-section" class="hidden verification-box" style="padding: 10px 0;">
+                <div class="verification-content" style="text-align: center;">
+                    <i class="ph-light ph-shield-check verification-icon neon-icon-emerald" style="font-size: 48px; color: var(--driver); margin-bottom: 15px; display: block;"></i>
+                    <h3 style="font-weight: 800; font-size: 18px; color: var(--driver); margin-bottom: 10px;">أدخل رمز التحقق (OTP)</h3>
+                    <p style="color: var(--gray); font-size: 13px; margin-bottom: 20px; line-height: 1.5;">
+                        لقد أرسلنا رمز تحقق مكون من 6 أرقام إلى حساب الواتساب الخاص بك: <br>
+                        <strong id="otp-display-phone" style="color: var(--driver); font-size: 14px;"></strong>
                     </p>
+                    
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <input type="text" id="verification-otp-code" class="form-input"
+                               placeholder="------" pattern="[0-9]*" inputmode="numeric" maxlength="6"
+                               style="text-align: center; letter-spacing: 12px; font-size: 24px; font-weight: 800; direction: ltr; padding: 12px;">
+                    </div>
+                    
+                    <button type="button" id="verify-otp-btn" class="btn btn-primary" onclick="verifyOTP()" style="margin-bottom: 12px;">
+                        <i class="ph-bold ph-check-circle"></i>
+                        تحقق وتفعيل الحساب
+                    </button>
+
+                    <button type="button" id="resend-otp-btn" class="btn btn-outline" onclick="resendOTP()" disabled style="font-size: 13px;">
+                        <i class="ph-bold ph-arrows-clockwise"></i>
+                        إعادة إرسال الرمز (<span id="resend-countdown">60</span>) ثانية
+                    </button>
                 </div>
             </div>
             
@@ -2296,11 +2306,20 @@ let VEHICLE_PRICES = {
 
 async function loadDynamicVehiclePrices() {
     try {
-        const { data, error } = await tarhalDB
+        const pricesPromise = tarhalDB
             .from('system_settings')
             .select('value')
             .eq('key', 'instant_vehicle_prices')
             .maybeSingle();
+
+        // مهلة تجميع قدرها 3 ثوانٍ لجلب أسعار المركبات
+        const { data, error } = await Promise.race([
+            pricesPromise,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Vehicle prices timeout')), 3000))
+        ]).catch(err => {
+            console.warn('⚠️ Supabase Dynamic vehicle prices fetch timed out or failed:', err);
+            return { data: null, error: err };
+        });
 
         if (!error && data && data.value) {
             const parsed = JSON.parse(data.value);
@@ -2347,96 +2366,119 @@ function renderPassengerVehicleSelection() {
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🚀 تراكا للنقل - تطبيق الراكب');
     
-    // إخفاء Splash Screen
-    setTimeout(() => {
-        document.getElementById('splash-screen').classList.add('hide');
-    }, 1500);
-    
-    // انتظار جاهزية التخزين (خاص بالـ WebView)
-    await FlutterBridge.waitForStorage();
-
-    // العودة من منصة السفريات تنظف حالات البحث
-    if (document.referrer && document.referrer.includes('travel-platform.html')) {
-        console.log('Returned from travel platform, clearing search states from localStorage...');
-        localStorage.removeItem('is_searching');
-        localStorage.removeItem('ride_request_id');
-        localStorage.removeItem('tarhal_current_ride_id');
-        localStorage.removeItem('active_ride_id');
-        localStorage.removeItem('active_ride_status');
-        localStorage.removeItem('active_ride_data');
-    }
-
-    // =====================================================
-    // نظام الحارس (Gatekeeper) - Strict Lockdown
-    // التحقق من وجود رحلة نشطة فوراً
-    // =====================================================
-    
-    // التحقق من تسجيل الدخول أولاً
-    const passengerDataStr = localStorage.getItem('tarhal_passenger');
-    
-    if (passengerDataStr) {
-        try {
-            const passengerData = JSON.parse(passengerDataStr);
-            
-            // =====================================================
-            // الخطوة 1: التحقق من localStorage أولاً
-            // =====================================================
-            const localRideId = localStorage.getItem('active_ride_id');
-            const localRideStatus = localStorage.getItem('active_ride_status');
-            const localRideData = localStorage.getItem('active_ride_data');
-            
-            if (localRideId && localRideStatus && ['accepted', 'arrived', 'ongoing'].includes(localRideStatus)) {
-                console.log('🚨 اكتشاف رحلة نشطة من localStorage!');
-                
-                // توجيه إجباري للرحلة النشطة
-                window.location.href = `ride-accepted.html?id=${localRideId}`;
-                return;
-            }
-            
-            // =====================================================
-            // الخطوة 2: التحقق من Supabase (مزامنة الحالة)
-            // =====================================================
-            const { data: activeRide, error } = await tarhalDB
-                .from('rides')
-                .select('id, status, driver_id, pickup_location, dropoff_location, amount')
-                .eq('passenger_id', passengerData.id)
-                .in('status', ['accepted', 'arrived', 'ongoing'])
-                .maybeSingle();
-            
-            if (activeRide) {
-                console.log('🚨 اكتشاف رحلة نشطة! توجيه الراكب لـ ride-accepted.html');
-                
-                // تخزين بيانات الرحلة في localStorage
-                localStorage.setItem('active_ride_id', activeRide.id);
-                localStorage.setItem('active_ride_status', activeRide.status);
-                
-                // توجيه إجباري للرحلة النشطة
-                window.location.href = `ride-accepted.html?id=${activeRide.id}`;
-                return;
-            } else {
-                // الرحلة انتهت أو لم تكن موجودة - تنظيف localStorage
-                localStorage.removeItem('active_ride_id');
-                localStorage.removeItem('active_ride_status');
-                localStorage.removeItem('active_ride_data');
-            }
-        } catch (e) {
-            console.error('خطأ في فحص الرحلة النشطة:', e);
+    const hideSplash = () => {
+        const splash = document.getElementById('splash-screen');
+        if (splash) {
+            splash.classList.add('hide');
+            setTimeout(() => {
+                splash.style.display = 'none';
+            }, 600);
         }
+    };
+
+    // مهلة إجبارية لإخفاء الشاشة بعد ثانيتين ونصف مهما حدث
+    setTimeout(hideSplash, 2500);
+    
+    try {
+        // انتظار جاهزية التخزين (خاص بالـ WebView)
+        await FlutterBridge.waitForStorage().catch(err => console.warn('Storage wait failed:', err));
+
+        // العودة من منصة السفريات تنظف حالات البحث
+        if (document.referrer && document.referrer.includes('travel-platform.html')) {
+            console.log('Returned from travel platform, clearing search states from localStorage...');
+            localStorage.removeItem('is_searching');
+            localStorage.removeItem('ride_request_id');
+            localStorage.removeItem('tarhal_current_ride_id');
+            localStorage.removeItem('active_ride_id');
+            localStorage.removeItem('active_ride_status');
+            localStorage.removeItem('active_ride_data');
+        }
+
+        // =====================================================
+        // نظام الحارس (Gatekeeper) - Strict Lockdown
+        // التحقق من وجود رحلة نشطة فوراً
+        // =====================================================
+
+        const passengerDataStr = localStorage.getItem('tarhal_passenger');
+
+        if (passengerDataStr) {
+            try {
+                const passengerData = JSON.parse(passengerDataStr);
+                
+                // =====================================================
+                // الخطوة 1: التحقق من localStorage أولاً
+                // =====================================================
+                const localRideId = localStorage.getItem('active_ride_id');
+                const localRideStatus = localStorage.getItem('active_ride_status');
+                const localRideData = localStorage.getItem('active_ride_data');
+                
+                if (localRideId && localRideStatus && ['accepted', 'arrived', 'ongoing'].includes(localRideStatus)) {
+                    console.log('🚨 اكتشاف رحلة نشطة من localStorage!');
+                    hideSplash();
+
+                    // توجيه إجباري للرحلة النشطة
+                    window.location.href = `ride-accepted.html?id=${localRideId}`;
+                    return;
+                }
+                
+                // =====================================================
+                // الخطوة 2: التحقق من Supabase (مزامنة الحالة مع مهلة أمان)
+                // =====================================================
+                const activeRidePromise = tarhalDB
+                    .from('rides')
+                    .select('id, status, driver_id, pickup_location, dropoff_location, amount')
+                    .eq('passenger_id', passengerData.id)
+                    .in('status', ['accepted', 'arrived', 'ongoing'])
+                    .maybeSingle();
+
+                const { data: activeRide, error } = await Promise.race([
+                    activeRidePromise,
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Active ride sync timeout')), 2500))
+                ]).catch(err => {
+                    console.warn('⚠️ Supabase Active ride sync timed out or failed:', err);
+                    return { data: null, error: err };
+                });
+
+                if (activeRide) {
+                    console.log('🚨 اكتشاف رحلة نشطة! توجيه الراكب لـ ride-accepted.html');
+                    hideSplash();
+
+                    // تخزين بيانات الرحلة في localStorage
+                    localStorage.setItem('active_ride_id', activeRide.id);
+                    localStorage.setItem('active_ride_status', activeRide.status);
+
+                    // توجيه إجباري للرحلة النشطة
+                    window.location.href = `ride-accepted.html?id=${activeRide.id}`;
+                    return;
+                } else {
+                    // الرحلة انتهت أو لم تكن موجودة - تنظيف localStorage
+                    localStorage.removeItem('active_ride_id');
+                    localStorage.removeItem('active_ride_status');
+                    localStorage.removeItem('active_ride_data');
+                }
+            } catch (e) {
+                console.error('خطأ في فحص الرحلة النشطة:', e);
+            }
+        }
+
+        // =====================================================
+        // نهاية نظام الحارس
+        // =====================================================
+        loadGoogleMaps();
+
+        // جلب أنواع وأسعار المركبات الفورية ديناميكياً
+        await loadDynamicVehiclePrices();
+
+    } catch (err) {
+        console.error('⚠️ Critical initialization error caught in DOMContentLoaded:', err);
+    } finally {
+        // تهيئة التطبيق دائماً وإلغاء شاشة التحميل لمنع تجمدها مهما كانت الأخطاء
+        hideSplash();
+        await checkAuth().catch(e => console.error('Auth check error:', e));
+
+        // إرسال إشعار جاهزية التطبيق لـ Flutter
+        FlutterBridge.postMessage('pwa_ready', { app: 'passenger' });
     }
-    
-    // =====================================================
-    // نهاية نظام الحارس
-    // =====================================================
-    loadGoogleMaps();
-    
-    // جلب أنواع وأسعار المركبات الفورية ديناميكياً
-    await loadDynamicVehiclePrices();
-
-    // تهيئة التطبيق
-    checkAuth();
-
-    // إرسال إشعار جاهزية التطبيق لـ Flutter
-    FlutterBridge.postMessage('pwa_ready', { app: 'passenger' });
 });
 
 // ============================================
@@ -2637,11 +2679,23 @@ function showCustomerLogin() {
     document.getElementById('customer-phone').focus();
 }
 
+function prewarmWhatsAppGateway() {
+    if (window.WHATSAPP_RENDER_URL) {
+        console.log('⚡ Pre-warming WhatsApp Gateway at:', window.WHATSAPP_RENDER_URL);
+        fetch(`${window.WHATSAPP_RENDER_URL.replace(/\/$/, '')}/ping`)
+            .then(res => console.log('⚡ Gateway pre-warm status:', res.status))
+            .catch(e => console.warn('⚡ Gateway pre-warm failed/offline:', e));
+    }
+}
+
 function showCustomerRegister() {
     if (checkAgreement()) {
         showScreen('customer-register-screen');
         document.getElementById('verification-section').classList.add('hidden');
         document.getElementById('register-fullname').focus();
+
+        // التسخين المسبق لبوابة واتساب عند الدخول لشاشة التسجيل
+        prewarmWhatsAppGateway();
     } else {
         document.getElementById('agreement-modal').classList.remove('hidden');
     }
@@ -2771,14 +2825,24 @@ async function loginCustomer() {
 
         if (!response.ok || !resData.success) {
             if (resData.phone && resData.verified === false) {
-                showNotification(resData.error || 'حسابك غير مفعل', 'warning');
+                showNotification('حسابك غير مفعل. جاري تحويلك لصفحة التحقق...', 'warning');
                 loginBtn.innerHTML = originalHTML;
                 loginBtn.disabled = false;
+
+                // التسخين المسبق الفوري لبوابة واتساب عند تفعيل خطوة التحقق لغير المفعلين
+                prewarmWhatsAppGateway();
+
                 setTimeout(() => {
-                    if (confirm('هل تريد إعادة إرسال رسالة التفعيل إلى واتساب الإدارة؟')) {
-                        sendVerificationWhatsApp(resData.phone);
-                    }
-                }, 2000);
+                    showScreen('customer-register-screen');
+                    document.getElementById('customerRegisterForm').classList.add('hidden');
+                    document.getElementById('verification-section').classList.remove('hidden');
+                    window.registeredPhone = resData.phone;
+                    const displayPhone = document.getElementById('otp-display-phone');
+                    if (displayPhone) displayPhone.textContent = resData.phone;
+
+                    // إرسال الرمز تلقائياً
+                    triggerSendOTP(resData.phone);
+                }, 1500);
                 return;
             }
             showNotification(resData.error || 'رقم الواتساب غير مسجل أو كلمة المرور غير صحيحة', 'error');
@@ -2867,12 +2931,17 @@ async function registerCustomer() {
             return;
         }
 
-        showNotification('تم إنشاء الحساب بنجاح! يرجى التفعيل عبر واتساب', 'success');
+        showNotification('تم إنشاء الحساب بنجاح! جاري إرسال رمز التحقق...', 'success');
 
         // إظهار قسم التفعيل
         document.getElementById('customerRegisterForm').classList.add('hidden');
         document.getElementById('verification-section').classList.remove('hidden');
-        window.registeredPhone = phone; // لحفظ الرقم لرسالة الواتساب
+        window.registeredPhone = phone; // لحفظ الرقم للتحقق
+        const displayPhone = document.getElementById('otp-display-phone');
+        if (displayPhone) displayPhone.textContent = phone;
+
+        // إرسال الرمز تلقائياً
+        triggerSendOTP(phone);
 
     } catch (error) {
         console.error('Registration error:', error);
@@ -2882,16 +2951,121 @@ async function registerCustomer() {
     }
 }
 
-function sendVerificationWhatsApp(phone = null) {
-    const phoneToVerify = phone || registeredPhone;
-    if (!phoneToVerify) return;
-    
-    const adminNumber = "249110269224";
-    const message = "تفعيل تراكا للنقل";
-    const whatsappUrl = `https://wa.me/${adminNumber}?text=${encodeURIComponent(message)}`;
-    
-    window.open(whatsappUrl, '_blank');
-    showNotification('تم فتح واتساب. أرسل الرسالة لتأكيد حسابك', 'info');
+// --- نظام التحقق الجديد بـ OTP ---
+let resendTimer = null;
+let resendSeconds = 60;
+
+function startResendCountdown() {
+    const btn = document.getElementById('resend-otp-btn');
+    const countdownSpan = document.getElementById('resend-countdown');
+    if (!btn || !countdownSpan) return;
+
+    resendSeconds = 60;
+    btn.disabled = true;
+    countdownSpan.textContent = resendSeconds;
+
+    if (resendTimer) clearInterval(resendTimer);
+    resendTimer = setInterval(() => {
+        resendSeconds--;
+        countdownSpan.textContent = resendSeconds;
+        if (resendSeconds <= 0) {
+            clearInterval(resendTimer);
+            btn.disabled = false;
+            btn.innerHTML = `<i class="ph-bold ph-arrows-clockwise"></i> إعادة إرسال الرمز`;
+        }
+    }, 1000);
+}
+
+async function triggerSendOTP(phone) {
+    showPageLoader(true);
+    try {
+        const response = await fetch('/api/send-passenger-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone })
+        });
+        const resData = await response.json();
+        showPageLoader(false);
+
+        if (resData.success) {
+            showNotification('✅ تم إرسال رمز التحقق إلى رقم واتساب الخاص بك.', 'success');
+            startResendCountdown();
+            return true;
+        } else {
+            showNotification(resData.error || 'فشل إرسال رمز التحقق', 'error');
+            return false;
+        }
+    } catch (err) {
+        showPageLoader(false);
+        console.error(err);
+        showNotification('حدث خطأ في الاتصال أثناء إرسال رمز التحقق', 'error');
+        return false;
+    }
+}
+
+async function resendOTP() {
+    const phone = window.registeredPhone;
+    if (!phone) {
+        showNotification('رقم الهاتف غير متوفر لإعادة الإرسال', 'error');
+        return;
+    }
+    const success = await triggerSendOTP(phone);
+    if (success) {
+        startResendCountdown();
+    }
+}
+
+async function verifyOTP() {
+    const otpInput = document.getElementById('verification-otp-code');
+    const code = otpInput ? otpInput.value.trim() : '';
+    const phone = window.registeredPhone;
+
+    if (!code || code.length < 6) {
+        showNotification('الرجاء إدخال رمز التحقق المكون من 6 أرقام', 'warning');
+        return;
+    }
+
+    if (!phone) {
+        showNotification('رقم الهاتف غير معروف، يرجى إعادة التسجيل', 'error');
+        return;
+    }
+
+    const verifyBtn = document.getElementById('verify-otp-btn');
+    const originalHTML = verifyBtn.innerHTML;
+    verifyBtn.disabled = true;
+    verifyBtn.innerHTML = `<i class="ph-light ph-spinner-gap ph-spin"></i> جاري التحقق...`;
+
+    try {
+        const response = await fetch('/api/verify-passenger-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone, otp: code })
+        });
+        const resData = await response.json();
+        verifyBtn.disabled = false;
+        verifyBtn.innerHTML = originalHTML;
+
+        if (resData.success) {
+            showNotification('🎉 ' + resData.message, 'success');
+
+            // نجاح التفعيل: عرض رسالة نجاح مخصصة تتيح التوجه لتسجيل الدخول مباشرة
+            document.getElementById('verification-section').innerHTML = `
+                <div class="verification-content" style="text-align: center; padding: 20px;">
+                    <i class="ph-fill ph-check-circle neon-icon-emerald" style="font-size: 64px; color: var(--driver); margin-bottom: 15px; display: block;"></i>
+                    <h3 style="color: var(--driver); margin-bottom: 10px; font-weight: 800;">تم التوثيق والتفعيل بنجاح!</h3>
+                    <p style="color: var(--gray); margin-bottom: 20px;">حسابك الآن مفعل وموثق بالكامل. يمكنك تسجيل الدخول الآن واستخدام التطبيق.</p>
+                    <button type="button" class="btn btn-primary" onclick="window.location.reload();">الانتقال لتسجيل الدخول</button>
+                </div>
+            `;
+        } else {
+            showNotification(resData.error || 'رمز التحقق غير صحيح', 'error');
+        }
+    } catch (err) {
+        verifyBtn.disabled = false;
+        verifyBtn.innerHTML = originalHTML;
+        console.error(err);
+        showNotification('حدث خطأ في الاتصال أثناء التحقق من الرمز', 'error');
+    }
 }
 
 function updateUserProfile() {
@@ -2962,14 +3136,23 @@ async function checkForActiveRide() {
 
     console.log('🔍 Checking for active rides...');
     try {
-        const { data, error } = await tarhalDB
+        const checkPromise = tarhalDB
             .from('rides')
-            .select('id, status')
+            .select('id, status, driver_name, vehicle_category')
             .eq('passenger_id', currentUser.id)
             .in('status', ['searching', 'awaiting_driver_acceptance', 'accepted', 'arrived', 'ongoing'])
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
+
+        // مهلة تجميع قدرها 3 ثوانٍ للتحقق من الرحلات النشطة لمنع تجميد الشاشة
+        const { data, error } = await Promise.race([
+            checkPromise,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Check active ride timeout')), 3000))
+        ]).catch(err => {
+            console.warn('⚠️ Supabase checkForActiveRide timed out or failed:', err);
+            return { data: null, error: err };
+        });
 
         if (error) throw error;
 
@@ -4487,14 +4670,14 @@ function isValidSudanesePhone(phone) {
     // تنظيف الرقم
     const cleanPhone = phone.replace(/\D/g, '');
     
-    // التحقق من صيغة الأرقام السودانية
-    if (cleanPhone.length === 9 && cleanPhone.startsWith('9')) {
+    // التحقق من صيغة الأرقام السودانية (MTN/Zain تبدأ بـ 9 أو 09، وSudani تبدأ بـ 1 أو 01)
+    if (cleanPhone.length === 9 && (cleanPhone.startsWith('9') || cleanPhone.startsWith('1'))) {
         return true;
     }
-    if (cleanPhone.length === 10 && cleanPhone.startsWith('09')) {
+    if (cleanPhone.length === 10 && (cleanPhone.startsWith('09') || cleanPhone.startsWith('01'))) {
         return true;
     }
-    if (cleanPhone.length === 12 && cleanPhone.startsWith('249')) {
+    if (cleanPhone.length === 12 && (cleanPhone.startsWith('2499') || cleanPhone.startsWith('2491'))) {
         return true;
     }
     
@@ -4726,7 +4909,7 @@ function formatPhoneNumber(phone) {
     // تحويل إلى الصيغة الدولية
     if (cleaned.startsWith('0') && cleaned.length === 10) {
         return '249' + cleaned.substring(1);
-    } else if (cleaned.startsWith('9') && cleaned.length === 9) {
+    } else if ((cleaned.startsWith('9') || cleaned.startsWith('1')) && cleaned.length === 9) {
         return '249' + cleaned;
     } else if (cleaned.startsWith('249') && cleaned.length === 12) {
         return cleaned;

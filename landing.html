@@ -299,35 +299,26 @@
             // Save choice
             localStorage.setItem('user_app_choice', type);
 
-            // Show loading
+            // Show loading overlay
             const overlay = document.getElementById('loading-overlay');
             const loader = document.getElementById('main-loader');
             const loaderText = document.getElementById('loader-text');
 
-            overlay.style.display = 'flex';
-            if(type === 'driver') {
-                loader.style.borderTopColor = 'var(--driver)';
-                loaderText.innerText = 'جاري دخول تطبيق السائق...';
-            } else {
-                loader.style.borderTopColor = 'var(--passenger)';
-                loaderText.innerText = 'جاري دخول تطبيق الراكب...';
+            if (overlay && loader && loaderText) {
+                overlay.style.display = 'flex';
+                if(type === 'driver') {
+                    loader.style.borderTopColor = 'var(--driver)';
+                    loaderText.innerText = 'جاري دخول تطبيق السائق...';
+                } else {
+                    loader.style.borderTopColor = 'var(--passenger)';
+                    loaderText.innerText = 'جاري دخول تطبيق الراكب...';
+                }
             }
 
-            // Register SW and redirect
-            const swPath = type === 'passenger' ? 'passenger_app/sw-passenger.js' : 'driver_app/sw-driver.js';
+            // Redirect instantly! Navigation is completely decoupled from Service Worker registration
+            // The individual index.html files natively handle registering their own service workers on load
             const targetUrl = type === 'passenger' ? 'passenger_app/index.html' : 'driver_app/index.html';
-
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register(swPath).finally(() => {
-                    setTimeout(() => {
-                        window.location.href = targetUrl;
-                    }, 800);
-                });
-            } else {
-                setTimeout(() => {
-                    window.location.href = targetUrl;
-                }, 800);
-            }
+            window.location.href = targetUrl;
         }
 
         // Auto-redirect if returning within same session or specifically desired
