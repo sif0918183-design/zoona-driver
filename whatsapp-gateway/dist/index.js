@@ -273,6 +273,17 @@ const authenticateSecret = (req, res, next) => {
     }
     next();
 };
+function formatWhatsAppNumber(phone) {
+    // تجريد الرقم من أي رموز أو مسافات
+    let cleaned = phone.replace(/\D/g, '');
+    // إزالة الأصفار في البداية إن وجدت
+    cleaned = cleaned.replace(/^0+/, '');
+    // تحويل الأرقام المحلية (مثل أرقام السودان التي تبدأ بـ 9 أو 1) إلى الصيغة الدولية
+    if (cleaned.startsWith('9') || cleaned.startsWith('1')) {
+        cleaned = '249' + cleaned;
+    }
+    return `${cleaned}@s.whatsapp.net`;
+}
 // --- EXPRESS ENDPOINTS ---
 // 0. Pre-warming Ping Endpoint to wake up Render from Sleep
 app.get('/ping', (req, res) => {
@@ -289,19 +300,14 @@ app.post('/send-otp', authenticateSecret, async (req, res) => {
         return res.status(503).json({ success: false, error: 'خادم واتساب غير متصل حالياً' });
     }
     try {
-        // Format phone to JID
-        let cleanPhone = phone.replace(/\D/g, '');
-        if (cleanPhone.startsWith('0') && cleanPhone.length === 10) {
-            cleanPhone = '249' + cleanPhone.substring(1);
-        }
-        else if (cleanPhone.length === 9 && cleanPhone.startsWith('9')) {
-            cleanPhone = '249' + cleanPhone;
-        }
-        const jid = `${cleanPhone}@s.whatsapp.net`;
+        // Generate targeted JID and clean phone number using custom معیاري formatter
+        const targetJid = formatWhatsAppNumber(phone);
+        const cleanPhone = targetJid.split('@')[0];
+        logger.info({ targetJid, cleanPhone }, 'Formatting WhatsApp target JID for delivery');
         // Check if number is valid/registered on WhatsApp (optional but recommended)
         const [onWhatsApp] = await sock.onWhatsApp(cleanPhone);
         if (!onWhatsApp || !onWhatsApp.exists) {
-            logger.warn({ cleanPhone }, 'Number does not exist on WhatsApp');
+            logger.warn({ cleanPhone, targetJid }, 'Number does not exist on WhatsApp');
             return res.status(400).json({ success: false, error: 'رقم واتساب غير صحيح أو غير مسجل بالخدمة' });
         }
         const messageText = `رمز التحقق الخاص بك هو:
@@ -313,9 +319,10 @@ ${otp}
 لا تشارك هذا الرمز مع أي شخص.
 
 Passenger App`;
-        logger.info({ jid }, 'Sending OTP message...');
-        await sock.sendMessage(onWhatsApp.jid || jid, { text: messageText });
-        logger.info({ phone: cleanPhone }, 'OTP message sent successfully');
+        const finalJid = onWhatsApp.jid || targetJid;
+        logger.info({ finalJid }, 'Sending OTP message...');
+        await sock.sendMessage(finalJid, { text: messageText });
+        logger.info({ phone: cleanPhone, finalJid }, 'OTP message sent successfully');
         return res.status(200).json({ success: true, message: 'تم إرسال الرمز بنجاح' });
     }
     catch (error) {

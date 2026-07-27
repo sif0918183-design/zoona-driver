@@ -4,8 +4,10 @@ import http from 'http';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-const WHATSAPP_RENDER_URL = process.env.WHATSAPP_RENDER_URL;
-const WHATSAPP_RENDER_SECRET = process.env.WHATSAPP_RENDER_SECRET;
+
+// Fallback gracefully between both possible environment variable names
+const WHATSAPP_RENDER_URL = process.env.WHATSAPP_RENDER_URL || process.env.RENDER_WHATSAPP_URL || '';
+const WHATSAPP_RENDER_SECRET = process.env.WHATSAPP_RENDER_SECRET || process.env.RENDER_SECRET_KEY || '';
 
 // Helper to delay execution
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -134,6 +136,42 @@ function sendOtpViaGateway(url, secret, phone, otp) {
     });
 }
 
+// Send OTP to Gateway with double-fetch TLS fail-safe retry mechanism
+function sendOtpViaGatewayWithRetry(url, secret, phone, otp) {
+    return new Promise(async (resolve) => {
+        let lastResult = { ok: false, error: 'Initiating' };
+
+        for (let attempt = 1; attempt <= 2; attempt++) {
+            console.log(`[Attempt ${attempt}] Sending OTP to gateway at: ${url}`);
+            const result = await sendOtpViaGateway(url, secret, phone, otp);
+
+            if (result.ok) {
+                resolve(result);
+                return;
+            }
+
+            lastResult = result;
+            const errorStr = (result.error || '').toString();
+            console.error(`[Attempt ${attempt} Failed] Error: ${errorStr}`);
+
+            // TLS / ECONNRESET socket disconnect detection
+            const isTlsError = errorStr.includes('socket disconnected') ||
+                               errorStr.includes('ECONNRESET') ||
+                               errorStr.includes('TLS') ||
+                               errorStr.includes('secure');
+
+            if (isTlsError && attempt < 2) {
+                console.warn('⚠️ TLS Secure Socket disconnected before connection established. Retrying once immediately...');
+                await delay(200);
+            } else {
+                break;
+            }
+        }
+
+        resolve(lastResult);
+    });
+}
+
 export default async function handler(req, res) {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -162,7 +200,7 @@ export default async function handler(req, res) {
     }
 
     if (!WHATSAPP_RENDER_URL || !WHATSAPP_RENDER_SECRET) {
-        console.error('Missing WHATSAPP_RENDER_URL or WHATSAPP_RENDER_SECRET in environment.');
+        console.error('Missing WHATSAPP_RENDER_URL/RENDER_WHATSAPP_URL or WHATSAPP_RENDER_SECRET in environment.');
         return res.status(500).json({ success: false, error: 'رابط بوابة واتساب أو المفتاح السري غير مبرمج في الخادم.' });
     }
 
@@ -185,7 +223,6 @@ export default async function handler(req, res) {
         const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
 
         // Check A: Same phone, requested within 1 minute
-        // GET /rest/v1/passenger_otps?phone_number=eq.cleanPhone&created_at=gt.oneMinuteAgo&select=created_at
         const recentOtps = await supabaseRestRequest(
             `passenger_otps?phone_number=eq.${cleanPhone}&created_at=gt.${oneMinuteAgo}&select=created_at`,
             'GET'
@@ -199,7 +236,6 @@ export default async function handler(req, res) {
         }
 
         // Check B: Phone limit (Max 5 OTPs per hour)
-        // GET /rest/v1/otp_logs?phone=eq.cleanPhone&status=eq.success&sent_at=gt.oneHourAgo&select=id
         const hourlyLogsForPhone = await supabaseRestRequest(
             `otp_logs?phone=eq.${cleanPhone}&status=eq.success&sent_at=gt.${oneHourAgo}&select=id`,
             'GET'
@@ -213,7 +249,6 @@ export default async function handler(req, res) {
         }
 
         // Check C: IP limit (Max 30 requests per hour)
-        // GET /rest/v1/otp_logs?ip_address=eq.ip&sent_at=gt.oneHourAgo&select=id
         const hourlyLogsForIp = await supabaseRestRequest(
             `otp_logs?ip_address=eq.${ip}&sent_at=gt.${oneHourAgo}&select=id`,
             'GET'
@@ -230,8 +265,7 @@ export default async function handler(req, res) {
         const otpCode = crypto.randomInt(100000, 999999).toString();
         const expiresAt = new Date(now.getTime() + 5 * 60 * 1000).toISOString(); // 5 minutes expiration
 
-        // Store OTP in database using native upsert POST
-        // In Postgrest, to upsert on unique constraint, we use Prefer: resolution=merge-duplicates
+        // Store OTP in database
         await supabaseRestRequest(
             'passenger_otps',
             'POST',
@@ -247,10 +281,8 @@ export default async function handler(req, res) {
             }
         );
 
-        // --- 3. DELIVER VIA RENDER GATEWAY WITH ASYNC FIRE-AND-FORGET STRATEGY ---
-        // We trigger the gateway delivery asynchronously in the background so that Vercel returns
-        // a 200 OK success response to the client immediately (within 50ms), preventing any 504 Timeout errors!
-        const targetUrl = `${WHATSAPP_RENDER_URL.replace(/\/$/, '')}/send-otp`;
+        // --- 3. DELIVER VIA RENDER GATEWAY WITH ASYNC FIRE-AND-FORGET STRATEGY + TLS RETRY ---
+        const targetUrl = WHATSAPP_RENDER_URL.replace(/\/$/, '') + '/send-otp';
         const backoffDelays = [400, 800, 1200, 1600];
 
         // Background delivery handler
@@ -259,14 +291,15 @@ export default async function handler(req, res) {
             let lastErrorMsg = '';
 
             for (let attempt = 0; attempt <= backoffDelays.length; attempt++) {
-                const sendResult = await sendOtpViaGateway(targetUrl, WHATSAPP_RENDER_SECRET, cleanPhone, otpCode);
+                // Call our TLS-resilient fetcher with custom retries
+                const sendResult = await sendOtpViaGatewayWithRetry(targetUrl, WHATSAPP_RENDER_SECRET, cleanPhone, otpCode);
 
                 if (sendResult.ok) {
                     deliverySuccess = true;
                     break;
                 } else {
                     lastErrorMsg = sendResult.error;
-                    console.warn(`Gateway response error (attempt ${attempt + 1}):`, lastErrorMsg);
+                    console.warn(`[Background Attempt ${attempt + 1}] Gateway failure:`, lastErrorMsg);
                 }
 
                 if (attempt < backoffDelays.length) {
