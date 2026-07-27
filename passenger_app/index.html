@@ -1780,16 +1780,16 @@
                 <div class="form-group">
                     <label class="form-label" for="register-fullname">
                         <i class="ph-light ph-user neon-icon-emerald"></i>
-                        الاسم الرباعي
+                        الاسم الرباعي (الاسم الرباعي الكامل بالعربية)
                     </label>
                     <input type="text" id="register-fullname" class="form-input" 
-                           placeholder="الاسم الرباعي الكامل" required>
+                           placeholder="الاسم الأول الثاني الثالث الرابع" required>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label" for="register-phone">
                         <i class="ph-light ph-phone neon-icon-emerald"></i>
-                        رقم الواتساب
+                        رقم الواتساب (إلزامي)
                     </label>
                     <input type="tel" id="register-phone" class="form-input" 
                            placeholder="0XXXXXXXXX" required
@@ -1799,15 +1799,17 @@
                 <div class="form-group">
                     <label class="form-label" for="register-phone2">
                         <i class="ph-light ph-phone neon-icon-emerald"></i>
-                        رقم الإتصال                   </label>
+                        رقم الإتصال (إلزامي)
+                    </label>
                     <input type="tel" id="register-phone2" class="form-input" 
-                           placeholder="رقم إضافي للإتصال">
+                           placeholder="0XXXXXXXXX" required
+                           inputmode="numeric" pattern="[0-9]*">
                 </div>
 
                 <div class="form-group">
                     <label class="form-label" for="register-password">
                         <i class="ph-light ph-lock neon-icon-emerald"></i>
-                        كلمة المرور
+                        كلمة المرور (إلزامي)
                     </label>
                     <div class="password-input-container">
                         <input type="password" id="register-password" class="form-input" 
@@ -1817,6 +1819,9 @@
                         </button>
                     </div>
                 </div>
+
+                <!-- Cloudflare Turnstile Widget -->
+                <div id="turnstile-container" style="margin: 15px auto; display: flex; justify-content: center;"></div>
                 
                 <button type="button" class="btn btn-primary btn-large" onclick="registerCustomer()">
                     <i class="ph-light ph-user-check"></i>
@@ -1827,16 +1832,16 @@
             <div id="verification-section" class="hidden verification-box">
                 <div class="verification-content">
                     <i class="ph-light ph-check-circle verification-icon neon-icon-emerald"></i>
-                    <h3>تم التسجيل بنجاح!</h3>
-                    <p>لتفعيل حسابك، يرجى الضغط على الزر أدناه لإرسال رسالة تأكيد:</p>
+                    <h3>تم تسجيل بياناتك بنجاح!</h3>
+                    <p>لتفعيل الحساب، يرجى مزامنته مع Google بالضغط على الزر أدناه:</p>
                     
-                    <button type="button" class="btn btn-secondary" onclick="sendVerificationWhatsApp()">
-                        <i class="ph-light ph-whatsapp-logo"></i>
-                        تأكيد الحساب عبر واتساب
+                    <button type="button" class="btn btn-secondary" onclick="syncWithGoogleOAuth()" style="background: white; border: 1.5px solid var(--Tracka-primary); color: var(--Tracka-primary); display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%;">
+                        <i class="ph-bold ph-google-logo" style="color: #4285F4; font-size: 20px;"></i>
+                        مزامنة وتفعيل حساب Google
                     </button>
                     
                     <p class="verification-note">
-                        بعد إرسال الرسالة، سيتم تفعيل حسابك تلقائياً خلال دقائق
+                        بمجرد تسجيل الدخول بحساب Google، سيتم تفعيل حسابك تلقائياً وبشكل فوري
                     </p>
                 </div>
             </div>
@@ -2355,6 +2360,79 @@ document.addEventListener('DOMContentLoaded', async function() {
     // انتظار جاهزية التخزين (خاص بالـ WebView)
     await FlutterBridge.waitForStorage();
 
+    // =====================================================
+    // Google Sync / Redirect Detector
+    // =====================================================
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasHash = window.location.hash.includes('access_token') || window.location.hash.includes('id_token');
+
+    if (urlParams.get('google_sync') === 'true' || hasHash) {
+        console.log('🔔 Detect Google login redirect fragment. Processing sync...');
+
+        setTimeout(async () => {
+            try {
+                const { data: { session }, error: sessionErr } = await tarhalDB.auth.getSession();
+                if (session && session.user) {
+                    const googleUser = session.user;
+                    const pendingCustomerId = localStorage.getItem('pending_verification_customer_id');
+
+                    if (pendingCustomerId) {
+                        showNotification('🔄 جاري التحقق من المزامنة وتفعيل الحساب...', 'info');
+
+                        const verifyRes = await fetch('/api/auth', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                action: 'verify_google',
+                                customerId: pendingCustomerId,
+                                googleId: googleUser.id,
+                                googleEmail: googleUser.email
+                            })
+                        });
+
+                        const verifyData = await verifyRes.json();
+                        if (verifyRes.ok && verifyData.success) {
+                            showNotification('🎉 تم تفعيل حسابك بنجاح ومزامنته مع Google!', 'success');
+
+                            localStorage.removeItem('pending_verification_customer_id');
+
+                            currentUser = verifyData.user;
+                            localStorage.setItem('tarhal_customer', JSON.stringify(currentUser));
+                            localStorage.setItem('tarhal_passenger', JSON.stringify(currentUser));
+                            if (verifyData.token) {
+                                localStorage.setItem('tarhal_session_token', verifyData.token);
+                                localStorage.setItem('session_token', verifyData.token);
+                                localStorage.setItem('user_data', JSON.stringify(currentUser));
+                                localStorage.setItem('user_type', 'passenger');
+                            }
+
+                            const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                            window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+
+                            showPageLoader(true);
+                            setTimeout(() => {
+                                showScreen('home-screen');
+                                updateUserProfile();
+                                initRealtime();
+                                showPageLoader(false);
+                            }, 800);
+
+                            return;
+                        } else {
+                            showNotification(verifyData.error || 'فشل تحديث حالة الحساب وتفعيله', 'error');
+                        }
+                    } else {
+                        console.log('Google Sync redirect without pending customer ID');
+                    }
+                } else {
+                    console.log('Google Sync redirect, but no active Google session found');
+                }
+            } catch (e) {
+                console.error('Error during Google verification sync:', e);
+            }
+        }, 1500);
+    }
+
     // العودة من منصة السفريات تنظف حالات البحث
     if (document.referrer && document.referrer.includes('travel-platform.html')) {
         console.log('Returned from travel platform, clearing search states from localStorage...');
@@ -2640,10 +2718,66 @@ function showCustomerLogin() {
 function showCustomerRegister() {
     if (checkAgreement()) {
         showScreen('customer-register-screen');
+        document.getElementById('customerRegisterForm').classList.remove('hidden');
         document.getElementById('verification-section').classList.add('hidden');
         document.getElementById('register-fullname').focus();
+        loadTurnstile();
     } else {
         document.getElementById('agreement-modal').classList.remove('hidden');
+    }
+}
+
+// Dynamically Load and Initialize Cloudflare Turnstile
+function loadTurnstile() {
+    if (window.turnstile) {
+        initTurnstileWidget();
+        return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+    script.onload = initTurnstileWidget;
+}
+
+let turnstileWidgetId = null;
+async function initTurnstileWidget() {
+    try {
+        const res = await fetch('/api/turnstile-config');
+        const data = await res.json();
+        if (data.success && window.turnstile) {
+            const container = document.getElementById('turnstile-container');
+            if (container) {
+                container.innerHTML = '';
+                window.turnstileToken = null;
+                turnstileWidgetId = window.turnstile.render(container, {
+                    sitekey: data.siteKey,
+                    callback: function(token) {
+                        window.turnstileToken = token;
+                    }
+                });
+            }
+        }
+    } catch (err) {
+        console.error('Error rendering Turnstile:', err);
+    }
+}
+
+async function syncWithGoogleOAuth() {
+    try {
+        showNotification('جاري توجيهك للمزامنة مع حساب Google...', 'info');
+        const { error } = await tarhalDB.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: window.location.origin + '/passenger_app/index.html?google_sync=true'
+            }
+        });
+        if (error) {
+            showNotification('فشل بدء مزامنة Google: ' + error.message, 'error');
+        }
+    } catch (e) {
+        showNotification('حدث خطأ أثناء الاتصال بمزود Google', 'error');
     }
 }
 
@@ -2655,8 +2789,10 @@ function acceptAgreement() {
     localStorage.setItem('tarhal_agreement_accepted', 'true');
     document.getElementById('agreement-modal').classList.add('hidden');
     showScreen('customer-register-screen');
+    document.getElementById('customerRegisterForm').classList.remove('hidden');
     document.getElementById('verification-section').classList.add('hidden');
     document.getElementById('register-fullname').focus();
+    loadTurnstile();
 }
 
 function declineAgreement() {
@@ -2770,15 +2906,19 @@ async function loginCustomer() {
         const resData = await response.json();
 
         if (!response.ok || !resData.success) {
-            if (resData.phone && resData.verified === false) {
+            if (resData.customerId && resData.verified === false) {
                 showNotification(resData.error || 'حسابك غير مفعل', 'warning');
                 loginBtn.innerHTML = originalHTML;
                 loginBtn.disabled = false;
+
+                // Save the pending customer ID for Google synchronization
+                localStorage.setItem('pending_verification_customer_id', resData.customerId);
+
                 setTimeout(() => {
-                    if (confirm('هل تريد إعادة إرسال رسالة التفعيل إلى واتساب الإدارة؟')) {
-                        sendVerificationWhatsApp(resData.phone);
+                    if (confirm('حسابك غير مفعّل. هل تريد التفعيل والربط مع حساب Google الآن؟')) {
+                        syncWithGoogleOAuth();
                     }
-                }, 2000);
+                }, 1500);
                 return;
             }
             showNotification(resData.error || 'رقم الواتساب غير مسجل أو كلمة المرور غير صحيحة', 'error');
@@ -2827,8 +2967,17 @@ async function registerCustomer() {
     const phone2 = document.getElementById('register-phone2').value.trim();
     const password = document.getElementById('register-password').value;
 
-    if (!fullName || !phone || !password) {
+    if (!fullName || !phone || !phone2 || !password) {
         showNotification('الرجاء إكمال جميع الحقول الإلزامية', 'error');
+        return;
+    }
+
+    // Validate full name contains exactly 4 Arabic names
+    const cleanName = fullName.replace(/\s+/g, ' ');
+    const parts = cleanName.split(' ');
+    const arabicRegex = /^[\u0600-\u06FF]+$/;
+    if (parts.length !== 4 || !parts.every(part => arabicRegex.test(part))) {
+        showNotification('الاسم الرباعي الكامل باللغة العربية مطلوب ومحدد بأربعة أسماء فقط', 'error');
         return;
     }
 
@@ -2837,8 +2986,18 @@ async function registerCustomer() {
         return;
     }
 
+    if (!isValidSudanesePhone(phone2)) {
+        showNotification('الرجاء إدخال رقم إتصال سوداني صحيح', 'error');
+        return;
+    }
+
     if (password.length < 6) {
         showNotification('كلمة المرور يجب أن تكون 6 خانات على الأقل', 'warning');
+        return;
+    }
+
+    if (!window.turnstileToken) {
+        showNotification('الرجاء إكمال التحقق البشري (Turnstile) أولاً', 'error');
         return;
     }
 
@@ -2856,7 +3015,15 @@ async function registerCustomer() {
         const response = await fetch('/api/auth', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'register', role: 'passenger', fullName, phone, phone2: phone2 || null, password })
+            body: JSON.stringify({
+                action: 'register',
+                role: 'passenger',
+                fullName,
+                phone,
+                phone2,
+                password,
+                turnstileToken: window.turnstileToken
+            })
         });
         const resData = await response.json();
 
@@ -2864,15 +3031,22 @@ async function registerCustomer() {
             showNotification(resData.error || 'حدث خطأ أثناء التسجيل', 'error');
             registerBtn.innerHTML = originalHTML;
             registerBtn.disabled = false;
+            // Reset Turnstile token on failure
+            if (window.turnstile) {
+                window.turnstile.reset(turnstileWidgetId);
+                window.turnstileToken = null;
+            }
             return;
         }
 
-        showNotification('تم إنشاء الحساب بنجاح! يرجى التفعيل عبر واتساب', 'success');
+        showNotification('تم تسجيل البيانات بنجاح! جاري التفعيل عبر Google...', 'success');
 
-        // إظهار قسم التفعيل
+        // Save the pending customer ID
+        localStorage.setItem('pending_verification_customer_id', resData.user.id);
+
+        // Transition to Google sync/verification screen
         document.getElementById('customerRegisterForm').classList.add('hidden');
         document.getElementById('verification-section').classList.remove('hidden');
-        window.registeredPhone = phone; // لحفظ الرقم لرسالة الواتساب
 
     } catch (error) {
         console.error('Registration error:', error);

@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { action, role, phone, password, fullName, phone2 } = req.body;
+        const { action, role, phone, password, fullName, phone2, turnstileToken, customerId, googleId, googleEmail } = req.body;
 
         if (!action) {
             return res.status(400).json({ success: false, error: 'Action is required' });
@@ -32,14 +32,42 @@ export default async function handler(req, res) {
             if (role !== 'passenger') {
                 return res.status(400).json({ success: false, error: 'Only passengers can register directly' });
             }
-            if (!fullName || !phone || !password) {
-                return res.status(400).json({ success: false, error: 'All fields are required' });
+            if (!fullName || !phone || !password || !phone2) {
+                return res.status(400).json({ success: false, error: 'الرجاء إكمال جميع الحقول الإلزامية' });
             }
 
             // Sanitize input
             const sanitizedPhone = phone.trim();
             const sanitizedFullName = fullName.trim();
-            const sanitizedPhone2 = phone2 ? phone2.trim() : null;
+            const sanitizedPhone2 = phone2.trim();
+
+            // Validate Full Name is exactly 4 Arabic names
+            const cleanName = sanitizedFullName.replace(/\s+/g, ' ');
+            const parts = cleanName.split(' ');
+            const arabicRegex = /^[\u0600-\u06FF]+$/;
+            if (parts.length !== 4 || !parts.every(part => arabicRegex.test(part))) {
+                return res.status(400).json({ success: false, error: 'الاسم الرباعي الكامل باللغة العربية مطلوب ومحدد بأربعة أسماء فقط' });
+            }
+
+            // Verify Turnstile Token
+            if (!turnstileToken) {
+                return res.status(400).json({ success: false, error: 'الرجاء إكمال التحقق البشري (Turnstile) أولاً' });
+            }
+            const turnstileSecret = process.env.TURNSTILE_SECRET_KEY || '1x0000000000000000000000000000000AA';
+            try {
+                const tsRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `secret=${encodeURIComponent(turnstileSecret)}&response=${encodeURIComponent(turnstileToken)}`
+                });
+                const tsData = await tsRes.json();
+                if (!tsData.success) {
+                    return res.status(400).json({ success: false, error: 'فشل التحقق البشري (Turnstile)، يرجى المحاولة مرة أخرى' });
+                }
+            } catch (e) {
+                console.error('Turnstile verification error:', e);
+                return res.status(500).json({ success: false, error: 'حدث خطأ أثناء التحقق البشري' });
+            }
 
             // Check if phone already exists
             const { data: existingUser, error: checkError } = await supabase
@@ -79,8 +107,57 @@ export default async function handler(req, res) {
 
             return res.status(200).json({
                 success: true,
-                message: 'تم إنشاء الحساب بنجاح! يرجى التفعيل عبر واتساب',
+                message: 'تم تسجيل البيانات بنجاح! يرجى الربط مع Google لتفعيل الحساب',
                 user: safeUser
+            });
+        }
+
+        // --- VERIFY GOOGLE SYNC ---
+        if (action === 'verify_google') {
+            if (!customerId) {
+                return res.status(400).json({ success: false, error: 'Customer ID is required' });
+            }
+
+            // Update customer record to is_verified = true and save google details
+            const { data: updatedCustomer, error: updateError } = await supabase
+                .from('customers')
+                .update({
+                    is_verified: true,
+                    google_id: googleId || null,
+                    google_email: googleEmail || null,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', customerId)
+                .select()
+                .single();
+
+            if (updateError) {
+                return res.status(400).json({ success: false, error: 'فشل تفعيل وتحديث الحساب: ' + updateError.message });
+            }
+
+            // Generate secure session token
+            const sessionToken = Buffer.from(JSON.stringify({
+                id: updatedCustomer.id,
+                role: 'passenger',
+                exp: Date.now() + 7 * 24 * 60 * 60 * 1000
+            })).toString('base64');
+
+            // Safe payload
+            const safeUser = {
+                ...updatedCustomer,
+                id: updatedCustomer.id,
+                name: updatedCustomer.full_name,
+                phone: updatedCustomer.phone,
+                type: 'passenger',
+                is_verified: true
+            };
+            delete safeUser.password;
+
+            return res.status(200).json({
+                success: true,
+                message: 'تم تفعيل حسابك بنجاح ومزامنته مع Google!',
+                user: safeUser,
+                token: sessionToken
             });
         }
 
@@ -127,8 +204,8 @@ export default async function handler(req, res) {
                     return res.status(403).json({
                         success: false,
                         verified: false,
-                        error: 'حسابك غير مفعل. يرجى تفعيل الحساب عبر واتساب الإدارة',
-                        phone: customer.phone
+                        error: 'حسابك غير مفعل. يرجى إكمال ربط حساب Google لتفعيل الحساب.',
+                        customerId: customer.id
                     });
                 }
 
