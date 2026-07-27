@@ -231,11 +231,13 @@ async function connectToWhatsApp() {
             if (connection === 'close') {
                 isConnected = false;
                 const statusCode = lastDisconnect?.error?.output?.statusCode || 0;
-                // Active session corruption / disconnection handling (401: Unauthorized, 405: Bad Session, loggedOut)
-                const isCorruptSession = statusCode === baileys_1.DisconnectReason.loggedOut || statusCode === 401 || statusCode === 405;
-                logger.warn({ statusCode, isCorruptSession }, `🔌 Connection closed.`);
-                if (isCorruptSession) {
-                    logger.info(`🛑 Corrupt session detected (code ${statusCode}). Purging session keys from Supabase...`);
+                // Terminal session logout from WhatsApp (401: Unauthorized/Logged Out).
+                // We ONLY purge the session from Supabase on terminal loggedOut. Other codes (e.g. 405, 428, 515)
+                // are transient network/stream drops and should reconnect natively using the existing database-backed credentials.
+                const isTerminalLogout = statusCode === baileys_1.DisconnectReason.loggedOut;
+                logger.warn({ statusCode, isTerminalLogout }, `🔌 Connection closed.`);
+                if (isTerminalLogout) {
+                    logger.info(`🛑 Terminal logout detected (code ${statusCode}). Purging session keys from Supabase...`);
                     isLoggedIn = false;
                     qrCodeString = null;
                     connectionPhone = null;
@@ -244,14 +246,14 @@ async function connectToWhatsApp() {
                         .delete()
                         .like('id', 'default:%');
                     if (error) {
-                        logger.error(error, 'Error deleting session keys after session corruption');
+                        logger.error(error, 'Error deleting session keys after terminal logout');
                     }
                     // Re-init connection immediately to prompt for new QR code
                     setTimeout(() => connectToWhatsApp(), 3000);
                 }
                 else {
-                    // Try reconnecting in 3 seconds
-                    logger.info('♻️ Reconnecting to WhatsApp...');
+                    // Try reconnecting standard in 3 seconds using saved DB credentials
+                    logger.info('♻️ Reconnecting to WhatsApp using existing credentials...');
                     setTimeout(() => connectToWhatsApp(), 3000);
                 }
             }
