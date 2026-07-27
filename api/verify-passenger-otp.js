@@ -93,7 +93,7 @@ export default async function handler(req, res) {
     let cleanPhone = phone.trim().replace(/\D/g, '');
     if (cleanPhone.startsWith('0') && cleanPhone.length === 10) {
         cleanPhone = '249' + cleanPhone.substring(1);
-    } else if (cleanPhone.length === 9 && cleanPhone.startsWith('9')) {
+    } else if (cleanPhone.length === 9 && (cleanPhone.startsWith('9') || cleanPhone.startsWith('1'))) {
         cleanPhone = '249' + cleanPhone;
     }
 
