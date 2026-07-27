@@ -310,19 +310,20 @@ app.post('/send-otp', authenticateSecret, async (req, res) => {
             logger.warn({ cleanPhone, targetJid }, 'Number does not exist on WhatsApp');
             return res.status(400).json({ success: false, error: 'رقم واتساب غير صحيح أو غير مسجل بالخدمة' });
         }
-        const messageText = `رمز التحقق الخاص بك هو:
-
-${otp}
-
-صلاحية الرمز خمس دقائق فقط.
-
-لا تشارك هذا الرمز مع أي شخص.
-
-Passenger App`;
         const finalJid = onWhatsApp.jid || targetJid;
-        logger.info({ finalJid }, 'Sending OTP message...');
+        logger.info({ finalJid }, 'Initiating natural human-emulated routing delay...');
+        // 1. Safe delay for natural routing to prevent bot classification
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        // 2. Typing presence updates ("composing") to emulate real user behavior
+        logger.info({ finalJid }, 'Sending composing presence update...');
+        await sock.sendPresenceUpdate('composing', finalJid);
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        await sock.sendPresenceUpdate('paused', finalJid);
+        // 3. Custom high-trust formal message text with asterisks around the code
+        const messageText = `مرحباً بك في تطبيق زونا.\n\nرمز التحقق الخاص بك هو: *${otp}*\n\nيرجى عدم مشاركة هذا الرمز مع أي شخص للحفاظ على أمان حسابك.`;
+        logger.info({ finalJid }, 'Sending formatted OTP message...');
         await sock.sendMessage(finalJid, { text: messageText });
-        logger.info({ phone: cleanPhone, finalJid }, 'OTP message sent successfully');
+        logger.info({ phone: cleanPhone, finalJid }, 'OTP message sent successfully with antispam evasion');
         return res.status(200).json({ success: true, message: 'تم إرسال الرمز بنجاح' });
     }
     catch (error) {
