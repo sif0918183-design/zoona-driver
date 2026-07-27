@@ -275,6 +275,11 @@ const authenticateSecret = (req: Request, res: Response, next: () => void) => {
 
 // --- EXPRESS ENDPOINTS ---
 
+// 0. Pre-warming Ping Endpoint to wake up Render from Sleep
+app.get('/ping', (req: Request, res: Response) => {
+    return res.status(200).send('pong');
+});
+
 // 1. Send OTP Message
 app.post('/send-otp', authenticateSecret, async (req: Request, res: Response) => {
     const { phone, otp } = req.body;

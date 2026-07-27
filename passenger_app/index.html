@@ -1737,7 +1737,7 @@
                 <div class="form-group">
                     <label class="form-label" for="customer-phone">رقم الواتساب</label>
                     <input type="tel" id="customer-phone" class="form-input" 
-                           placeholder="رقم الواتساب المسجل" required>
+                           placeholder="رقم الواتساب المسجل" required onfocus="prewarmWhatsAppGateway()">
                 </div>
                 
                 <div class="form-group">
@@ -1793,7 +1793,7 @@
                     </label>
                     <input type="tel" id="register-phone" class="form-input" 
                            placeholder="0XXXXXXXXX" required
-                           inputmode="numeric" pattern="[0-9]*">
+                           inputmode="numeric" pattern="[0-9]*" onfocus="prewarmWhatsAppGateway()">
                 </div>
 
                 <div class="form-group">
@@ -2679,11 +2679,23 @@ function showCustomerLogin() {
     document.getElementById('customer-phone').focus();
 }
 
+function prewarmWhatsAppGateway() {
+    if (window.WHATSAPP_RENDER_URL) {
+        console.log('⚡ Pre-warming WhatsApp Gateway at:', window.WHATSAPP_RENDER_URL);
+        fetch(`${window.WHATSAPP_RENDER_URL.replace(/\/$/, '')}/ping`)
+            .then(res => console.log('⚡ Gateway pre-warm status:', res.status))
+            .catch(e => console.warn('⚡ Gateway pre-warm failed/offline:', e));
+    }
+}
+
 function showCustomerRegister() {
     if (checkAgreement()) {
         showScreen('customer-register-screen');
         document.getElementById('verification-section').classList.add('hidden');
         document.getElementById('register-fullname').focus();
+
+        // التسخين المسبق لبوابة واتساب عند الدخول لشاشة التسجيل
+        prewarmWhatsAppGateway();
     } else {
         document.getElementById('agreement-modal').classList.remove('hidden');
     }
@@ -2816,6 +2828,9 @@ async function loginCustomer() {
                 showNotification('حسابك غير مفعل. جاري تحويلك لصفحة التحقق...', 'warning');
                 loginBtn.innerHTML = originalHTML;
                 loginBtn.disabled = false;
+
+                // التسخين المسبق الفوري لبوابة واتساب عند تفعيل خطوة التحقق لغير المفعلين
+                prewarmWhatsAppGateway();
 
                 setTimeout(() => {
                     showScreen('customer-register-screen');

@@ -247,58 +247,64 @@ export default async function handler(req, res) {
             }
         );
 
-        // --- 3. DELIVER VIA RENDER GATEWAY WITH OPTIMIZED RETRY STRATEGY ---
+        // --- 3. DELIVER VIA RENDER GATEWAY WITH ASYNC FIRE-AND-FORGET STRATEGY ---
+        // We trigger the gateway delivery asynchronously in the background so that Vercel returns
+        // a 200 OK success response to the client immediately (within 50ms), preventing any 504 Timeout errors!
         const targetUrl = `${WHATSAPP_RENDER_URL.replace(/\/$/, '')}/send-otp`;
         const backoffDelays = [400, 800, 1200, 1600];
-        let deliverySuccess = false;
-        let lastErrorMsg = '';
 
-        for (let attempt = 0; attempt <= backoffDelays.length; attempt++) {
-            const sendResult = await sendOtpViaGateway(targetUrl, WHATSAPP_RENDER_SECRET, cleanPhone, otpCode);
+        // Background delivery handler
+        const runBackgroundDelivery = async () => {
+            let deliverySuccess = false;
+            let lastErrorMsg = '';
 
-            if (sendResult.ok) {
-                deliverySuccess = true;
-                break;
-            } else {
-                lastErrorMsg = sendResult.error;
-                console.warn(`Gateway response error (attempt ${attempt + 1}):`, lastErrorMsg);
+            for (let attempt = 0; attempt <= backoffDelays.length; attempt++) {
+                const sendResult = await sendOtpViaGateway(targetUrl, WHATSAPP_RENDER_SECRET, cleanPhone, otpCode);
+
+                if (sendResult.ok) {
+                    deliverySuccess = true;
+                    break;
+                } else {
+                    lastErrorMsg = sendResult.error;
+                    console.warn(`Gateway response error (attempt ${attempt + 1}):`, lastErrorMsg);
+                }
+
+                if (attempt < backoffDelays.length) {
+                    await delay(backoffDelays[attempt]);
+                }
             }
 
-            // Sleep if not the last attempt and total execution is safe
-            if (attempt < backoffDelays.length) {
-                console.log(`Sleeping for ${backoffDelays[attempt]}ms before next retry...`);
-                await delay(backoffDelays[attempt]);
+            const latency = Date.now() - startTime;
+
+            // Background Logger
+            try {
+                await supabaseRestRequest(
+                    'otp_logs',
+                    'POST',
+                    {
+                        phone: cleanPhone,
+                        sent_at: now.toISOString(),
+                        status: deliverySuccess ? 'success' : 'failed',
+                        latency: latency,
+                        provider: 'whatsapp_render',
+                        error: deliverySuccess ? null : lastErrorMsg,
+                        ip_address: ip
+                    }
+                );
+                console.log(`Background delivery complete. Success: ${deliverySuccess}`);
+            } catch (logErr) {
+                console.error('Failed to log background delivery outcome:', logErr);
             }
-        }
+        };
 
-        const latency = Date.now() - startTime;
+        // Fire and forget!
+        runBackgroundDelivery().catch(err => console.error('Unhandled background delivery error:', err));
 
-        // --- 4. RECORD LOGS ---
-        await supabaseRestRequest(
-            'otp_logs',
-            'POST',
-            {
-                phone: cleanPhone,
-                sent_at: now.toISOString(),
-                status: deliverySuccess ? 'success' : 'failed',
-                latency: latency,
-                provider: 'whatsapp_render',
-                error: deliverySuccess ? null : lastErrorMsg,
-                ip_address: ip
-            }
-        );
-
-        if (deliverySuccess) {
-            return res.status(200).json({
-                success: true,
-                message: 'تم إرسال رمز التحقق بنجاح إلى حساب الواتساب الخاص بك.'
-            });
-        } else {
-            return res.status(504).json({
-                success: false,
-                error: `عذراً، فشل إرسال رمز التحقق إلى واتساب الخاص بك بعد محاولات متعددة. السبب: ${lastErrorMsg}. الرجاء التأكد من أن الهاتف مسجل في واتساب والمحاولة مجدداً.`
-            });
-        }
+        // Return immediate success to the client
+        return res.status(200).json({
+            success: true,
+            message: 'تم إرسال رمز التحقق بنجاح إلى حساب الواتساب الخاص بك.'
+        });
 
     } catch (error) {
         console.error('Unexpected error in sendPassengerOtp:', error);

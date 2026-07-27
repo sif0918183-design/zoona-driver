@@ -143,10 +143,10 @@ export default async function handler(req, res) {
             }
         );
 
-        // 2. Activate the customer account in 'customers' table
-        // PATCH /rest/v1/customers?phone=eq.cleanPhone
+        // 2. Activate the customer account in 'customers' table matching either original input or international form
+        // This ensures the update always succeeds regardless of whether the number is stored as 09... or 249...
         await supabaseRestRequest(
-            `customers?phone=eq.${cleanPhone}`,
+            `customers?or=(phone.eq.${cleanPhone},phone.eq.${phone.trim()})`,
             'PATCH',
             {
                 is_verified: true
