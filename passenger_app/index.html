@@ -1735,9 +1735,10 @@
 
             <form class="login-form" id="customerLoginForm">
                 <div class="form-group">
-                    <label class="form-label" for="customer-phone">رقم الواتساب</label>
+                    <label class="form-label" for="customer-phone">رقم الواتساب (يبدأ بـ 09 أو 01)</label>
                     <input type="tel" id="customer-phone" class="form-input" 
-                           placeholder="رقم الواتساب المسجل" required>
+                           placeholder="0XXXXXXXXX" required maxlength="10"
+                           inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/\D/g, '').substring(0, 10)">
                 </div>
                 
                 <div class="form-group">
@@ -2872,8 +2873,8 @@ async function loginCustomer() {
         return;
     }
     
-    if (!isValidSudanesePhone(phone)) {
-        showNotification('الرجاء إدخال رقم واتساب سوداني صحيح', 'error');
+    if (!isValidPassengerPhone(phone)) {
+        showNotification('رقم الواتساب يجب أن يبدأ بـ 09 أو 01 ومكون من 10 أرقام تماماً', 'error');
         return;
     }
     
@@ -2907,17 +2908,20 @@ async function loginCustomer() {
 
         if (!response.ok || !resData.success) {
             if (resData.customerId && resData.verified === false) {
-                showNotification(resData.error || 'حسابك غير مفعل', 'warning');
+                showNotification('حسابك غير مفعّل. جاري توجيهك لنافذة التحقق ومزامنة Google...', 'warning');
                 loginBtn.innerHTML = originalHTML;
                 loginBtn.disabled = false;
 
                 // Save the pending customer ID for Google synchronization
                 localStorage.setItem('pending_verification_customer_id', resData.customerId);
 
+                // Transfer user to the Google sync verification screen automatically
+                showScreen('customer-register-screen');
+                document.getElementById('customerRegisterForm').classList.add('hidden');
+                document.getElementById('verification-section').classList.remove('hidden');
+
                 setTimeout(() => {
-                    if (confirm('حسابك غير مفعّل. هل تريد التفعيل والربط مع حساب Google الآن؟')) {
-                        syncWithGoogleOAuth();
-                    }
+                    syncWithGoogleOAuth();
                 }, 1500);
                 return;
             }
