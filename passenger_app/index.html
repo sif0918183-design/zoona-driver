@@ -2370,6 +2370,24 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (urlParams.get('google_sync') === 'true' || hasHash) {
         console.log('🔔 Detect Google login redirect fragment. Processing sync...');
 
+        if (hasHash) {
+            // Explicitly set the session from the URL hash
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            const accessToken = hashParams.get('access_token');
+            const refreshToken = hashParams.get('refresh_token');
+            if (accessToken && refreshToken) {
+                console.log('🔑 Setting session from URL hash explicitly...');
+                try {
+                    await tarhalDB.auth.setSession({
+                        access_token: accessToken,
+                        refresh_token: refreshToken
+                    });
+                } catch (err) {
+                    console.error('Error setting session explicitly from hash:', err);
+                }
+            }
+        }
+
         setTimeout(async () => {
             try {
                 const { data: { session }, error: sessionErr } = await tarhalDB.auth.getSession();
@@ -2768,10 +2786,29 @@ async function initTurnstileWidget() {
 async function syncWithGoogleOAuth() {
     try {
         showNotification('جاري توجيهك للمزامنة مع حساب Google...', 'info');
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const isApp = urlParams.get('platform') === 'app' ||
+                      urlParams.get('platform') === 'webview' ||
+                      urlParams.get('platform') === 'zoona' ||
+                      urlParams.get('platform') === 'tracka' ||
+                      (navigator.userAgent && (navigator.userAgent.toLowerCase().includes('tracka') || navigator.userAgent.toLowerCase().includes('zoona'))) ||
+                      window.flutter_inappwebview;
+
+        let targetRedirectTo;
+        if (isApp) {
+            const isZoona = urlParams.get('platform') === 'zoona' || (navigator.userAgent && navigator.userAgent.toLowerCase().includes('zoona'));
+            targetRedirectTo = isZoona ? 'zoona://auth-callback' : 'tracka://auth-callback';
+            console.log('📱 App environment detected. Redirecting with deep link:', targetRedirectTo);
+        } else {
+            targetRedirectTo = window.location.origin + '/auth/callback';
+            console.log('🌐 Regular browser environment detected. Redirecting with web callback:', targetRedirectTo);
+        }
+
         const { error } = await tarhalDB.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: window.location.origin + '/passenger_app/index.html?google_sync=true'
+                redirectTo: targetRedirectTo
             }
         });
         if (error) {
@@ -3200,7 +3237,52 @@ async function checkForActiveRide() {
 }
 
 async function checkAuth() {
-    const savedUser = localStorage.getItem('tarhal_customer');
+    let savedUser = localStorage.getItem('tarhal_customer');
+
+    // Check if there is a valid active Supabase session first to auto-restore passenger profile
+    try {
+        const { data: { session }, error: sessionErr } = await tarhalDB.auth.getSession();
+        if (session && session.user) {
+            console.log('🔔 Active Supabase session found for user:', session.user.email);
+
+            // If local storage passenger info is missing, restore it from the DB
+            if (!savedUser) {
+                console.log('🔄 Restoring passenger profile from database using active Supabase session...');
+                const { data: customer, error: fetchError } = await tarhalDB
+                    .from('customers')
+                    .select('*')
+                    .or(`google_id.eq.${session.user.id},google_email.eq.${session.user.email}`)
+                    .maybeSingle();
+
+                if (customer && !fetchError) {
+                    currentUser = customer;
+                    savedUser = JSON.stringify(customer);
+                    localStorage.setItem('tarhal_customer', savedUser);
+                    localStorage.setItem('tarhal_passenger', savedUser);
+
+                    if (!localStorage.getItem('session_token')) {
+                        const sessionToken = btoa(JSON.stringify({
+                            id: customer.id,
+                            role: 'passenger',
+                            exp: Date.now() + 7 * 24 * 60 * 60 * 1000
+                        }));
+                        localStorage.setItem('tarhal_session_token', sessionToken);
+                        localStorage.setItem('session_token', sessionToken);
+                        localStorage.setItem('user_data', savedUser);
+                        localStorage.setItem('user_type', 'passenger');
+                    }
+
+                    FlutterBridge.postMessage('pwa_login', {
+                        id: customer.id,
+                        phone: customer.phone,
+                        role: 'passenger'
+                    });
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Error checking active Supabase session in checkAuth:', e);
+    }
     
     if (savedUser) {
         try {
