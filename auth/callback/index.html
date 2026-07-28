@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تراكا للنقل - معالجة التوثيق</title>
+    <!-- Tajawal Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --tracka-primary: #10b981; /* Emerald */
+            --tracka-bg: #0f172a;      /* Slate 900 */
+            --tracka-card: #1e293b;    /* Slate 800 */
+            --text-main: #f8fafc;      /* Slate 50 */
+            --text-sub: #94a3b8;       /* Slate 400 */
+        }
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: var(--tracka-bg);
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        .container {
+            text-align: center;
+            background-color: var(--tracka-card);
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(16, 185, 129, 0.1);
+            border-top: 4px solid var(--tracka-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1.5rem auto;
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+        p {
+            color: var(--text-sub);
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    <!-- Supabase JS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Dynamic Supabase configuration from API -->
+    <script src="/api/supabase-config.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="spinner"></div>
+        <h1 id="status-title">جاري التحقق من التوثيق...</h1>
+        <p id="status-desc">يرجى الانتظار لحين مزامنة حسابك مع تراكا للنقل والعودة للتطبيق.</p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log("🚀 Auth Callback Page Loaded");
+
+            const hash = window.location.hash;
+            const urlParams = new URLSearchParams(window.location.search);
+
+            // Extract tokens from hash
+            let accessToken = null;
+            let refreshToken = null;
+
+            if (hash) {
+                const hashParams = new URLSearchParams(hash.substring(1));
+                accessToken = hashParams.get('access_token');
+                refreshToken = hashParams.get('refresh_token');
+            }
+
+            // Check if App / WebView environment
+            const isApp = urlParams.get('platform') === 'app' ||
+                          urlParams.get('platform') === 'webview' ||
+                          urlParams.get('platform') === 'zoona' ||
+                          urlParams.get('platform') === 'tracka' ||
+                          (navigator.userAgent && (navigator.userAgent.toLowerCase().includes('tracka') || navigator.userAgent.toLowerCase().includes('zoona')));
+
+            if (isApp) {
+                // Determine URI scheme
+                const isZoona = urlParams.get('platform') === 'zoona' || (navigator.userAgent && navigator.userAgent.toLowerCase().includes('zoona'));
+                const scheme = isZoona ? 'zoona' : 'tracka';
+
+                // Construct the custom deep link redirect
+                const deepLink = `${scheme}://auth-callback${hash || ''}`;
+                console.log("📱 Redirecting back to mobile app with Deep Link:", deepLink);
+
+                document.getElementById('status-title').innerText = "جاري إعادة التوجيه للتطبيق...";
+                document.getElementById('status-desc').innerText = "تم تسجيل الدخول بنجاح، جاري فتح التطبيق تلقائياً.";
+
+                // Perform redirect
+                window.location.href = deepLink;
+
+                // Fallback timeout in case deep link fails or is not caught, try to show redirect option
+                setTimeout(() => {
+                    const btn = document.createElement('button');
+                    btn.innerText = "اضغط هنا إذا لم يتم فتح التطبيق تلقائياً";
+                    btn.style.cssText = "background-color: var(--tracka-primary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: bold; font-family: inherit; cursor: pointer; margin-top: 1rem; width: 100%; transition: opacity 0.2s;";
+                    btn.onclick = () => { window.location.href = deepLink; };
+                    document.querySelector('.container').appendChild(btn);
+                }, 3000);
+            } else {
+                // Web Browser environment
+                if (accessToken && refreshToken) {
+                    try {
+                        console.log("🌐 Web environment. Initializing Supabase client to set session...");
+
+                        // Ensure Supabase variables exist
+                        if (!window.SB_URL || !window.SB_KEY) {
+                            throw new Error("Supabase configuration missing on window object.");
+                        }
+
+                        const supabaseClient = supabase.createClient(window.SB_URL, window.SB_KEY);
+
+                        // Set session inside standard localStorage storage
+                        const { data, error } = await supabaseClient.auth.setSession({
+                            access_token: accessToken,
+                            refresh_token: refreshToken
+                        });
+
+                        if (error) throw error;
+
+                        console.log("🎉 Session successfully established and persisted in localStorage!");
+
+                        document.getElementById('status-title').innerText = "تم التوثيق بنجاح!";
+                        document.getElementById('status-desc').innerText = "جاري إعادتك لتطبيق الراكب...";
+
+                        // Redirect to passenger index with google_sync param and same hash
+                        setTimeout(() => {
+                            window.location.href = `/passenger_app/index.html?google_sync=true${hash || ''}`;
+                        }, 1000);
+
+                    } catch (err) {
+                        console.error("❌ Failed to set Supabase session:", err);
+                        document.getElementById('status-title').innerText = "فشل توثيق الجلسة";
+                        document.getElementById('status-desc').innerText = "حدث خطأ أثناء حفظ بيانات الجلسة: " + err.message;
+                    }
+                } else {
+                    console.warn("⚠️ No active token parameters found in URL hash.");
+                    document.getElementById('status-title').innerText = "جلسة غير صالحة";
+                    document.getElementById('status-desc').innerText = "لم نتمكن من العثور على رموز توثيق صالحة في الرابط. جاري التوجيه للرئيسية...";
+
+                    setTimeout(() => {
+                        window.location.href = "/passenger_app/index.html";
+                    }, 3000);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
