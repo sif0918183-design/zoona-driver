@@ -2378,32 +2378,104 @@ document.addEventListener('DOMContentLoaded', async function() {
     await FlutterBridge.waitForStorage();
 
     // =====================================================
-    // Google Sync / Redirect Detector
+    // Google Sync / Redirect Detector & Automatic Hash Login Handler
     // =====================================================
     const urlParams = new URLSearchParams(window.location.search);
-    const hasHash = window.location.hash.includes('access_token') || window.location.hash.includes('id_token');
+    const hasHash = window.location.hash && window.location.hash.includes('access_token');
 
-    if (urlParams.get('google_sync') === 'true' || hasHash) {
-        console.log('🔔 Detect Google login redirect fragment. Processing sync...');
+    if (hasHash) {
+        console.log('🔑 Automatic processing of Google OAuth Hash Token...');
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
 
-        if (hasHash) {
-            // Explicitly set the session from the URL hash
-            const hashParams = new URLSearchParams(window.location.hash.substring(1));
-            const accessToken = hashParams.get('access_token');
-            const refreshToken = hashParams.get('refresh_token');
-            if (accessToken && refreshToken) {
-                console.log('🔑 Setting session from URL hash explicitly...');
-                try {
-                    await tarhalDB.auth.setSession({
-                        access_token: accessToken,
-                        refresh_token: refreshToken
-                    });
-                } catch (err) {
-                    console.error('Error setting session explicitly from hash:', err);
+        if (accessToken) {
+            try {
+                // استدعاء دالة تعيين الجلسة صراحةً
+                const { data, error } = await tarhalDB.auth.setSession({
+                    access_token: accessToken,
+                    refresh_token: refreshToken || ''
+                });
+
+                if (error) {
+                    console.error('Error in setSession:', error);
                 }
+
+                if (data && data.session) {
+                    const user = data.session.user;
+                    console.log('👤 Authenticated user from session:', user);
+
+                    // تنظيف الـ URL بمسح الـ Hash منه عبر window.history.replaceState
+                    const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                    window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+
+                    // التفعيل والتسجيل التلقائي فور نجاح تعيين الجلسة
+                    const passengerPhone = localStorage.getItem('pending_verification_customer_phone') || '';
+                    showNotification('🔄 جاري التحقق التلقائي وتفعيل الحساب...', 'info');
+
+                    const response = await fetch('/api/auth', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${accessToken}`
+                        },
+                        body: JSON.stringify({
+                            action: 'verify_google',
+                            phone: passengerPhone,
+                            googleId: user.id,
+                            googleEmail: user.email,
+                            isGoogleSync: true
+                        })
+                    });
+
+                    const resData = await response.json();
+                    if (response.ok && resData.success) {
+                        showNotification('🎉 تم تفعيل حسابك بنجاح ومزامنته مع Google!', 'success');
+
+                        localStorage.removeItem('pending_verification_customer_id');
+                        localStorage.removeItem('pending_verification_customer_phone');
+
+                        currentUser = resData.user;
+                        localStorage.setItem('tarhal_customer', JSON.stringify(currentUser));
+                        localStorage.setItem('tarhal_passenger', JSON.stringify(currentUser));
+                        if (resData.token) {
+                            localStorage.setItem('tarhal_session_token', resData.token);
+                            localStorage.setItem('session_token', resData.token);
+                            localStorage.setItem('user_data', JSON.stringify(currentUser));
+                            localStorage.setItem('user_type', 'passenger');
+                        }
+
+                        // مزامنة مع Flutter
+                        FlutterBridge.postMessage('pwa_login', {
+                            id: currentUser.id,
+                            phone: currentUser.phone,
+                            role: 'passenger'
+                        });
+
+                        loadGoogleMaps();
+                        await loadDynamicVehiclePrices();
+
+                        showPageLoader(true);
+                        setTimeout(() => {
+                            showScreen('home-screen');
+                            updateUserProfile();
+                            initRealtime();
+                            showPageLoader(false);
+                        }, 800);
+
+                        // إرسال إشعار جاهزية التطبيق لـ Flutter
+                        FlutterBridge.postMessage('pwa_ready', { app: 'passenger' });
+                        return; // الخروج الفوري لمنع استدعاء checkAuth() بشكل مزدوج
+                    } else {
+                        showNotification(resData.error || 'فشل تحديث حالة الحساب وتفعيله', 'error');
+                    }
+                }
+            } catch (err) {
+                console.error('Exception setting session from hash:', err);
             }
         }
-
+    } else if (urlParams.get('google_sync') === 'true') {
+        console.log('🔔 Detect Google login redirect search query param (no hash)...');
         setTimeout(async () => {
             try {
                 const { data: { session }, error: sessionErr } = await tarhalDB.auth.getSession();
@@ -2430,6 +2502,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                             showNotification('🎉 تم تفعيل حسابك بنجاح ومزامنته مع Google!', 'success');
 
                             localStorage.removeItem('pending_verification_customer_id');
+                            localStorage.removeItem('pending_verification_customer_phone');
 
                             currentUser = verifyData.user;
                             localStorage.setItem('tarhal_customer', JSON.stringify(currentUser));
@@ -2931,6 +3004,8 @@ async function loginCustomer() {
         return;
     }
     
+    localStorage.setItem('pending_verification_customer_phone', phone);
+
     const loginBtn = document.querySelector('#customerLoginForm button');
     
     // حفظ النص الأصلي في متغير محلي
@@ -3050,6 +3125,8 @@ async function registerCustomer() {
         showNotification('الرجاء إكمال جميع الحقول الإلزامية', 'error');
         return;
     }
+
+    localStorage.setItem('pending_verification_customer_phone', phone);
 
     // Validate full name contains exactly 4 Arabic names
     const cleanName = fullName.replace(/\s+/g, ' ');

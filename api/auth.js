@@ -178,10 +178,35 @@ export default async function handler(req, res) {
                 }
             }
 
+            // نحاول أيضاً العثور عليه من رقم الهاتف الممرر
+            if (!targetCustomerId && phone) {
+                const { data: foundByPhone } = await supabase
+                    .from('customers')
+                    .select('id')
+                    .eq('phone', phone.trim())
+                    .maybeSingle();
+                if (foundByPhone) {
+                    targetCustomerId = foundByPhone.id;
+                }
+            }
+
+            // نحاول العثور عليه من معرف Google الممرر
+            if (!targetCustomerId && targetGoogleId) {
+                const { data: foundById } = await supabase
+                    .from('customers')
+                    .select('id')
+                    .eq('google_id', targetGoogleId)
+                    .maybeSingle();
+                if (foundById) {
+                    targetCustomerId = foundById.id;
+                }
+            }
+
             if (!targetCustomerId) {
-                console.warn('[Auth API] Rejected verify_google action: Missing customer ID and cannot resolve via decoded Supabase email token', {
+                console.warn('[Auth API] Rejected verify_google action: Missing customer ID and cannot resolve via decoded Supabase email token, phone, or googleId', {
                     googleEmail: targetGoogleEmail,
-                    googleId: targetGoogleId
+                    googleId: targetGoogleId,
+                    phone: phone
                 });
                 return res.status(400).json({ success: false, error: 'Customer ID is required' });
             }
