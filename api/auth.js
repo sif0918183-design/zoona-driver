@@ -67,7 +67,7 @@ export default async function handler(req, res) {
             return res.status(500).json({ success: false, error: 'تكوين الخادم (Supabase Configuration) غير مكتمل' });
         }
 
-        const { action, role, phone, password, fullName, phone2, turnstileToken, customerId, googleId, googleEmail } = req.body;
+        const { action, role, phone, password, fullName, phone2, turnstileToken, customerId, googleId, googleEmail, google_id, google_email } = req.body;
 
         if (!action) {
             console.warn('[Auth API] Rejected request: missing action parameter', req.body);
@@ -269,7 +269,16 @@ export default async function handler(req, res) {
                 }
 
                 // Check verification
-                if (!customer.is_verified) {
+                let isGoogleVerified = false;
+                const reqGoogleId = googleId || google_id || (decodedSupabaseUser ? decodedSupabaseUser.id : null);
+                const reqGoogleEmail = googleEmail || google_email || (decodedSupabaseUser ? decodedSupabaseUser.email : null);
+
+                if (reqGoogleId || reqGoogleEmail) {
+                    isGoogleVerified = true;
+                    console.log(`[Auth API] Google OAuth session/token detected during login. Bypassing phone verification check for customer ID: ${customer.id}`);
+                }
+
+                if (!customer.is_verified && !isGoogleVerified) {
                     console.log(`[Auth API] Login blocked: Passenger phone ${sanitizedPhone} is not verified. Redirecting to Google Sync.`);
                     return res.status(403).json({
                         success: false,
@@ -277,6 +286,29 @@ export default async function handler(req, res) {
                         error: 'حسابك غير مفعل. يرجى إكمال ربط حساب Google لتفعيل الحساب.',
                         customerId: customer.id
                     });
+                }
+
+                if (isGoogleVerified && !customer.is_verified) {
+                    console.log(`[Auth API] Activating and verifying customer ${customer.id} via Google login...`);
+                    const { data: updatedCustomer, error: updateError } = await supabase
+                        .from('customers')
+                        .update({
+                            is_verified: true,
+                            google_id: reqGoogleId || customer.google_id || null,
+                            google_email: reqGoogleEmail || customer.google_email || null,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', customer.id)
+                        .select()
+                        .single();
+
+                    if (updateError) {
+                        console.error('[Auth API] Failed to auto-verify customer on Google login:', updateError);
+                        return res.status(400).json({ success: false, error: 'فشل تفعيل وتحديث الحساب: ' + updateError.message });
+                    }
+
+                    // Update current properties in the customer object
+                    Object.assign(customer, updatedCustomer);
                 }
 
                 // Generate secure session token
