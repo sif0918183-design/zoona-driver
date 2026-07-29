@@ -2952,10 +2952,32 @@ async function loginCustomer() {
     }, 10);
     
     try {
+        // الحصول على بيانات الجلسة الحالية من Supabase
+        let session = null;
+        try {
+            const sessionRes = await tarhalDB.auth.getSession();
+            session = sessionRes?.data?.session || null;
+        } catch (e) {
+            console.error('Error getting Supabase session:', e);
+        }
+
+        const payload = {
+            action: 'login',
+            role: 'passenger',
+            phone: phone,
+            password: password,
+            googleId: session?.user?.user_metadata?.sub || session?.user?.id || null,
+            googleEmail: session?.user?.email || null,
+            isGoogleSync: true
+        };
+
         const response = await fetch('/api/auth', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'login', role: 'passenger', phone, password })
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session?.access_token || ''}`
+            },
+            body: JSON.stringify(payload)
         });
         const resData = await response.json();
 
