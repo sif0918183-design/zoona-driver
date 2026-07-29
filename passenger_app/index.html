@@ -2410,7 +2410,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
 
                     // التفعيل والتسجيل التلقائي فور نجاح تعيين الجلسة
-                    const passengerPhone = localStorage.getItem('pending_verification_customer_phone') || '';
+                    const passengerPhone = localStorage.getItem('pending_verify_phone') || localStorage.getItem('pending_verification_customer_phone') || '';
                     showNotification('🔄 جاري التحقق التلقائي وتفعيل الحساب...', 'info');
 
                     const response = await fetch('/api/auth', {
@@ -2421,6 +2421,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                         },
                         body: JSON.stringify({
                             action: 'verify_google',
+                            access_token: accessToken,
                             phone: passengerPhone,
                             googleId: user.id,
                             googleEmail: user.email,
@@ -2434,6 +2435,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                         localStorage.removeItem('pending_verification_customer_id');
                         localStorage.removeItem('pending_verification_customer_phone');
+                        localStorage.removeItem('pending_verify_phone');
 
                         currentUser = resData.user;
                         localStorage.setItem('tarhal_customer', JSON.stringify(currentUser));
@@ -2482,8 +2484,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                 if (session && session.user) {
                     const googleUser = session.user;
                     const pendingCustomerId = localStorage.getItem('pending_verification_customer_id');
+                    const passengerPhone = localStorage.getItem('pending_verify_phone') || localStorage.getItem('pending_verification_customer_phone') || '';
 
-                    if (pendingCustomerId) {
+                    if (pendingCustomerId || passengerPhone) {
                         showNotification('🔄 جاري التحقق من المزامنة وتفعيل الحساب...', 'info');
 
                         const verifyRes = await fetch('/api/auth', {
@@ -2493,7 +2496,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 action: 'verify_google',
                                 customerId: pendingCustomerId,
                                 googleId: googleUser.id,
-                                googleEmail: googleUser.email
+                                googleEmail: googleUser.email,
+                                access_token: session?.access_token || '',
+                                phone: passengerPhone
                             })
                         });
 
@@ -2503,6 +2508,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                             localStorage.removeItem('pending_verification_customer_id');
                             localStorage.removeItem('pending_verification_customer_phone');
+                            localStorage.removeItem('pending_verify_phone');
 
                             currentUser = verifyData.user;
                             localStorage.setItem('tarhal_customer', JSON.stringify(currentUser));
@@ -3062,8 +3068,10 @@ async function loginCustomer() {
                 loginBtn.innerHTML = originalHTML;
                 loginBtn.disabled = false;
 
-                // Save the pending customer ID for Google synchronization
+                // Save the pending customer ID and WhatsApp phone number immediately
                 localStorage.setItem('pending_verification_customer_id', resData.customerId);
+                localStorage.setItem('pending_verify_phone', phone);
+                localStorage.setItem('pending_verification_customer_phone', phone);
 
                 // Transfer user to the Google sync verification screen automatically
                 showScreen('customer-register-screen');
@@ -3072,7 +3080,7 @@ async function loginCustomer() {
 
                 setTimeout(() => {
                     syncWithGoogleOAuth();
-                }, 1500);
+                }, 800);
                 return;
             }
             showNotification(resData.error || 'رقم الواتساب غير مسجل أو كلمة المرور غير صحيحة', 'error');
@@ -3197,12 +3205,19 @@ async function registerCustomer() {
 
         showNotification('تم تسجيل البيانات بنجاح! جاري التفعيل عبر Google...', 'success');
 
-        // Save the pending customer ID
+        // Save the pending customer ID and WhatsApp phone number immediately
         localStorage.setItem('pending_verification_customer_id', resData.user.id);
+        localStorage.setItem('pending_verify_phone', phone);
+        localStorage.setItem('pending_verification_customer_phone', phone);
 
         // Transition to Google sync/verification screen
         document.getElementById('customerRegisterForm').classList.add('hidden');
         document.getElementById('verification-section').classList.remove('hidden');
+
+        // التوجه فوراً لصفحة التوثيق المربوطة بـ Google OAuth
+        setTimeout(() => {
+            syncWithGoogleOAuth();
+        }, 800);
 
     } catch (error) {
         console.error('Registration error:', error);
