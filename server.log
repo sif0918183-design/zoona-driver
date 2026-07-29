@@ -1,2 +1,15 @@
-127.0.0.1 - - [28/Jul/2026 12:27:57] "GET /passenger_app/travel-platform.html HTTP/1.1" 200 -
-127.0.0.1 - - [28/Jul/2026 12:27:58] "GET /shared/theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jul/2026 08:29:29] "HEAD /passenger_app/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jul/2026 08:30:42] "GET /passenger_app/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jul/2026 08:30:43] code 404, message File not found
+127.0.0.1 - - [29/Jul/2026 08:30:43] "GET /api/supabase-config HTTP/1.1" 404 -
+127.0.0.1 - - [29/Jul/2026 08:30:43] "GET /shared/theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jul/2026 08:30:43] "GET /sound-manager.js HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jul/2026 08:30:43] "GET /assets/branding/icon-512x512.png HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jul/2026 08:30:43] "GET /shared/supabase-config.js HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jul/2026 08:31:10] "GET /passenger_app/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jul/2026 08:31:10] code 404, message File not found
+127.0.0.1 - - [29/Jul/2026 08:31:10] "GET /api/supabase-config HTTP/1.1" 404 -
+127.0.0.1 - - [29/Jul/2026 08:31:10] "GET /sound-manager.js HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jul/2026 08:31:10] "GET /shared/supabase-config.js HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jul/2026 08:31:10] "GET /assets/branding/icon-512x512.png HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jul/2026 08:31:10] "GET /shared/theme.css HTTP/1.1" 200 -
