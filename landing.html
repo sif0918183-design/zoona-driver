@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+    <script>
+        // التقاط توكنات Google OAuth وإعادة توجيهها إلى الـ Deep Link للتطبيق
+        if (window.location.hash && window.location.hash.includes('access_token=') && window.location.href.startsWith('https://tracka.zoonasd.com')) {
+            window.location.href = 'tracka://auth-callback' + window.location.hash;
+        }
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>تراكا للنقل - اختيارك الأول </title>
