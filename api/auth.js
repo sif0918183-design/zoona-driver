@@ -161,66 +161,68 @@ export default async function handler(req, res) {
 
         // --- VERIFY GOOGLE SYNC ---
         if (action === 'verify_google') {
-            const targetGoogleId = googleId || (decodedSupabaseUser ? decodedSupabaseUser.id : null);
-            const targetGoogleEmail = googleEmail || (decodedSupabaseUser ? decodedSupabaseUser.email : null);
-
-            let targetCustomerId = customerId;
-
-            // إذا لم يتم توفير معرف العميل، نحاول العثور عليه من البريد الإلكتروني الخاص بـ Google لتجنب فشل المزامنة
-            if (!targetCustomerId && targetGoogleEmail) {
-                const { data: foundByEmail } = await supabase
-                    .from('customers')
-                    .select('id')
-                    .eq('google_email', targetGoogleEmail)
-                    .maybeSingle();
-                if (foundByEmail) {
-                    targetCustomerId = foundByEmail.id;
+            // 1. Decode Google/Supabase token to extract googleEmail and googleId
+            let decodedUser = null;
+            const tokenToDecode = req.body.access_token || bearerToken;
+            if (tokenToDecode) {
+                try {
+                    const parts = tokenToDecode.split('.');
+                    if (parts.length === 3) {
+                        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
+                        decodedUser = {
+                            id: payload.sub,
+                            email: payload.email
+                        };
+                    }
+                } catch (err) {
+                    console.error('[Auth API] Error decoding Google token:', err);
                 }
             }
 
-            // نحاول أيضاً العثور عليه من رقم الهاتف الممرر
-            if (!targetCustomerId && phone) {
-                const { data: foundByPhone } = await supabase
-                    .from('customers')
-                    .select('id')
-                    .eq('phone', phone.trim())
-                    .maybeSingle();
-                if (foundByPhone) {
-                    targetCustomerId = foundByPhone.id;
+            const targetGoogleId = googleId || (decodedUser ? decodedUser.id : null) || (decodedSupabaseUser ? decodedSupabaseUser.id : null);
+            const targetGoogleEmail = googleEmail || (decodedUser ? decodedUser.email : null) || (decodedSupabaseUser ? decodedSupabaseUser.email : null);
+
+            // 2. Validate WhatsApp phone number (phone)
+            let targetPhone = phone;
+            if (!targetPhone) {
+                // Search in request query or headers/cookies as a fallback
+                targetPhone = req.query?.phone;
+                if (!targetPhone && req.headers?.cookie) {
+                    const cookies = Object.fromEntries(req.headers.cookie.split(';').map(c => c.trim().split('=')));
+                    targetPhone = cookies.pending_verify_phone || cookies.pending_verification_customer_phone;
                 }
             }
 
-            // نحاول العثور عليه من معرف Google الممرر
-            if (!targetCustomerId && targetGoogleId) {
-                const { data: foundById } = await supabase
-                    .from('customers')
-                    .select('id')
-                    .eq('google_id', targetGoogleId)
-                    .maybeSingle();
-                if (foundById) {
-                    targetCustomerId = foundById.id;
-                }
+            if (!targetPhone) {
+                console.warn('[Auth API] Rejected verify_google action: Missing phone parameter');
+                return res.status(400).json({ success: false, error: 'رقم الواتساب مطلوب لإكمال التفعيل' });
             }
 
-            if (!targetCustomerId) {
-                console.warn('[Auth API] Rejected verify_google action: Missing customer ID and cannot resolve via decoded Supabase email token, phone, or googleId', {
-                    googleEmail: targetGoogleEmail,
-                    googleId: targetGoogleId,
-                    phone: phone
-                });
-                return res.status(400).json({ success: false, error: 'Customer ID is required' });
+            const sanitizedPhone = targetPhone.trim();
+
+            // 3. Search in customers table by WhatsApp phone number
+            const { data: customer, error: fetchError } = await supabase
+                .from('customers')
+                .select('*')
+                .eq('phone', sanitizedPhone)
+                .maybeSingle();
+
+            // 4. Handle search result
+            // Case 1 (Not found)
+            if (fetchError || !customer) {
+                return res.status(404).json({ success: false, error: 'رقم الواتساب غير مسجل، يرجى إنشاء حساب أولاً' });
             }
 
-            // تحديث العميل وتفعيله
+            // Case 2 (Found): Update immediately
             const { data: updatedCustomer, error: updateError } = await supabase
                 .from('customers')
                 .update({
                     is_verified: true,
-                    google_id: targetGoogleId || null,
-                    google_email: targetGoogleEmail || null,
+                    google_id: targetGoogleId || customer.google_id || null,
+                    google_email: targetGoogleEmail || customer.google_email || null,
                     updated_at: new Date().toISOString()
                 })
-                .eq('id', targetCustomerId)
+                .eq('phone', sanitizedPhone)
                 .select()
                 .single();
 
@@ -229,7 +231,7 @@ export default async function handler(req, res) {
                 return res.status(400).json({ success: false, error: 'فشل تفعيل وتحديث الحساب: ' + updateError.message });
             }
 
-            // Generate secure session token
+            // 5. Generate secure session token and return status 200 with customer data
             const sessionToken = Buffer.from(JSON.stringify({
                 id: updatedCustomer.id,
                 role: 'passenger',
