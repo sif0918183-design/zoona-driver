@@ -1,0 +1,9 @@
+127.0.0.1 - - [29/Jul/2026 09:35:00] "GET /passenger_app/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jul/2026 09:35:00] "GET /shared/theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jul/2026 09:35:00] "GET /shared/supabase-config.js HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jul/2026 09:35:00] "GET /assets/branding/icon-512x512.png HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jul/2026 09:35:00] "GET /sound-manager.js HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jul/2026 09:35:00] "GET /passenger_app/sw-passenger.js HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jul/2026 09:35:01] "GET /passenger_app/ HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jul/2026 09:35:01] "GET /passenger_app/manifest.json HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jul/2026 09:35:01] "GET /shared/notification-utils.js HTTP/1.1" 200 -
