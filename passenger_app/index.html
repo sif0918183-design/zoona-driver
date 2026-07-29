@@ -2,9 +2,19 @@
 <html lang="ar" dir="rtl">
 <head>
     <script>
-        // التقاط توكنات Google OAuth وإعادة توجيهها إلى الـ Deep Link للتطبيق
-        if (window.location.hash && window.location.hash.includes('access_token=') && window.location.href.startsWith('https://tracka.zoonasd.com')) {
-            window.location.href = 'tracka://auth-callback' + window.location.hash;
+        // التقاط توكنات Google OAuth وإعادة توجيهها إلى الـ Deep Link للتطبيق لبيئة الموبايل
+        if (window.location.hash && window.location.hash.includes('access_token=')) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const isApp = urlParams.get('platform') === 'app' ||
+                          urlParams.get('platform') === 'webview' ||
+                          urlParams.get('platform') === 'zoona' ||
+                          urlParams.get('platform') === 'tracka' ||
+                          (navigator.userAgent && (navigator.userAgent.toLowerCase().includes('tracka') || navigator.userAgent.toLowerCase().includes('zoona'))) ||
+                          window.flutter_inappwebview;
+
+            if (isApp && window.location.href.startsWith('https://tracka.zoonasd.com')) {
+                window.location.href = 'tracka://auth-callback' + window.location.hash;
+            }
         }
     </script>
     <meta charset="UTF-8">
@@ -2807,8 +2817,8 @@ async function syncWithGoogleOAuth() {
             targetRedirectTo = isZoona ? 'zoona://auth-callback' : 'tracka://auth-callback';
             console.log('📱 App environment detected. Redirecting with deep link:', targetRedirectTo);
         } else {
-            targetRedirectTo = window.location.origin + '/auth/callback';
-            console.log('🌐 Regular browser environment detected. Redirecting with web callback:', targetRedirectTo);
+            targetRedirectTo = 'https://tracka.zoonasd.com/passenger_app/index.html';
+            console.log('🌐 Regular browser environment detected. Redirecting with web callback to passenger app:', targetRedirectTo);
         }
 
         const { error } = await tarhalDB.auth.signInWithOAuth({

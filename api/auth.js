@@ -7,8 +7,13 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || proce
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 export default async function handler(req, res) {
-    // Enable CORS
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    // Enable CORS with support for tracka.zoonasd.com, localhost, and deep link clients
+    const origin = req.headers.origin;
+    if (origin && (origin === 'https://tracka.zoonasd.com' || origin.startsWith('http://localhost') || origin.startsWith('tracka://') || origin.startsWith('zoona://'))) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+    }
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
@@ -20,7 +25,38 @@ export default async function handler(req, res) {
         return res.status(405).json({ success: false, error: 'Method not allowed' });
     }
 
+    // استخراج الـ Bearer Token من ترويسة الطلب Authorization
+    let bearerToken = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        bearerToken = authHeader.split(' ')[1];
+    }
+
+    // محاولة فك تشفير توكن Supabase JWT لاستخراج المعطيات للتحقق الآمن للراكب الجديد
+    let decodedSupabaseUser = null;
+    if (bearerToken) {
+        try {
+            const parts = bearerToken.split('.');
+            if (parts.length === 3) {
+                const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
+                decodedSupabaseUser = {
+                    id: payload.sub,
+                    email: payload.email
+                };
+                console.log('Decoded Supabase User from Bearer Token:', decodedSupabaseUser);
+            }
+        } catch (err) {
+            console.error('Error decoding Bearer Token:', err);
+        }
+    }
+
     try {
+        // فحص مفاتيح Supabase المتغيرة في Vercel Environment Variables للتأكد من جاهزية الخدمة
+        if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+            console.error('Supabase Configuration Missing in Vercel Environment Variables');
+            return res.status(500).json({ success: false, error: 'تكوين الخادم (Supabase Configuration) غير مكتمل' });
+        }
+
         const { action, role, phone, password, fullName, phone2, turnstileToken, customerId, googleId, googleEmail } = req.body;
 
         if (!action) {
@@ -114,20 +150,37 @@ export default async function handler(req, res) {
 
         // --- VERIFY GOOGLE SYNC ---
         if (action === 'verify_google') {
-            if (!customerId) {
+            const targetGoogleId = googleId || (decodedSupabaseUser ? decodedSupabaseUser.id : null);
+            const targetGoogleEmail = googleEmail || (decodedSupabaseUser ? decodedSupabaseUser.email : null);
+
+            let targetCustomerId = customerId;
+
+            // إذا لم يتم توفير معرف العميل، نحاول العثور عليه من البريد الإلكتروني الخاص بـ Google لتجنب فشل المزامنة
+            if (!targetCustomerId && targetGoogleEmail) {
+                const { data: foundByEmail } = await supabase
+                    .from('customers')
+                    .select('id')
+                    .eq('google_email', targetGoogleEmail)
+                    .maybeSingle();
+                if (foundByEmail) {
+                    targetCustomerId = foundByEmail.id;
+                }
+            }
+
+            if (!targetCustomerId) {
                 return res.status(400).json({ success: false, error: 'Customer ID is required' });
             }
 
-            // Update customer record to is_verified = true and save google details
+            // تحديث العميل وتفعيله
             const { data: updatedCustomer, error: updateError } = await supabase
                 .from('customers')
                 .update({
                     is_verified: true,
-                    google_id: googleId || null,
-                    google_email: googleEmail || null,
+                    google_id: targetGoogleId || null,
+                    google_email: targetGoogleEmail || null,
                     updated_at: new Date().toISOString()
                 })
-                .eq('id', customerId)
+                .eq('id', targetCustomerId)
                 .select()
                 .single();
 
