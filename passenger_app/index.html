@@ -2410,7 +2410,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
 
                     // التفعيل والتسجيل التلقائي فور نجاح تعيين الجلسة
-                    const passengerPhone = localStorage.getItem('pending_verify_phone') || localStorage.getItem('pending_verification_customer_phone') || '';
+                    const passengerPhone = urlParams.get('phone') || localStorage.getItem('pending_verify_phone') || localStorage.getItem('pending_verification_customer_phone') || '';
                     showNotification('🔄 جاري التحقق التلقائي وتفعيل الحساب...', 'info');
 
                     const response = await fetch('/api/auth', {
@@ -2484,7 +2484,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 if (session && session.user) {
                     const googleUser = session.user;
                     const pendingCustomerId = localStorage.getItem('pending_verification_customer_id');
-                    const passengerPhone = localStorage.getItem('pending_verify_phone') || localStorage.getItem('pending_verification_customer_phone') || '';
+                    const passengerPhone = urlParams.get('phone') || localStorage.getItem('pending_verify_phone') || localStorage.getItem('pending_verification_customer_phone') || '';
 
                     if (pendingCustomerId || passengerPhone) {
                         showNotification('🔄 جاري التحقق من المزامنة وتفعيل الحساب...', 'info');
@@ -2890,13 +2890,21 @@ async function syncWithGoogleOAuth() {
                       (navigator.userAgent && (navigator.userAgent.toLowerCase().includes('tracka') || navigator.userAgent.toLowerCase().includes('zoona'))) ||
                       window.flutter_inappwebview;
 
+        const phone = localStorage.getItem('pending_verify_phone') || localStorage.getItem('pending_verification_customer_phone') || '';
+
         let targetRedirectTo;
         if (isApp) {
             const isZoona = urlParams.get('platform') === 'zoona' || (navigator.userAgent && navigator.userAgent.toLowerCase().includes('zoona'));
             targetRedirectTo = isZoona ? 'zoona://auth-callback' : 'tracka://auth-callback';
+            if (phone) {
+                targetRedirectTo += `?phone=${encodeURIComponent(phone)}`;
+            }
             console.log('📱 App environment detected. Redirecting with deep link:', targetRedirectTo);
         } else {
-            targetRedirectTo = 'https://tracka.zoonasd.com/passenger_app/index.html';
+            targetRedirectTo = `${window.location.origin}/passenger_app/index.html`;
+            if (phone) {
+                targetRedirectTo += `?phone=${encodeURIComponent(phone)}`;
+            }
             console.log('🌐 Regular browser environment detected. Redirecting with web callback to passenger app:', targetRedirectTo);
         }
 

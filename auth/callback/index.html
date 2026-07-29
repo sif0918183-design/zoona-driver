@@ -146,7 +146,9 @@
 
                         // Redirect to passenger index with google_sync param and same hash
                         setTimeout(() => {
-                            window.location.href = `/passenger_app/index.html?google_sync=true${hash || ''}`;
+                            const phone = urlParams.get('phone') || '';
+                            const phoneParam = phone ? `&phone=${encodeURIComponent(phone)}` : '';
+                            window.location.href = `/passenger_app/index.html?google_sync=true${phoneParam}${hash || ''}`;
                         }, 1000);
 
                     } catch (err) {
