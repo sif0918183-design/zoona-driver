@@ -7,23 +7,70 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || proce
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 export default async function handler(req, res) {
-    // Enable CORS
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    // Enable CORS with relaxed headers for tracka.zoonasd.com, webviews, and general PWA clients
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    const origin = req.headers.origin;
+    if (origin && (origin === 'https://tracka.zoonasd.com' || origin.startsWith('http://localhost') || origin.startsWith('tracka://') || origin.startsWith('zoona://'))) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+    res.setHeader(
+        'Access-Control-Allow-Headers',
+        'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
+    );
 
+    // التعامل مع طلبات Preflight (OPTIONS) بإرجاع 200 OK فوراً
     if (req.method === 'OPTIONS') {
-        return res.status(200).end();
+        res.status(200).end();
+        return;
     }
 
+    // تسجيل تفاصيل الطلب لسهولة تصحيح الأخطاء وحل مشاكل الـ CORS والـ 403
+    console.log(`[Auth API] Incoming Request - Method: ${req.method}, Origin: ${origin || 'None'}, Referer: ${req.headers.referer || 'None'}`);
+
     if (req.method !== 'POST') {
+        console.warn(`[Auth API] Rejected: Method ${req.method} is not allowed.`);
         return res.status(405).json({ success: false, error: 'Method not allowed' });
     }
 
+    // استخراج الـ Bearer Token من ترويسة الطلب Authorization
+    let bearerToken = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        bearerToken = authHeader.split(' ')[1];
+    }
+
+    // محاولة فك تشفير توكن Supabase JWT لاستخراج المعطيات للتحقق الآمن للراكب الجديد
+    let decodedSupabaseUser = null;
+    if (bearerToken) {
+        try {
+            const parts = bearerToken.split('.');
+            if (parts.length === 3) {
+                const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
+                decodedSupabaseUser = {
+                    id: payload.sub,
+                    email: payload.email
+                };
+                console.log('Decoded Supabase User from Bearer Token:', decodedSupabaseUser);
+            }
+        } catch (err) {
+            console.error('Error decoding Bearer Token:', err);
+        }
+    }
+
     try {
+        // فحص مفاتيح Supabase المتغيرة في Vercel Environment Variables للتأكد من جاهزية الخدمة
+        if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+            console.error('Supabase Configuration Missing in Vercel Environment Variables');
+            return res.status(500).json({ success: false, error: 'تكوين الخادم (Supabase Configuration) غير مكتمل' });
+        }
+
         const { action, role, phone, password, fullName, phone2, turnstileToken, customerId, googleId, googleEmail } = req.body;
 
         if (!action) {
+            console.warn('[Auth API] Rejected request: missing action parameter', req.body);
             return res.status(400).json({ success: false, error: 'Action is required' });
         }
 
@@ -114,24 +161,46 @@ export default async function handler(req, res) {
 
         // --- VERIFY GOOGLE SYNC ---
         if (action === 'verify_google') {
-            if (!customerId) {
+            const targetGoogleId = googleId || (decodedSupabaseUser ? decodedSupabaseUser.id : null);
+            const targetGoogleEmail = googleEmail || (decodedSupabaseUser ? decodedSupabaseUser.email : null);
+
+            let targetCustomerId = customerId;
+
+            // إذا لم يتم توفير معرف العميل، نحاول العثور عليه من البريد الإلكتروني الخاص بـ Google لتجنب فشل المزامنة
+            if (!targetCustomerId && targetGoogleEmail) {
+                const { data: foundByEmail } = await supabase
+                    .from('customers')
+                    .select('id')
+                    .eq('google_email', targetGoogleEmail)
+                    .maybeSingle();
+                if (foundByEmail) {
+                    targetCustomerId = foundByEmail.id;
+                }
+            }
+
+            if (!targetCustomerId) {
+                console.warn('[Auth API] Rejected verify_google action: Missing customer ID and cannot resolve via decoded Supabase email token', {
+                    googleEmail: targetGoogleEmail,
+                    googleId: targetGoogleId
+                });
                 return res.status(400).json({ success: false, error: 'Customer ID is required' });
             }
 
-            // Update customer record to is_verified = true and save google details
+            // تحديث العميل وتفعيله
             const { data: updatedCustomer, error: updateError } = await supabase
                 .from('customers')
                 .update({
                     is_verified: true,
-                    google_id: googleId || null,
-                    google_email: googleEmail || null,
+                    google_id: targetGoogleId || null,
+                    google_email: targetGoogleEmail || null,
                     updated_at: new Date().toISOString()
                 })
-                .eq('id', customerId)
+                .eq('id', targetCustomerId)
                 .select()
                 .single();
 
             if (updateError) {
+                console.error('[Auth API] Database Error during verify_google:', updateError);
                 return res.status(400).json({ success: false, error: 'فشل تفعيل وتحديث الحساب: ' + updateError.message });
             }
 
@@ -201,6 +270,7 @@ export default async function handler(req, res) {
 
                 // Check verification
                 if (!customer.is_verified) {
+                    console.log(`[Auth API] Login blocked: Passenger phone ${sanitizedPhone} is not verified. Redirecting to Google Sync.`);
                     return res.status(403).json({
                         success: false,
                         verified: false,

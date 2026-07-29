@@ -1,6 +1,19 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+    <script>
+        // التقاط توكنات Google OAuth وإعادة توجيهها إلى الـ Deep Link أو صفحة استقبال الراكب
+        if (window.location.hash && window.location.hash.includes('access_token=')) {
+            if (window.location.href.startsWith('https://tracka.zoonasd.com')) {
+                // محاولة التوجيه إلى الـ Deep Link أولاً لإغلاق المتصفح المدمج والعودة للتطبيق فوراً
+                window.location.href = 'tracka://auth-callback' + window.location.hash;
+                // في حال عدم دعم المتصفح أو فشل الـ Deep Link، التوجيه لصفحة استقبال الراكب في الـ PWA
+                setTimeout(function() {
+                    window.location.href = 'https://tracka.zoonasd.com/passenger_app/index.html' + window.location.hash;
+                }, 500);
+            }
+        }
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>تراكا للنقل - اختيارك الأول </title>
