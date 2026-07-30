@@ -159,50 +159,16 @@ export default async function handler(req, res) {
             });
         }
 
-        // --- VERIFY GOOGLE SYNC ---
-        if (action === 'verify_google') {
-            // 1. Decode Google/Supabase token to extract googleEmail and googleId
-            let decodedUser = null;
-            const tokenToDecode = req.body.access_token || bearerToken;
-            if (tokenToDecode) {
-                try {
-                    const parts = tokenToDecode.split('.');
-                    if (parts.length === 3) {
-                        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
-                        decodedUser = {
-                            id: payload.sub,
-                            email: payload.email
-                        };
-                    }
-                } catch (err) {
-                    console.error('[Auth API] Error decoding Google token:', err);
-                }
-            }
-
-            const targetGoogleId = googleId || (decodedUser ? decodedUser.id : null) || (decodedSupabaseUser ? decodedSupabaseUser.id : null);
-            const targetGoogleEmail = googleEmail || (decodedUser ? decodedUser.email : null) || (decodedSupabaseUser ? decodedSupabaseUser.email : null);
-
-            // 2. Validate WhatsApp phone number (phone)
-            let targetPhone = req.body?.phone || req.query?.phone || req.cookies?.pending_verify_phone;
-            if (!targetPhone && req.headers?.cookie) {
-                try {
-                    const cookies = Object.fromEntries(req.headers.cookie.split(';').map(c => {
-                        const parts = c.trim().split('=');
-                        return [parts[0], parts.slice(1).join('=')];
-                    }));
-                    targetPhone = cookies.pending_verify_phone;
-                } catch (cookieErr) {
-                    console.error('[Auth API] Error parsing cookies:', cookieErr);
-                }
-            }
-
-            if (!targetPhone) {
-                console.warn('[Auth API] Rejected verify_google action: Missing phone parameter');
-                return res.status(400).json({ success: false, error: 'رقم الواتساب مطلوب لإكمال التفعيل' });
+        // --- VERIFY PHONE ---
+        if (action === 'verify_phone') {
+            const { phone } = req.body;
+            if (!phone) {
+                console.warn('[Auth API] Rejected verify_phone action: Missing phone parameter');
+                return res.status(400).json({ success: false, error: 'رقم الهاتف مطلوب لإكمال التفعيل' });
             }
 
             // Clean and sanitize the phone number
-            let cleanedPhone = targetPhone.toString().replace(/\D/g, '');
+            let cleanedPhone = phone.toString().replace(/\D/g, '');
             if (cleanedPhone.startsWith('249') && cleanedPhone.length === 12) {
                 cleanedPhone = '0' + cleanedPhone.substring(3);
             } else if (cleanedPhone.length === 9 && (cleanedPhone.startsWith('9') || cleanedPhone.startsWith('1'))) {
@@ -211,26 +177,22 @@ export default async function handler(req, res) {
 
             const sanitizedPhone = cleanedPhone.trim();
 
-            // 3. Search in customers table by WhatsApp phone number
+            // Search in customers table by phone number
             const { data: customer, error: fetchError } = await supabase
                 .from('customers')
                 .select('*')
                 .eq('phone', sanitizedPhone)
                 .maybeSingle();
 
-            // 4. Handle search result
-            // Case 1 (Not found)
             if (fetchError || !customer) {
-                return res.status(404).json({ success: false, error: 'رقم الواتساب غير مسجل، يرجى إنشاء حساب أولاً' });
+                return res.status(404).json({ success: false, error: 'رقم الهاتف غير مسجل، يرجى إنشاء حساب أولاً' });
             }
 
-            // Case 2 (Found): Update immediately
+            // Update immediately to verified
             const { data: updatedCustomer, error: updateError } = await supabase
                 .from('customers')
                 .update({
                     is_verified: true,
-                    google_id: targetGoogleId || customer.google_id || null,
-                    google_email: targetGoogleEmail || customer.google_email || null,
                     updated_at: new Date().toISOString()
                 })
                 .eq('phone', sanitizedPhone)
@@ -238,11 +200,11 @@ export default async function handler(req, res) {
                 .single();
 
             if (updateError) {
-                console.error('[Auth API] Database Error during verify_google:', updateError);
+                console.error('[Auth API] Database Error during verify_phone:', updateError);
                 return res.status(400).json({ success: false, error: 'فشل تفعيل وتحديث الحساب: ' + updateError.message });
             }
 
-            // 5. Generate secure session token and return status 200 with customer data
+            // Generate secure session token and return status 200 with customer data
             const sessionToken = Buffer.from(JSON.stringify({
                 id: updatedCustomer.id,
                 role: 'passenger',
@@ -264,7 +226,7 @@ export default async function handler(req, res) {
 
             return res.status(200).json({
                 success: true,
-                message: 'تم تفعيل حسابك بنجاح ومزامنته مع Google!',
+                message: 'تم تفعيل حسابك بنجاح عن طريق رقم الهاتف!',
                 user: safeUser,
                 token: sessionToken
             });
@@ -309,46 +271,14 @@ export default async function handler(req, res) {
                 }
 
                 // Check verification
-                let isGoogleVerified = false;
-                const reqGoogleId = googleId || google_id || (decodedSupabaseUser ? decodedSupabaseUser.id : null);
-                const reqGoogleEmail = googleEmail || google_email || (decodedSupabaseUser ? decodedSupabaseUser.email : null);
-
-                if (reqGoogleId || reqGoogleEmail) {
-                    isGoogleVerified = true;
-                    console.log(`[Auth API] Google OAuth session/token detected during login. Bypassing phone verification check for customer ID: ${customer.id}`);
-                }
-
-                if (!customer.is_verified && !isGoogleVerified) {
-                    console.log(`[Auth API] Login blocked: Passenger phone ${sanitizedPhone} is not verified. Redirecting to Google Sync.`);
+                if (!customer.is_verified) {
+                    console.log(`[Auth API] Login blocked: Passenger phone ${sanitizedPhone} is not verified.`);
                     return res.status(403).json({
                         success: false,
                         verified: false,
-                        error: 'حسابك غير مفعل. يرجى إكمال ربط حساب Google لتفعيل الحساب.',
+                        error: 'حسابك غير مفعل. يرجى إكمال التحقق من رقم الهاتف لتفعيل الحساب.',
                         customerId: customer.id
                     });
-                }
-
-                if (isGoogleVerified && !customer.is_verified) {
-                    console.log(`[Auth API] Activating and verifying customer ${customer.id} via Google login...`);
-                    const { data: updatedCustomer, error: updateError } = await supabase
-                        .from('customers')
-                        .update({
-                            is_verified: true,
-                            google_id: reqGoogleId || customer.google_id || null,
-                            google_email: reqGoogleEmail || customer.google_email || null,
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('id', customer.id)
-                        .select()
-                        .single();
-
-                    if (updateError) {
-                        console.error('[Auth API] Failed to auto-verify customer on Google login:', updateError);
-                        return res.status(400).json({ success: false, error: 'فشل تفعيل وتحديث الحساب: ' + updateError.message });
-                    }
-
-                    // Update current properties in the customer object
-                    Object.assign(customer, updatedCustomer);
                 }
 
                 // Generate secure session token
