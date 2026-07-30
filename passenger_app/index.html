@@ -1905,6 +1905,15 @@
                             إعادة الإرسال / تعديل الرقم
                         </button>
                     </div>
+
+                    <!-- WhatsApp Verification Fallback -->
+                    <div id="whatsapp-fallback-box" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--gray-light);">
+                        <p style="font-size: 13px; color: var(--gray); margin-bottom: 10px; font-weight: 500; line-height: 1.4;">هل تواجه مشكلة في استلام الرسالة؟ تفعيل حسابك كبديل فوري عبر الواتساب:</p>
+                        <button type="button" class="btn btn-outline" onclick="sendVerificationWhatsApp()" style="width: 100%; border-color: #25D366; color: #25D366; background: rgba(37, 211, 102, 0.05);">
+                            <i class="ph-bold ph-whatsapp-logo" style="color: #25D366;"></i>
+                            تفعيل الحساب فورا عبر الواتساب
+                        </button>
+                    </div>
                 </div>
             </div>
             
@@ -2756,8 +2765,20 @@ async function initTurnstileWidget() {
 }
 
 function getE164Phone(phone) {
-    const formatted = formatPhoneNumber(phone);
-    return '+' + formatted;
+    if (!phone) return '';
+    // إزالة أي مسافات أو رموز زائدة
+    let phoneNumber = phone.trim().replace(/\s+/g, '');
+
+    // إذا كان الرقم يبدأ بـ 0، قم بإبداله بمفتاح السودان +249
+    if (phoneNumber.startsWith('0')) {
+        phoneNumber = '+249' + phoneNumber.substring(1);
+    } else if (phoneNumber.startsWith('249')) {
+        phoneNumber = '+' + phoneNumber;
+    } else if (!phoneNumber.startsWith('+')) {
+        phoneNumber = '+249' + phoneNumber;
+    }
+
+    return phoneNumber;
 }
 
 function initFirebaseRecaptcha() {
@@ -2825,7 +2846,15 @@ async function sendFirebaseOTP() {
 
     } catch (err) {
         console.error("Firebase SMS send error:", err);
-        showNotification('فشل إرسال الرمز: ' + (err.message || err), 'error');
+        const errMsg = err.message || String(err);
+        if (errMsg.includes('operation-not-allowed') || errMsg.includes('SMS unable to be sent')) {
+            showNotification('⚠️ يرجى تفعيل خيار Phone Sign-in وإتاحة إرسال الرسائل للسودان (+249) في لوحة تحكم فايربيس (Firebase Console) لحل مشكلة الإرسال، أو استخدام خيار الواتساب البديل أدناه.', 'warning');
+
+            // Show detailed alert modal for the developer
+            alert('⚙️ تنبيه المطور (Firebase Config Required):\n\nخطأ (auth/operation-not-allowed) يعني أن خدمة التحقق بالهاتف غير مفعلة في مشروع فايربيس الخاص بك، أو أن إقليم السودان محظور من إرسال رسائل الـ SMS.\n\nلحل المشكلة:\n1. اذهب إلى Firebase Console.\n2. ادخل قسم Authentication ثم Sign-in method.\n3. قم بتفعيل خيار "Phone" (الهاتف).\n4. تحت إعدادات الهاتف، تفقد سياسة الـ SMS (SMS region policy) وتأكد من إتاحة السودان (+249).\n\nيمكنك استخدام خيار "التفعيل الفوري عبر الواتساب" بالأسفل لتجاوز هذه العقبة فوراً وتفعيل الحساب للتجربة.');
+        } else {
+            showNotification('فشل إرسال الرمز: ' + errMsg, 'error');
+        }
 
         initFirebaseRecaptcha();
     }
@@ -3224,15 +3253,18 @@ async function registerCustomer() {
 }
 
 function sendVerificationWhatsApp(phone = null) {
-    const phoneToVerify = phone || registeredPhone;
-    if (!phoneToVerify) return;
+    const phoneToVerify = phone || localStorage.getItem('pending_verify_phone') || localStorage.getItem('pending_verification_customer_phone');
+    if (!phoneToVerify) {
+        showNotification('رقم الهاتف للتفعيل غير متوفر حالياً', 'error');
+        return;
+    }
     
     const adminNumber = "249110269224";
-    const message = "تفعيل تراكا للنقل";
+    const message = `السلام عليكم، أرغب في تفعيل وتوثيق حسابي في تطبيق تراكا للنقل. رقم الهاتف المسجل: ${phoneToVerify}`;
     const whatsappUrl = `https://wa.me/${adminNumber}?text=${encodeURIComponent(message)}`;
     
     window.open(whatsappUrl, '_blank');
-    showNotification('تم فتح واتساب. أرسل الرسالة لتأكيد حسابك', 'info');
+    showNotification('تم فتح واتساب. أرسل الرسالة لتأكيد حسابك وتفعيله يدوياً', 'info');
 }
 
 function updateUserProfile() {
@@ -5112,15 +5144,16 @@ function showPageLoader(show = true) {
     }
 }
 
-// دالة للتحقق من صحة رقم الهاتف
+// دالة للتحقق من صحة رقم الهاتف وتحويله للصيغة الدولية تلقائياً
 function formatPhoneNumber(phone) {
+    if (!phone) return '';
     // تنظيف الرقم من أي أحرف غير رقمية
     const cleaned = phone.replace(/\D/g, '');
     
-    // تحويل إلى الصيغة الدولية
+    // تحويل إلى الصيغة الدولية السودانية (+249) تلقائياً
     if (cleaned.startsWith('0') && cleaned.length === 10) {
         return '249' + cleaned.substring(1);
-    } else if (cleaned.startsWith('9') && cleaned.length === 9) {
+    } else if ((cleaned.startsWith('9') || cleaned.startsWith('1')) && cleaned.length === 9) {
         return '249' + cleaned;
     } else if (cleaned.startsWith('249') && cleaned.length === 12) {
         return cleaned;
