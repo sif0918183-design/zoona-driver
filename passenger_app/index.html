@@ -2,6 +2,14 @@
 <html lang="ar" dir="rtl">
 <head>
     <script>
+        // Helper to read a cookie
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
+            return '';
+        }
+
         // التقاط توكنات Google OAuth وإعادة توجيهها إلى الـ Deep Link للتطبيق لبيئة الموبايل
         if (window.location.hash && window.location.hash.includes('access_token=')) {
             const urlParams = new URLSearchParams(window.location.search);
@@ -13,7 +21,12 @@
                           window.flutter_inappwebview;
 
             if (isApp && window.location.href.startsWith('https://tracka.zoonasd.com')) {
-                window.location.href = 'tracka://auth-callback' + window.location.hash;
+                let phone = urlParams.get('phone');
+                if (!phone) {
+                    phone = localStorage.getItem('pending_verify_phone') || getCookie('pending_verify_phone') || '';
+                }
+                const phoneParam = phone ? `?phone=${encodeURIComponent(phone)}` : '';
+                window.location.href = 'tracka://auth-callback' + phoneParam + window.location.hash;
             }
         }
     </script>
@@ -2410,7 +2423,10 @@ document.addEventListener('DOMContentLoaded', async function() {
                     window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
 
                     // التفعيل والتسجيل التلقائي فور نجاح تعيين الجلسة
-                    const passengerPhone = urlParams.get('phone') || localStorage.getItem('pending_verify_phone') || localStorage.getItem('pending_verification_customer_phone') || '';
+                    let passengerPhone = urlParams.get('phone');
+                    if (!passengerPhone) {
+                        passengerPhone = localStorage.getItem('pending_verify_phone') || getCookie('pending_verify_phone') || '';
+                    }
                     showNotification('🔄 جاري التحقق التلقائي وتفعيل الحساب...', 'info');
 
                     const response = await fetch('/api/auth', {
@@ -2484,7 +2500,10 @@ document.addEventListener('DOMContentLoaded', async function() {
                 if (session && session.user) {
                     const googleUser = session.user;
                     const pendingCustomerId = localStorage.getItem('pending_verification_customer_id');
-                    const passengerPhone = urlParams.get('phone') || localStorage.getItem('pending_verify_phone') || localStorage.getItem('pending_verification_customer_phone') || '';
+                    let passengerPhone = urlParams.get('phone');
+                    if (!passengerPhone) {
+                        passengerPhone = localStorage.getItem('pending_verify_phone') || getCookie('pending_verify_phone') || '';
+                    }
 
                     if (pendingCustomerId || passengerPhone) {
                         showNotification('🔄 جاري التحقق من المزامنة وتفعيل الحساب...', 'info');
@@ -2882,31 +2901,13 @@ async function syncWithGoogleOAuth() {
     try {
         showNotification('جاري توجيهك للمزامنة مع حساب Google...', 'info');
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const isApp = urlParams.get('platform') === 'app' ||
-                      urlParams.get('platform') === 'webview' ||
-                      urlParams.get('platform') === 'zoona' ||
-                      urlParams.get('platform') === 'tracka' ||
-                      (navigator.userAgent && (navigator.userAgent.toLowerCase().includes('tracka') || navigator.userAgent.toLowerCase().includes('zoona'))) ||
-                      window.flutter_inappwebview;
+        const phone = localStorage.getItem('pending_verify_phone') || localStorage.getItem('pending_verification_customer_phone') || getCookie('pending_verify_phone') || '';
 
-        const phone = localStorage.getItem('pending_verify_phone') || localStorage.getItem('pending_verification_customer_phone') || '';
+        // Save to cookie to guarantee no data loss
+        document.cookie = `pending_verify_phone=${encodeURIComponent(phone)}; path=/; max-age=3600; SameSite=Lax; Secure`;
 
-        let targetRedirectTo;
-        if (isApp) {
-            const isZoona = urlParams.get('platform') === 'zoona' || (navigator.userAgent && navigator.userAgent.toLowerCase().includes('zoona'));
-            targetRedirectTo = isZoona ? 'zoona://auth-callback' : 'tracka://auth-callback';
-            if (phone) {
-                targetRedirectTo += `?phone=${encodeURIComponent(phone)}`;
-            }
-            console.log('📱 App environment detected. Redirecting with deep link:', targetRedirectTo);
-        } else {
-            targetRedirectTo = `${window.location.origin}/passenger_app/index.html`;
-            if (phone) {
-                targetRedirectTo += `?phone=${encodeURIComponent(phone)}`;
-            }
-            console.log('🌐 Regular browser environment detected. Redirecting with web callback to passenger app:', targetRedirectTo);
-        }
+        const targetRedirectTo = `${window.location.origin}/passenger_app/index.html?phone=${encodeURIComponent(phone)}`;
+        console.log('🌐 Google OAuth RedirectTo Forced to:', targetRedirectTo);
 
         const { error } = await tarhalDB.auth.signInWithOAuth({
             provider: 'google',
