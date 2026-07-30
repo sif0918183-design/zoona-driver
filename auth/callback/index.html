@@ -83,60 +83,43 @@
         document.addEventListener('DOMContentLoaded', async () => {
             console.log("🚀 Auth Callback Page Loaded");
 
-            const hash = window.location.hash;
+            // Extract elements
             const urlParams = new URLSearchParams(window.location.search);
 
-            // Extract tokens from hash
-            let accessToken = null;
-            let refreshToken = null;
-
-            if (hash) {
-                const hashParams = new URLSearchParams(hash.substring(1));
-                accessToken = hashParams.get('access_token');
-                refreshToken = hashParams.get('refresh_token');
+            // Extract or recover phone number
+            let phone = urlParams.get('phone');
+            if (!phone) {
+                phone = localStorage.getItem('pending_verify_phone') || getCookie('pending_verify_phone') || '';
+                if (phone) {
+                    urlParams.set('phone', phone);
+                }
             }
 
-            // Check if App / WebView environment
-            const isApp = urlParams.get('platform') === 'app' ||
-                          urlParams.get('platform') === 'webview' ||
-                          urlParams.get('platform') === 'zoona' ||
-                          urlParams.get('platform') === 'tracka' ||
-                          (navigator.userAgent && (navigator.userAgent.toLowerCase().includes('tracka') || navigator.userAgent.toLowerCase().includes('zoona')));
+            const fullSearch = urlParams.toString() ? "?" + urlParams.toString() : "";
+            const fullHash = window.location.hash;
 
-            if (isApp) {
-                // Determine URI scheme
-                const isZoona = urlParams.get('platform') === 'zoona' || (navigator.userAgent && navigator.userAgent.toLowerCase().includes('zoona'));
-                const scheme = isZoona ? 'zoona' : 'tracka';
+            // Immediately construct and attempt the custom Deep Link
+            const appDeepLink = "tracka://auth-callback" + fullSearch + fullHash;
+            console.log("📱 Attempting Deep Link redirect immediately:", appDeepLink);
+            window.location.href = appDeepLink;
 
-                let phone = urlParams.get('phone');
-                if (!phone) {
-                    phone = localStorage.getItem('pending_verify_phone') || getCookie('pending_verify_phone') || '';
+            // Fallback timeout after 3 seconds for standard web browser
+            setTimeout(async () => {
+                console.log("🌐 Fallback triggered: Standard Web environment check");
+
+                // Extract tokens from hash
+                let accessToken = null;
+                let refreshToken = null;
+
+                if (fullHash) {
+                    const hashParams = new URLSearchParams(fullHash.substring(1));
+                    accessToken = hashParams.get('access_token');
+                    refreshToken = hashParams.get('refresh_token');
                 }
-                const phoneParam = phone ? `?phone=${encodeURIComponent(phone)}` : '';
 
-                // Construct the custom deep link redirect
-                const deepLink = `${scheme}://auth-callback${phoneParam}${hash || ''}`;
-                console.log("📱 Redirecting back to mobile app with Deep Link:", deepLink);
-
-                document.getElementById('status-title').innerText = "جاري إعادة التوجيه للتطبيق...";
-                document.getElementById('status-desc').innerText = "تم تسجيل الدخول بنجاح، جاري فتح التطبيق تلقائياً.";
-
-                // Perform redirect
-                window.location.href = deepLink;
-
-                // Fallback timeout in case deep link fails or is not caught, try to show redirect option
-                setTimeout(() => {
-                    const btn = document.createElement('button');
-                    btn.innerText = "اضغط هنا إذا لم يتم فتح التطبيق تلقائياً";
-                    btn.style.cssText = "background-color: var(--tracka-primary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: bold; font-family: inherit; cursor: pointer; margin-top: 1rem; width: 100%; transition: opacity 0.2s;";
-                    btn.onclick = () => { window.location.href = deepLink; };
-                    document.querySelector('.container').appendChild(btn);
-                }, 3000);
-            } else {
-                // Web Browser environment
                 if (accessToken && refreshToken) {
                     try {
-                        console.log("🌐 Web environment. Initializing Supabase client to set session...");
+                        console.log("🌐 Initializing Supabase client to set session...");
 
                         // Ensure Supabase variables exist
                         if (!window.SB_URL || !window.SB_KEY) {
@@ -160,12 +143,8 @@
 
                         // Redirect to passenger index with google_sync param and same hash
                         setTimeout(() => {
-                            let phone = urlParams.get('phone');
-                            if (!phone) {
-                                phone = localStorage.getItem('pending_verify_phone') || getCookie('pending_verify_phone') || '';
-                            }
                             const phoneParam = phone ? `&phone=${encodeURIComponent(phone)}` : '';
-                            window.location.href = `/passenger_app/index.html?google_sync=true${phoneParam}${hash || ''}`;
+                            window.location.href = `/passenger_app/index.html?google_sync=true${phoneParam}${fullHash || ''}`;
                         }, 1000);
 
                     } catch (err) {
@@ -180,9 +159,9 @@
 
                     setTimeout(() => {
                         window.location.href = "/passenger_app/index.html";
-                    }, 3000);
+                    }, 2000);
                 }
-            }
+            }, 3000);
         });
     </script>
 </body>
