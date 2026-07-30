@@ -2403,94 +2403,101 @@ document.addEventListener('DOMContentLoaded', async function() {
         const refreshToken = hashParams.get('refresh_token');
 
         if (accessToken) {
-            try {
-                // استدعاء دالة تعيين الجلسة صراحةً
-                const { data, error } = await tarhalDB.auth.setSession({
-                    access_token: accessToken,
-                    refresh_token: refreshToken || ''
-                });
+            // إطلاق الرابط العميق لإغلاق المتصفح الخارجي فور العودة من Google OAuth
+            const deepLink = "tracka://auth-callback" + window.location.search + window.location.hash;
+            window.location.href = deepLink;
 
-                if (error) {
-                    console.error('Error in setSession:', error);
-                }
-
-                if (data && data.session) {
-                    const user = data.session.user;
-                    console.log('👤 Authenticated user from session:', user);
-
-                    // تنظيف الـ URL بمسح الـ Hash منه عبر window.history.replaceState
-                    const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-                    window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
-
-                    // التفعيل والتسجيل التلقائي فور نجاح تعيين الجلسة
-                    let passengerPhone = urlParams.get('phone');
-                    if (!passengerPhone) {
-                        passengerPhone = localStorage.getItem('pending_verify_phone') || getCookie('pending_verify_phone') || '';
-                    }
-                    showNotification('🔄 جاري التحقق التلقائي وتفعيل الحساب...', 'info');
-
-                    const response = await fetch('/api/auth', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${accessToken}`
-                        },
-                        body: JSON.stringify({
-                            action: 'verify_google',
-                            access_token: accessToken,
-                            phone: passengerPhone,
-                            googleId: user.id,
-                            googleEmail: user.email,
-                            isGoogleSync: true
-                        })
+            // مسار بديل (Fallback) يظهر لوحة التحكم في المتصفح إذا لم يلتقط التطبيق الرابط العميق خلال 3 ثوانٍ
+            setTimeout(async () => {
+                try {
+                    // استدعاء دالة تعيين الجلسة صراحةً
+                    const { data, error } = await tarhalDB.auth.setSession({
+                        access_token: accessToken,
+                        refresh_token: refreshToken || ''
                     });
 
-                    const resData = await response.json();
-                    if (response.ok && resData.success) {
-                        showNotification('🎉 تم تفعيل حسابك بنجاح ومزامنته مع Google!', 'success');
+                    if (error) {
+                        console.error('Error in setSession:', error);
+                    }
 
-                        localStorage.removeItem('pending_verification_customer_id');
-                        localStorage.removeItem('pending_verification_customer_phone');
-                        localStorage.removeItem('pending_verify_phone');
+                    if (data && data.session) {
+                        const user = data.session.user;
+                        console.log('👤 Authenticated user from session:', user);
 
-                        currentUser = resData.user;
-                        localStorage.setItem('tarhal_customer', JSON.stringify(currentUser));
-                        localStorage.setItem('tarhal_passenger', JSON.stringify(currentUser));
-                        if (resData.token) {
-                            localStorage.setItem('tarhal_session_token', resData.token);
-                            localStorage.setItem('session_token', resData.token);
-                            localStorage.setItem('user_data', JSON.stringify(currentUser));
-                            localStorage.setItem('user_type', 'passenger');
+                        // تنظيف الـ URL بمسح الـ Hash منه عبر window.history.replaceState
+                        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                        window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+
+                        // التفعيل والتسجيل التلقائي فور نجاح تعيين الجلسة
+                        let passengerPhone = urlParams.get('phone');
+                        if (!passengerPhone) {
+                            passengerPhone = localStorage.getItem('pending_verify_phone') || getCookie('pending_verify_phone') || '';
                         }
+                        showNotification('🔄 جاري التحقق التلقائي وتفعيل الحساب...', 'info');
 
-                        // مزامنة مع Flutter
-                        FlutterBridge.postMessage('pwa_login', {
-                            id: currentUser.id,
-                            phone: currentUser.phone,
-                            role: 'passenger'
+                        const response = await fetch('/api/auth', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${accessToken}`
+                            },
+                            body: JSON.stringify({
+                                action: 'verify_google',
+                                access_token: accessToken,
+                                phone: passengerPhone,
+                                googleId: user.id,
+                                googleEmail: user.email,
+                                isGoogleSync: true
+                            })
                         });
 
-                        loadGoogleMaps();
-                        await loadDynamicVehiclePrices();
+                        const resData = await response.json();
+                        if (response.ok && resData.success) {
+                            showNotification('🎉 تم تفعيل حسابك بنجاح ومزامنته مع Google!', 'success');
 
-                        showPageLoader(true);
-                        setTimeout(() => {
-                            showScreen('home-screen');
-                            updateUserProfile();
-                            initRealtime();
-                            showPageLoader(false);
-                        }, 800);
+                            localStorage.removeItem('pending_verification_customer_id');
+                            localStorage.removeItem('pending_verification_customer_phone');
+                            localStorage.removeItem('pending_verify_phone');
 
-                        // إرسال إشعار جاهزية التطبيق لـ Flutter
-                        FlutterBridge.postMessage('pwa_ready', { app: 'passenger' });
-                        return; // الخروج الفوري لمنع استدعاء checkAuth() بشكل مزدوج
-                    } else {
-                        showNotification(resData.error || 'فشل تحديث حالة الحساب وتفعيله', 'error');
+                            currentUser = resData.user;
+                            localStorage.setItem('tarhal_customer', JSON.stringify(currentUser));
+                            localStorage.setItem('tarhal_passenger', JSON.stringify(currentUser));
+                            if (resData.token) {
+                                localStorage.setItem('tarhal_session_token', resData.token);
+                                localStorage.setItem('session_token', resData.token);
+                                localStorage.setItem('user_data', JSON.stringify(currentUser));
+                                localStorage.setItem('user_type', 'passenger');
+                            }
+
+                            // مزامنة مع Flutter
+                            FlutterBridge.postMessage('pwa_login', {
+                                id: currentUser.id,
+                                phone: currentUser.phone,
+                                role: 'passenger'
+                            });
+
+                            loadGoogleMaps();
+                            await loadDynamicVehiclePrices();
+
+                            showPageLoader(true);
+                            setTimeout(() => {
+                                showScreen('home-screen');
+                                updateUserProfile();
+                                initRealtime();
+                                showPageLoader(false);
+                            }, 800);
+
+                            // إرسال إشعار جاهزية التطبيق لـ Flutter
+                            FlutterBridge.postMessage('pwa_ready', { app: 'passenger' });
+                        } else {
+                            showNotification(resData.error || 'فشل تحديث حالة الحساب وتفعيله', 'error');
+                        }
                     }
+                } catch (err) {
+                    console.error('Exception setting session from hash:', err);
                 }
-            } catch (err) {
-                console.error('Exception setting session from hash:', err);
-            }
+            }, 3000);
+            return; // الخروج الفوري لمنع تنفيذ باقي الـ DOMContentLoaded بشكل متوازي ومفاجئ
         }
     } else if (urlParams.get('google_sync') === 'true') {
         console.log('🔔 Detect Google login redirect search query param (no hash)...');
