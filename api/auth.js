@@ -183,13 +183,16 @@ export default async function handler(req, res) {
             const targetGoogleEmail = googleEmail || (decodedUser ? decodedUser.email : null) || (decodedSupabaseUser ? decodedSupabaseUser.email : null);
 
             // 2. Validate WhatsApp phone number (phone)
-            let targetPhone = phone;
-            if (!targetPhone) {
-                // Search in request query or headers/cookies as a fallback
-                targetPhone = req.query?.phone;
-                if (!targetPhone && req.headers?.cookie) {
-                    const cookies = Object.fromEntries(req.headers.cookie.split(';').map(c => c.trim().split('=')));
+            let targetPhone = phone || req.query?.phone || req.cookies?.pending_verify_phone || req.cookies?.pending_verification_customer_phone;
+            if (!targetPhone && req.headers?.cookie) {
+                try {
+                    const cookies = Object.fromEntries(req.headers.cookie.split(';').map(c => {
+                        const parts = c.trim().split('=');
+                        return [parts[0], parts.slice(1).join('=')];
+                    }));
                     targetPhone = cookies.pending_verify_phone || cookies.pending_verification_customer_phone;
+                } catch (cookieErr) {
+                    console.error('[Auth API] Error parsing cookies:', cookieErr);
                 }
             }
 
@@ -198,7 +201,15 @@ export default async function handler(req, res) {
                 return res.status(400).json({ success: false, error: 'رقم الواتساب مطلوب لإكمال التفعيل' });
             }
 
-            const sanitizedPhone = targetPhone.trim();
+            // Clean and sanitize the phone number
+            let cleanedPhone = targetPhone.toString().replace(/\D/g, '');
+            if (cleanedPhone.startsWith('249') && cleanedPhone.length === 12) {
+                cleanedPhone = '0' + cleanedPhone.substring(3);
+            } else if (cleanedPhone.length === 9 && (cleanedPhone.startsWith('9') || cleanedPhone.startsWith('1'))) {
+                cleanedPhone = '0' + cleanedPhone;
+            }
+
+            const sanitizedPhone = cleanedPhone.trim();
 
             // 3. Search in customers table by WhatsApp phone number
             const { data: customer, error: fetchError } = await supabase
