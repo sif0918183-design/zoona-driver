@@ -1,9 +1,6 @@
-127.0.0.1 - - [30/Jul/2026 03:54:22] "HEAD /passenger_app/index.html HTTP/1.1" 200 -
-127.0.0.1 - - [30/Jul/2026 03:56:46] "GET /passenger_app/index.html HTTP/1.1" 200 -
-127.0.0.1 - - [30/Jul/2026 03:56:46] "GET /shared/theme.css HTTP/1.1" 200 -
-127.0.0.1 - - [30/Jul/2026 03:56:46] code 404, message File not found
-127.0.0.1 - - [30/Jul/2026 03:56:46] "GET /api/supabase-config HTTP/1.1" 404 -
-127.0.0.1 - - [30/Jul/2026 03:56:46] "GET /shared/supabase-config.js HTTP/1.1" 200 -
-127.0.0.1 - - [30/Jul/2026 03:56:46] "GET /assets/branding/icon-512x512.png HTTP/1.1" 200 -
-127.0.0.1 - - [30/Jul/2026 03:56:46] "GET /sound-manager.js HTTP/1.1" 200 -
-127.0.0.1 - - [30/Jul/2026 03:56:46] "GET /api/firebase-config.js HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jul/2026 04:56:58] "GET /passenger_app/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jul/2026 04:56:58] "GET /shared/theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jul/2026 04:56:58] "GET /api/supabase-config.js HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jul/2026 04:56:58] "GET /sound-manager.js HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jul/2026 04:56:58] "GET /assets/branding/icon-512x512.png HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jul/2026 04:56:58] "GET /shared/supabase-config.js HTTP/1.1" 200 -
