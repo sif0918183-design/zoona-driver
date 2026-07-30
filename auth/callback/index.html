@@ -72,6 +72,14 @@
     </div>
 
     <script>
+        // Helper to read a cookie
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
+            return '';
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             console.log("🚀 Auth Callback Page Loaded");
 
@@ -100,8 +108,14 @@
                 const isZoona = urlParams.get('platform') === 'zoona' || (navigator.userAgent && navigator.userAgent.toLowerCase().includes('zoona'));
                 const scheme = isZoona ? 'zoona' : 'tracka';
 
+                let phone = urlParams.get('phone');
+                if (!phone) {
+                    phone = localStorage.getItem('pending_verify_phone') || getCookie('pending_verify_phone') || '';
+                }
+                const phoneParam = phone ? `?phone=${encodeURIComponent(phone)}` : '';
+
                 // Construct the custom deep link redirect
-                const deepLink = `${scheme}://auth-callback${hash || ''}`;
+                const deepLink = `${scheme}://auth-callback${phoneParam}${hash || ''}`;
                 console.log("📱 Redirecting back to mobile app with Deep Link:", deepLink);
 
                 document.getElementById('status-title').innerText = "جاري إعادة التوجيه للتطبيق...";
@@ -146,7 +160,10 @@
 
                         // Redirect to passenger index with google_sync param and same hash
                         setTimeout(() => {
-                            const phone = urlParams.get('phone') || '';
+                            let phone = urlParams.get('phone');
+                            if (!phone) {
+                                phone = localStorage.getItem('pending_verify_phone') || getCookie('pending_verify_phone') || '';
+                            }
                             const phoneParam = phone ? `&phone=${encodeURIComponent(phone)}` : '';
                             window.location.href = `/passenger_app/index.html?google_sync=true${phoneParam}${hash || ''}`;
                         }, 1000);

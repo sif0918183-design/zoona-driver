@@ -183,14 +183,14 @@ export default async function handler(req, res) {
             const targetGoogleEmail = googleEmail || (decodedUser ? decodedUser.email : null) || (decodedSupabaseUser ? decodedSupabaseUser.email : null);
 
             // 2. Validate WhatsApp phone number (phone)
-            let targetPhone = phone || req.query?.phone || req.cookies?.pending_verify_phone || req.cookies?.pending_verification_customer_phone;
+            let targetPhone = req.body?.phone || req.query?.phone || req.cookies?.pending_verify_phone;
             if (!targetPhone && req.headers?.cookie) {
                 try {
                     const cookies = Object.fromEntries(req.headers.cookie.split(';').map(c => {
                         const parts = c.trim().split('=');
                         return [parts[0], parts.slice(1).join('=')];
                     }));
-                    targetPhone = cookies.pending_verify_phone || cookies.pending_verification_customer_phone;
+                    targetPhone = cookies.pending_verify_phone;
                 } catch (cookieErr) {
                     console.error('[Auth API] Error parsing cookies:', cookieErr);
                 }
@@ -259,6 +259,8 @@ export default async function handler(req, res) {
                 is_verified: true
             };
             delete safeUser.password;
+
+            res.setHeader('Set-Cookie', 'pending_verify_phone=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; SameSite=Lax; Secure');
 
             return res.status(200).json({
                 success: true,
