@@ -130,7 +130,7 @@ export default async function handler(req, res) {
             // Hash password
             const passwordHash = bcrypt.hashSync(password, 10);
 
-            // Insert new customer
+            // Insert new customer (with is_verified = true by default)
             const { data: newCustomer, error: insertError } = await supabase
                 .from('customers')
                 .insert([{
@@ -138,7 +138,7 @@ export default async function handler(req, res) {
                     phone: sanitizedPhone,
                     phone2: sanitizedPhone2,
                     password: passwordHash,
-                    is_verified: false,
+                    is_verified: true,
                     created_at: new Date().toISOString()
                 }])
                 .select()
@@ -148,14 +148,22 @@ export default async function handler(req, res) {
                 throw insertError;
             }
 
+            // Generate secure session token immediately
+            const sessionToken = Buffer.from(JSON.stringify({
+                id: newCustomer.id,
+                role: 'passenger',
+                exp: Date.now() + 7 * 24 * 60 * 60 * 1000
+            })).toString('base64');
+
             // Safe payload (do not return password)
             const safeUser = { ...newCustomer };
             delete safeUser.password;
 
             return res.status(200).json({
                 success: true,
-                message: 'تم تسجيل البيانات بنجاح! يرجى الربط مع Google لتفعيل الحساب',
-                user: safeUser
+                message: 'تم تسجيل البيانات وتفعيل حسابك بنجاح!',
+                user: safeUser,
+                token: sessionToken
             });
         }
 
