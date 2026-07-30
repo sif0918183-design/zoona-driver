@@ -9,26 +9,6 @@
             if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
             return '';
         }
-
-        // التقاط توكنات Google OAuth وإعادة توجيهها إلى الـ Deep Link للتطبيق لبيئة الموبايل
-        if (window.location.hash && window.location.hash.includes('access_token=')) {
-            const urlParams = new URLSearchParams(window.location.search);
-            const isApp = urlParams.get('platform') === 'app' ||
-                          urlParams.get('platform') === 'webview' ||
-                          urlParams.get('platform') === 'zoona' ||
-                          urlParams.get('platform') === 'tracka' ||
-                          (navigator.userAgent && (navigator.userAgent.toLowerCase().includes('tracka') || navigator.userAgent.toLowerCase().includes('zoona'))) ||
-                          window.flutter_inappwebview;
-
-            if (isApp && window.location.href.startsWith('https://tracka.zoonasd.com')) {
-                let phone = urlParams.get('phone');
-                if (!phone) {
-                    phone = localStorage.getItem('pending_verify_phone') || getCookie('pending_verify_phone') || '';
-                }
-                const phoneParam = phone ? `?phone=${encodeURIComponent(phone)}` : '';
-                window.location.href = 'tracka://auth-callback' + phoneParam + window.location.hash;
-            }
-        }
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -59,6 +39,25 @@
     <script src="../shared/supabase-config.js"></script>
     <script src="../sound-manager.js"></script>
     
+    <!-- Dynamic Firebase Config -->
+    <script src="/api/firebase-config.js"></script>
+
+    <!-- Firebase Web SDK Modular Setup -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        // Initialize Firebase
+        const firebaseConfig = window.FIREBASE_CONFIG || {};
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Expose Firebase elements to window for global access
+        window.firebaseAuth = auth;
+        window.RecaptchaVerifier = RecaptchaVerifier;
+        window.signInWithPhoneNumber = signInWithPhoneNumber;
+    </script>
+
     <style>
         /* الأنماط الأساسية - مطابقة تماماً لتطبيق السائق */
         :root {
@@ -1859,20 +1858,43 @@
                 </button>
             </form>
             
-            <div id="verification-section" class="hidden verification-box">
-                <div class="verification-content">
-                    <i class="ph-light ph-check-circle verification-icon neon-icon-emerald"></i>
-                    <h3>تم تسجيل بياناتك بنجاح!</h3>
-                    <p>لتفعيل الحساب، يرجى مزامنته مع Google بالضغط على الزر أدناه:</p>
+            <div id="verification-section" class="hidden verification-box" style="margin-top: 15px; padding: 20px; background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow); border: 1.5px solid var(--driver-light);">
+                <div class="verification-content" style="text-align: center;">
+                    <i class="ph-light ph-shield-check verification-icon neon-icon-emerald" style="font-size: 48px; color: var(--driver); margin-bottom: 12px; display: block;"></i>
+                    <h3 style="font-size: 18px; font-weight: 800; color: var(--driver); margin-bottom: 10px;">تحقق من رقم الهاتف</h3>
+                    <p style="font-size: 14px; color: var(--gray); margin-bottom: 15px;" id="verification-phone-hint">يرجى إكمال التحقق لتفعيل حسابك.</p>
                     
-                    <button type="button" class="btn btn-secondary" onclick="syncWithGoogleOAuth()" style="background: white; border: 1.5px solid var(--Tracka-primary); color: var(--Tracka-primary); display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%;">
-                        <i class="ph-bold ph-google-logo" style="color: #4285F4; font-size: 20px;"></i>
-                        مزامنة وتفعيل حساب Google
-                    </button>
+                    <!-- Container for Firebase reCAPTCHA -->
+                    <div id="recaptcha-container" style="margin: 15px auto; display: flex; justify-content: center;"></div>
                     
-                    <p class="verification-note">
-                        بمجرد تسجيل الدخول بحساب Google، سيتم تفعيل حسابك تلقائياً وبشكل فوري
-                    </p>
+                    <!-- Actions for Verification -->
+                    <div id="otp-send-action-box">
+                        <button type="button" class="btn btn-driver" onclick="sendFirebaseOTP()" style="width: 100%;">
+                            <i class="ph-bold ph-paper-plane"></i>
+                            إرسال رمز التحقق (OTP)
+                        </button>
+                    </div>
+
+                    <!-- Code input box (hidden initially) -->
+                    <div id="otp-input-box" class="hidden" style="margin-top: 15px;">
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label class="form-label" for="verification-code" style="font-weight: 700; margin-bottom: 6px;">أدخل رمز التحقق (6 أرقام):</label>
+                            <input type="text" id="verification-code" class="form-input"
+                                   placeholder="XXXXXX" maxlength="6" inputmode="numeric" pattern="[0-9]*"
+                                   style="text-align: center; letter-spacing: 4px; font-size: 20px; font-weight: bold;"
+                                   oninput="this.value = this.value.replace(/\D/g, '').substring(0, 6)">
+                        </div>
+
+                        <button type="button" class="btn btn-primary" onclick="confirmFirebaseOTP()" style="width: 100%; margin-bottom: 10px;">
+                            <i class="ph-bold ph-check-square"></i>
+                            تأكيد وتفعيل الحساب
+                        </button>
+
+                        <button type="button" class="btn btn-outline" onclick="resetOTPForm()" style="width: 100%;">
+                            <i class="ph-bold ph-arrow-counter-clockwise"></i>
+                            إعادة الإرسال / تعديل الرقم
+                        </button>
+                    </div>
                 </div>
             </div>
             
@@ -2390,188 +2412,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // انتظار جاهزية التخزين (خاص بالـ WebView)
     await FlutterBridge.waitForStorage();
 
-    // =====================================================
-    // Google Sync / Redirect Detector & Automatic Hash Login Handler
-    // =====================================================
     const urlParams = new URLSearchParams(window.location.search);
-    const hasHash = window.location.hash && window.location.hash.includes('access_token');
-
-    if (hasHash) {
-        console.log('🔑 Automatic processing of Google OAuth Hash Token...');
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const accessToken = hashParams.get('access_token');
-        const refreshToken = hashParams.get('refresh_token');
-
-        if (accessToken) {
-            // إطلاق الرابط العميق لإغلاق المتصفح الخارجي فور العودة من Google OAuth
-            const deepLink = "tracka://auth-callback" + window.location.search + window.location.hash;
-            window.location.href = deepLink;
-
-            // مسار بديل (Fallback) يظهر لوحة التحكم في المتصفح إذا لم يلتقط التطبيق الرابط العميق خلال 3 ثوانٍ
-            setTimeout(async () => {
-                try {
-                    // استدعاء دالة تعيين الجلسة صراحةً
-                    const { data, error } = await tarhalDB.auth.setSession({
-                        access_token: accessToken,
-                        refresh_token: refreshToken || ''
-                    });
-
-                    if (error) {
-                        console.error('Error in setSession:', error);
-                    }
-
-                    if (data && data.session) {
-                        const user = data.session.user;
-                        console.log('👤 Authenticated user from session:', user);
-
-                        // تنظيف الـ URL بمسح الـ Hash منه عبر window.history.replaceState
-                        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-                        window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
-
-                        // التفعيل والتسجيل التلقائي فور نجاح تعيين الجلسة
-                        let passengerPhone = urlParams.get('phone');
-                        if (!passengerPhone) {
-                            passengerPhone = localStorage.getItem('pending_verify_phone') || getCookie('pending_verify_phone') || '';
-                        }
-                        showNotification('🔄 جاري التحقق التلقائي وتفعيل الحساب...', 'info');
-
-                        const response = await fetch('/api/auth', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${accessToken}`
-                            },
-                            body: JSON.stringify({
-                                action: 'verify_google',
-                                access_token: accessToken,
-                                phone: passengerPhone,
-                                googleId: user.id,
-                                googleEmail: user.email,
-                                isGoogleSync: true
-                            })
-                        });
-
-                        const resData = await response.json();
-                        if (response.ok && resData.success) {
-                            showNotification('🎉 تم تفعيل حسابك بنجاح ومزامنته مع Google!', 'success');
-
-                            localStorage.removeItem('pending_verification_customer_id');
-                            localStorage.removeItem('pending_verification_customer_phone');
-                            localStorage.removeItem('pending_verify_phone');
-
-                            currentUser = resData.user;
-                            localStorage.setItem('tarhal_customer', JSON.stringify(currentUser));
-                            localStorage.setItem('tarhal_passenger', JSON.stringify(currentUser));
-                            if (resData.token) {
-                                localStorage.setItem('tarhal_session_token', resData.token);
-                                localStorage.setItem('session_token', resData.token);
-                                localStorage.setItem('user_data', JSON.stringify(currentUser));
-                                localStorage.setItem('user_type', 'passenger');
-                            }
-
-                            // مزامنة مع Flutter
-                            FlutterBridge.postMessage('pwa_login', {
-                                id: currentUser.id,
-                                phone: currentUser.phone,
-                                role: 'passenger'
-                            });
-
-                            loadGoogleMaps();
-                            await loadDynamicVehiclePrices();
-
-                            showPageLoader(true);
-                            setTimeout(() => {
-                                showScreen('home-screen');
-                                updateUserProfile();
-                                initRealtime();
-                                showPageLoader(false);
-                            }, 800);
-
-                            // إرسال إشعار جاهزية التطبيق لـ Flutter
-                            FlutterBridge.postMessage('pwa_ready', { app: 'passenger' });
-                        } else {
-                            showNotification(resData.error || 'فشل تحديث حالة الحساب وتفعيله', 'error');
-                        }
-                    }
-                } catch (err) {
-                    console.error('Exception setting session from hash:', err);
-                }
-            }, 3000);
-            return; // الخروج الفوري لمنع تنفيذ باقي الـ DOMContentLoaded بشكل متوازي ومفاجئ
-        }
-    } else if (urlParams.get('google_sync') === 'true') {
-        console.log('🔔 Detect Google login redirect search query param (no hash)...');
-        setTimeout(async () => {
-            try {
-                const { data: { session }, error: sessionErr } = await tarhalDB.auth.getSession();
-                if (session && session.user) {
-                    const googleUser = session.user;
-                    const pendingCustomerId = localStorage.getItem('pending_verification_customer_id');
-                    let passengerPhone = urlParams.get('phone');
-                    if (!passengerPhone) {
-                        passengerPhone = localStorage.getItem('pending_verify_phone') || getCookie('pending_verify_phone') || '';
-                    }
-
-                    if (pendingCustomerId || passengerPhone) {
-                        showNotification('🔄 جاري التحقق من المزامنة وتفعيل الحساب...', 'info');
-
-                        const verifyRes = await fetch('/api/auth', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                action: 'verify_google',
-                                customerId: pendingCustomerId,
-                                googleId: googleUser.id,
-                                googleEmail: googleUser.email,
-                                access_token: session?.access_token || '',
-                                phone: passengerPhone
-                            })
-                        });
-
-                        const verifyData = await verifyRes.json();
-                        if (verifyRes.ok && verifyData.success) {
-                            showNotification('🎉 تم تفعيل حسابك بنجاح ومزامنته مع Google!', 'success');
-
-                            localStorage.removeItem('pending_verification_customer_id');
-                            localStorage.removeItem('pending_verification_customer_phone');
-                            localStorage.removeItem('pending_verify_phone');
-
-                            currentUser = verifyData.user;
-                            localStorage.setItem('tarhal_customer', JSON.stringify(currentUser));
-                            localStorage.setItem('tarhal_passenger', JSON.stringify(currentUser));
-                            if (verifyData.token) {
-                                localStorage.setItem('tarhal_session_token', verifyData.token);
-                                localStorage.setItem('session_token', verifyData.token);
-                                localStorage.setItem('user_data', JSON.stringify(currentUser));
-                                localStorage.setItem('user_type', 'passenger');
-                            }
-
-                            const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-                            window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
-
-                            showPageLoader(true);
-                            setTimeout(() => {
-                                showScreen('home-screen');
-                                updateUserProfile();
-                                initRealtime();
-                                showPageLoader(false);
-                            }, 800);
-
-                            return;
-                        } else {
-                            showNotification(verifyData.error || 'فشل تحديث حالة الحساب وتفعيله', 'error');
-                        }
-                    } else {
-                        console.log('Google Sync redirect without pending customer ID');
-                    }
-                } else {
-                    console.log('Google Sync redirect, but no active Google session found');
-                }
-            } catch (e) {
-                console.error('Error during Google verification sync:', e);
-            }
-        }, 1500);
-    }
 
     // العودة من منصة السفريات تنظف حالات البحث
     if (document.referrer && document.referrer.includes('travel-platform.html')) {
@@ -2904,30 +2745,160 @@ async function initTurnstileWidget() {
     }
 }
 
-async function syncWithGoogleOAuth() {
+function getE164Phone(phone) {
+    const formatted = formatPhoneNumber(phone);
+    return '+' + formatted;
+}
+
+function initFirebaseRecaptcha() {
+    const container = document.getElementById('recaptcha-container');
+    if (container) {
+        container.innerHTML = '';
+    }
+
+    if (window.recaptchaVerifier) {
+        try {
+            window.recaptchaVerifier.clear();
+        } catch(e) { console.warn(e); }
+        window.recaptchaVerifier = null;
+    }
+
+    document.getElementById('otp-send-action-box').classList.remove('hidden');
+    document.getElementById('otp-input-box').classList.add('hidden');
+
     try {
-        showNotification('جاري توجيهك للمزامنة مع حساب Google...', 'info');
-
-        const phone = localStorage.getItem('pending_verify_phone') || localStorage.getItem('pending_verification_customer_phone') || getCookie('pending_verify_phone') || '';
-
-        // Save to cookie to guarantee no data loss
-        document.cookie = `pending_verify_phone=${encodeURIComponent(phone)}; path=/; max-age=3600; SameSite=Lax; Secure`;
-
-        const targetRedirectTo = `${window.location.origin}/passenger_app/index.html?phone=${encodeURIComponent(phone)}`;
-        console.log('🌐 Google OAuth RedirectTo Forced to:', targetRedirectTo);
-
-        const { error } = await tarhalDB.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-                redirectTo: targetRedirectTo
+        window.recaptchaVerifier = new window.RecaptchaVerifier(window.firebaseAuth, 'recaptcha-container', {
+            'size': 'normal',
+            'callback': (response) => {
+                console.log('reCAPTCHA solved successfully');
+            },
+            'expired-callback': () => {
+                showNotification('انتهت صلاحية reCAPTCHA. يرجى المحاولة مجدداً.', 'warning');
             }
         });
-        if (error) {
-            showNotification('فشل بدء مزامنة Google: ' + error.message, 'error');
-        }
-    } catch (e) {
-        showNotification('حدث خطأ أثناء الاتصال بمزود Google', 'error');
+
+        window.recaptchaVerifier.render().then((widgetId) => {
+            window.recaptchaWidgetId = widgetId;
+        });
+    } catch (err) {
+        console.error("Error initializing Recaptcha:", err);
+        showNotification("حدث خطأ أثناء تهيئة أداة التحقق البشري", "error");
     }
+}
+
+async function sendFirebaseOTP() {
+    const phone = localStorage.getItem('pending_verify_phone');
+    if (!phone) {
+        showNotification('رقم الهاتف للتفعيل مفقود. يرجى تسجيل الدخول مرة أخرى.', 'error');
+        return;
+    }
+
+    const e164Phone = getE164Phone(phone);
+    console.log("Sending OTP to:", e164Phone);
+
+    if (!window.recaptchaVerifier) {
+        showNotification('أداة التحقق البشري غير جاهزة. يرجى الانتظار.', 'warning');
+        return;
+    }
+
+    showNotification('جاري إرسال رمز التحقق...', 'info');
+
+    try {
+        const confirmationResult = await window.signInWithPhoneNumber(window.firebaseAuth, e164Phone, window.recaptchaVerifier);
+        window.confirmationResult = confirmationResult;
+
+        showNotification('تم إرسال رمز التحقق بنجاح!', 'success');
+
+        document.getElementById('otp-send-action-box').classList.add('hidden');
+        document.getElementById('otp-input-box').classList.remove('hidden');
+        document.getElementById('verification-code').focus();
+
+    } catch (err) {
+        console.error("Firebase SMS send error:", err);
+        showNotification('فشل إرسال الرمز: ' + (err.message || err), 'error');
+
+        initFirebaseRecaptcha();
+    }
+}
+
+async function confirmFirebaseOTP() {
+    const code = document.getElementById('verification-code').value.trim();
+    if (!code || code.length !== 6) {
+        showNotification('الرجاء إدخال الرمز المكون من 6 أرقام بشكل صحيح', 'warning');
+        return;
+    }
+
+    if (!window.confirmationResult) {
+        showNotification('جلسة التحقق غير صالحة. يرجى إعادة إرسال الرمز.', 'error');
+        return;
+    }
+
+    showNotification('جاري تأكيد الرمز وتفعيل الحساب...', 'info');
+
+    try {
+        const result = await window.confirmationResult.confirm(code);
+        const user = result.user;
+        console.log("Firebase Auth success. Verified user phone:", user.phoneNumber);
+
+        const phone = localStorage.getItem('pending_verify_phone');
+
+        const response = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'verify_phone',
+                phone: phone
+            })
+        });
+
+        const resData = await response.json();
+        if (response.ok && resData.success) {
+            showNotification('🎉 تم تفعيل وتأكيد حسابك بنجاح!', 'success');
+
+            localStorage.removeItem('pending_verification_customer_id');
+            localStorage.removeItem('pending_verification_customer_phone');
+            localStorage.removeItem('pending_verify_phone');
+
+            currentUser = resData.user;
+            localStorage.setItem('tarhal_customer', JSON.stringify(currentUser));
+            localStorage.setItem('tarhal_passenger', JSON.stringify(currentUser));
+
+            if (resData.token) {
+                localStorage.setItem('tarhal_session_token', resData.token);
+                localStorage.setItem('session_token', resData.token);
+                localStorage.setItem('user_data', JSON.stringify(currentUser));
+                localStorage.setItem('user_type', 'passenger');
+            }
+
+            FlutterBridge.postMessage('pwa_login', {
+                id: currentUser.id,
+                phone: currentUser.phone,
+                role: 'passenger'
+            });
+
+            loadGoogleMaps();
+            await loadDynamicVehiclePrices();
+
+            showPageLoader(true);
+            setTimeout(() => {
+                showScreen('home-screen');
+                updateUserProfile();
+                initRealtime();
+                showPageLoader(false);
+            }, 800);
+
+        } else {
+            showNotification(resData.error || 'فشل تفعيل الحساب في قاعدة البيانات', 'error');
+        }
+
+    } catch (err) {
+        console.error("OTP verification failed:", err);
+        showNotification('رمز التحقق غير صحيح أو انتهت صلاحيته', 'error');
+    }
+}
+
+function resetOTPForm() {
+    initFirebaseRecaptcha();
 }
 
 function checkAgreement() {
@@ -3080,7 +3051,7 @@ async function loginCustomer() {
 
         if (!response.ok || !resData.success) {
             if (resData.customerId && resData.verified === false) {
-                showNotification('حسابك غير مفعّل. جاري توجيهك لنافذة التحقق ومزامنة Google...', 'warning');
+                showNotification('حسابك غير مفعّل. جاري توجيهك لنافذة التحقق من الهاتف...', 'warning');
                 loginBtn.innerHTML = originalHTML;
                 loginBtn.disabled = false;
 
@@ -3089,14 +3060,14 @@ async function loginCustomer() {
                 localStorage.setItem('pending_verify_phone', phone);
                 localStorage.setItem('pending_verification_customer_phone', phone);
 
-                // Transfer user to the Google sync verification screen automatically
+                // Transfer user to the verification screen automatically
                 showScreen('customer-register-screen');
                 document.getElementById('customerRegisterForm').classList.add('hidden');
                 document.getElementById('verification-section').classList.remove('hidden');
 
-                setTimeout(() => {
-                    syncWithGoogleOAuth();
-                }, 800);
+                // Update verification layout
+                document.getElementById('verification-phone-hint').textContent = `سيتم إرسال رمز التحقق إلى الرقم: ${phone}`;
+                initFirebaseRecaptcha();
                 return;
             }
             showNotification(resData.error || 'رقم الواتساب غير مسجل أو كلمة المرور غير صحيحة', 'error');
@@ -3219,21 +3190,20 @@ async function registerCustomer() {
             return;
         }
 
-        showNotification('تم تسجيل البيانات بنجاح! جاري التفعيل عبر Google...', 'success');
+        showNotification('تم تسجيل البيانات بنجاح! يرجى إكمال التحقق لتفعيل الحساب.', 'success');
 
         // Save the pending customer ID and WhatsApp phone number immediately
         localStorage.setItem('pending_verification_customer_id', resData.user.id);
         localStorage.setItem('pending_verify_phone', phone);
         localStorage.setItem('pending_verification_customer_phone', phone);
 
-        // Transition to Google sync/verification screen
+        // Transition to verification screen
         document.getElementById('customerRegisterForm').classList.add('hidden');
         document.getElementById('verification-section').classList.remove('hidden');
 
-        // التوجه فوراً لصفحة التوثيق المربوطة بـ Google OAuth
-        setTimeout(() => {
-            syncWithGoogleOAuth();
-        }, 800);
+        // Update verification layout
+        document.getElementById('verification-phone-hint').textContent = `سيتم إرسال رمز التحقق إلى الرقم: ${phone}`;
+        initFirebaseRecaptcha();
 
     } catch (error) {
         console.error('Registration error:', error);
