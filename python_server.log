@@ -48,3 +48,13 @@
 127.0.0.1 - - [31/Jul/2026 13:54:11] "GET /driver_app/ HTTP/1.1" 200 -
 127.0.0.1 - - [31/Jul/2026 13:54:11] "GET /driver_app/manifest.json HTTP/1.1" 200 -
 127.0.0.1 - - [31/Jul/2026 13:54:15] "GET /admin-login.html HTTP/1.1" 200 -
+127.0.0.1 - - [31/Jul/2026 14:24:02] "GET /driver_app/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [31/Jul/2026 14:24:03] "GET /sound-manager.js HTTP/1.1" 200 -
+127.0.0.1 - - [31/Jul/2026 14:24:03] "GET /shared/supabase-config.js HTTP/1.1" 200 -
+127.0.0.1 - - [31/Jul/2026 14:24:03] "GET /assets/branding/icon-512x512.png HTTP/1.1" 200 -
+127.0.0.1 - - [31/Jul/2026 14:24:03] "GET /shared/notification-utils.js HTTP/1.1" 200 -
+127.0.0.1 - - [31/Jul/2026 14:24:03] "GET /shared/theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [31/Jul/2026 14:24:03] "GET /driver_app/sw-driver.js HTTP/1.1" 200 -
+127.0.0.1 - - [31/Jul/2026 14:24:03] "GET /driver_app/manifest.json HTTP/1.1" 200 -
+127.0.0.1 - - [31/Jul/2026 14:24:03] "GET /driver_app/ HTTP/1.1" 200 -
+127.0.0.1 - - [31/Jul/2026 14:24:07] "GET /admin-login.html HTTP/1.1" 200 -
