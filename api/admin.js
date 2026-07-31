@@ -146,11 +146,121 @@ export default async function handler(req, res) {
         if (action === 'list_drivers') {
             const { data, error } = await supabase
                 .from('drivers')
-                .select('id, full_name, whatsapp_number, car_model, car_type, car_plate, car_color, balance, is_active, is_banned, ban_until, ban_reason, created_at')
+                .select('id, full_name, whatsapp_number, phone, car_model, car_type, car_plate, plate_number, car_color, balance, is_active, is_approved, is_banned, ban_until, ban_reason, created_at, license_image_url, vehicle_registration_url, car_photo_url, plate_photo_url')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
             return res.status(200).json({ success: true, drivers: data });
+        }
+
+        // --- LIST PENDING DRIVERS ---
+        if (action === 'list_pending_drivers') {
+            const { data, error } = await supabase
+                .from('drivers')
+                .select('id, full_name, whatsapp_number, phone, car_model, car_type, car_plate, plate_number, car_color, balance, is_active, is_approved, created_at, license_image_url, vehicle_registration_url, car_photo_url, plate_photo_url')
+                .eq('is_approved', false)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            return res.status(200).json({ success: true, drivers: data });
+        }
+
+        // --- APPROVE DRIVER ---
+        if (action === 'approve_driver') {
+            const { id, car_type, balance } = req.body;
+            if (!id || !car_type) {
+                return res.status(400).json({ success: false, error: 'بيانات غير مكتملة للموافقة' });
+            }
+
+            const initialBalance = parseInt(balance) || 10000;
+
+            const { data: driver, error: fErr } = await supabase
+                .from('drivers')
+                .select('*')
+                .eq('id', id)
+                .single();
+
+            if (fErr) throw fErr;
+
+            const { error: uErr } = await supabase
+                .from('drivers')
+                .update({
+                    car_type: car_type,
+                    balance: initialBalance,
+                    is_approved: true,
+                    is_active: true
+                })
+                .eq('id', id);
+
+            if (uErr) throw uErr;
+
+            // Log balance transaction if balance is set
+            if (initialBalance > 0) {
+                await supabase
+                    .from('balance_transactions')
+                    .insert([{
+                        driver_id: id,
+                        amount: initialBalance,
+                        type: 'admin_add',
+                        description: `تفعيل الحساب ورصيد ابتدائي بقيمة ${initialBalance} جنيه`
+                    }]);
+            }
+
+            return res.status(200).json({ success: true });
+        }
+
+        // --- UPDATE DRIVER DETAILS ---
+        if (action === 'update_driver_details') {
+            const {
+                id,
+                full_name,
+                whatsapp_number,
+                phone,
+                car_model,
+                plate_number,
+                car_color,
+                license_image_url,
+                vehicle_registration_url,
+                car_photo_url,
+                plate_photo_url,
+                car_type,
+                balance,
+                is_approved,
+                is_active
+            } = req.body;
+
+            if (!id) {
+                return res.status(400).json({ success: false, error: 'id is required' });
+            }
+
+            const updates = {
+                full_name: full_name,
+                whatsapp_number: whatsapp_number,
+                phone: phone,
+                car_model: car_model,
+                plate_number: plate_number,
+                car_plate: plate_number, // Sync both fields
+                car_color: car_color,
+                license_image_url: license_image_url,
+                vehicle_registration_url: vehicle_registration_url,
+                car_photo_url: car_photo_url,
+                plate_photo_url: plate_photo_url,
+                car_type: car_type,
+                balance: balance !== undefined ? parseInt(balance) : undefined,
+                is_approved: is_approved,
+                is_active: is_active
+            };
+
+            // Clean any undefined properties
+            Object.keys(updates).forEach(key => updates[key] === undefined && delete updates[key]);
+
+            const { error } = await supabase
+                .from('drivers')
+                .update(updates)
+                .eq('id', id);
+
+            if (error) throw error;
+            return res.status(200).json({ success: true });
         }
 
         // --- GET CUSTOMER DETAILS ---

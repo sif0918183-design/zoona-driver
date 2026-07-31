@@ -4,6 +4,7 @@
     "bcryptjs": "^3.0.3",
     "firebase-admin": "^13.6.1",
     "googleapis": "^128.0.0",
+    "imagekit": "^5.2.0",
     "web-push": "^3.6.7"
   }
 }
