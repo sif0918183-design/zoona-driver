@@ -1242,13 +1242,14 @@
         async function submitComplaint(complaintData) {
             try {
                 const token = localStorage.getItem('session_token');
-                const response = await fetch('/api/complaints', {
+                const response = await fetch('/api/rides', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': token ? `Bearer ${token}` : ''
                     },
                     body: JSON.stringify({
+                        action: 'submit_complaint',
                         userId: currentUser.id,
                         userType: userType,
                         userName: complaintData.name,

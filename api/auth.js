@@ -74,97 +74,217 @@ export default async function handler(req, res) {
             return res.status(400).json({ success: false, error: 'Action is required' });
         }
 
-        // --- REGISTER PASSENGER ---
+        // --- REGISTER PASSENGER / DRIVER ---
         if (action === 'register') {
-            if (role !== 'passenger') {
-                return res.status(400).json({ success: false, error: 'Only passengers can register directly' });
-            }
-            if (!fullName || !phone || !password || !phone2) {
-                return res.status(400).json({ success: false, error: 'الرجاء إكمال جميع الحقول الإلزامية' });
-            }
-
-            // Sanitize input
-            const sanitizedPhone = phone.trim();
-            const sanitizedFullName = fullName.trim();
-            const sanitizedPhone2 = phone2.trim();
-
-            // Validate Full Name is exactly 4 Arabic names
-            const cleanName = sanitizedFullName.replace(/\s+/g, ' ');
-            const parts = cleanName.split(' ');
-            const arabicRegex = /^[\u0600-\u06FF]+$/;
-            if (parts.length !== 4 || !parts.every(part => arabicRegex.test(part))) {
-                return res.status(400).json({ success: false, error: 'الاسم الرباعي الكامل باللغة العربية مطلوب ومحدد بأربعة أسماء فقط' });
-            }
-
-            // Verify Turnstile Token
-            if (!turnstileToken) {
-                return res.status(400).json({ success: false, error: 'الرجاء إكمال التحقق البشري (Turnstile) أولاً' });
-            }
-            const turnstileSecret = process.env.TURNSTILE_SECRET_KEY || '1x0000000000000000000000000000000AA';
-            try {
-                const tsRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `secret=${encodeURIComponent(turnstileSecret)}&response=${encodeURIComponent(turnstileToken)}`
-                });
-                const tsData = await tsRes.json();
-                if (!tsData.success) {
-                    return res.status(400).json({ success: false, error: 'فشل التحقق البشري (Turnstile)، يرجى المحاولة مرة أخرى' });
+            if (role === 'passenger') {
+                if (!fullName || !phone || !password || !phone2) {
+                    return res.status(400).json({ success: false, error: 'الرجاء إكمال جميع الحقول الإلزامية' });
                 }
-            } catch (e) {
-                console.error('Turnstile verification error:', e);
-                return res.status(500).json({ success: false, error: 'حدث خطأ أثناء التحقق البشري' });
+
+                // Sanitize input
+                const sanitizedPhone = phone.trim();
+                const sanitizedFullName = fullName.trim();
+                const sanitizedPhone2 = phone2.trim();
+
+                // Validate Full Name is exactly 4 Arabic names
+                const cleanName = sanitizedFullName.replace(/\s+/g, ' ');
+                const parts = cleanName.split(' ');
+                const arabicRegex = /^[\u0600-\u06FF]+$/;
+                if (parts.length !== 4 || !parts.every(part => arabicRegex.test(part))) {
+                    return res.status(400).json({ success: false, error: 'الاسم الرباعي الكامل باللغة العربية مطلوب ومحدد بأربعة أسماء فقط' });
+                }
+
+                // Verify Turnstile Token
+                if (!turnstileToken) {
+                    return res.status(400).json({ success: false, error: 'الرجاء إكمال التحقق البشري (Turnstile) أولاً' });
+                }
+                const turnstileSecret = process.env.TURNSTILE_SECRET_KEY || '1x0000000000000000000000000000000AA';
+                try {
+                    const tsRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `secret=${encodeURIComponent(turnstileSecret)}&response=${encodeURIComponent(turnstileToken)}`
+                    });
+                    const tsData = await tsRes.json();
+                    if (!tsData.success) {
+                        return res.status(400).json({ success: false, error: 'فشل التحقق البشري (Turnstile)، يرجى المحاولة مرة أخرى' });
+                    }
+                } catch (e) {
+                    console.error('Turnstile verification error:', e);
+                    return res.status(500).json({ success: false, error: 'حدث خطأ أثناء التحقق البشري' });
+                }
+
+                // Check if phone already exists
+                const { data: existingUser, error: checkError } = await supabase
+                    .from('customers')
+                    .select('id')
+                    .eq('phone', sanitizedPhone)
+                    .maybeSingle();
+
+                if (existingUser) {
+                    return res.status(400).json({ success: false, error: 'هذا الرقم مسجل مسبقاً، يمكنك تسجيل الدخول' });
+                }
+
+                // Hash password
+                const passwordHash = bcrypt.hashSync(password, 10);
+
+                // Insert new customer (with is_verified = true by default)
+                const { data: newCustomer, error: insertError } = await supabase
+                    .from('customers')
+                    .insert([{
+                        full_name: sanitizedFullName,
+                        phone: sanitizedPhone,
+                        phone2: sanitizedPhone2,
+                        password: passwordHash,
+                        is_verified: true,
+                        created_at: new Date().toISOString()
+                    }])
+                    .select()
+                    .single();
+
+                if (insertError) {
+                    throw insertError;
+                }
+
+                // Generate secure session token immediately
+                const sessionToken = Buffer.from(JSON.stringify({
+                    id: newCustomer.id,
+                    role: 'passenger',
+                    exp: Date.now() + 7 * 24 * 60 * 60 * 1000
+                })).toString('base64');
+
+                // Safe payload (do not return password)
+                const safeUser = { ...newCustomer };
+                delete safeUser.password;
+
+                return res.status(200).json({
+                    success: true,
+                    message: 'تم تسجيل البيانات وتفعيل حسابك بنجاح!',
+                    user: safeUser,
+                    token: sessionToken
+                });
+            } else if (role === 'driver') {
+                const {
+                    fullName,
+                    whatsappNumber,
+                    phone,
+                    password,
+                    carModel,
+                    plateNumber,
+                    carColor,
+                    license_image_url,
+                    vehicle_registration_url,
+                    car_photo_url,
+                    plate_photo_url,
+                    turnstileToken
+                } = req.body;
+
+                if (!fullName || !whatsappNumber || !phone || !password || !carModel || !plateNumber || !carColor ||
+                    !license_image_url || !vehicle_registration_url || !car_photo_url || !plate_photo_url) {
+                    return res.status(400).json({ success: false, error: 'الرجاء إكمال جميع الحقول الإلزامية ورفع جميع الصور' });
+                }
+
+                const sanitizedFullName = fullName.trim();
+                const sanitizedWhatsapp = whatsappNumber.trim();
+                const sanitizedPhone = phone.trim();
+                const sanitizedCarModel = carModel.trim();
+                const sanitizedPlateNumber = plateNumber.trim();
+                const sanitizedCarColor = carColor.trim();
+
+                // Validate Full Name is exactly 4 Arabic names
+                const cleanName = sanitizedFullName.replace(/\s+/g, ' ');
+                const parts = cleanName.split(' ');
+                const arabicRegex = /^[\u0600-\u06FF]+$/;
+                if (parts.length !== 4 || !parts.every(part => arabicRegex.test(part))) {
+                    return res.status(400).json({ success: false, error: 'الاسم الرباعي الكامل باللغة العربية مطلوب ومحدد بأربعة أسماء فقط' });
+                }
+
+                // Verify Turnstile Token
+                if (!turnstileToken) {
+                    return res.status(400).json({ success: false, error: 'الرجاء إكمال التحقق البشري (Turnstile) أولاً' });
+                }
+                const turnstileSecret = process.env.TURNSTILE_SECRET_KEY || '1x0000000000000000000000000000000AA';
+                try {
+                    const tsRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `secret=${encodeURIComponent(turnstileSecret)}&response=${encodeURIComponent(turnstileToken)}`
+                    });
+                    const tsData = await tsRes.json();
+                    if (!tsData.success) {
+                        return res.status(400).json({ success: false, error: 'فشل التحقق البشري (Turnstile)، يرجى المحاولة مرة أخرى' });
+                    }
+                } catch (e) {
+                    console.error('Turnstile verification error:', e);
+                    return res.status(500).json({ success: false, error: 'حدث خطأ أثناء التحقق البشري' });
+                }
+
+                // Check if driver already exists by whatsapp_number
+                const { data: existingDriver, error: checkError } = await supabase
+                    .from('drivers')
+                    .select('id')
+                    .eq('whatsapp_number', sanitizedWhatsapp)
+                    .maybeSingle();
+
+                if (existingDriver) {
+                    return res.status(400).json({ success: false, error: 'هذا الرقم مسجل مسبقاً كبرقم واتساب لسائق آخر' });
+                }
+
+                // Check if driver already exists by phone
+                const { data: existingDriverPhone, error: checkPhoneError } = await supabase
+                    .from('drivers')
+                    .select('id')
+                    .eq('phone', sanitizedPhone)
+                    .maybeSingle();
+
+                if (existingDriverPhone) {
+                    return res.status(400).json({ success: false, error: 'هذا الرقم مسجل مسبقاً كبرقم اتصال لسائق آخر' });
+                }
+
+                // Hash password
+                const passwordHash = bcrypt.hashSync(password, 10);
+
+                // Insert new driver with is_approved: false, balance: 0, and is_active: false
+                const { data: newDriver, error: insertError } = await supabase
+                    .from('drivers')
+                    .insert([{
+                        full_name: sanitizedFullName,
+                        whatsapp_number: sanitizedWhatsapp,
+                        phone: sanitizedPhone,
+                        password: passwordHash,
+                        car_model: sanitizedCarModel,
+                        plate_number: sanitizedPlateNumber,
+                        car_plate: sanitizedPlateNumber, // save both for compatibility
+                        car_color: sanitizedCarColor,
+                        license_image_url: license_image_url,
+                        vehicle_registration_url: vehicle_registration_url,
+                        car_photo_url: car_photo_url,
+                        plate_photo_url: plate_photo_url,
+                        is_approved: false,
+                        balance: 0,
+                        is_active: false,
+                        created_at: new Date().toISOString()
+                    }])
+                    .select()
+                    .single();
+
+                if (insertError) {
+                    throw insertError;
+                }
+
+                return res.status(200).json({
+                    success: true,
+                    message: 'تم تسجيل بياناتك بنجاح، لكن حسابك غير مفعّل.',
+                    driver: {
+                        full_name: newDriver.full_name,
+                        whatsapp_number: newDriver.whatsapp_number,
+                        car_model: newDriver.car_model,
+                        plate_number: newDriver.plate_number
+                    }
+                });
+            } else {
+                return res.status(400).json({ success: false, error: 'Invalid role specified' });
             }
-
-            // Check if phone already exists
-            const { data: existingUser, error: checkError } = await supabase
-                .from('customers')
-                .select('id')
-                .eq('phone', sanitizedPhone)
-                .maybeSingle();
-
-            if (existingUser) {
-                return res.status(400).json({ success: false, error: 'هذا الرقم مسجل مسبقاً، يمكنك تسجيل الدخول' });
-            }
-
-            // Hash password
-            const passwordHash = bcrypt.hashSync(password, 10);
-
-            // Insert new customer (with is_verified = true by default)
-            const { data: newCustomer, error: insertError } = await supabase
-                .from('customers')
-                .insert([{
-                    full_name: sanitizedFullName,
-                    phone: sanitizedPhone,
-                    phone2: sanitizedPhone2,
-                    password: passwordHash,
-                    is_verified: true,
-                    created_at: new Date().toISOString()
-                }])
-                .select()
-                .single();
-
-            if (insertError) {
-                throw insertError;
-            }
-
-            // Generate secure session token immediately
-            const sessionToken = Buffer.from(JSON.stringify({
-                id: newCustomer.id,
-                role: 'passenger',
-                exp: Date.now() + 7 * 24 * 60 * 60 * 1000
-            })).toString('base64');
-
-            // Safe payload (do not return password)
-            const safeUser = { ...newCustomer };
-            delete safeUser.password;
-
-            return res.status(200).json({
-                success: true,
-                message: 'تم تسجيل البيانات وتفعيل حسابك بنجاح!',
-                user: safeUser,
-                token: sessionToken
-            });
         }
 
         // --- VERIFY PHONE ---
@@ -238,6 +358,40 @@ export default async function handler(req, res) {
                 user: safeUser,
                 token: sessionToken
             });
+        }
+
+        // --- DELETE ACCOUNT ---
+        if (action === 'delete_account') {
+            if (!bearerToken) {
+                return res.status(401).json({ success: false, error: 'المصادقة مطلوبة لحذف الحساب' });
+            }
+
+            let decoded;
+            try {
+                decoded = JSON.parse(Buffer.from(bearerToken, 'base64').toString('utf-8'));
+                if (decoded.exp && decoded.exp < Date.now()) {
+                    return res.status(401).json({ success: false, error: 'انتهت صلاحية جلسة العمل، يرجى تسجيل الدخول مجدداً' });
+                }
+            } catch (e) {
+                return res.status(401).json({ success: false, error: 'رمز الجلسة غير صالح' });
+            }
+
+            const { id, role } = decoded;
+            if (!id || role !== 'passenger') {
+                return res.status(400).json({ success: false, error: 'غير مصرح لك بإجراء هذه العملية' });
+            }
+
+            // Delete customer from customers table in Supabase
+            const { error: deleteErr } = await supabase
+                .from('customers')
+                .delete()
+                .eq('id', id);
+
+            if (deleteErr) {
+                throw deleteErr;
+            }
+
+            return res.status(200).json({ success: true, message: 'تم حذف حسابك وجميع بياناتك بنجاح من تراكا' });
         }
 
         // --- LOGIN PASSENGER / DRIVER ---
@@ -323,6 +477,10 @@ export default async function handler(req, res) {
 
                 if (fetchError || !driver) {
                     return res.status(400).json({ success: false, error: 'رقم الواتساب غير مسجل' });
+                }
+
+                if (driver.is_approved === false) {
+                    return res.status(403).json({ success: false, error: 'تم تسجيل بياناتك بنجاح، لكن حسابك غير مفعّل بعد من قبل الإدارة' });
                 }
 
                 if (!driver.is_active) {

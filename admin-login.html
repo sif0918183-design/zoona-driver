@@ -612,9 +612,28 @@
                 <div class="tabs">
                     <div class="tab active" onclick="switchTab('customers')">العملاء</div>
                     <div class="tab" onclick="switchTab('drivers')">السائقين</div>
+                    <div class="tab" onclick="switchTab('pending-approvals')">طلبات التفعيل الجديدة</div>
                     <div class="tab" onclick="switchTab('add-driver')">إضافة سائق جديد</div>
                     <div class="tab" onclick="switchTab('settings')">الإعدادات</div>
                     <div class="tab" onclick="switchTab('instant-vehicles')">أسعار الرحلات الفورية</div>
+                </div>
+
+                <!-- Pending Approvals Tab -->
+                <div id="pending-approvals-tab" class="tab-content">
+                    <div class="search-box">
+                        <input type="text" id="search-pending-driver" class="search-input"
+                               placeholder="ابحث برقم الواتساب أو الاسم"
+                               onkeyup="searchPendingDrivers()">
+                    </div>
+
+                    <div class="user-list" id="pending-drivers-list">
+                        <div class="empty-state">
+                            <div class="empty-icon">
+                                <ion-icon name="hourglass-outline"></ion-icon>
+                            </div>
+                            <p>جاري تحميل طلبات التفعيل الجديدة...</p>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Customers Tab -->
@@ -909,6 +928,14 @@
                     إلغاء
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- Image Enlarge Modal -->
+    <div id="enlarge-image-modal" class="modal-overlay hidden" onclick="closeModal('enlarge-image-modal')">
+        <div style="background: transparent; text-align: center; max-width: 90%; max-height: 90%;">
+            <img id="enlarged-img" src="" style="max-width: 100%; max-height: 80vh; object-fit: contain; border-radius: var(--radius); border: 2px solid white; background: black;">
+            <p style="color: white; margin-top: 10px; font-weight: bold;">اضغط في أي مكان للإغلاق</p>
         </div>
     </div>
 
@@ -1224,9 +1251,260 @@
                 loadCustomers();
             } else if (tabName === 'drivers' && allDrivers.length === 0) {
                 loadDrivers();
+            } else if (tabName === 'pending-approvals') {
+                loadPendingDrivers();
             } else if (tabName === 'instant-vehicles') {
                 loadInstantVehicles();
             }
+        }
+
+        let allPendingDrivers = [];
+        async function loadPendingDrivers() {
+            try {
+                const res = await callAdminAPI('list_pending_drivers');
+                allPendingDrivers = res.drivers || [];
+                renderPendingDrivers(allPendingDrivers);
+            } catch (error) {
+                console.error('Error loading pending drivers:', error);
+                showNotification('خطأ في تحميل طلبات التفعيل المعلقة', 'error');
+                document.getElementById('pending-drivers-list').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <ion-icon name="alert-circle-outline"></ion-icon>
+                        </div>
+                        <p>خطأ في تحميل البيانات</p>
+                    </div>
+                `;
+            }
+        }
+
+        function searchPendingDrivers() {
+            const searchTerm = document.getElementById('search-pending-driver').value.toLowerCase();
+
+            if (!searchTerm) {
+                renderPendingDrivers(allPendingDrivers);
+                return;
+            }
+
+            const filtered = allPendingDrivers.filter(driver =>
+                driver.full_name.toLowerCase().includes(searchTerm) ||
+                driver.whatsapp_number.includes(searchTerm) ||
+                (driver.phone && driver.phone.includes(searchTerm))
+            );
+
+            renderPendingDrivers(filtered);
+        }
+
+        function renderPendingDrivers(drivers) {
+            const listElement = document.getElementById('pending-drivers-list');
+
+            if (!drivers || drivers.length === 0) {
+                listElement.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <ion-icon name="checkmark-done-circle-outline" style="font-size: 48px; color: var(--secondary);"></ion-icon>
+                        </div>
+                        <p>لا توجد طلبات تفعيل جديدة معلقة حالياً.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            listElement.innerHTML = '';
+
+            drivers.forEach((driver) => {
+                const card = document.createElement('div');
+                card.className = 'user-card';
+                card.style.background = 'white';
+                card.style.padding = '20px';
+                card.style.marginBottom = '20px';
+                card.style.border = '1px solid var(--gray-light)';
+
+                // Generate options for vehicle types
+                let vehicleOptions = '<option value="">اختر نوع السيارة</option>';
+                allInstantVehicles.forEach(v => {
+                    vehicleOptions += `<option value="${v.id}" ${driver.car_type === v.id ? 'selected' : ''}>${v.name}</option>`;
+                });
+
+                card.innerHTML = `
+                    <h3 style="color: var(--primary); font-size: 18px; margin-bottom: 15px; border-bottom: 2px solid var(--gray-light); padding-bottom: 8px; direction: rtl; text-align: right;">
+                        طلب تفعيل السائق: <span id="display-name-${driver.id}">${driver.full_name}</span>
+                    </h3>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; direction: rtl; text-align: right;">
+                        <div class="form-group">
+                            <label class="form-label" style="font-size: 13px;">الاسم رباعي</label>
+                            <input type="text" id="pending-fullname-${driver.id}" class="form-input" value="${driver.full_name || ''}">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" style="font-size: 13px;">رقم الواتساب</label>
+                            <input type="tel" id="pending-whatsapp-${driver.id}" class="form-input" value="${driver.whatsapp_number || ''}">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" style="font-size: 13px;">رقم الاتصال</label>
+                            <input type="tel" id="pending-phone-${driver.id}" class="form-input" value="${driver.phone || ''}">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" style="font-size: 13px;">موديل السيارة</label>
+                            <input type="text" id="pending-carmodel-${driver.id}" class="form-input" value="${driver.car_model || ''}">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" style="font-size: 13px;">رقم اللوحة</label>
+                            <input type="text" id="pending-platenumber-${driver.id}" class="form-input" value="${driver.plate_number || driver.car_plate || ''}">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" style="font-size: 13px;">لون السيارة</label>
+                            <input type="text" id="pending-carcolor-${driver.id}" class="form-input" value="${driver.car_color || ''}">
+                        </div>
+                    </div>
+
+                    <!-- Image Fields with Click to Enlarge -->
+                    <div style="margin-bottom: 20px; direction: rtl; text-align: right;">
+                        <h4 style="font-size: 14px; font-weight: 700; color: var(--gray); margin-bottom: 10px;">المستندات والصور المرفوعة (اضغط للتكبير):</h4>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                            <div style="text-align: center;">
+                                <span style="font-size: 11px; display: block; margin-bottom: 4px; color: var(--gray);">رخصة القيادة</span>
+                                <img src="${driver.license_image_url || 'https://placehold.co/150'}" id="img-license-${driver.id}" style="width: 100%; height: 80px; object-fit: cover; border-radius: var(--radius); cursor: pointer; border: 1px solid var(--gray-light);" onclick="enlargeImage('${driver.license_image_url || 'https://placehold.co/150'}')">
+                                <input type="text" id="pending-license-url-${driver.id}" class="form-input" style="font-size: 11px; padding: 6px; margin-top: 6px;" value="${driver.license_image_url || ''}" onchange="document.getElementById('img-license-${driver.id}').src = this.value">
+                            </div>
+
+                            <div style="text-align: center;">
+                                <span style="font-size: 11px; display: block; margin-bottom: 4px; color: var(--gray);">الاستمارة</span>
+                                <img src="${driver.vehicle_registration_url || 'https://placehold.co/150'}" id="img-reg-${driver.id}" style="width: 100%; height: 80px; object-fit: cover; border-radius: var(--radius); cursor: pointer; border: 1px solid var(--gray-light);" onclick="enlargeImage('${driver.vehicle_registration_url || 'https://placehold.co/150'}')">
+                                <input type="text" id="pending-reg-url-${driver.id}" class="form-input" style="font-size: 11px; padding: 6px; margin-top: 6px;" value="${driver.vehicle_registration_url || ''}" onchange="document.getElementById('img-reg-${driver.id}').src = this.value">
+                            </div>
+
+                            <div style="text-align: center;">
+                                <span style="font-size: 11px; display: block; margin-bottom: 4px; color: var(--gray);">صورة السيارة</span>
+                                <img src="${driver.car_photo_url || 'https://placehold.co/150'}" id="img-car-${driver.id}" style="width: 100%; height: 80px; object-fit: cover; border-radius: var(--radius); cursor: pointer; border: 1px solid var(--gray-light);" onclick="enlargeImage('${driver.car_photo_url || 'https://placehold.co/150'}')">
+                                <input type="text" id="pending-car-url-${driver.id}" class="form-input" style="font-size: 11px; padding: 6px; margin-top: 6px;" value="${driver.car_photo_url || ''}" onchange="document.getElementById('img-car-${driver.id}').src = this.value">
+                            </div>
+
+                            <div style="text-align: center;">
+                                <span style="font-size: 11px; display: block; margin-bottom: 4px; color: var(--gray);">لوحة السيارة</span>
+                                <img src="${driver.plate_photo_url || 'https://placehold.co/150'}" id="img-plate-${driver.id}" style="width: 100%; height: 80px; object-fit: cover; border-radius: var(--radius); cursor: pointer; border: 1px solid var(--gray-light);" onclick="enlargeImage('${driver.plate_photo_url || 'https://placehold.co/150'}')">
+                                <input type="text" id="pending-plate-url-${driver.id}" class="form-input" style="font-size: 11px; padding: 6px; margin-top: 6px;" value="${driver.plate_photo_url || ''}" onchange="document.getElementById('img-plate-${driver.id}').src = this.value">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Approval Parameters -->
+                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: var(--radius); display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; align-items: center; direction: rtl; text-align: right;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label" style="font-weight: 700; color: #15803d; font-size: 13px;">نوع السيارة *</label>
+                            <select id="pending-cartype-${driver.id}" class="form-input" style="border-color: #bbf7d0;">
+                                ${vehicleOptions}
+                            </select>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label" style="font-weight: 700; color: #15803d; font-size: 13px;">الرصيد الابتدائي (SDG) *</label>
+                            <input type="number" id="pending-balance-${driver.id}" class="form-input" style="border-color: #bbf7d0;" value="10000" min="0">
+                        </div>
+
+                        <div style="display: flex; gap: 8px; margin-top: auto; padding-top: 4px;">
+                            <button type="button" class="btn btn-secondary" style="margin-top: 0; padding: 12px; font-size: 13px;" onclick="approvePendingDriver('${driver.id}')">
+                                <ion-icon name="checkmark-circle-outline" style="font-size: 18px;"></ion-icon>
+                                تفعيل الحساب
+                            </button>
+                            <button type="button" class="btn btn-primary" style="margin-top: 0; background: var(--primary); padding: 12px; font-size: 13px;" onclick="savePendingDriverDetails('${driver.id}')">
+                                <ion-icon name="save-outline" style="font-size: 18px;"></ion-icon>
+                                حفظ التعديلات
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                listElement.appendChild(card);
+            });
+        }
+
+        async function approvePendingDriver(id) {
+            const car_type = document.getElementById(`pending-cartype-${id}`).value;
+            const balance = document.getElementById(`pending-balance-${id}`).value;
+
+            if (!car_type) {
+                showNotification('الرجاء اختيار نوع السيارة للتفعيل', 'warning');
+                return;
+            }
+
+            if (confirm('هل أنت متأكد من تفعيل هذا الحساب؟')) {
+                try {
+                    // First save any modifications the admin made to the registration details
+                    await savePendingDriverDetails(id, false);
+
+                    // Then approve the driver
+                    await callAdminAPI('approve_driver', {
+                        id,
+                        car_type,
+                        balance: parseInt(balance) || 10000
+                    });
+
+                    showNotification('تم تفعيل وتنشيط حساب السائق بنجاح!', 'success');
+
+                    // Reload pending requests
+                    loadPendingDrivers();
+                    loadDrivers();
+                    loadDashboardStats();
+                } catch (error) {
+                    console.error('Error approving driver:', error);
+                    showNotification('حدث خطأ أثناء تفعيل الحساب: ' + error.message, 'error');
+                }
+            }
+        }
+
+        async function savePendingDriverDetails(id, notify = true) {
+            const full_name = document.getElementById(`pending-fullname-${id}`).value.trim();
+            const whatsapp_number = document.getElementById(`pending-whatsapp-${id}`).value.trim();
+            const phone = document.getElementById(`pending-phone-${id}`).value.trim();
+            const car_model = document.getElementById(`pending-carmodel-${id}`).value.trim();
+            const plate_number = document.getElementById(`pending-platenumber-${id}`).value.trim();
+            const car_color = document.getElementById(`pending-carcolor-${id}`).value.trim();
+            const license_image_url = document.getElementById(`pending-license-url-${id}`).value.trim();
+            const vehicle_registration_url = document.getElementById(`pending-reg-url-${id}`).value.trim();
+            const car_photo_url = document.getElementById(`pending-car-url-${id}`).value.trim();
+            const plate_photo_url = document.getElementById(`pending-plate-url-${id}`).value.trim();
+
+            if (!full_name || !whatsapp_number || !phone || !car_model || !plate_number || !car_color) {
+                showNotification('الرجاء ملء جميع الحقول الإلزامية', 'warning');
+                throw new Error('حقول ناقصة');
+            }
+
+            try {
+                await callAdminAPI('update_driver_details', {
+                    id,
+                    full_name,
+                    whatsapp_number,
+                    phone,
+                    car_model,
+                    plate_number,
+                    car_color,
+                    license_image_url,
+                    vehicle_registration_url,
+                    car_photo_url,
+                    plate_photo_url
+                });
+
+                if (notify) {
+                    showNotification('تم حفظ تعديلات السائق بنجاح', 'success');
+                    loadPendingDrivers();
+                    loadDrivers();
+                }
+            } catch (error) {
+                console.error('Error saving driver details:', error);
+                showNotification('خطأ في حفظ التعديلات: ' + error.message, 'error');
+                throw error;
+            }
+        }
+
+        function enlargeImage(url) {
+            document.getElementById('enlarged-img').src = url;
+            openModal('enlarge-image-modal');
         }
 
         // --- Customer Management ---

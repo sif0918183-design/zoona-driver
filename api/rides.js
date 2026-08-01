@@ -425,6 +425,49 @@ export default async function handler(req, res) {
             return res.status(200).json({ success: true, ride: data });
         }
 
+        // --- 9. SUBMIT COMPLAINT ---
+        if (action === 'submit_complaint') {
+            const { userId, userType, userName, accountType, whatsapp, phone, complaintType, message, rating } = req.body;
+
+            if (!userId || !userType || !userName || !phone || !message) {
+                return res.status(400).json({ success: false, error: 'الرجاء ملء كافة الحقول المطلوبة' });
+            }
+
+            if (userType !== 'driver' && userType !== 'passenger') {
+                return res.status(400).json({ success: false, error: 'نوع المستخدم غير صالح' });
+            }
+
+            const sanitizedUserName = userName.trim().substring(0, 100);
+            const sanitizedPhone = phone.trim().substring(0, 30);
+            const sanitizedWhatsapp = whatsapp ? whatsapp.trim().substring(0, 30) : null;
+            const sanitizedMessage = message.trim().substring(0, 2000);
+            const sanitizedComplaintType = complaintType ? complaintType.trim().substring(0, 100) : 'general';
+            const sanitizedAccountType = accountType ? accountType.trim().substring(0, 50) : null;
+            const validRating = rating ? Math.max(0, Math.min(5, parseInt(rating))) : 0;
+
+            const { data, error } = await supabase
+                .from('complaints')
+                .insert([{
+                    user_id: userId,
+                    user_type: userType,
+                    user_name: sanitizedUserName,
+                    account_type: sanitizedAccountType,
+                    whatsapp: sanitizedWhatsapp,
+                    phone: sanitizedPhone,
+                    complaint_type: sanitizedComplaintType,
+                    message: sanitizedMessage,
+                    rating: validRating,
+                    status: 'new',
+                    created_at: new Date().toISOString()
+                }])
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            return res.status(200).json({ success: true, complaint: data });
+        }
+
         return res.status(400).json({ success: false, error: 'Unknown action' });
 
     } catch (error) {
