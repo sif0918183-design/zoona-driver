@@ -135,6 +135,20 @@
         .btn-back:hover {
             background: var(--gray-light);
         }
+
+        /* Loading Spinner */
+        .loading {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -168,11 +182,57 @@
     </div>
 
     <script>
-        function confirmDelete() {
-            if (confirm('⚠️ هل أنت متأكد تماماً؟ هذا الإجراء سيقوم بحذف جميع بياناتك من تراكا.')) {
-                if (confirm('تأكيد أخير: هل تريد الانتقال لصفحة طلب حذف البيانات؟')) {
-                    window.location.href = 'https://tracka.sd/delete-account-request';
+        async function confirmDelete() {
+            // Retrieve session token
+            const sessionToken = localStorage.getItem('tarhal_session_token') || localStorage.getItem('session_token');
+            if (!sessionToken) {
+                alert('عذراً، لم يتم العثور على جلسة عمل صالحة. يرجى تسجيل الدخول أولاً.');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            if (!confirm('⚠️ هل أنت متأكد تماماً؟ هذا الإجراء سيقوم بحذف جميع بياناتك وحسابك من تراكا نهائياً.')) {
+                return;
+            }
+
+            if (!confirm('تأكيد أخير: هل تريد حذف حسابك وكل سجلاتك من التطبيق نهائياً؟ لا يمكن التراجع عن هذا الإجراء.')) {
+                return;
+            }
+
+            const deleteBtn = document.querySelector('.btn-delete');
+            const originalHTML = deleteBtn.innerHTML;
+            deleteBtn.disabled = true;
+            deleteBtn.innerHTML = '<span class="loading"></span> جاري حذف الحساب...';
+
+            try {
+                const response = await fetch('/api/auth', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${sessionToken}`
+                    },
+                    body: JSON.stringify({
+                        action: 'delete_account'
+                    })
+                });
+
+                const resData = await response.json();
+                if (!response.ok || !resData.success) {
+                    throw new Error(resData.error || 'فشل حذف الحساب من الخادم');
                 }
+
+                // Clear all stored data
+                localStorage.clear();
+                sessionStorage.clear();
+
+                alert('✅ تم حذف حسابك وجميع بياناتك بنجاح. شكراً لك لاستخدامك تراكا.');
+                window.location.href = 'index.html';
+
+            } catch (error) {
+                console.error('Delete account error:', error);
+                alert('❌ حدث خطأ أثناء محاولة حذف الحساب: ' + error.message);
+                deleteBtn.disabled = false;
+                deleteBtn.innerHTML = originalHTML;
             }
         }
     </script>

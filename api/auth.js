@@ -360,6 +360,40 @@ export default async function handler(req, res) {
             });
         }
 
+        // --- DELETE ACCOUNT ---
+        if (action === 'delete_account') {
+            if (!bearerToken) {
+                return res.status(401).json({ success: false, error: 'المصادقة مطلوبة لحذف الحساب' });
+            }
+
+            let decoded;
+            try {
+                decoded = JSON.parse(Buffer.from(bearerToken, 'base64').toString('utf-8'));
+                if (decoded.exp && decoded.exp < Date.now()) {
+                    return res.status(401).json({ success: false, error: 'انتهت صلاحية جلسة العمل، يرجى تسجيل الدخول مجدداً' });
+                }
+            } catch (e) {
+                return res.status(401).json({ success: false, error: 'رمز الجلسة غير صالح' });
+            }
+
+            const { id, role } = decoded;
+            if (!id || role !== 'passenger') {
+                return res.status(400).json({ success: false, error: 'غير مصرح لك بإجراء هذه العملية' });
+            }
+
+            // Delete customer from customers table in Supabase
+            const { error: deleteErr } = await supabase
+                .from('customers')
+                .delete()
+                .eq('id', id);
+
+            if (deleteErr) {
+                throw deleteErr;
+            }
+
+            return res.status(200).json({ success: true, message: 'تم حذف حسابك وجميع بياناتك بنجاح من تراكا' });
+        }
+
         // --- LOGIN PASSENGER / DRIVER ---
         if (action === 'login') {
             if (!phone || !password) {
