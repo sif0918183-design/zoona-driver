@@ -751,39 +751,129 @@
         </div>
     </section>
 
-    <!-- Driver Registration Info -->
+    <!-- Driver Registration Screen -->
     <section id="driver-register-info-screen" class="screen hidden">
-        <div class="card">
+        <div class="card" id="register-form-card">
             <h2 class="card-title">
-                <i class="ph-light ph-info neon-icon-emerald"></i>
-                التسجيل كسائق
+                <i class="ph-light ph-user-plus neon-icon-emerald"></i>
+                تسجيل حساب سائق جديد
             </h2>
 
-            <div class="mb-3">
-                <p>للتسجيل كسائق في تطبيق تراكا للنقل ، يرجى التواصل مع إدارتنا على واتساب لإكمال عملية التسجيل:</p>
-
-                <div class="p-3" style="background: #f0f9ff; border-radius: var(--radius); margin: 20px 0;">
-                    <h4 class="mb-2" style="color: var(--driver);">المستندات المطلوبة:</h4>
-                    <ul style="padding-right: 20px; line-height: 1.8;">
-                        <li>رخصة القيادة السارية</li>
-                        <li>استمارة السيارة</li>
-                        <li>صورة شخصية</li>
-                        <li>صورة السيارة من الخارج</li>
-                        <li>صورة لوحة السيارة</li>
-                    </ul>
+            <form class="login-form" id="driverRegisterForm">
+                <div class="form-group">
+                    <label class="form-label" for="register-fullname">الاسم رباعي (بالعربية) *</label>
+                    <input type="text" id="register-fullname" class="form-input"
+                           placeholder="مثال: أحمد محمد علي حسن" required>
                 </div>
-            </div>
 
-            <button type="button" class="btn btn-driver" onclick="contactAdminForDriverRegistration()">
-                <i class="ph-bold ph-whatsapp-logo"></i>
-                التواصل مع الإدارة على واتساب
-            </button>
+                <div class="form-group">
+                    <label class="form-label" for="register-whatsapp">رقم الواتساب *</label>
+                    <input type="tel" id="register-whatsapp" class="form-input"
+                           placeholder="مثال: 249123456789" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="register-phone">رقم الاتصال *</label>
+                    <input type="tel" id="register-phone" class="form-input"
+                           placeholder="مثال: 249987654321" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="register-password">كلمة المرور (6 أرقام) *</label>
+                    <input type="password" id="register-password" class="form-input"
+                           placeholder="أدخل كلمة مرور من 6 خانات" maxlength="6" inputmode="numeric" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="register-carmodel">موديل السيارة *</label>
+                    <input type="text" id="register-carmodel" class="form-input"
+                           placeholder="مثال: توسان 2016" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="register-platenumber">رقم اللوحة *</label>
+                    <input type="text" id="register-platenumber" class="form-input"
+                           placeholder="مثال: خ/2 1234" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="register-carcolor">لون السيارة *</label>
+                    <input type="text" id="register-carcolor" class="form-input"
+                           placeholder="مثال: أبيض" required>
+                </div>
+
+                <!-- Image Kit Upload Fields -->
+                <div style="background: #f8fafc; padding: 12px; border-radius: var(--radius); margin: 15px 0; border: 1px solid var(--gray-light);">
+                    <h3 style="font-size: 14px; font-weight: 700; color: var(--driver); margin-bottom: 12px;">المستندات والصور المطلوبة *</h3>
+
+                    <div class="form-group">
+                        <label class="form-label" for="file-license" style="font-size: 13px;">رخصة القيادة السارية *</label>
+                        <input type="file" id="file-license" accept="image/*" class="form-input" style="padding: 8px;"
+                               onchange="uploadToImageKit('file-license', 'license-status', 'driver_license_image_url')" required>
+                        <div id="license-status" style="font-size: 12px; color: var(--gray); margin-top: 4px;">لم يتم اختيار ملف</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="file-registration" style="font-size: 13px;">استمارة السيارة (شهادة البحث) *</label>
+                        <input type="file" id="file-registration" accept="image/*" class="form-input" style="padding: 8px;"
+                               onchange="uploadToImageKit('file-registration', 'registration-status', 'driver_vehicle_registration_url')" required>
+                        <div id="registration-status" style="font-size: 12px; color: var(--gray); margin-top: 4px;">لم يتم اختيار ملف</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="file-car" style="font-size: 13px;">صورة السيارة من الخارج *</label>
+                        <input type="file" id="file-car" accept="image/*" class="form-input" style="padding: 8px;"
+                               onchange="uploadToImageKit('file-car', 'car-status', 'driver_car_photo_url')" required>
+                        <div id="car-status" style="font-size: 12px; color: var(--gray); margin-top: 4px;">لم يتم اختيار ملف</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="file-plate" style="font-size: 13px;">صورة لوحة السيارة *</label>
+                        <input type="file" id="file-plate" accept="image/*" class="form-input" style="padding: 8px;"
+                               onchange="uploadToImageKit('file-plate', 'plate-status', 'driver_plate_photo_url')" required>
+                        <div id="plate-status" style="font-size: 12px; color: var(--gray); margin-top: 4px;">لم يتم اختيار ملف</div>
+                    </div>
+                </div>
+
+                <!-- Cloudflare Turnstile Widget -->
+                <div id="turnstile-container" style="margin: 15px auto; display: flex; justify-content: center;"></div>
+
+                <button type="button" class="btn btn-driver" id="register-btn" onclick="registerDriver()" disabled>
+                    <i class="ph-bold ph-user-plus"></i>
+                    تسجيل حساب سائق
+                </button>
+            </form>
 
             <div class="form-footer mt-3">
-                <a href="#" onclick="showDriverLogin()" class="back-link">
+                <a href="#" onclick="showDriverLogin(); return false;" class="back-link">
                     <i class="ph-bold ph-arrow-right"></i>
                     العودة لتسجيل الدخول
                 </a>
+            </div>
+        </div>
+
+        <!-- Success Modal/Card View -->
+        <div class="card hidden" id="register-success-card">
+            <div style="text-align: center; margin: 20px 0;">
+                <div style="font-size: 64px; color: #16a34a; margin-bottom: 16px;">
+                    <i class="ph-bold ph-check-circle"></i>
+                </div>
+                <h2 style="color: var(--driver-dark); font-weight: 800; font-size: 20px; margin-bottom: 12px;">✅ تم تسجيل بياناتك بنجاح، لكن حسابك غير مفعّل.</h2>
+                <p style="color: var(--gray); font-size: 14px; line-height: 1.6; margin-bottom: 24px;">
+                    📲 لتفعيل حسابك، أرسل رسالة عبر واتساب من الزر أدناه:
+                </p>
+
+                <button type="button" class="btn btn-driver" style="background: #25d366; border-color: #25d366; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);" onclick="sendActivationWhatsApp()">
+                    <i class="ph-bold ph-whatsapp-logo"></i>
+                    إرسال طلب تفعيل عبر واتساب
+                </button>
+
+                <div class="form-footer mt-3" style="border-top: none;">
+                    <a href="#" onclick="showDriverLogin(); return false;" class="back-link">
+                        <i class="ph-bold ph-arrow-right"></i>
+                        العودة لتسجيل الدخول
+                    </a>
+                </div>
             </div>
         </div>
     </section>
@@ -1204,8 +1294,252 @@
             showDriverAgreement();
         } else {
             // إذا كان قد وافق مسبقاً، الانتقال مباشرة
+            document.getElementById('register-form-card').classList.remove('hidden');
+            document.getElementById('register-success-card').classList.add('hidden');
+
+            // Clear previous uploads from local storage
+            localStorage.removeItem('driver_license_image_url');
+            localStorage.removeItem('driver_vehicle_registration_url');
+            localStorage.removeItem('driver_car_photo_url');
+            localStorage.removeItem('driver_plate_photo_url');
+
+            // Reset status texts
+            document.getElementById('license-status').textContent = 'لم يتم اختيار ملف';
+            document.getElementById('license-status').style.color = 'var(--gray)';
+            document.getElementById('registration-status').textContent = 'لم يتم اختيار ملف';
+            document.getElementById('registration-status').style.color = 'var(--gray)';
+            document.getElementById('car-status').textContent = 'لم يتم اختيار ملف';
+            document.getElementById('car-status').style.color = 'var(--gray)';
+            document.getElementById('plate-status').textContent = 'لم يتم اختيار ملف';
+            document.getElementById('plate-status').style.color = 'var(--gray)';
+
             showScreen('driver-register-info-screen');
+            loadTurnstile();
         }
+    }
+
+    // Dynamically Load and Initialize Cloudflare Turnstile
+    function loadTurnstile() {
+        if (window.turnstile) {
+            initTurnstileWidget();
+            return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+        script.onload = initTurnstileWidget;
+    }
+
+    let turnstileWidgetId = null;
+    async function initTurnstileWidget() {
+        try {
+            const res = await fetch('/api/turnstile-config');
+            const data = await res.json();
+            if (data.success && window.turnstile) {
+                const container = document.getElementById('turnstile-container');
+                if (container) {
+                    container.innerHTML = '';
+                    window.turnstileToken = null;
+                    const registerBtn = document.getElementById('register-btn');
+                    if (registerBtn) registerBtn.setAttribute('disabled', 'true');
+
+                    turnstileWidgetId = window.turnstile.render(container, {
+                        sitekey: data.siteKey,
+                        callback: function(token) {
+                            window.turnstileToken = token;
+                            const btn = document.getElementById('register-btn');
+                            if (btn) btn.removeAttribute('disabled');
+                        },
+                        'expired-callback': function() {
+                            window.turnstileToken = null;
+                            const btn = document.getElementById('register-btn');
+                            if (btn) btn.setAttribute('disabled', 'true');
+                        },
+                        'error-callback': function() {
+                            window.turnstileToken = null;
+                            const btn = document.getElementById('register-btn');
+                            if (btn) btn.setAttribute('disabled', 'true');
+                        }
+                    });
+                }
+            }
+        } catch (err) {
+            console.error('Error rendering Turnstile:', err);
+        }
+    }
+
+    // Upload to ImageKit
+    async function uploadToImageKit(fileInputId, statusId, storageKey) {
+        const fileInput = document.getElementById(fileInputId);
+        const statusDiv = document.getElementById(statusId);
+
+        if (!fileInput || fileInput.files.length === 0) return;
+
+        const file = fileInput.files[0];
+        statusDiv.innerHTML = '<span class="loading"></span> جاري الرفع...';
+        statusDiv.style.color = 'var(--driver)';
+
+        try {
+            // Get ImageKit Auth parameters
+            const authRes = await fetch('/api/imagekit-auth');
+            if (!authRes.ok) throw new Error('فشل جلب تصريح الرفع');
+            const authData = await authRes.json();
+
+            // Prepare FormData
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('fileName', file.name);
+            formData.append('publicKey', 'public_SnxtM9/xheLA8u65v643QBMQcMo=');
+            formData.append('signature', authData.signature);
+            formData.append('expire', authData.expire);
+            formData.append('token', authData.token);
+
+            const uploadRes = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!uploadRes.ok) throw new Error('فشل الرفع');
+            const uploadData = await uploadRes.json();
+
+            // Save URL
+            localStorage.setItem(storageKey, uploadData.url);
+            statusDiv.innerHTML = '✅ تم الرفع بنجاح';
+            statusDiv.style.color = '#16a34a';
+
+        } catch (error) {
+            console.error('ImageKit upload error:', error);
+            statusDiv.innerHTML = '❌ فشل الرفع: ' + error.message;
+            statusDiv.style.color = 'var(--danger)';
+        }
+    }
+
+    // Register Driver Action
+    async function registerDriver() {
+        const fullName = document.getElementById('register-fullname').value.trim();
+        const whatsappNumber = document.getElementById('register-whatsapp').value.trim();
+        const phone = document.getElementById('register-phone').value.trim();
+        const password = document.getElementById('register-password').value;
+        const carModel = document.getElementById('register-carmodel').value.trim();
+        const plateNumber = document.getElementById('register-platenumber').value.trim();
+        const carColor = document.getElementById('register-carcolor').value.trim();
+
+        // Retrieve image URLs from localStorage
+        const license_image_url = localStorage.getItem('driver_license_image_url');
+        const vehicle_registration_url = localStorage.getItem('driver_vehicle_registration_url');
+        const car_photo_url = localStorage.getItem('driver_car_photo_url');
+        const plate_photo_url = localStorage.getItem('driver_plate_photo_url');
+
+        if (!fullName || !whatsappNumber || !phone || !password || !carModel || !plateNumber || !carColor) {
+            showNotification('الرجاء إكمال جميع الحقول الإلزامية', 'error');
+            return;
+        }
+
+        if (!license_image_url || !vehicle_registration_url || !car_photo_url || !plate_photo_url) {
+            showNotification('الرجاء رفع جميع الصور والمستندات المطلوبة والمحاولة مرة أخرى بعد اكتمال الرفع', 'error');
+            return;
+        }
+
+        if (password.length !== 6 || isNaN(password)) {
+            showNotification('كلمة المرور يجب أن تكون رقمية ومكونة من 6 خانات تماماً', 'warning');
+            return;
+        }
+
+        // Validate full name contains exactly 4 Arabic names
+        const cleanName = fullName.replace(/\s+/g, ' ');
+        const parts = cleanName.split(' ');
+        const arabicRegex = /^[\u0600-\u06FF]+$/;
+        if (parts.length !== 4 || !parts.every(part => arabicRegex.test(part))) {
+            showNotification('الاسم الرباعي الكامل باللغة العربية مطلوب ومحدد بأربعة أسماء فقط', 'error');
+            return;
+        }
+
+        if (!window.turnstileToken) {
+            showNotification('الرجاء إكمال التحقق البشري (Turnstile) أولاً', 'error');
+            return;
+        }
+
+        const registerBtn = document.getElementById('register-btn');
+        const originalText = registerBtn.innerHTML;
+        registerBtn.disabled = true;
+        registerBtn.innerHTML = '<span class="loading"></span> جاري إنشاء الحساب...';
+
+        try {
+            const response = await fetch('/api/auth', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'register',
+                    role: 'driver',
+                    fullName,
+                    whatsappNumber,
+                    phone,
+                    password,
+                    carModel,
+                    plateNumber,
+                    carColor,
+                    license_image_url,
+                    vehicle_registration_url,
+                    car_photo_url,
+                    plate_photo_url,
+                    turnstileToken: window.turnstileToken
+                })
+            });
+
+            const resData = await response.json();
+
+            if (!response.ok || !resData.success) {
+                showNotification(resData.error || 'حدث خطأ أثناء التسجيل', 'error');
+                registerBtn.innerHTML = originalText;
+                registerBtn.disabled = false;
+                if (window.turnstile && turnstileWidgetId !== null) {
+                    window.turnstile.reset(turnstileWidgetId);
+                    window.turnstileToken = null;
+                }
+                return;
+            }
+
+            // Success! Cache registration details for WhatsApp message template
+            localStorage.setItem('success_driver_fullname', fullName);
+            localStorage.setItem('success_driver_whatsapp', whatsappNumber);
+            localStorage.setItem('success_driver_carmodel', carModel);
+            localStorage.setItem('success_driver_platenumber', plateNumber);
+
+            // Hide form and show success screen
+            document.getElementById('register-form-card').classList.add('hidden');
+            document.getElementById('register-success-card').classList.remove('hidden');
+            showNotification('✅ تم تسجيل بياناتك بنجاح!', 'success');
+
+        } catch (error) {
+            console.error('Driver registration error:', error);
+            showNotification('حدث خطأ أثناء التسجيل: ' + error.message, 'error');
+            registerBtn.innerHTML = originalText;
+            registerBtn.disabled = false;
+        }
+    }
+
+    // Send Activation WhatsApp Message
+    function sendActivationWhatsApp() {
+        const fullName = localStorage.getItem('success_driver_fullname') || '';
+        const whatsapp = localStorage.getItem('success_driver_whatsapp') || '';
+        const carModel = localStorage.getItem('success_driver_carmodel') || '';
+        const plateNumber = localStorage.getItem('success_driver_platenumber') || '';
+
+        const adminNumber = "249111991551";
+        const templateMessage = `🔹 طلب تفعيل حساب سائق جديد 🔹
+
+الاسم: ${fullName}
+رقم الواتساب: ${whatsapp}
+موديل السيارة: ${carModel}
+رقم اللوحة: ${plateNumber}
+
+📌 أرجو تفعيل حسابي في تطبيق تراكا.`;
+
+        const whatsappUrl = `https://wa.me/${adminNumber}?text=${encodeURIComponent(templateMessage)}`;
+        window.open(whatsappUrl, '_blank');
+        showNotification('تم فتح واتساب طلب التفعيل للإدارة', 'info');
     }
 
     // دالة لعرض نافذة الإقرار
