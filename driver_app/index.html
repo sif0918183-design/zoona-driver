@@ -992,6 +992,172 @@
     let foreverOnlineManager = null;
 
     // ============================================
+    // بروتوكول المصافحة مع Flutter WebView
+    // ============================================
+
+    // متغيرات حالة الاتصال
+    let flutterConnection = {
+        webViewReady: false,
+        pageLoaded: false,
+        connectionEstablished: false,
+        retryCount: 0,
+        maxRetries: 10
+    };
+
+    // استماع لأحداث الجاهزية من Flutter
+    document.addEventListener('flutterReady', function() {
+        console.log('✅ Flutter WebView ready event received');
+        flutterConnection.webViewReady = true;
+        checkFlutterConnection();
+    });
+
+    document.addEventListener('flutterPageLoaded', function() {
+        console.log('✅ Flutter page loaded event received');
+        flutterConnection.pageLoaded = true;
+        checkFlutterConnection();
+    });
+
+    // التحقق من الاتصال مع Flutter
+    function checkFlutterConnection() {
+        if (flutterConnection.webViewReady && flutterConnection.pageLoaded) {
+            flutterConnection.connectionEstablished = true;
+            console.log('✅ Flutter connection fully established');
+            
+            // ✅ الآن يمكننا طلب التوكن بأمان
+            getFCMTokenFromFlutter();
+        }
+    }
+
+    // دالة آمنة لطلب التوكن من Flutter
+    async function getFCMTokenFromFlutter() {
+        // التحقق من الجاهزية
+        if (!flutterConnection.connectionEstablished) {
+            console.log('⏳ Waiting for Flutter connection...');
+            return null;
+        }
+        
+        // التحقق من وجود WebView
+        if (!window.flutter_inappwebview) {
+            console.warn('⚠️ flutter_inappwebview not available');
+            return null;
+        }
+        
+        // التحقق من وجود callHandler
+        if (typeof window.flutter_inappwebview.callHandler !== 'function') {
+            console.warn('⚠️ callHandler not available');
+            return null;
+        }
+        
+        try {
+            console.log('📱 Requesting FCM token from Flutter...');
+            const token = await window.flutter_inappwebview.callHandler('getFCMToken');
+            console.log('📱 Flutter returned token:', token);
+            
+            if (token && token !== 'null' && token !== 'undefined' && token !== 'false') {
+                // حفظ التوكن
+                localStorage.setItem('fcm_token', token);
+                localStorage.setItem('pending_fcm_token', token);
+                console.log('✅ FCM token saved from Flutter:', token);
+                return token;
+            }
+            return null;
+        } catch (error) {
+            console.error('❌ Error getting token from Flutter:', error);
+            return null;
+        }
+    }
+
+    // دالة آمنة لاستدعاء Handlers في Flutter
+    async function safeCallFlutterHandler(handlerName, data = null) {
+        // التحقق من وجود WebView
+        if (!window.flutter_inappwebview) {
+            console.warn(`⚠️ flutter_inappwebview not available for handler: ${handlerName}`);
+            return null;
+        }
+        
+        // التحقق من وجود callHandler
+        if (typeof window.flutter_inappwebview.callHandler !== 'function') {
+            console.warn(`⚠️ callHandler not available for handler: ${handlerName}`);
+            return null;
+        }
+        
+        try {
+            console.log(`📱 Calling Flutter handler: ${handlerName}`);
+            const result = await window.flutter_inappwebview.callHandler(handlerName, data);
+            console.log(`📱 Flutter handler ${handlerName} returned:`, result);
+            return result;
+        } catch (error) {
+            console.error(`❌ Error calling Flutter handler ${handlerName}:`, error);
+            return null;
+        }
+    }
+
+    // دالة للتحقق مما إذا كنا نعمل داخل Flutter WebView
+    function isRunningInFlutter() {
+        return !!(window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function');
+    }
+
+    // دالة انتظار اتصال Flutter
+    function waitForFlutterConnection(timeout = 5000) {
+        return new Promise((resolve) => {
+            if (flutterConnection.connectionEstablished) {
+                resolve(true);
+                return;
+            }
+            
+            const startTime = Date.now();
+            const checkInterval = setInterval(() => {
+                if (flutterConnection.connectionEstablished) {
+                    clearInterval(checkInterval);
+                    resolve(true);
+                } else if (Date.now() - startTime > timeout) {
+                    clearInterval(checkInterval);
+                    resolve(false);
+                }
+            }, 200);
+        });
+    }
+
+    // التحقق الدوري من الاتصال (كحل احتياطي)
+    function startConnectionWatcher() {
+        const watcher = setInterval(() => {
+            if (!flutterConnection.connectionEstablished) {
+                // التحقق من وجود flutter_inappwebview
+                if (window.flutter_inappwebview) {
+                    console.log('🔍 flutter_inappwebview detected, checking connection...');
+                    
+                    // محاولة استدعاء handler بسيط للتحقق
+                    if (typeof window.flutter_inappwebview.callHandler === 'function') {
+                        window.flutter_inappwebview.callHandler('getFCMToken')
+                            .then(token => {
+                                if (token && token !== 'null' && token !== 'undefined') {
+                                    console.log('✅ Connection confirmed, token received:', token);
+                                    flutterConnection.connectionEstablished = true;
+                                    localStorage.setItem('fcm_token', token);
+                                    localStorage.setItem('pending_fcm_token', token);
+                                    clearInterval(watcher);
+                                }
+                            })
+                            .catch(err => {
+                                console.warn('⚠️ Connection test failed:', err);
+                            });
+                    }
+                }
+            } else {
+                clearInterval(watcher);
+            }
+        }, 2000); // كل 2 ثانية
+        
+        // إيقاف المراقبة بعد 20 ثانية
+        setTimeout(() => {
+            clearInterval(watcher);
+            if (!flutterConnection.connectionEstablished) {
+                console.warn('⚠️ Connection timeout - Flutter not available');
+            }
+        }, 20000);
+    }
+
+    // ============================================
     // Flutter & WebView Bridge
     // ============================================
     const FlutterBridge = {
@@ -1008,9 +1174,7 @@
         // نداء مباشر للـ Flutter Wrapper
         callHandler: function(handlerName, data = {}) {
             console.log(`[Bridge] Calling Flutter handler: ${handlerName}`, data);
-            if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
-                window.flutter_inappwebview.callHandler(handlerName, JSON.stringify(data));
-            }
+            return safeCallFlutterHandler(handlerName, data);
         },
 
         // انتظار جاهزية localStorage
@@ -1032,7 +1196,7 @@
     });
 
     // ============================================
-    // دوال إدارة FCM Token - مدمجة في index.html
+    // دوال إدارة FCM Token
     // ============================================
 
     /**
@@ -1077,47 +1241,26 @@
         
         if (!fcmToken) {
             console.warn('⚠️ No FCM token found in localStorage');
-            showNotification('⚠️ لم يتم العثور على توكن الإشعارات. تأكد من تشغيل التطبيق عبر Flutter.', 'warning');
+            showNotification('⚠️ لم يتم العثور على توكن الإشعارات', 'warning');
             return false;
         }
 
-        // التحقق من التوكن الحالي في قاعدة البيانات
         try {
-            const { data: driverData, error: fetchError } = await tarhalDB
-                .from('drivers')
-                .select('fcm_token')
-                .eq('id', currentDriver.id)
-                .single();
-
-            if (fetchError) {
-                console.error('❌ Error fetching current token:', fetchError);
-                throw fetchError;
-            }
-
-            // مقارنة التوكنات
-            const currentTokenInDB = driverData?.fcm_token;
+            console.log(`📱 Syncing FCM token for driver ${currentDriver.id}: ${fcmToken}`);
             
-            if (currentTokenInDB === fcmToken) {
-                console.log('✅ FCM token is already up to date in database');
-                return true;
-            }
-
-            // التوكن مختلف - نقوم بتحديثه
-            console.log('🔄 Updating FCM token in Supabase...');
-            console.log(`   Old: ${currentTokenInDB}`);
-            console.log(`   New: ${fcmToken}`);
-
-            const { error: updateError } = await tarhalDB
+            // تحديث التوكن في قاعدة البيانات
+            const { data, error } = await tarhalDB
                 .from('drivers')
                 .update({
                     fcm_token: fcmToken,
                     last_fcm_sync: new Date().toISOString()
                 })
-                .eq('id', currentDriver.id);
+                .eq('id', currentDriver.id)
+                .select();
 
-            if (updateError) {
-                console.error('❌ Error updating FCM token:', updateError);
-                throw updateError;
+            if (error) {
+                console.error('❌ Error updating FCM token:', error);
+                return false;
             }
 
             // تحديث البيانات المحلية
@@ -1127,15 +1270,10 @@
             }
 
             console.log('✅ FCM token synced successfully with Supabase');
-            
-            // إشعار النجاح
-            showNotification('✅ تم مزامنة توكن الإشعارات مع الخادم', 'success');
-            
             return true;
 
         } catch (error) {
             console.error('❌ Failed to sync FCM token:', error);
-            showNotification('⚠️ فشل مزامنة توكن الإشعارات: ' + error.message, 'error');
             return false;
         }
     }
@@ -1149,27 +1287,28 @@
         
         // 2. إذا لم يوجد توكن، نطلب من Flutter توفيره
         if (!fcmToken) {
-            console.log('📱 Requesting FCM token from Flutter...');
+            console.log('📱 No token in localStorage, checking Flutter connection...');
             
-            try {
-                // طلب التوكن من Flutter عبر bridge
-                if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
-                    const token = await window.flutter_inappwebview.callHandler('getFCMToken');
-                    if (token && token !== 'null' && token !== 'undefined') {
-                        fcmToken = token;
-                        // حفظ التوكن في localStorage
-                        localStorage.setItem('fcm_token', token);
-                        localStorage.setItem('pending_fcm_token', token);
-                        console.log('📱 Received FCM token from Flutter:', token);
-                    }
+            // انتظار اتصال Flutter (مع مهلة)
+            await waitForFlutterConnection(5000);
+            
+            // محاولة الحصول على التوكن من Flutter
+            if (flutterConnection.connectionEstablished) {
+                fcmToken = await getFCMTokenFromFlutter();
+            } else {
+                console.warn('⚠️ Flutter not connected, trying direct call...');
+                // محاولة مباشرة
+                fcmToken = await safeCallFlutterHandler('getFCMToken');
+                if (fcmToken) {
+                    localStorage.setItem('fcm_token', fcmToken);
+                    localStorage.setItem('pending_fcm_token', fcmToken);
                 }
-            } catch (error) {
-                console.warn('⚠️ Could not get token from Flutter:', error);
             }
         }
         
-        // 3. إذا لا يزال لا يوجد توكن، نعرض خطأ
+        // 3. إذا لا يزال لا يوجد توكن
         if (!fcmToken) {
+            console.error('❌ No FCM token available');
             showNotification('❌ لا يمكن تفعيل وضع العمل بدون توكن إشعارات. تأكد من تشغيل التطبيق عبر Flutter.', 'error');
             return false;
         }
@@ -1219,6 +1358,9 @@
         setTimeout(() => {
             document.getElementById('splash-screen').classList.add('hide');
         }, 900);
+        
+        // بدء مراقبة الاتصال مع Flutter
+        startConnectionWatcher();
         
         // =====================================================
         // نظام الحارس (Gatekeeper) - Strict Lockdown
@@ -2684,34 +2826,43 @@ async function toggleDriverStatus() {
         try {
             // ============ الخطوة 1: مزامنة توكن FCM ============
             showNotification('🔄 جاري مزامنة توكن الإشعارات...', 'info');
-            const tokenSynced = await ensureFCMTokenSync();
             
-            if (!tokenSynced) {
-                // محاولة مرة ثانية مع طلب مباشر من Flutter
-                showNotification('🔄 محاولة ثانية للحصول على التوكن...', 'info');
+            // محاولة الحصول على التوكن
+            let fcmToken = getFCMTokenFromStorage();
+            console.log(`📱 Current token from localStorage: ${fcmToken || 'none'}`);
+
+            // إذا لم يوجد توكن، نحاول من Flutter
+            if (!fcmToken) {
+                console.log('📱 No token in localStorage, trying Flutter...');
                 
-                // طلب التوكن مباشرة من Flutter
-                if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
-                    try {
-                        const token = await window.flutter_inappwebview.callHandler('getFCMToken');
-                        if (token && token !== 'null' && token !== 'undefined') {
-                            localStorage.setItem('fcm_token', token);
-                            localStorage.setItem('pending_fcm_token', token);
-                            const secondTry = await syncFCMTokenWithSupabase();
-                            if (!secondTry) {
-                                throw new Error('فشل مزامنة التوكن بعد المحاولة الثانية');
-                            }
-                        }
-                    } catch (e) {
-                        console.error('Failed to get token from Flutter:', e);
+                // انتظار اتصال Flutter
+                await waitForFlutterConnection(5000);
+                
+                if (flutterConnection.connectionEstablished) {
+                    fcmToken = await getFCMTokenFromFlutter();
+                } else {
+                    // محاولة مباشرة
+                    fcmToken = await safeCallFlutterHandler('getFCMToken');
+                    if (fcmToken) {
+                        localStorage.setItem('fcm_token', fcmToken);
+                        localStorage.setItem('pending_fcm_token', fcmToken);
                     }
                 }
-                
-                // التحقق مرة أخرى
-                const finalCheck = await syncFCMTokenWithSupabase();
-                if (!finalCheck) {
-                    throw new Error('تعذر الحصول على توكن إشعارات صالح');
+            }
+
+            // مزامنة التوكن إذا وجد
+            if (fcmToken) {
+                console.log('📱 Syncing token with Supabase...');
+                const synced = await syncFCMTokenWithSupabase();
+                if (synced) {
+                    showNotification('✅ تم مزامنة توكن الإشعارات', 'success');
+                } else {
+                    console.warn('⚠️ Token sync failed but continuing...');
+                    showNotification('⚠️ فشلت مزامنة التوكن، ولكن يمكنك الاستمرار', 'warning');
                 }
+            } else {
+                console.warn('⚠️ No FCM token available');
+                showNotification('⚠️ لم يتم العثور على توكن إشعارات. تأكد من تشغيل التطبيق عبر Flutter.', 'warning');
             }
 
             // ============ الخطوة 2: الحصول على الموقع الجغرافي ============
