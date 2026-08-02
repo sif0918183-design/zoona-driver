@@ -928,6 +928,12 @@
                 الشكاوى والمقترحات
             </button>
 
+            <!-- ✅ زر تحديث الإشعارات -->
+            <button class="btn btn-driver mt-2" onclick="refreshFCMToken()" style="background: #2563eb; border-color: #2563eb;">
+                <i class="ph-bold ph-refresh"></i>
+                تحديث إعدادات الإشعارات
+            </button>
+
             <button class="btn btn-driver mt-2" onclick="logoutDriver()">
                 <i class="ph-light ph-sign-out"></i>
                 تسجيل خروج السائق
@@ -990,6 +996,7 @@
     let currentDriver = null;
     let isDriverOnline = false;
     let foreverOnlineManager = null;
+    let tokenMonitorInterval = null;
 
     // ============================================
     // Flutter & WebView Bridge
@@ -1009,8 +1016,9 @@
         callHandler: function(handlerName, data = {}) {
             console.log(`[Bridge] Calling Flutter handler: ${handlerName}`, data);
             if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
-                window.flutter_inappwebview.callHandler(handlerName, JSON.stringify(data));
+                return window.flutter_inappwebview.callHandler(handlerName, JSON.stringify(data));
             }
+            return Promise.resolve(null);
         },
 
         // انتظار جاهزية localStorage
@@ -1167,8 +1175,6 @@
         
         console.log(' Initializing driver systems...');
         
-        // OneSignal is deprecated, using Web Push & Supabase Realtime
-        
         // Sound manager is already initialized
         if (soundManager) {
             console.log('✅ Sound Manager is ready');
@@ -1181,6 +1187,9 @@
         
         // إضافة تحديث تلقائي للرصيد كل 3 ثوانٍ لضمان التحديث الفوري
         startBalancePolling();
+        
+        // ✅ بدء مراقبة التوكن
+        startTokenMonitoring();
     }
     
     // ============ تحديث الرصيد التلقائي ============
@@ -1706,6 +1715,9 @@
             await window.setFCMToken(pendingToken);
         }
 
+        // ✅ التحقق من صحة التوكن عند تسجيل الدخول
+        await verifyAndRefreshTokenOnLogin();
+
     } catch (error) {
         console.error('Driver login error:', error);
         showNotification('حدث خطأ أثناء تسجيل الدخول، حاول مرة أخرى', 'error');
@@ -1715,7 +1727,6 @@
         loginBtn.disabled = false;
     }
 }
-
 
     // Driver Dashboard
     async function updateDriverDashboard() {
@@ -2091,6 +2102,12 @@
             foreverOnlineManager = null;
         }
         if (window.soundManager) window.soundManager.stopRideRequestSound();
+        
+        // ✅ إيقاف مراقبة التوكن
+        if (tokenMonitorInterval) {
+            clearInterval(tokenMonitorInterval);
+            tokenMonitorInterval = null;
+        }
 
         localStorage.removeItem('tarhal_driver');
         localStorage.removeItem('driver_id');
@@ -2102,6 +2119,208 @@
 
         showScreen('driver-login-screen');
         showNotification('تم تسجيل خروج السائق', 'success');
+    }
+
+    // ============================================
+    // ✅ دوال إدارة التوكن
+    // ============================================
+
+    // ✅ دالة التحقق من حالة التوكن
+    async function checkDriverTokenStatus(driverId) {
+        try {
+            const response = await fetch('/api/check-driver-linked', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ driverId: driverId })
+            });
+            const data = await response.json();
+            console.log('📡 Token status:', data);
+            return data;
+        } catch (error) {
+            console.error('❌ Error checking token:', error);
+            return null;
+        }
+    }
+
+    // ✅ دالة تحديث التوكن
+    async function refreshFCMToken() {
+        if (!currentDriver) {
+            showNotification('❌ يجب تسجيل الدخول أولاً', 'error');
+            return;
+        }
+        
+        console.log('🔄 جاري تحديث التوكن...');
+        showNotification('🔄 جاري تحديث إعدادات الإشعارات...', 'info');
+        
+        const btn = document.querySelector('[onclick="refreshFCMToken()"]');
+        if (btn) {
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span class="loading"></span> جاري التحديث...';
+            btn.disabled = true;
+            
+            try {
+                let token = null;
+                
+                // ✅ طلب توكن من Flutter
+                if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+                    try {
+                        token = await window.flutter_inappwebview.callHandler('getFCMToken');
+                        console.log('📱 توكن من Flutter:', token ? '✅' : '❌');
+                    } catch (e) {
+                        console.log('⚠️ فشل الحصول على توكن من Flutter:', e);
+                    }
+                }
+                
+                if (!token || token === 'null' || token === 'false' || token === '') {
+                    showNotification('⚠️ لم يتم الحصول على توكن. يرجى فتح تطبيق السائق.', 'warning');
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    return;
+                }
+                
+                // ✅ تحديث التوكن في قاعدة البيانات
+                const { error } = await tarhalDB
+                    .from('drivers')
+                    .update({ 
+                        fcm_token: token,
+                        last_fcm_sync: new Date().toISOString()
+                    })
+                    .eq('id', currentDriver.id);
+                
+                if (error) {
+                    console.error('❌ فشل تحديث التوكن:', error);
+                    showNotification('❌ فشل تحديث الإشعارات', 'error');
+                } else {
+                    currentDriver.fcm_token = token;
+                    localStorage.setItem('tarhal_driver', JSON.stringify(currentDriver));
+                    showNotification('✅ تم تحديث إعدادات الإشعارات', 'success');
+                    console.log('✅ تم تحديث التوكن بنجاح');
+                }
+                
+            } catch (error) {
+                console.error('❌ خطأ في تحديث التوكن:', error);
+                showNotification('❌ فشل تحديث الإشعارات', 'error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        } else {
+            // Fallback إذا لم يتم العثور على الزر
+            try {
+                let token = null;
+                if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+                    token = await window.flutter_inappwebview.callHandler('getFCMToken');
+                }
+                
+                if (token && token !== 'null' && token !== 'false' && token !== '') {
+                    const { error } = await tarhalDB
+                        .from('drivers')
+                        .update({ 
+                            fcm_token: token,
+                            last_fcm_sync: new Date().toISOString()
+                        })
+                        .eq('id', currentDriver.id);
+                    
+                    if (!error) {
+                        currentDriver.fcm_token = token;
+                        localStorage.setItem('tarhal_driver', JSON.stringify(currentDriver));
+                        showNotification('✅ تم تحديث إعدادات الإشعارات', 'success');
+                    }
+                }
+            } catch (e) {
+                console.error('❌ خطأ في تحديث التوكن:', e);
+            }
+        }
+    }
+
+    // ✅ دالة التحقق من التوكن عند تسجيل الدخول
+    async function verifyAndRefreshTokenOnLogin() {
+        if (!currentDriver) {
+            console.log('⚠️ لا يوجد سائق لتسجيل الدخول');
+            return;
+        }
+        
+        console.log('🔐 التحقق من صحة التوكن عند تسجيل الدخول...');
+        
+        try {
+            // 1. التحقق من حالة التوكن عبر API
+            const status = await checkDriverTokenStatus(currentDriver.id);
+            
+            if (status && !status.linked) {
+                console.log('⚠️ التوكن غير صالح، جاري التحديث...');
+                
+                // 2. محاولة الحصول على توكن من Flutter
+                let newToken = null;
+                
+                if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+                    try {
+                        newToken = await window.flutter_inappwebview.callHandler('getFCMToken');
+                        console.log('📱 تم الحصول على توكن من Flutter:', newToken ? '✅' : '❌');
+                    } catch (e) {
+                        console.log('⚠️ فشل الحصول على توكن من Flutter:', e);
+                    }
+                }
+                
+                // 3. إذا تم الحصول على توكن، قم بتحديثه
+                if (newToken && newToken !== 'null' && newToken !== 'false' && newToken !== '') {
+                    const { error } = await tarhalDB
+                        .from('drivers')
+                        .update({ 
+                            fcm_token: newToken,
+                            last_fcm_sync: new Date().toISOString()
+                        })
+                        .eq('id', currentDriver.id);
+                    
+                    if (error) {
+                        console.error('❌ فشل تحديث التوكن:', error);
+                    } else {
+                        currentDriver.fcm_token = newToken;
+                        localStorage.setItem('tarhal_driver', JSON.stringify(currentDriver));
+                        console.log('✅ تم تحديث التوكن بنجاح');
+                        showNotification('✅ تم تحديث إعدادات الإشعارات', 'success');
+                    }
+                } else {
+                    console.log('⚠️ لم يتم الحصول على توكن، نعرض رسالة للمستخدم');
+                    showNotification('⚠️ يرجى فتح تطبيق تراكا لتحديث الإشعارات', 'warning');
+                }
+            } else if (status && status.linked) {
+                console.log('✅ التوكن صالح');
+            } else {
+                console.log('⚠️ فشل التحقق من التوكن');
+            }
+            
+        } catch (error) {
+            console.error('❌ خطأ في التحقق من التوكن:', error);
+        }
+    }
+
+    // ✅ مراقبة دورية للتوكن (كل 30 ثانية)
+    function startTokenMonitoring() {
+        // إيقاف أي مراقبة سابقة
+        if (tokenMonitorInterval) {
+            clearInterval(tokenMonitorInterval);
+            tokenMonitorInterval = null;
+        }
+        
+        console.log('🔄 بدء مراقبة التوكن (كل 30 ثانية)...');
+        
+        tokenMonitorInterval = setInterval(async () => {
+            if (currentDriver && currentDriver.id) {
+                try {
+                    const status = await checkDriverTokenStatus(currentDriver.id);
+                    
+                    if (status && status.token_deleted) {
+                        console.log('⚠️ تم حذف التوكن، جاري التحديث التلقائي...');
+                        await refreshFCMToken();
+                    } else if (status && !status.linked && status.fcm_token) {
+                        console.log('⚠️ التوكن غير صالح، جاري التحديث...');
+                        await refreshFCMToken();
+                    }
+                } catch (error) {
+                    console.error('❌ خطأ في مراقبة التوكن:', error);
+                }
+            }
+        }, 30000); // كل 30 ثانية
     }
 </script>
 
