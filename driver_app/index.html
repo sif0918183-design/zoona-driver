@@ -1031,6 +1031,153 @@
         }
     });
 
+    // ============================================
+    // دوال إدارة FCM Token - مدمجة في index.html
+    // ============================================
+
+    /**
+     * قراءة توكن FCM من localStorage
+     * يتم حفظ التوكن بواسطة تطبيق Flutter
+     */
+    function getFCMTokenFromStorage() {
+        try {
+            // قراءة التوكن من localStorage (نفس المفتاح الذي يستخدمه Flutter)
+            const token = localStorage.getItem('fcm_token');
+            
+            // محاولة قراءة من مفتاح بديل إذا لم يوجد
+            if (!token || token === 'null' || token === 'undefined') {
+                const altToken = localStorage.getItem('pending_fcm_token');
+                if (altToken && altToken !== 'null' && altToken !== 'undefined') {
+                    console.log('📱 Found FCM token in pending_fcm_token:', altToken);
+                    return altToken;
+                }
+                return null;
+            }
+            
+            console.log('📱 FCM Token read from localStorage:', token);
+            return token;
+        } catch (error) {
+            console.error('❌ Error reading FCM token from localStorage:', error);
+            return null;
+        }
+    }
+
+    /**
+     * مزامنة توكن FCM مع قاعدة البيانات (Supabase)
+     * يتم استدعاؤها عند تفعيل وضع العمل
+     */
+    async function syncFCMTokenWithSupabase() {
+        if (!currentDriver || !currentDriver.id) {
+            console.warn('⚠️ No driver logged in, cannot sync FCM token');
+            return false;
+        }
+
+        // قراءة التوكن من localStorage
+        const fcmToken = getFCMTokenFromStorage();
+        
+        if (!fcmToken) {
+            console.warn('⚠️ No FCM token found in localStorage');
+            showNotification('⚠️ لم يتم العثور على توكن الإشعارات. تأكد من تشغيل التطبيق عبر Flutter.', 'warning');
+            return false;
+        }
+
+        // التحقق من التوكن الحالي في قاعدة البيانات
+        try {
+            const { data: driverData, error: fetchError } = await tarhalDB
+                .from('drivers')
+                .select('fcm_token')
+                .eq('id', currentDriver.id)
+                .single();
+
+            if (fetchError) {
+                console.error('❌ Error fetching current token:', fetchError);
+                throw fetchError;
+            }
+
+            // مقارنة التوكنات
+            const currentTokenInDB = driverData?.fcm_token;
+            
+            if (currentTokenInDB === fcmToken) {
+                console.log('✅ FCM token is already up to date in database');
+                return true;
+            }
+
+            // التوكن مختلف - نقوم بتحديثه
+            console.log('🔄 Updating FCM token in Supabase...');
+            console.log(`   Old: ${currentTokenInDB}`);
+            console.log(`   New: ${fcmToken}`);
+
+            const { error: updateError } = await tarhalDB
+                .from('drivers')
+                .update({
+                    fcm_token: fcmToken,
+                    last_fcm_sync: new Date().toISOString()
+                })
+                .eq('id', currentDriver.id);
+
+            if (updateError) {
+                console.error('❌ Error updating FCM token:', updateError);
+                throw updateError;
+            }
+
+            // تحديث البيانات المحلية
+            if (currentDriver) {
+                currentDriver.fcm_token = fcmToken;
+                localStorage.setItem('tarhal_driver', JSON.stringify(currentDriver));
+            }
+
+            console.log('✅ FCM token synced successfully with Supabase');
+            
+            // إشعار النجاح
+            showNotification('✅ تم مزامنة توكن الإشعارات مع الخادم', 'success');
+            
+            return true;
+
+        } catch (error) {
+            console.error('❌ Failed to sync FCM token:', error);
+            showNotification('⚠️ فشل مزامنة توكن الإشعارات: ' + error.message, 'error');
+            return false;
+        }
+    }
+
+    /**
+     * دالة مدمجة للتحقق من التوكن وتحديثه عند تفعيل وضع العمل
+     */
+    async function ensureFCMTokenSync() {
+        // 1. محاولة قراءة التوكن من localStorage
+        let fcmToken = getFCMTokenFromStorage();
+        
+        // 2. إذا لم يوجد توكن، نطلب من Flutter توفيره
+        if (!fcmToken) {
+            console.log('📱 Requesting FCM token from Flutter...');
+            
+            try {
+                // طلب التوكن من Flutter عبر bridge
+                if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+                    const token = await window.flutter_inappwebview.callHandler('getFCMToken');
+                    if (token && token !== 'null' && token !== 'undefined') {
+                        fcmToken = token;
+                        // حفظ التوكن في localStorage
+                        localStorage.setItem('fcm_token', token);
+                        localStorage.setItem('pending_fcm_token', token);
+                        console.log('📱 Received FCM token from Flutter:', token);
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ Could not get token from Flutter:', error);
+            }
+        }
+        
+        // 3. إذا لا يزال لا يوجد توكن، نعرض خطأ
+        if (!fcmToken) {
+            showNotification('❌ لا يمكن تفعيل وضع العمل بدون توكن إشعارات. تأكد من تشغيل التطبيق عبر Flutter.', 'error');
+            return false;
+        }
+        
+        // 4. مزامنة التوكن مع Supabase
+        return await syncFCMTokenWithSupabase();
+    }
+
     /**
      * استقبال توكن FCM من Flutter وحفظه
      * يتم مناداة هذه الدالة من طرف Flutter Wrapper عند الحصول على توكن جديد
@@ -1042,31 +1189,14 @@
             return;
         }
 
-        // حفظ التوكن مؤقتاً في localStorage
+        // حفظ التوكن في localStorage
+        localStorage.setItem('fcm_token', token);
         localStorage.setItem('pending_fcm_token', token);
 
         // إذا كان السائق مسجلاً دخوله، نقوم بتحديث قاعدة البيانات فوراً
         if (currentDriver && currentDriver.id) {
             console.log(' Syncing FCM Token to Supabase for driver:', currentDriver.id);
-            try {
-                const { error } = await tarhalDB
-                    .from('drivers')
-                    .update({
-                        fcm_token: token,
-                        last_fcm_sync: new Date().toISOString()
-                    })
-                    .eq('id', currentDriver.id);
-
-                if (error) throw error;
-                console.log('✅ FCM Token updated successfully in Supabase');
-
-                // تحديث البيانات المحلية أيضاً لضمان التزامن
-                currentDriver.fcm_token = token;
-                localStorage.setItem('tarhal_driver', JSON.stringify(currentDriver));
-
-            } catch (err) {
-                console.error('❌ Failed to update FCM Token in DB:', err);
-            }
+            await syncFCMTokenWithSupabase();
         } else {
             console.log('⏳ Driver not logged in yet. Token stored in localStorage.');
         }
@@ -1703,7 +1833,7 @@
         const pendingToken = localStorage.getItem('pending_fcm_token');
         if (pendingToken) {
             console.log(' Syncing pending FCM token after login...');
-            await window.setFCMToken(pendingToken);
+            await syncFCMTokenWithSupabase();
         }
 
     } catch (error) {
@@ -1715,7 +1845,6 @@
         loginBtn.disabled = false;
     }
 }
-
 
     // Driver Dashboard
     async function updateDriverDashboard() {
@@ -2527,7 +2656,7 @@ class ForeverOnlineManager {
 // isDriverOnline already declared above
 let driverOnlineSince = null;
 
-// دالة تفعيل/إيقاف وضع العمل
+// دالة تفعيل/إيقاف وضع العمل المعدلة مع مزامنة التوكن
 async function toggleDriverStatus() {
     if (!currentDriver) {
         showNotification('❌ يجب تسجيل الدخول أولاً', 'error');
@@ -2545,32 +2674,59 @@ async function toggleDriverStatus() {
     const statusText = document.getElementById('driver-status-text');
     const toggleBtn = document.getElementById('toggle-online-btn');
 
-    // حفظ النص الأصلي قبل التغيير
-    const originalText = toggleBtn.innerHTML;
-
     if (!isDriverOnline) {
         // ==================== تفعيل وضع العمل ====================
         console.log(' Activating DRIVER ONLINE mode...');
         
-        // إظهار مؤشر تحميل - انتظار الموقع (حسب المتطلبات الجديدة)
-        toggleBtn.innerHTML = '<span class="loading"></span> انتظار...';
+        toggleBtn.innerHTML = '<span class="loading"></span> جاري التجهيز...';
         toggleBtn.disabled = true;
         
         try {
-            // 1. الحصول على الموقع الجغرافي أولاً (شرط أساسي) - نسخة 30 ثانية
+            // ============ الخطوة 1: مزامنة توكن FCM ============
+            showNotification('🔄 جاري مزامنة توكن الإشعارات...', 'info');
+            const tokenSynced = await ensureFCMTokenSync();
+            
+            if (!tokenSynced) {
+                // محاولة مرة ثانية مع طلب مباشر من Flutter
+                showNotification('🔄 محاولة ثانية للحصول على التوكن...', 'info');
+                
+                // طلب التوكن مباشرة من Flutter
+                if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+                    try {
+                        const token = await window.flutter_inappwebview.callHandler('getFCMToken');
+                        if (token && token !== 'null' && token !== 'undefined') {
+                            localStorage.setItem('fcm_token', token);
+                            localStorage.setItem('pending_fcm_token', token);
+                            const secondTry = await syncFCMTokenWithSupabase();
+                            if (!secondTry) {
+                                throw new Error('فشل مزامنة التوكن بعد المحاولة الثانية');
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Failed to get token from Flutter:', e);
+                    }
+                }
+                
+                // التحقق مرة أخرى
+                const finalCheck = await syncFCMTokenWithSupabase();
+                if (!finalCheck) {
+                    throw new Error('تعذر الحصول على توكن إشعارات صالح');
+                }
+            }
+
+            // ============ الخطوة 2: الحصول على الموقع الجغرافي ============
+            showNotification('📍 جاري تحديد الموقع...', 'info');
             const position = await getCurrentLocationWithTimeout();
 
-            // 2. تهيئة ForeverOnlineManager
+            // ============ الخطوة 3: تفعيل النظام الأبدي ============
             foreverOnlineManager = new ForeverOnlineManager(currentDriver);
-            
-            // 3. تفعيل النظام الأبدي مع تمرير الموقع
             const activated = await foreverOnlineManager.activate(position);
             
             if (!activated) {
                 throw new Error('فشل تفعيل النظام');
             }
             
-            // 4. تحديث الواجهة
+            // ============ الخطوة 4: تحديث الواجهة ============
             statusIndicator.className = 'status-indicator status-online';
             statusText.textContent = 'متصل وجاهز';
             toggleBtn.innerHTML = '<i class="ph-bold ph-power"></i> متصل الآن';
@@ -2583,15 +2739,13 @@ async function toggleDriverStatus() {
             isDriverOnline = true;
             driverOnlineSince = new Date().toISOString();
             
-            // 5. حفظ الحالة في localStorage
             localStorage.setItem('driver_forever_online', 'true');
             localStorage.setItem('driver_online_since', driverOnlineSince);
             localStorage.setItem('driver_online_id', currentDriver.id);
             
-            // 6. إشعار النجاح
             showNotification('✅ أنت الآن متصل وجاهز لاستقبال الطلبات', 'success');
             
-            // 7. مزامنة مع Flutter
+            // مزامنة مع Flutter
             FlutterBridge.callHandler('driverLogin', {
                 id: currentDriver.id,
                 driver_id: currentDriver.id,
@@ -2599,18 +2753,20 @@ async function toggleDriverStatus() {
             });
             FlutterBridge.postMessage('driver_status_change', { online: true });
 
-
             console.log(' DRIVER ONLINE mode ACTIVATED FOREVER');
             
         } catch (error) {
             console.error('❌ Activation error:', error);
             
-            // تحديد رسالة خطأ مناسبة بناءً على نوع الخطأ
-            let errorMsg = '❌ تعذر تفعيل وضع العمل. يرجى التأكد من تشغيل الموقع (GPS) والمحاولة مرة أخرى.';
-            if (error.code === 1) { // PERMISSION_DENIED
-                errorMsg = '❌ يرجى السماح بالوصول للموقع الجغرافي لتتمكن من استقبال الطلبات.';
-            } else if (error.code === 3) { // TIMEOUT
-                errorMsg = '❌ انتهت مهلة البحث عن الموقع. تأكد من وجودك في مكان مكشوف.';
+            let errorMsg = '❌ تعذر تفعيل وضع العمل. ';
+            if (error.message && error.message.includes('توكن')) {
+                errorMsg += 'تأكد من تشغيل التطبيق عبر Flutter والحصول على توكن الإشعارات.';
+            } else if (error.code === 1) {
+                errorMsg += 'يرجى السماح بالوصول للموقع الجغرافي.';
+            } else if (error.code === 3) {
+                errorMsg += 'انتهت مهلة البحث عن الموقع. تأكد من وجودك في مكان مكشوف.';
+            } else {
+                errorMsg += error.message || 'يرجى المحاولة مرة أخرى.';
             }
 
             showNotification(errorMsg, 'error');
@@ -2628,6 +2784,7 @@ async function toggleDriverStatus() {
             // تحديث مؤشر الحالة أيضاً
             statusIndicator.className = 'status-indicator status-offline';
             statusText.textContent = 'غير متصل';
+            
         } finally {
             toggleBtn.disabled = false;
         }
@@ -2636,7 +2793,6 @@ async function toggleDriverStatus() {
         // ==================== إيقاف وضع العمل ====================
         console.log(' Deactivating DRIVER ONLINE mode...');
         
-        // إظهار مؤشر تحميل
         toggleBtn.innerHTML = '<span class="loading"></span> جاري الإيقاف...';
         toggleBtn.disabled = true;
         
@@ -2676,8 +2832,6 @@ async function toggleDriverStatus() {
         } catch (error) {
             console.error('❌ Deactivation error:', error);
             showNotification('❌ فشل إيقاف وضع العمل', 'error');
-            // في حالة الفشل نعود للنص الأصلي إذا لزم الأمر، لكن عادة هنا لا نحتاج
-            toggleBtn.innerHTML = originalText;
         } finally {
             toggleBtn.disabled = false;
         }
@@ -2956,7 +3110,7 @@ async function checkAuth() {
             // مزامنة توكن FCM إذا وجد في التخزين المحلي
             const pendingToken = localStorage.getItem('pending_fcm_token');
             if (pendingToken) {
-                window.setFCMToken(pendingToken);
+                await syncFCMTokenWithSupabase();
             }
 
             // Check driver ban status immediately
@@ -3192,7 +3346,6 @@ document.getElementById('complaints-modal').addEventListener('click', function(e
     }
 });
 </script>
-
 
 </body>
 </html>
