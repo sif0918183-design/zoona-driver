@@ -999,10 +999,14 @@
     let flutterConnection = {
         webViewReady: false,
         pageLoaded: false,
+        tokenReceived: false,
         connectionEstablished: false,
         retryCount: 0,
-        maxRetries: 10
+        maxRetries: 15
     };
+
+    // متغير لتخزين التوكن
+    let cachedFCMToken = null;
 
     // استماع لأحداث الجاهزية من Flutter
     document.addEventListener('flutterReady', function() {
@@ -1017,35 +1021,60 @@
         checkFlutterConnection();
     });
 
+    // استماع لحدث وصول التوكن من Flutter
+    document.addEventListener('flutterTokenReady', function(event) {
+        console.log('✅ Flutter token ready event received:', event.detail);
+        if (event.detail && event.detail.token) {
+            const token = event.detail.token;
+            if (token && token !== 'null' && token !== 'undefined' && token !== 'false') {
+                cachedFCMToken = token;
+                localStorage.setItem('fcm_token', token);
+                localStorage.setItem('pending_fcm_token', token);
+                localStorage.setItem('flutter_token_ready', 'true');
+                flutterConnection.tokenReceived = true;
+                console.log('✅ Token received from Flutter event:', token);
+                
+                // إذا كان السائق مسجلاً، نقوم بمزامنة التوكن
+                if (currentDriver && currentDriver.id) {
+                    syncFCMTokenWithSupabase();
+                }
+            }
+        }
+    });
+
     // التحقق من الاتصال مع Flutter
     function checkFlutterConnection() {
         if (flutterConnection.webViewReady && flutterConnection.pageLoaded) {
             flutterConnection.connectionEstablished = true;
             console.log('✅ Flutter connection fully established');
             
-            // ✅ الآن يمكننا طلب التوكن بأمان
-            getFCMTokenFromFlutter();
+            // ✅ قراءة التوكن من localStorage
+            const storedToken = localStorage.getItem('fcm_token');
+            if (storedToken && storedToken !== 'null' && storedToken !== 'undefined') {
+                cachedFCMToken = storedToken;
+                console.log('📱 Token found in localStorage:', storedToken);
+                if (currentDriver && currentDriver.id) {
+                    syncFCMTokenWithSupabase();
+                }
+            } else {
+                // ✅ طلب التوكن من Flutter
+                console.log('📱 No token in localStorage, requesting from Flutter...');
+                requestTokenFromFlutter();
+            }
         }
     }
 
-    // دالة آمنة لطلب التوكن من Flutter
-    async function getFCMTokenFromFlutter() {
-        // التحقق من الجاهزية
-        if (!flutterConnection.connectionEstablished) {
-            console.log('⏳ Waiting for Flutter connection...');
-            return null;
-        }
-        
+    // دالة لطلب التوكن من Flutter
+    async function requestTokenFromFlutter() {
         // التحقق من وجود WebView
         if (!window.flutter_inappwebview) {
             console.warn('⚠️ flutter_inappwebview not available');
-            return null;
+            return;
         }
         
-        // التحقق من وجود callHandler
         if (typeof window.flutter_inappwebview.callHandler !== 'function') {
             console.warn('⚠️ callHandler not available');
-            return null;
+            return;
         }
         
         try {
@@ -1054,107 +1083,25 @@
             console.log('📱 Flutter returned token:', token);
             
             if (token && token !== 'null' && token !== 'undefined' && token !== 'false') {
-                // حفظ التوكن
+                cachedFCMToken = token;
                 localStorage.setItem('fcm_token', token);
                 localStorage.setItem('pending_fcm_token', token);
-                console.log('✅ FCM token saved from Flutter:', token);
-                return token;
-            }
-            return null;
-        } catch (error) {
-            console.error('❌ Error getting token from Flutter:', error);
-            return null;
-        }
-    }
-
-    // دالة آمنة لاستدعاء Handlers في Flutter
-    async function safeCallFlutterHandler(handlerName, data = null) {
-        // التحقق من وجود WebView
-        if (!window.flutter_inappwebview) {
-            console.warn(`⚠️ flutter_inappwebview not available for handler: ${handlerName}`);
-            return null;
-        }
-        
-        // التحقق من وجود callHandler
-        if (typeof window.flutter_inappwebview.callHandler !== 'function') {
-            console.warn(`⚠️ callHandler not available for handler: ${handlerName}`);
-            return null;
-        }
-        
-        try {
-            console.log(`📱 Calling Flutter handler: ${handlerName}`);
-            const result = await window.flutter_inappwebview.callHandler(handlerName, data);
-            console.log(`📱 Flutter handler ${handlerName} returned:`, result);
-            return result;
-        } catch (error) {
-            console.error(`❌ Error calling Flutter handler ${handlerName}:`, error);
-            return null;
-        }
-    }
-
-    // دالة للتحقق مما إذا كنا نعمل داخل Flutter WebView
-    function isRunningInFlutter() {
-        return !!(window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function');
-    }
-
-    // دالة انتظار اتصال Flutter
-    function waitForFlutterConnection(timeout = 5000) {
-        return new Promise((resolve) => {
-            if (flutterConnection.connectionEstablished) {
-                resolve(true);
-                return;
-            }
-            
-            const startTime = Date.now();
-            const checkInterval = setInterval(() => {
-                if (flutterConnection.connectionEstablished) {
-                    clearInterval(checkInterval);
-                    resolve(true);
-                } else if (Date.now() - startTime > timeout) {
-                    clearInterval(checkInterval);
-                    resolve(false);
-                }
-            }, 200);
-        });
-    }
-
-    // التحقق الدوري من الاتصال (كحل احتياطي)
-    function startConnectionWatcher() {
-        const watcher = setInterval(() => {
-            if (!flutterConnection.connectionEstablished) {
-                // التحقق من وجود flutter_inappwebview
-                if (window.flutter_inappwebview) {
-                    console.log('🔍 flutter_inappwebview detected, checking connection...');
-                    
-                    // محاولة استدعاء handler بسيط للتحقق
-                    if (typeof window.flutter_inappwebview.callHandler === 'function') {
-                        window.flutter_inappwebview.callHandler('getFCMToken')
-                            .then(token => {
-                                if (token && token !== 'null' && token !== 'undefined') {
-                                    console.log('✅ Connection confirmed, token received:', token);
-                                    flutterConnection.connectionEstablished = true;
-                                    localStorage.setItem('fcm_token', token);
-                                    localStorage.setItem('pending_fcm_token', token);
-                                    clearInterval(watcher);
-                                }
-                            })
-                            .catch(err => {
-                                console.warn('⚠️ Connection test failed:', err);
-                            });
-                    }
+                flutterConnection.tokenReceived = true;
+                console.log('✅ Token received from Flutter:', token);
+                
+                if (currentDriver && currentDriver.id) {
+                    syncFCMTokenWithSupabase();
                 }
             } else {
-                clearInterval(watcher);
+                console.warn('⚠️ Flutter returned invalid token:', token);
+                // محاولة مرة أخرى بعد 2 ثانية
+                setTimeout(requestTokenFromFlutter, 2000);
             }
-        }, 2000); // كل 2 ثانية
-        
-        // إيقاف المراقبة بعد 20 ثانية
-        setTimeout(() => {
-            clearInterval(watcher);
-            if (!flutterConnection.connectionEstablished) {
-                console.warn('⚠️ Connection timeout - Flutter not available');
-            }
-        }, 20000);
+        } catch (error) {
+            console.error('❌ Error getting token from Flutter:', error);
+            // محاولة مرة أخرى بعد 3 ثانية
+            setTimeout(requestTokenFromFlutter, 3000);
+        }
     }
 
     // ============================================
@@ -1174,7 +1121,10 @@
         // نداء مباشر للـ Flutter Wrapper
         callHandler: function(handlerName, data = {}) {
             console.log(`[Bridge] Calling Flutter handler: ${handlerName}`, data);
-            return safeCallFlutterHandler(handlerName, data);
+            if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function') {
+                return window.flutter_inappwebview.callHandler(handlerName, JSON.stringify(data));
+            }
+            return null;
         },
 
         // انتظار جاهزية localStorage
@@ -1237,39 +1187,58 @@
         }
 
         // قراءة التوكن من localStorage
-        const fcmToken = getFCMTokenFromStorage();
+        let fcmToken = getFCMTokenFromStorage();
         
         if (!fcmToken) {
-            console.warn('⚠️ No FCM token found in localStorage');
+            // محاولة من Flutter
+            await requestTokenFromFlutter();
+            fcmToken = getFCMTokenFromStorage();
+        }
+        
+        if (!fcmToken) {
+            console.warn('⚠️ No FCM token available');
             showNotification('⚠️ لم يتم العثور على توكن الإشعارات', 'warning');
             return false;
         }
 
         try {
-            console.log(`📱 Syncing FCM token for driver ${currentDriver.id}: ${fcmToken}`);
+            console.log(`📱 Syncing FCM token for driver ${currentDriver.id}`);
             
-            // تحديث التوكن في قاعدة البيانات
-            const { data, error } = await tarhalDB
+            // ✅ استخدام RPC إذا كان متاحاً
+            try {
+                const { data, error } = await tarhalDB.rpc('update_driver_fcm_token', {
+                    p_driver_id: currentDriver.id,
+                    p_fcm_token: fcmToken
+                });
+                
+                if (!error) {
+                    console.log('✅ Token updated via RPC');
+                    currentDriver.fcm_token = fcmToken;
+                    localStorage.setItem('tarhal_driver', JSON.stringify(currentDriver));
+                    return true;
+                }
+            } catch (rpcError) {
+                console.warn('⚠️ RPC failed, trying direct update:', rpcError);
+            }
+            
+            // ✅ تحديث مباشر
+            const { error } = await tarhalDB
                 .from('drivers')
                 .update({
                     fcm_token: fcmToken,
                     last_fcm_sync: new Date().toISOString()
                 })
-                .eq('id', currentDriver.id)
-                .select();
+                .eq('id', currentDriver.id);
 
             if (error) {
                 console.error('❌ Error updating FCM token:', error);
                 return false;
             }
 
-            // تحديث البيانات المحلية
-            if (currentDriver) {
-                currentDriver.fcm_token = fcmToken;
-                localStorage.setItem('tarhal_driver', JSON.stringify(currentDriver));
-            }
-
+            currentDriver.fcm_token = fcmToken;
+            localStorage.setItem('tarhal_driver', JSON.stringify(currentDriver));
             console.log('✅ FCM token synced successfully with Supabase');
+            showNotification('✅ تم مزامنة توكن الإشعارات', 'success');
             return true;
 
         } catch (error) {
@@ -1278,66 +1247,48 @@
         }
     }
 
-    /**
-     * دالة مدمجة للتحقق من التوكن وتحديثه عند تفعيل وضع العمل
-     */
-    async function ensureFCMTokenSync() {
-        // 1. محاولة قراءة التوكن من localStorage
-        let fcmToken = getFCMTokenFromStorage();
+    // دالة للتحقق من وجود توكن في قاعدة البيانات
+    async function checkTokenInDatabase() {
+        if (!currentDriver || !currentDriver.id) return null;
         
-        // 2. إذا لم يوجد توكن، نطلب من Flutter توفيره
-        if (!fcmToken) {
-            console.log('📱 No token in localStorage, checking Flutter connection...');
-            
-            // انتظار اتصال Flutter (مع مهلة)
-            await waitForFlutterConnection(5000);
-            
-            // محاولة الحصول على التوكن من Flutter
-            if (flutterConnection.connectionEstablished) {
-                fcmToken = await getFCMTokenFromFlutter();
-            } else {
-                console.warn('⚠️ Flutter not connected, trying direct call...');
-                // محاولة مباشرة
-                fcmToken = await safeCallFlutterHandler('getFCMToken');
-                if (fcmToken) {
-                    localStorage.setItem('fcm_token', fcmToken);
-                    localStorage.setItem('pending_fcm_token', fcmToken);
-                }
+        try {
+            const { data, error } = await tarhalDB
+                .from('drivers')
+                .select('fcm_token, last_fcm_sync')
+                .eq('id', currentDriver.id)
+                .single();
+                
+            if (error) {
+                console.error('❌ Error fetching token from DB:', error);
+                return null;
             }
+            
+            console.log('📱 Token in database:', data?.fcm_token || 'NULL');
+            return data;
+        } catch (error) {
+            console.error('❌ Failed to check token in DB:', error);
+            return null;
         }
-        
-        // 3. إذا لا يزال لا يوجد توكن
-        if (!fcmToken) {
-            console.error('❌ No FCM token available');
-            showNotification('❌ لا يمكن تفعيل وضع العمل بدون توكن إشعارات. تأكد من تشغيل التطبيق عبر Flutter.', 'error');
-            return false;
-        }
-        
-        // 4. مزامنة التوكن مع Supabase
-        return await syncFCMTokenWithSupabase();
     }
 
-    /**
-     * استقبال توكن FCM من Flutter وحفظه
-     * يتم مناداة هذه الدالة من طرف Flutter Wrapper عند الحصول على توكن جديد
-     */
-    window.setFCMToken = async function(token) {
-        console.log('FCM Token received from Flutter:', token);
-        if (!token || token === 'false') {
+    // ✅ Override للدالة setFCMToken من Flutter
+    window.setFCMToken = function(token) {
+        console.log('📱 setFCMToken called with:', token);
+        if (!token || token === 'false' || token === 'null' || token === 'undefined') {
             console.warn('⚠️ Received invalid FCM Token:', token);
             return;
         }
 
-        // حفظ التوكن في localStorage
+        cachedFCMToken = token;
         localStorage.setItem('fcm_token', token);
         localStorage.setItem('pending_fcm_token', token);
+        localStorage.setItem('flutter_token_ready', 'true');
+        flutterConnection.tokenReceived = true;
+        console.log('✅ Token saved from setFCMToken:', token);
 
-        // إذا كان السائق مسجلاً دخوله، نقوم بتحديث قاعدة البيانات فوراً
         if (currentDriver && currentDriver.id) {
-            console.log(' Syncing FCM Token to Supabase for driver:', currentDriver.id);
-            await syncFCMTokenWithSupabase();
-        } else {
-            console.log('⏳ Driver not logged in yet. Token stored in localStorage.');
+            console.log('📱 Driver logged in, syncing token...');
+            syncFCMTokenWithSupabase();
         }
     };
 
@@ -1358,9 +1309,6 @@
         setTimeout(() => {
             document.getElementById('splash-screen').classList.add('hide');
         }, 900);
-        
-        // بدء مراقبة الاتصال مع Flutter
-        startConnectionWatcher();
         
         // =====================================================
         // نظام الحارس (Gatekeeper) - Strict Lockdown
@@ -1424,6 +1372,30 @@
         // نهاية نظام الحارس
         // =====================================================
 
+        // ✅ محاولة قراءة التوكن من localStorage فوراً
+        const storedToken = localStorage.getItem('fcm_token');
+        if (storedToken && storedToken !== 'null' && storedToken !== 'undefined') {
+            cachedFCMToken = storedToken;
+            console.log('📱 Found stored token on load:', storedToken);
+        }
+
+        // ✅ طلب التوكن من Flutter بعد 2 ثانية
+        setTimeout(async () => {
+            if (!cachedFCMToken) {
+                console.log('📱 No token found, requesting from Flutter...');
+                await requestTokenFromFlutter();
+            }
+            
+            // إذا كان السائق مسجلاً، مزامنة التوكن
+            if (currentDriver && currentDriver.id) {
+                const dbData = await checkTokenInDatabase();
+                if (dbData?.fcm_token !== cachedFCMToken) {
+                    console.log('🔄 Token mismatch, syncing...');
+                    await syncFCMTokenWithSupabase();
+                }
+            }
+        }, 3000);
+
         checkAuth();
 
         // إشعار جاهزية التطبيق لـ Flutter
@@ -1438,8 +1410,6 @@
         }
         
         console.log(' Initializing driver systems...');
-        
-        // OneSignal is deprecated, using Web Push & Supabase Realtime
         
         // Sound manager is already initialized
         if (soundManager) {
@@ -1482,30 +1452,6 @@
             clearInterval(balancePollingInterval);
             balancePollingInterval = null;
             console.log(' Balance polling stopped');
-        }
-    }
-
-    /**
-     * إصلاح يدوي للإشعارات
-     */
-    async function manualFixNotifications() {
-        if (!currentDriver) return;
-
-        const btn = document.getElementById('fix-notifications-btn');
-        const originalText = btn.innerHTML;
-
-        btn.innerHTML = '<span class="loading"></span> جاري الإصلاح...';
-        btn.disabled = true;
-
-        try {
-            await updatePushSubscriptionOnLogin();
-            showNotification('✅ تم تحديث إعدادات الإشعارات بنجاح', 'success');
-        } catch (error) {
-            console.error('Manual fix failed:', error);
-            showNotification('❌ فشل إصلاح الإشعارات', 'error');
-        } finally {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
         }
     }
 
@@ -2095,24 +2041,6 @@
                 locationOptions
             );
         });
-    }
-
-    // Driver Registration
-    function contactAdminForDriverRegistration() {
-        // التحقق من الموافقة على الإقرار أولاً
-        const hasAccepted = localStorage.getItem('driver_agreement_accepted');
-
-        if (!hasAccepted) {
-            showDriverAgreement();
-            return;
-        }
-
-        const adminNumber = "249918183521";
-        const message = "مرحباً، أريد التسجيل كسائق في تطبيق تراكا للنقل";
-        const whatsappUrl = `https://wa.me/${adminNumber}?text=${encodeURIComponent(message)}`;
-
-        window.open(whatsappUrl, '_blank');
-        showNotification('تم فتح واتساب الإدارة', 'info');
     }
 
     // Notifications
@@ -2834,20 +2762,8 @@ async function toggleDriverStatus() {
             // إذا لم يوجد توكن، نحاول من Flutter
             if (!fcmToken) {
                 console.log('📱 No token in localStorage, trying Flutter...');
-                
-                // انتظار اتصال Flutter
-                await waitForFlutterConnection(5000);
-                
-                if (flutterConnection.connectionEstablished) {
-                    fcmToken = await getFCMTokenFromFlutter();
-                } else {
-                    // محاولة مباشرة
-                    fcmToken = await safeCallFlutterHandler('getFCMToken');
-                    if (fcmToken) {
-                        localStorage.setItem('fcm_token', fcmToken);
-                        localStorage.setItem('pending_fcm_token', fcmToken);
-                    }
-                }
+                await requestTokenFromFlutter();
+                fcmToken = getFCMTokenFromStorage();
             }
 
             // مزامنة التوكن إذا وجد
