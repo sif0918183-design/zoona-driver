@@ -1168,6 +1168,7 @@ async function syncFcmTokenToSupabase(token) {
 
     console.log('🔄 Syncing FCM Token to Supabase for driver:', currentDriver.id);
     try {
+        // ✅ استخدام التحديث المباشر بدلاً من RPC
         const { error } = await tarhalDB
             .from('drivers')
             .update({
@@ -1227,10 +1228,12 @@ async function syncPendingFcmTokenAfterLogin() {
         if (!success) {
             console.warn('⚠️ Pending token sync failed, will retry via periodic check');
         }
+        return success;
     } else if (pendingToken) {
         console.warn('⚠️ Discarding malformed pending token');
         localStorage.removeItem('pending_fcm_token');
     }
+    return false;
 }
 
 // ---------------------------------------------------------
@@ -1242,10 +1245,12 @@ function startFcmTokenHealthCheck() {
     fcmTokenHealthCheckInterval = setInterval(async () => {
         if (!currentDriver || !currentDriver.id) return;
 
-        const localToken = localStorage.getItem('pending_fcm_token')
-            || localStorage.getItem('last_synced_fcm_token');
+        // التحقق من وجود توكن معلق
+        const pendingToken = localStorage.getItem('pending_fcm_token');
+        const lastSynced = localStorage.getItem('last_synced_fcm_token');
+        const tokenToCheck = pendingToken || lastSynced;
 
-        if (!localToken || !isValidFcmTokenFormat(localToken)) return;
+        if (!tokenToCheck || !isValidFcmTokenFormat(tokenToCheck)) return;
 
         try {
             const { data, error } = await tarhalDB
@@ -1259,14 +1264,20 @@ function startFcmTokenHealthCheck() {
                 return;
             }
 
-            if (!data.fcm_token || data.fcm_token !== localToken) {
+            if (!data.fcm_token || data.fcm_token !== tokenToCheck) {
                 console.warn('⚠️ FCM token mismatch/missing in DB, re-syncing...');
-                await syncFcmTokenToSupabase(localToken);
+                await syncFcmTokenToSupabase(tokenToCheck);
+            } else {
+                console.log('✅ FCM token is healthy in DB');
+                // إذا كان التوكن متزامناً، نمسح أي توكن معلق
+                if (pendingToken) {
+                    localStorage.removeItem('pending_fcm_token');
+                }
             }
         } catch (err) {
             console.error('❌ FCM health check error:', err);
         }
-    }, 120000);
+    }, 120000); // كل دقيقتين
 }
 
 // ============================================
@@ -1323,6 +1334,34 @@ document.addEventListener('DOMContentLoaded', async function() {
         } catch (e) {
             console.error('خطأ في فحص الرحلة النشطة:', e);
         }
+    }
+
+    // ============================================================
+    // معالجة التوكن المعلق فور تحميل الصفحة (محسن)
+    // ============================================================
+    const pendingToken = localStorage.getItem('pending_fcm_token');
+    if (pendingToken && isValidFcmTokenFormat(pendingToken)) {
+        console.log('🔍 [PWA] Found valid pending token, processing...');
+        
+        // محاولة الحقن فوراً إذا كانت الدالة موجودة
+        if (typeof window.setFCMToken === 'function') {
+            window.setFCMToken(pendingToken);
+        }
+        
+        // إذا لم تكن الدالة موجودة، ننتظرها
+        let attempts = 0;
+        const maxAttempts = 20;
+        const interval = setInterval(() => {
+            attempts++;
+            if (typeof window.setFCMToken === 'function') {
+                console.log('✅ [PWA] Processing pending token after wait');
+                window.setFCMToken(pendingToken);
+                clearInterval(interval);
+            } else if (attempts >= maxAttempts) {
+                console.warn('⚠️ [PWA] Could not process pending token, will retry on login');
+                clearInterval(interval);
+            }
+        }, 500);
     }
 
     checkAuth();
@@ -1775,7 +1814,10 @@ async function loginDriver() {
         await updatePushSubscriptionOnLogin();
 
         // ✅ استخدم الدالة الجديدة لمزامنة التوكن بعد تسجيل الدخول
-        await syncPendingFcmTokenAfterLogin();
+        const tokenSynced = await syncPendingFcmTokenAfterLogin();
+        if (!tokenSynced) {
+            console.warn('⚠️ Token sync after login failed, will retry via health check');
+        }
 
     } catch (error) {
         console.error('Driver login error:', error);
@@ -2848,6 +2890,19 @@ async function checkAuth() {
         showScreen('driver-login-screen');
     }
 }
+
+// ============================================================
+// معالجة التوكن المعلق - مراقبة مستمرة
+// ============================================================
+setInterval(() => {
+    const pendingToken = localStorage.getItem('pending_fcm_token');
+    if (pendingToken && isValidFcmTokenFormat(pendingToken)) {
+        if (typeof window.setFCMToken === 'function') {
+            console.log('🔄 [PWA] Processing pending token via interval');
+            window.setFCMToken(pendingToken);
+        }
+    }
+}, 30000); // كل 30 ثانية
 
 // تسجيل Service Worker
 if ('serviceWorker' in navigator) {
