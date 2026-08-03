@@ -1152,7 +1152,7 @@ window.addEventListener('rideRequest', (event) => {
 function isValidFcmTokenFormat(token) {
     if (!token || typeof token !== 'string') return false;
     if (token === 'false' || token === 'null' || token.trim() === '') return false;
-    if (token.length < 100) return false;
+    if (token.length < 50) return false;
     return true;
 }
 
