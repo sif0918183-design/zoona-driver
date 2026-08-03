@@ -211,6 +211,13 @@
             font-size: 16px;
             transition: all 0.3s ease;
             background: white;
+            direction: rtl;
+            text-align: right;
+        }
+
+        .form-input::placeholder {
+            direction: rtl;
+            text-align: right;
         }
 
         .form-input:focus {
@@ -239,7 +246,6 @@
             text-decoration: underline;
         }
 
-        /* Register Link - matching passenger app design */
         .register-card {
             margin: 0 0 10px 0 !important;
             text-align: center;
@@ -569,123 +575,113 @@
             opacity: 0;
             visibility: hidden;
         }
-        .form-input {
-    direction: rtl;
-    text-align: right;
-}
-.form-input::placeholder {
-    direction: rtl;
-    text-align: right;
-}
 
-/* Agreement Modal Refined Styles */
-.agreement-modal {
-    display: flex !important;
-    flex-direction: column !important;
-    padding: 0 !important;
-    max-height: 85vh;
-    width: 95%;
-    max-width: 450px;
-}
+        .agreement-modal {
+            display: flex !important;
+            flex-direction: column !important;
+            padding: 0 !important;
+            max-height: 85vh;
+            width: 95%;
+            max-width: 450px;
+        }
 
-.agreement-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px;
-    max-height: 60vh;
-    min-height: 300px;
-    background: #f8fafc;
-    border-radius: var(--radius);
-    border: 1px solid var(--gray-light);
-    line-height: 1.6;
-    text-align: right;
-    direction: rtl;
-}
+        .agreement-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            max-height: 60vh;
+            min-height: 300px;
+            background: #f8fafc;
+            border-radius: var(--radius);
+            border: 1px solid var(--gray-light);
+            line-height: 1.6;
+            text-align: right;
+            direction: rtl;
+        }
 
-.agreement-content h3 {
-    color: var(--driver-dark);
-    margin: 20px 0 12px 0;
-    font-size: 16px;
-    font-weight: 700;
-    padding-bottom: 6px;
-    border-bottom: 1px solid var(--driver-light);
-}
+        .agreement-content h3 {
+            color: var(--driver-dark);
+            margin: 20px 0 12px 0;
+            font-size: 16px;
+            font-weight: 700;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--driver-light);
+        }
 
-.agreement-content p {
-    margin-bottom: 12px;
-    color: var(--dark);
-    font-size: 14px;
-}
+        .agreement-content p {
+            margin-bottom: 12px;
+            color: var(--dark);
+            font-size: 14px;
+        }
 
-.agreement-content ol {
-    padding-right: 20px;
-    margin-bottom: 16px;
-}
+        .agreement-content ol {
+            padding-right: 20px;
+            margin-bottom: 16px;
+        }
 
-.agreement-content li {
-    margin-bottom: 10px;
-    padding-right: 8px;
-    position: relative;
-    font-size: 13.5px;
-    color: #374151;
-}
+        .agreement-content li {
+            margin-bottom: 10px;
+            padding-right: 8px;
+            position: relative;
+            font-size: 13.5px;
+            color: #374151;
+        }
 
-.agreement-content li:before {
-    content: "•";
-    color: var(--driver);
-    font-weight: bold;
-    font-size: 16px;
-    position: absolute;
-    right: -18px;
-    top: 0;
-}
+        .agreement-content li:before {
+            content: "•";
+            color: var(--driver);
+            font-weight: bold;
+            font-size: 16px;
+            position: absolute;
+            right: -18px;
+            top: 0;
+        }
 
-.scroll-indicator {
-    text-align: center;
-    padding: 8px;
-    color: var(--gray);
-    font-size: 13px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-}
+        .scroll-indicator {
+            text-align: center;
+            padding: 8px;
+            color: var(--gray);
+            font-size: 13px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
 
-.bounce {
-    animation: bounce 2s infinite;
-}
+        .bounce {
+            animation: bounce 2s infinite;
+        }
 
-@keyframes bounce {
-    0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
-    40% {transform: translateY(-8px);}
-    60% {transform: translateY(-4px);}
-}
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+            40% {transform: translateY(-8px);}
+            60% {transform: translateY(-4px);}
+        }
 
-.overlay.agreement-overlay {
-    background: rgba(0, 0, 0, 0.95) !important;
-    z-index: 10001 !important;
-}
+        .overlay.agreement-overlay {
+            background: rgba(0, 0, 0, 0.95) !important;
+            z-index: 10001 !important;
+        }
 
-/* Modal and Button Adjustments */
-.btn-small {
-    padding: 10px 16px !important;
-    font-size: 14px !important;
-    border-radius: 10px !important;
-}
+        .btn-small {
+            padding: 10px 16px !important;
+            font-size: 14px !important;
+            border-radius: 10px !important;
+        }
 
-.modal .btn {
-    padding: 12px 16px !important;
-    font-size: 14px !important;
-}
+        .modal .btn {
+            padding: 12px 16px !important;
+            font-size: 14px !important;
+        }
 
-.modal-header h2 {
-    font-size: 20px !important;
-    margin-bottom: 4px !important;
-}
+        .modal-header h2 {
+            font-size: 20px !important;
+            margin-bottom: 4px !important;
+        }
 
-.modal-header p {
-    font-size: 14px !important;
-}
+        .modal-header p {
+            font-size: 14px !important;
+        }
     </style>
 </head>
 <body>
@@ -941,14 +937,14 @@
 
 <!-- Incoming Ride Modal -->
 <div id="incoming-ride-modal" class="overlay hidden">
-        <div class="modal" style="background: var(--tech-card); border: 2px solid var(--Tracka-primary); backdrop-filter: blur(15px);">
+    <div class="modal" style="background: var(--tech-card); border: 2px solid var(--Tracka-primary); backdrop-filter: blur(15px);">
         <div class="modal-header">
-                <div style="font-size: 48px; margin-bottom: 16px;"><i class="ph-bold ph-bell-ringing" style="color: var(--Tracka-primary);"></i></div>
-                <h2 class="modal-title" style="color: var(--Tracka-primary);">طلب رحلة جديد!</h2>
-                <p class="modal-subtitle" style="color: var(--gray);">لديك 40 ثانية للرد</p>
+            <div style="font-size: 48px; margin-bottom: 16px;"><i class="ph-bold ph-bell-ringing" style="color: var(--Tracka-primary);"></i></div>
+            <h2 class="modal-title" style="color: var(--Tracka-primary);">طلب رحلة جديد!</h2>
+            <p class="modal-subtitle" style="color: var(--gray);">لديك 40 ثانية للرد</p>
         </div>
 
-            <div class="card" style="background: var(--Tracka-primary-light); border: 1px solid var(--Tracka-primary);">
+        <div class="card" style="background: var(--Tracka-primary-light); border: 1px solid var(--Tracka-primary);">
             <div id="ride-details">
                 <!-- سيتم تعبئة تفاصيل الرحلة هنا -->
             </div>
@@ -970,1339 +966,6 @@
         </div>
     </div>
 </div>
-
-<script>
-    // ============================================
-    //  تهيئة التطبيق للسائقين فقط
-    // ============================================
-
-    // Supabase Configuration (from shared config)
-    const sessionToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_admin_token');
-    const tarhalDB = supabase.createClient(window.SB_URL, window.SB_KEY, {
-        global: {
-            headers: {
-                'x-session-token': sessionToken || ''
-            }
-        }
-    });
-
-    // Application State
-    let currentDriver = null;
-    let isDriverOnline = false;
-    let foreverOnlineManager = null;
-
-    // ============================================
-    // بروتوكول المصافحة مع Flutter WebView
-    // ============================================
-
-    // متغيرات حالة الاتصال
-    let flutterConnection = {
-        webViewReady: false,
-        pageLoaded: false,
-        tokenReceived: false,
-        connectionEstablished: false,
-        retryCount: 0,
-        maxRetries: 15
-    };
-
-    // متغير لتخزين التوكن
-    let cachedFCMToken = null;
-
-    // استماع لأحداث الجاهزية من Flutter
-    document.addEventListener('flutterReady', function() {
-        console.log('✅ Flutter WebView ready event received');
-        flutterConnection.webViewReady = true;
-        checkFlutterConnection();
-    });
-
-    document.addEventListener('flutterPageLoaded', function() {
-        console.log('✅ Flutter page loaded event received');
-        flutterConnection.pageLoaded = true;
-        checkFlutterConnection();
-    });
-
-    // استماع لحدث وصول التوكن من Flutter
-    document.addEventListener('flutterTokenReady', function(event) {
-        console.log('✅ Flutter token ready event received:', event.detail);
-        if (event.detail && event.detail.token) {
-            const token = event.detail.token;
-            if (token && token !== 'null' && token !== 'undefined' && token !== 'false') {
-                cachedFCMToken = token;
-                localStorage.setItem('fcm_token', token);
-                localStorage.setItem('pending_fcm_token', token);
-                localStorage.setItem('flutter_token_ready', 'true');
-                flutterConnection.tokenReceived = true;
-                console.log('✅ Token received from Flutter event:', token);
-                
-                // إذا كان السائق مسجلاً، نقوم بمزامنة التوكن
-                if (currentDriver && currentDriver.id) {
-                    syncFCMTokenWithSupabase();
-                }
-            }
-        }
-    });
-
-    // التحقق من الاتصال مع Flutter
-    function checkFlutterConnection() {
-        if (flutterConnection.webViewReady && flutterConnection.pageLoaded) {
-            flutterConnection.connectionEstablished = true;
-            console.log('✅ Flutter connection fully established');
-            
-            // ✅ قراءة التوكن من localStorage
-            const storedToken = localStorage.getItem('fcm_token');
-            if (storedToken && storedToken !== 'null' && storedToken !== 'undefined') {
-                cachedFCMToken = storedToken;
-                console.log('📱 Token found in localStorage:', storedToken);
-                if (currentDriver && currentDriver.id) {
-                    syncFCMTokenWithSupabase();
-                }
-            } else {
-                // ✅ طلب التوكن من Flutter
-                console.log('📱 No token in localStorage, requesting from Flutter...');
-                requestTokenFromFlutter();
-            }
-        }
-    }
-
-    // دالة لطلب التوكن من Flutter
-    async function requestTokenFromFlutter() {
-        // التحقق من وجود WebView
-        if (!window.flutter_inappwebview) {
-            console.warn('⚠️ flutter_inappwebview not available');
-            return;
-        }
-        
-        if (typeof window.flutter_inappwebview.callHandler !== 'function') {
-            console.warn('⚠️ callHandler not available');
-            return;
-        }
-        
-        try {
-            console.log('📱 Requesting FCM token from Flutter...');
-            const token = await window.flutter_inappwebview.callHandler('getFCMToken');
-            console.log('📱 Flutter returned token:', token);
-            
-            if (token && token !== 'null' && token !== 'undefined' && token !== 'false') {
-                cachedFCMToken = token;
-                localStorage.setItem('fcm_token', token);
-                localStorage.setItem('pending_fcm_token', token);
-                flutterConnection.tokenReceived = true;
-                console.log('✅ Token received from Flutter:', token);
-                
-                if (currentDriver && currentDriver.id) {
-                    syncFCMTokenWithSupabase();
-                }
-            } else {
-                console.warn('⚠️ Flutter returned invalid token:', token);
-                // محاولة مرة أخرى بعد 2 ثانية
-                setTimeout(requestTokenFromFlutter, 2000);
-            }
-        } catch (error) {
-            console.error('❌ Error getting token from Flutter:', error);
-            // محاولة مرة أخرى بعد 3 ثانية
-            setTimeout(requestTokenFromFlutter, 3000);
-        }
-    }
-
-    // ============================================
-    // Flutter & WebView Bridge
-    // ============================================
-    const FlutterBridge = {
-        // إرسال رسالة إلى تطبيق Flutter
-        postMessage: function(type, data = {}) {
-            console.log(`[Bridge] Sending message: ${type}`, data);
-            if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
-                window.flutter_inappwebview.callHandler(type, JSON.stringify(data));
-            } else if (window.parent && window.parent.postMessage) {
-                window.parent.postMessage({ type, data, source: 'tarhal_pwa_driver' }, '*');
-            }
-        },
-
-        // نداء مباشر للـ Flutter Wrapper
-        callHandler: function(handlerName, data = {}) {
-            console.log(`[Bridge] Calling Flutter handler: ${handlerName}`, data);
-            if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function') {
-                return window.flutter_inappwebview.callHandler(handlerName, JSON.stringify(data));
-            }
-            return null;
-        },
-
-        // انتظار جاهزية localStorage
-        waitForStorage: async function(maxAttempts = 10) {
-            for (let i = 0; i < maxAttempts; i++) {
-                if (window.localStorage) return true;
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
-            return !!window.localStorage;
-        }
-    };
-
-    // مستمع لطلبات الرحلات من Flutter
-    window.addEventListener('rideRequest', (event) => {
-        console.log(' Ride Request received from Flutter:', event.detail);
-        if (typeof handleRideRequest === 'function') {
-            handleRideRequest(event.detail);
-        }
-    });
-
-    // ============================================
-    // دوال إدارة FCM Token
-    // ============================================
-
-    /**
-     * قراءة توكن FCM من localStorage
-     * يتم حفظ التوكن بواسطة تطبيق Flutter
-     */
-    function getFCMTokenFromStorage() {
-        try {
-            // قراءة التوكن من localStorage (نفس المفتاح الذي يستخدمه Flutter)
-            const token = localStorage.getItem('fcm_token');
-            
-            // محاولة قراءة من مفتاح بديل إذا لم يوجد
-            if (!token || token === 'null' || token === 'undefined') {
-                const altToken = localStorage.getItem('pending_fcm_token');
-                if (altToken && altToken !== 'null' && altToken !== 'undefined') {
-                    console.log('📱 Found FCM token in pending_fcm_token:', altToken);
-                    return altToken;
-                }
-                return null;
-            }
-            
-            console.log('📱 FCM Token read from localStorage:', token);
-            return token;
-        } catch (error) {
-            console.error('❌ Error reading FCM token from localStorage:', error);
-            return null;
-        }
-    }
-
-    /**
-     * مزامنة توكن FCM مع قاعدة البيانات (Supabase)
-     * يتم استدعاؤها عند تفعيل وضع العمل
-     */
-    async function syncFCMTokenWithSupabase() {
-        if (!currentDriver || !currentDriver.id) {
-            console.warn('⚠️ No driver logged in, cannot sync FCM token');
-            return false;
-        }
-
-        // قراءة التوكن من localStorage
-        let fcmToken = getFCMTokenFromStorage();
-        
-        if (!fcmToken) {
-            // محاولة من Flutter
-            await requestTokenFromFlutter();
-            fcmToken = getFCMTokenFromStorage();
-        }
-        
-        if (!fcmToken) {
-            console.warn('⚠️ No FCM token available');
-            showNotification('⚠️ لم يتم العثور على توكن الإشعارات', 'warning');
-            return false;
-        }
-
-        try {
-            console.log(`📱 Syncing FCM token for driver ${currentDriver.id}`);
-            
-            // ✅ استخدام RPC إذا كان متاحاً
-            try {
-                const { data, error } = await tarhalDB.rpc('update_driver_fcm_token', {
-                    p_driver_id: currentDriver.id,
-                    p_fcm_token: fcmToken
-                });
-                
-                if (!error) {
-                    console.log('✅ Token updated via RPC');
-                    currentDriver.fcm_token = fcmToken;
-                    localStorage.setItem('tarhal_driver', JSON.stringify(currentDriver));
-                    return true;
-                }
-            } catch (rpcError) {
-                console.warn('⚠️ RPC failed, trying direct update:', rpcError);
-            }
-            
-            // ✅ تحديث مباشر
-            const { error } = await tarhalDB
-                .from('drivers')
-                .update({
-                    fcm_token: fcmToken,
-                    last_fcm_sync: new Date().toISOString()
-                })
-                .eq('id', currentDriver.id);
-
-            if (error) {
-                console.error('❌ Error updating FCM token:', error);
-                return false;
-            }
-
-            currentDriver.fcm_token = fcmToken;
-            localStorage.setItem('tarhal_driver', JSON.stringify(currentDriver));
-            console.log('✅ FCM token synced successfully with Supabase');
-            showNotification('✅ تم مزامنة توكن الإشعارات', 'success');
-            return true;
-
-        } catch (error) {
-            console.error('❌ Failed to sync FCM token:', error);
-            return false;
-        }
-    }
-
-    // دالة للتحقق من وجود توكن في قاعدة البيانات
-    async function checkTokenInDatabase() {
-        if (!currentDriver || !currentDriver.id) return null;
-        
-        try {
-            const { data, error } = await tarhalDB
-                .from('drivers')
-                .select('fcm_token, last_fcm_sync')
-                .eq('id', currentDriver.id)
-                .single();
-                
-            if (error) {
-                console.error('❌ Error fetching token from DB:', error);
-                return null;
-            }
-            
-            console.log('📱 Token in database:', data?.fcm_token || 'NULL');
-            return data;
-        } catch (error) {
-            console.error('❌ Failed to check token in DB:', error);
-            return null;
-        }
-    }
-
-    // ✅ Override للدالة setFCMToken من Flutter
-    window.setFCMToken = function(token) {
-        console.log('📱 setFCMToken called with:', token);
-        if (!token || token === 'false' || token === 'null' || token === 'undefined') {
-            console.warn('⚠️ Received invalid FCM Token:', token);
-            return;
-        }
-
-        cachedFCMToken = token;
-        localStorage.setItem('fcm_token', token);
-        localStorage.setItem('pending_fcm_token', token);
-        localStorage.setItem('flutter_token_ready', 'true');
-        flutterConnection.tokenReceived = true;
-        console.log('✅ Token saved from setFCMToken:', token);
-
-        if (currentDriver && currentDriver.id) {
-            console.log('📱 Driver logged in, syncing token...');
-            syncFCMTokenWithSupabase();
-        }
-    };
-
-    let locationUpdateInterval = null;
-
-    // ============================================
-    //  دوال التطبيق الرئيسية
-    // ============================================
-
-    // Initialize
-    document.addEventListener('DOMContentLoaded', async function() {
-        console.log(' تطبيق تراكا للنقل للسائقين');
-        
-        // انتظار جاهزية التخزين
-        await FlutterBridge.waitForStorage();
-
-        // Hide splash screen
-        setTimeout(() => {
-            document.getElementById('splash-screen').classList.add('hide');
-        }, 900);
-        
-        // =====================================================
-        // نظام الحارس (Gatekeeper) - Strict Lockdown
-        // التحقق من وجود رحلة نشطة فوراً
-        // =====================================================
-        
-        // التحقق من تسجيل الدخول أولاً
-        const driverDataStr = localStorage.getItem('tarhal_driver');
-        
-        if (driverDataStr) {
-            try {
-                const driverData = JSON.parse(driverDataStr);
-                
-                // =====================================================
-                // الخطوة 1: التحقق من localStorage أولاً
-                // =====================================================
-                const localRideId = localStorage.getItem('active_ride_id');
-                const localRideStatus = localStorage.getItem('active_ride_status');
-                const localRideData = localStorage.getItem('active_ride_data');
-                
-                if (localRideId && localRideStatus && ['accepted', 'arrived', 'ongoing'].includes(localRideStatus)) {
-                    console.log(' اكتشاف رحلة نشطة من localStorage!');
-                    
-                    // توجيه إجباري للرحلة النشطة
-                    window.location.href = `active-ride.html?rideId=${localRideId}`;
-                    return;
-                }
-                
-                // =====================================================
-                // الخطوة 2: التحقق من Supabase (مزامنة الحالة)
-                // =====================================================
-                const { data: activeRide, error } = await tarhalDB
-                    .from('rides')
-                    .select('id, status, passenger_id, pickup_location, dropoff_location, amount')
-                    .eq('driver_id', driverData.id)
-                    .in('status', ['accepted', 'arrived', 'ongoing'])
-                    .maybeSingle();
-                
-                if (activeRide) {
-                    console.log(' اكتشاف رحلة نشطة! توجيه السائق لـ active-ride.html');
-                    
-                    // تخزين بيانات الرحلة في localStorage
-                    localStorage.setItem('active_ride_id', activeRide.id);
-                    localStorage.setItem('active_ride_status', activeRide.status);
-                    
-                    // توجيه إجباري للرحلة النشطة
-                    window.location.href = 'active-ride.html';
-                    return;
-                } else {
-                    // الرحلة انتهت أو لم تكن موجودة - تنظيف localStorage
-                    localStorage.removeItem('active_ride_id');
-                    localStorage.removeItem('active_ride_status');
-                    localStorage.removeItem('active_ride_data');
-                }
-            } catch (e) {
-                console.error('خطأ في فحص الرحلة النشطة:', e);
-            }
-        }
-        
-        // =====================================================
-        // نهاية نظام الحارس
-        // =====================================================
-
-        // ✅ محاولة قراءة التوكن من localStorage فوراً
-        const storedToken = localStorage.getItem('fcm_token');
-        if (storedToken && storedToken !== 'null' && storedToken !== 'undefined') {
-            cachedFCMToken = storedToken;
-            console.log('📱 Found stored token on load:', storedToken);
-        }
-
-        // ✅ طلب التوكن من Flutter بعد 2 ثانية
-        setTimeout(async () => {
-            if (!cachedFCMToken) {
-                console.log('📱 No token found, requesting from Flutter...');
-                await requestTokenFromFlutter();
-            }
-            
-            // إذا كان السائق مسجلاً، مزامنة التوكن
-            if (currentDriver && currentDriver.id) {
-                const dbData = await checkTokenInDatabase();
-                if (dbData?.fcm_token !== cachedFCMToken) {
-                    console.log('🔄 Token mismatch, syncing...');
-                    await syncFCMTokenWithSupabase();
-                }
-            }
-        }, 3000);
-
-        checkAuth();
-
-        // إشعار جاهزية التطبيق لـ Flutter
-        FlutterBridge.postMessage('pwa_ready', { app: 'driver' });
-    });
-
-    // تهيئة الأنظمة بعد تسجيل الدخول
-    async function initDriverSystems() {
-        if (!currentDriver) {
-            console.log('⚠️ No driver logged in');
-            return;
-        }
-        
-        console.log(' Initializing driver systems...');
-        
-        // Sound manager is already initialized
-        if (soundManager) {
-            console.log('✅ Sound Manager is ready');
-        }
-        
-        showNotification('✅ الأنظمة جاهزة لاستقبال الطلبات', 'success');
-        
-        // تهيئة مستمع تحديث الرصيد
-        setupBalanceUpdateListener();
-        
-        // إضافة تحديث تلقائي للرصيد كل 3 ثوانٍ لضمان التحديث الفوري
-        startBalancePolling();
-    }
-    
-    // ============ تحديث الرصيد التلقائي ============
-    let balancePollingInterval = null;
-    
-    function startBalancePolling() {
-        // إيقاف أي polling سابق
-        if (balancePollingInterval) {
-            clearInterval(balancePollingInterval);
-        }
-        
-        // تحديث الرصيد فوراً عند بدء التشغيل
-        refreshDriverBalance();
-        
-        // تحديث الرصيد كل 10 ثوانٍ
-        balancePollingInterval = setInterval(() => {
-            if (currentDriver && currentDriver.id) {
-                refreshDriverBalance();
-            }
-        }, 10000);
-        
-        console.log(' Balance polling started (every 10 seconds)');
-    }
-    
-    function stopBalancePolling() {
-        if (balancePollingInterval) {
-            clearInterval(balancePollingInterval);
-            balancePollingInterval = null;
-            console.log(' Balance polling stopped');
-        }
-    }
-
-    /**
-     * تحديث اشتراك الإشعارات للسائق
-     */
-    async function updatePushSubscriptionOnLogin() {
-        if (!currentDriver || !currentDriver.id) return;
-
-        console.log(' Updating push subscription for driver...');
-
-        try {
-            const subscription = await NotificationUtils.subscribeUserToPush(
-                currentDriver.id,
-                'driver',
-                'sw-driver.js'
-            );
-
-            if (subscription) {
-                console.log('✅ Push subscription updated successfully');
-            } else {
-                console.warn('⚠️ Push subscription was not created (permission denied or error)');
-            }
-        } catch (error) {
-            console.error('❌ Error updating push subscription:', error);
-        }
-    }
-
-    // Screen Navigation
-    function showScreen(screenId) {
-        document.querySelectorAll('.screen').forEach(screen => {
-            screen.classList.add('hidden');
-        });
-        document.getElementById(screenId).classList.remove('hidden');
-
-        // إظهار أو إخفاء زر العودة
-        const backBtn = document.getElementById('header-back-btn');
-        if (backBtn) {
-            if (screenId === 'driver-login-screen' || screenId === 'driver-register-info-screen') {
-                backBtn.style.display = 'flex';
-            } else {
-                backBtn.style.display = 'none';
-            }
-        }
-    }
-
-    function showDriverLogin() {
-        showScreen('driver-login-screen');
-        document.getElementById('driver-phone').focus();
-    }
-
-    function showDriverRegisterInfo() {
-        // التحقق إذا كان المستخدم قد وافق مسبقاً
-        const hasAccepted = localStorage.getItem('driver_agreement_accepted');
-
-        if (!hasAccepted) {
-            // عرض نافذة الإقرار أولاً
-            showDriverAgreement();
-        } else {
-            // إذا كان قد وافق مسبقاً، الانتقال مباشرة
-            document.getElementById('register-form-card').classList.remove('hidden');
-            document.getElementById('register-success-card').classList.add('hidden');
-
-            // Clear previous uploads from local storage
-            localStorage.removeItem('driver_license_image_url');
-            localStorage.removeItem('driver_vehicle_registration_url');
-            localStorage.removeItem('driver_car_photo_url');
-            localStorage.removeItem('driver_plate_photo_url');
-
-            // Reset status texts
-            document.getElementById('license-status').textContent = 'لم يتم اختيار ملف';
-            document.getElementById('license-status').style.color = 'var(--gray)';
-            document.getElementById('registration-status').textContent = 'لم يتم اختيار ملف';
-            document.getElementById('registration-status').style.color = 'var(--gray)';
-            document.getElementById('car-status').textContent = 'لم يتم اختيار ملف';
-            document.getElementById('car-status').style.color = 'var(--gray)';
-            document.getElementById('plate-status').textContent = 'لم يتم اختيار ملف';
-            document.getElementById('plate-status').style.color = 'var(--gray)';
-
-            showScreen('driver-register-info-screen');
-            loadTurnstile();
-        }
-    }
-
-    // Dynamically Load and Initialize Cloudflare Turnstile
-    function loadTurnstile() {
-        if (window.turnstile) {
-            initTurnstileWidget();
-            return;
-        }
-        const script = document.createElement('script');
-        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-        script.async = true;
-        script.defer = true;
-        document.head.appendChild(script);
-        script.onload = initTurnstileWidget;
-    }
-
-    let turnstileWidgetId = null;
-    async function initTurnstileWidget() {
-        try {
-            const res = await fetch('/api/turnstile-config');
-            const data = await res.json();
-            if (data.success && window.turnstile) {
-                const container = document.getElementById('turnstile-container');
-                if (container) {
-                    container.innerHTML = '';
-                    window.turnstileToken = null;
-                    const registerBtn = document.getElementById('register-btn');
-                    if (registerBtn) registerBtn.setAttribute('disabled', 'true');
-
-                    turnstileWidgetId = window.turnstile.render(container, {
-                        sitekey: data.siteKey,
-                        callback: function(token) {
-                            window.turnstileToken = token;
-                            const btn = document.getElementById('register-btn');
-                            if (btn) btn.removeAttribute('disabled');
-                        },
-                        'expired-callback': function() {
-                            window.turnstileToken = null;
-                            const btn = document.getElementById('register-btn');
-                            if (btn) btn.setAttribute('disabled', 'true');
-                        },
-                        'error-callback': function() {
-                            window.turnstileToken = null;
-                            const btn = document.getElementById('register-btn');
-                            if (btn) btn.setAttribute('disabled', 'true');
-                        }
-                    });
-                }
-            }
-        } catch (err) {
-            console.error('Error rendering Turnstile:', err);
-        }
-    }
-
-    // Upload to ImageKit
-    async function uploadToImageKit(fileInputId, statusId, storageKey) {
-        const fileInput = document.getElementById(fileInputId);
-        const statusDiv = document.getElementById(statusId);
-
-        if (!fileInput || fileInput.files.length === 0) return;
-
-        const file = fileInput.files[0];
-        statusDiv.innerHTML = '<span class="loading"></span> جاري الرفع...';
-        statusDiv.style.color = 'var(--driver)';
-
-        try {
-            // Get ImageKit Auth parameters
-            const authRes = await fetch('/api/imagekit-auth');
-            if (!authRes.ok) throw new Error('فشل جلب تصريح الرفع');
-            const authData = await authRes.json();
-
-            // Prepare FormData
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('fileName', file.name);
-            formData.append('publicKey', 'public_SnxtM9/xheLA8u65v643QBMQcMo=');
-            formData.append('signature', authData.signature);
-            formData.append('expire', authData.expire);
-            formData.append('token', authData.token);
-
-            const uploadRes = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!uploadRes.ok) throw new Error('فشل الرفع');
-            const uploadData = await uploadRes.json();
-
-            // Save URL
-            localStorage.setItem(storageKey, uploadData.url);
-            statusDiv.innerHTML = '✅ تم الرفع بنجاح';
-            statusDiv.style.color = '#16a34a';
-
-        } catch (error) {
-            console.error('ImageKit upload error:', error);
-            statusDiv.innerHTML = '❌ فشل الرفع: ' + error.message;
-            statusDiv.style.color = 'var(--danger)';
-        }
-    }
-
-    // Register Driver Action
-    async function registerDriver() {
-        const fullName = document.getElementById('register-fullname').value.trim();
-        const whatsappNumber = document.getElementById('register-whatsapp').value.trim();
-        const phone = document.getElementById('register-phone').value.trim();
-        const password = document.getElementById('register-password').value;
-        const carModel = document.getElementById('register-carmodel').value.trim();
-        const plateNumber = document.getElementById('register-platenumber').value.trim();
-        const carColor = document.getElementById('register-carcolor').value.trim();
-
-        // Retrieve image URLs from localStorage
-        const license_image_url = localStorage.getItem('driver_license_image_url');
-        const vehicle_registration_url = localStorage.getItem('driver_vehicle_registration_url');
-        const car_photo_url = localStorage.getItem('driver_car_photo_url');
-        const plate_photo_url = localStorage.getItem('driver_plate_photo_url');
-
-        if (!fullName || !whatsappNumber || !phone || !password || !carModel || !plateNumber || !carColor) {
-            showNotification('الرجاء إكمال جميع الحقول الإلزامية', 'error');
-            return;
-        }
-
-        if (!license_image_url || !vehicle_registration_url || !car_photo_url || !plate_photo_url) {
-            showNotification('الرجاء رفع جميع الصور والمستندات المطلوبة والمحاولة مرة أخرى بعد اكتمال الرفع', 'error');
-            return;
-        }
-
-        if (password.length !== 6 || isNaN(password)) {
-            showNotification('كلمة المرور يجب أن تكون رقمية ومكونة من 6 خانات تماماً', 'warning');
-            return;
-        }
-
-        // Validate full name contains exactly 4 Arabic names
-        const cleanName = fullName.replace(/\s+/g, ' ');
-        const parts = cleanName.split(' ');
-        const arabicRegex = /^[\u0600-\u06FF]+$/;
-        if (parts.length !== 4 || !parts.every(part => arabicRegex.test(part))) {
-            showNotification('الاسم الرباعي الكامل باللغة العربية مطلوب ومحدد بأربعة أسماء فقط', 'error');
-            return;
-        }
-
-        if (!window.turnstileToken) {
-            showNotification('الرجاء إكمال التحقق البشري (Turnstile) أولاً', 'error');
-            return;
-        }
-
-        const registerBtn = document.getElementById('register-btn');
-        const originalText = registerBtn.innerHTML;
-        registerBtn.disabled = true;
-        registerBtn.innerHTML = '<span class="loading"></span> جاري إنشاء الحساب...';
-
-        try {
-            const response = await fetch('/api/auth', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'register',
-                    role: 'driver',
-                    fullName,
-                    whatsappNumber,
-                    phone,
-                    password,
-                    carModel,
-                    plateNumber,
-                    carColor,
-                    license_image_url,
-                    vehicle_registration_url,
-                    car_photo_url,
-                    plate_photo_url,
-                    turnstileToken: window.turnstileToken
-                })
-            });
-
-            const resData = await response.json();
-
-            if (!response.ok || !resData.success) {
-                showNotification(resData.error || 'حدث خطأ أثناء التسجيل', 'error');
-                registerBtn.innerHTML = originalText;
-                registerBtn.disabled = false;
-                if (window.turnstile && turnstileWidgetId !== null) {
-                    window.turnstile.reset(turnstileWidgetId);
-                    window.turnstileToken = null;
-                }
-                return;
-            }
-
-            // Success! Cache registration details for WhatsApp message template
-            localStorage.setItem('success_driver_fullname', fullName);
-            localStorage.setItem('success_driver_whatsapp', whatsappNumber);
-            localStorage.setItem('success_driver_carmodel', carModel);
-            localStorage.setItem('success_driver_platenumber', plateNumber);
-
-            // Hide form and show success screen
-            document.getElementById('register-form-card').classList.add('hidden');
-            document.getElementById('register-success-card').classList.remove('hidden');
-            showNotification('✅ تم تسجيل بياناتك بنجاح!', 'success');
-
-        } catch (error) {
-            console.error('Driver registration error:', error);
-            showNotification('حدث خطأ أثناء التسجيل: ' + error.message, 'error');
-            registerBtn.innerHTML = originalText;
-            registerBtn.disabled = false;
-        }
-    }
-
-    // Send Activation WhatsApp Message
-    function sendActivationWhatsApp() {
-        const fullName = localStorage.getItem('success_driver_fullname') || '';
-        const whatsapp = localStorage.getItem('success_driver_whatsapp') || '';
-        const carModel = localStorage.getItem('success_driver_carmodel') || '';
-        const plateNumber = localStorage.getItem('success_driver_platenumber') || '';
-
-        const adminNumber = "249111991551";
-        const templateMessage = ` طلب تفعيل حساب سائق جديد 
-
-الاسم: ${fullName}
-رقم الواتساب: ${whatsapp}
-موديل السيارة: ${carModel}
-رقم اللوحة: ${plateNumber}
-
- أرجو تفعيل حسابي في تطبيق تراكا.`;
-
-        const whatsappUrl = `https://wa.me/${adminNumber}?text=${encodeURIComponent(templateMessage)}`;
-        window.open(whatsappUrl, '_blank');
-        showNotification('تم فتح واتساب طلب التفعيل للإدارة', 'info');
-    }
-
-    // دالة لعرض نافذة الإقرار
-    function showDriverAgreement() {
-        const modal = document.getElementById('driver-agreement-modal');
-        modal.classList.remove('hidden');
-
-        // منع التمرير خلف النافذة
-        document.body.style.overflow = 'hidden';
-
-        // إضافة محتوى النص البرمجي مع تصميم محسّن
-        const contentDiv = document.getElementById('agreement-content');
-        contentDiv.innerHTML = `
-            <div style="text-align: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
-                <div style="font-size: 36px; color: var(--driver); margin-bottom: 8px;"></div>
-                <h3 style="color: var(--driver-dark); font-size: 16px; margin: 0;">مقدمة</h3>
-            </div>
-
-            <p style="font-size: 14px; color: #4b5563;">
-                تطبيق "تراكا" للسائقين هو منصة تقنية تطوعية وغير ربحية، تهدف إلى تسهيل التعاون المجتمعي بين الأفراد لتخفيف أعباء التنقل. باستخدامك لهذا التطبيق، فإنك تقر وتوافق على البنود التالية:
-            </p>
-
-            <h3 style="color: var(--driver-dark); font-size: 15px; margin: 20px 0 12px 0; padding-bottom: 6px; border-bottom: 1px solid var(--driver-light);">
-                بنود الإقرار والموافقة
-            </h3>
-
-            <ol style="font-size: 13.5px;">
-                <li>أقر بأنني سائق متطوع في مبادرة مجتمعية عبر تطبيق «تراكا» وليس في عمل تجاري.</li>
-                <li>أقر بأن تطبيق «تراكا» منصة تقنية وسيطة فقط لربط السائقين بالركاب، ولا يمنحني أي صفة رسمية كسائق نقل عام أو خاص.</li>
-                <li>أقر بعدم وجود أي علاقة تعاقدية أو عقد عمل بيني وبين إدارة التطبيق، وأنني مجرد مستخدم للمنصة.</li>
-                <li>أستخدم مركبتي الخاصة تحت مسؤوليتي الشخصية الكاملة، وأتحمل وحدي جميع النتائج القانونية والمرورية.</li>
-                <li>أتعهد بأن لدي رخصة قيادة سارية المفعول، وأن مركبتي مؤمنة ومستوفية للشروط القانونية والفنية.</li>
-                <li>أتحمل وحدي أي مخالفات مرورية أو عقوبات قانونية تنتج عن نقل الركاب باستخدام التطبيق.</li>
-                <li>أوافق على أن إدارة ومطوري التطبيق غير مسؤولين عن أي حوادث مرورية أو أضرار تلحق بالمركبة أو الركاب.</li>
-                <li>أوافق على أن التطبيق غير مسؤول عن أي نزاعات أو تصرفات ناتجة عن الركاب الذين يتم ربطهم بي عبر المنصة.</li>
-                <li>أوافق على أن التطبيق غير مسؤول عن أي مفقودات داخل المركبة.</li>
-                <li>أقر بأن أي عملية تبادل مالي بيني وبين الراكب يتم خارج مسؤولية التطبيق المالية والتقنية.</li>
-                <li>أقر بأن الرسوم التي أدفعها للتطبيق هي رسوم تقنية رمزية لتغطية التشغيل والتطوير والصيانة التقنية فقط.</li>
-                <li>أقر بأن التطبيق لا يشاركني في أي مبالغ يتم تحصيلها من الركاب.</li>
-                <li>أقر بأن التطبيق لا يتدخل في عملية الدفع بيني وبين الراكب، ويخلي مسؤوليته عن أي نزاع مالي أو تخلف عن الدفع.</li>
-                <li>أقر بأن التطبيق لا يوفر أي نوع من التأمين على الركاب أو المركبة.</li>
-                <li>أتعهد بالتحقق من أن نشاط مشاركة الرحلات (Carpooling) لا يخالف القوانين المحلية في منطقتي.</li>
-                <li>أوافق على مشاركة موقعي الجغرافي ونوع المركبة ورقم اللوحة مع الركاب عبر المنصة لتعزيز الأمان.</li>
-                <li>يحق لإدارة التطبيق تعليق أو إلغاء عضويتي في حال مخالفة الشروط أو ورود شكاوى.</li>
-                <li>أقر بأن تسجيلي في التطبيق يعني موافقتي الصريحة على جميع ما ورد أعلاه.</li>
-            </ol>
-
-            <div style="background: #f0f9ff; padding: 12px; border-radius: 8px; margin-top: 20px; text-align: center; border: 1px solid #bae6fd;">
-                <p style="color: var(--driver-dark); font-weight: 600; margin: 0; font-size: 13px;">
-                    <i class="ph-bold ph-info" style="vertical-align: middle;"></i>
-                    يرجى قراءة جميع البنود بعناية قبل الموافقة
-                </p>
-            </div>
-        `;
-
-        // التأكد من أن المحتوى يبدأ من الأعلى
-        contentDiv.scrollTop = 0;
-    }
-
-    // قبول الإقرار
-    function acceptAgreement() {
-        const modal = document.getElementById('driver-agreement-modal');
-        modal.classList.add('hidden');
-        document.body.style.overflow = 'auto';
-
-        // تخزين موافقة المستخدم في localStorage
-        localStorage.setItem('driver_agreement_accepted', 'true');
-
-        showNotification('✅ شكراً لك، تم تسجيل موافقتك على بنود الاستخدام', 'success');
-
-        // الاستمرار في عملية التسجيل
-        showScreen('driver-register-info-screen');
-    }
-
-    // رفض الإقرار
-    function rejectAgreement() {
-        const modal = document.getElementById('driver-agreement-modal');
-        modal.classList.add('hidden');
-        document.body.style.overflow = 'auto';
-
-        // إعادة المستخدم لشاشة الدخول الرئيسية
-        showScreen('driver-login-screen');
-
-        showNotification('❌ يجب الموافقة على بنود الاستخدام للمتابعة في التسجيل', 'error');
-    }
-
-    // Driver Login
-    async function loginDriver() {
-    const phone = document.getElementById('driver-phone').value.trim();
-    const password = document.getElementById('driver-password').value;
-
-    // 1. التحقق من إدخال البيانات
-    if (!phone || !password) {
-        showNotification('الرجاء إدخال رقم الواتساب وكلمة المرور', 'error');
-        return;
-    }
-
-    // 2. تجهيز زر تسجيل الدخول (حالة التحميل)
-    const loginBtn = document.querySelector('#driverLoginForm button');
-    const originalText = loginBtn.innerHTML;
-    loginBtn.innerHTML = '<span class="loading"></span> جاري تسجيل الدخول...';
-    loginBtn.disabled = true;
-
-    try {
-        // 3. الاستعلام عبر API الخادم الآمنة
-        const response = await fetch('/api/auth', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'login', role: 'driver', phone, password })
-        });
-        const resData = await response.json();
-
-        if (!response.ok || !resData.success) {
-            showNotification(resData.error || 'رقم الواتساب غير مسجل أو كلمة المرور غير صحيحة', 'error');
-            return;
-        }
-
-        const driver = resData.user;
-
-        // === نجاح تسجيل الدخول ===
-        currentDriver = driver;
-        
-        // حفظ بيانات السائق محلياً في المتصفح
-        localStorage.setItem('tarhal_driver', JSON.stringify(driver));
-        localStorage.setItem('driver_id', driver.id);
-        localStorage.setItem('tarhal_driver_id', driver.id);
-        if (resData.token) {
-            localStorage.setItem('tarhal_session_token', resData.token);
-            localStorage.setItem('session_token', resData.token);
-            localStorage.setItem('user_data', JSON.stringify(driver));
-            localStorage.setItem('user_type', 'driver');
-        }
-
-        // مزامنة مع Flutter
-        FlutterBridge.postMessage('pwa_login', {
-            id: driver.id,
-            phone: driver.whatsapp_number,
-            role: 'driver'
-        });
-
-        // --- الجزء المضاف للربط مع تطبيق Flutter (مهم جداً للإشعارات) ---
-        // نقوم بإضافة driver_id للرابط الحالي لكي يلتقطه WebView في Flutter عبر onLoadStop
-        const url = new URL(window.location.href);
-        url.searchParams.set('driver_id', driver.id);
-        window.history.replaceState({}, '', url); 
-        // -----------------------------------------------------------
-
-        showNotification('مرحباً بعودتك أيها السائق!', 'success');
-        
-        // الانتقال لشاشة لوحة التحكم
-        showScreen('driver-dashboard-screen');
-        
-        // تحديث إحصائيات لوحة التحكم
-        updateDriverDashboard();
-        
-        // تهيئة أنظمة الإشعارات والصوت للسائق
-        await initDriverSystems();
-        await updatePushSubscriptionOnLogin();
-
-        // مزامنة توكن FCM المكتسب من Flutter إن وجد
-        const pendingToken = localStorage.getItem('pending_fcm_token');
-        if (pendingToken) {
-            console.log(' Syncing pending FCM token after login...');
-            await syncFCMTokenWithSupabase();
-        }
-
-    } catch (error) {
-        console.error('Driver login error:', error);
-        showNotification('حدث خطأ أثناء تسجيل الدخول، حاول مرة أخرى', 'error');
-    } finally {
-        // إعادة الزر لحالته الطبيعية
-        loginBtn.innerHTML = originalText;
-        loginBtn.disabled = false;
-    }
-}
-
-    // Driver Dashboard
-    async function updateDriverDashboard() {
-        if (!currentDriver) return;
-
-        document.getElementById('driver-avatar').textContent = currentDriver.full_name.charAt(0);
-        document.getElementById('driver-name').textContent = currentDriver.full_name;
-        document.getElementById('driver-car-info').textContent = 
-            `${currentDriver.car_model || 'سيارة'} - ${getVehicleTypeName(currentDriver.car_type)}`;
-
-        document.getElementById('driver-balance').textContent = 
-            Math.floor(currentDriver.balance || 0);
-
-        try {
-            // Total trips
-            const { data: totalRides, error: totalError } = await tarhalDB
-                .from('rides')
-                .select('id')
-                .eq('driver_id', currentDriver.id)
-                .eq('status', 'completed');
-
-            if (!totalError && totalRides) {
-                document.getElementById('total-trips').textContent = totalRides.length;
-            }
-
-        } catch (error) {
-            console.error('Error fetching driver stats:', error);
-        }
-    }
-
-    // الحصول على الموقع الحالي مع رسالة خطأ مخصصة ومهلة زمنية
-    function getCurrentLocation() {
-        return new Promise((resolve, reject) => {
-            if (!navigator.geolocation) {
-                reject(new Error('المتصفح لا يدعم تحديد الموقع الجغرافي'));
-                return;
-            }
-
-            const timeoutId = setTimeout(() => {
-                reject(new Error('تعذر تحديد موقعك، تأكد من وجودك في مكان مكشوف.'));
-            }, 10000);
-
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    clearTimeout(timeoutId);
-                    resolve(position);
-                },
-                (error) => {
-                    clearTimeout(timeoutId);
-                    reject(new Error('تعذر تحديد موقعك، تأكد من وجودك في مكان مكشوف.'));
-                },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 0
-                }
-            );
-        });
-    }
-
-    // نسخة محسنة مع مهلة 30 ثانية وإعادة محاولة (مماثلة لتطبيق الراكب)
-    function getCurrentLocationWithTimeout(retryCount = 0) {
-        return new Promise((resolve, reject) => {
-            if (!navigator.geolocation) {
-                reject(new Error('المتصفح لا يدعم تحديد الموقع'));
-                return;
-            }
-
-            if (retryCount === 0) {
-                showNotification(' جاري البحث عن موقعك... قد يستغرق ذلك 30 ثانية', 'info');
-            }
-
-            const locationOptions = {
-                enableHighAccuracy: true,
-                timeout: 30000,
-                maximumAge: 0
-            };
-
-            const searchingTimer = setTimeout(() => {
-                showNotification('⏰ لا يزال البحث جارياً عن موقعك...', 'info');
-            }, 10000);
-
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    clearTimeout(searchingTimer);
-                    resolve(position);
-                },
-                async (error) => {
-                    clearTimeout(searchingTimer);
-                    console.error('GPS Error:', error);
-
-                    if (error.code === error.TIMEOUT && retryCount < 2) {
-                        showNotification('⏰ لم نتمكن من تحديد موقعك. جاري إعادة المحاولة...', 'warning');
-                        setTimeout(async () => {
-                            try {
-                                const pos = await getCurrentLocationWithTimeout(retryCount + 1);
-                                resolve(pos);
-                            } catch (e) {
-                                reject(e);
-                            }
-                        }, 2000);
-                    } else {
-                        reject(error);
-                    }
-                },
-                locationOptions
-            );
-        });
-    }
-
-    // Notifications
-    // Test Notification
-    async function sendTestNotification() {
-        if (!currentDriver) {
-            showNotification('❌ يجب تسجيل الدخول أولاً', 'error');
-            return;
-        }
-        
-        const dummyData = {
-            ride_id: 'test-123',
-            customer_name: 'عميل تجريبي',
-            distance: '2.5 كم',
-            amount: '1500',
-            pickup_address: 'الخرطوم، شارع الستين'
-        };
-        handleRideRequest(dummyData);
-    }
-
-    // معالجة طلبات الرحلات القادمة (من Supabase أو Flutter)
-    function handleRideRequest(data) {
-        console.log(' Incoming ride request:', data);
-        if (!data) return;
-
-        const rideId = data.ride_id || data.id;
-        if (!rideId) return;
-
-        // Redirect to dedicated accept-ride page
-        window.location.href = `accept-ride.html?rideId=${rideId}`;
-    }
-
-    async function acceptRide() {
-        const data = window.currentIncomingRide;
-        if (!data || !data.ride_id) return;
-
-        // Get driver data
-        const driverDataStr = localStorage.getItem('tarhal_driver');
-        let driverData = null;
-        if (driverDataStr) {
-            try {
-                driverData = JSON.parse(driverDataStr);
-            } catch (e) {
-                console.error('Error parsing driver data:', e);
-            }
-        }
-
-        if (!driverData) {
-            showNotification('يجب تسجيل الدخول أولاً', 'error');
-            return;
-        }
-
-        try {
-            // استدعاء الـ API الآمن لقبول الرحلة بدلاً من الـ RPC المباشر
-            const response = await fetch('/api/rides', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'accept',
-                    rideId: data.ride_id,
-                    driverId: driverData.id
-                })
-            });
-            const resData = await response.json();
-
-            if (!response.ok || !resData.success) {
-                showNotification('❌ ' + (resData.error || 'فشل قبول الرحلة'), 'error');
-                document.getElementById('incoming-ride-modal').classList.add('hidden');
-                return;
-            }
-
-            const result = resData.result;
-
-            if (result && result.success) {
-                // تحديث البيانات المحلية
-                driverData.balance = result.new_balance;
-                localStorage.setItem('tarhal_driver', JSON.stringify(driverData));
-
-                // تحديث الواجهة
-                const balanceEl = document.getElementById('driver-balance');
-                if (balanceEl) balanceEl.textContent = Math.floor(driverData.balance);
-
-                showNotification('✅ ' + result.message, 'success');
-            } else {
-                showNotification('❌ ' + (result?.message || 'فشل قبول الرحلة'), 'error');
-                document.getElementById('incoming-ride-modal').classList.add('hidden');
-                return;
-            }
-
-            document.getElementById('incoming-ride-modal').classList.add('hidden');
-            if (window.incomingRideTimer) {
-                clearInterval(window.incomingRideTimer);
-                window.incomingRideTimer = null;
-            }
-            if (window.soundManager) {
-                window.soundManager.stopRideRequestSound();
-                if (typeof window.soundManager.playSuccessSound === 'function') {
-                    window.soundManager.playSuccessSound();
-                }
-            }
-            
-            showNotification('✅ تم قبول الرحلة بنجاح!', 'success');
-            
-            // Redirect to active-ride page
-            setTimeout(() => {
-                window.location.href = `active-ride.html?rideId=${data.ride_id}`;
-            }, 1000);
-
-        } catch (error) {
-            console.error('Accept ride error:', error);
-            showNotification('خطأ في قبول الرحلة', 'error');
-        }
-    }
-
-    function declineRide() {
-        const data = window.currentIncomingRide;
-
-        document.getElementById('incoming-ride-modal').classList.add('hidden');
-        if (window.incomingRideTimer) {
-            clearInterval(window.incomingRideTimer);
-            window.incomingRideTimer = null;
-        }
-        if (window.soundManager) window.soundManager.stopRideRequestSound();
-
-        showNotification('تم رفض الرحلة', 'info');
-
-        // Notify Supabase if needed
-        if (data && data.ride_id) {
-            tarhalDB.from('rides').update({ driver_rejected: true }).eq('id', data.ride_id);
-        }
-    }
-
-    // Helper Functions
-    function getVehicleTypeName(type) {
-        const names = {
-            tuktuk: 'توك توك',
-            economy: 'اقتصادية',
-            comfort: 'متوسطة',
-            vip: 'VIP'
-        };
-        return names[type] || type;
-    }
-
-    // ============ الاستماع لتحديثات الرصيد من النوافذ الأخرى ============
-    async function setupBalanceUpdateListener() {
-        // الاستماع لـ BroadcastChannel
-        if (window.BroadcastChannel) {
-            const balanceChannel = new BroadcastChannel('driver_balance_channel');
-            balanceChannel.onmessage = async (event) => {
-                if (event.data.type === 'BALANCE_UPDATED') {
-                    console.log(' Received balance update from active ride');
-                    await refreshDriverBalance();
-                }
-            };
-        }
-        
-        // الاستماع لـ postMessage من النوافذ الفرعية
-        window.addEventListener('message', async (event) => {
-            if (event.data.type === 'BALANCE_UPDATE') {
-                console.log(' Received balance update message');
-                await refreshDriverBalance();
-            }
-        });
-        
-        // التحقق من وجود تحديث رصيد في localStorage
-        const needsUpdate = localStorage.getItem('balance_update_needed') === 'true';
-        if (needsUpdate) {
-            localStorage.removeItem('balance_update_needed');
-            await refreshDriverBalance();
-        }
-    }
-
-    // دالة تحديث رصيد السائق من قاعدة البيانات
-    async function refreshDriverBalance() {
-        if (!currentDriver || !currentDriver.id) return;
-        
-        console.log(' Refreshing driver balance from database...');
-        
-        try {
-            const { data: driverData, error } = await tarhalDB
-                .from('drivers')
-                .select('balance')
-                .eq('id', currentDriver.id)
-                .single();
-                
-            if (!error && driverData) {
-                currentDriver.balance = driverData.balance;
-                localStorage.setItem('tarhal_driver', JSON.stringify(currentDriver));
-                
-                // تحديث الرصيد في الواجهة فوراً
-                const balanceEl = document.getElementById('driver-balance');
-                if (balanceEl) {
-                    // تحويل الرصيد إلى رقم صحيح مع تجاهل أي رقم بعد الفاصلة
-                    const intBalance = Math.floor(driverData.balance || 0);
-                    balanceEl.textContent = intBalance.toString();
-                }
-                
-                console.log('✅ Balance updated:', driverData.balance);
-            }
-        } catch (error) {
-            console.error('❌ Error refreshing balance:', error);
-        }
-    }
-
-    function showNotification(message, type = 'info') {
-        const notificationArea = document.getElementById('notification-area');
-
-        const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
-
-        let icon = 'ph-info';
-        if (type === 'success') icon = 'ph-check-circle';
-        else if (type === 'error') icon = 'ph-x-circle';
-        else if (type === 'warning') icon = 'ph-warning';
-
-        notification.innerHTML = `
-            <div class="notification-icon"><i class="ph-bold ${icon} neon-icon-emerald"></i></div>
-            <div style="flex: 1; font-weight: 600;">${message}</div>
-        `;
-
-        notificationArea.appendChild(notification);
-
-        setTimeout(() => {
-            notification.style.opacity = '0';
-            notification.style.transform = 'translateY(-20px)';
-            setTimeout(() => notification.remove(), 300);
-        }, 3000);
-    }
-
-    // Placeholder Functions
-    async function logoutDriver() {
-        if (isDriverOnline) {
-            await toggleDriverStatus();
-        }
-
-        // Clear all intervals and timers
-        if (locationUpdateInterval) {
-            clearInterval(locationUpdateInterval);
-            locationUpdateInterval = null;
-        }
-        if (window.incomingRideTimer) {
-            clearInterval(window.incomingRideTimer);
-            window.incomingRideTimer = null;
-        }
-        if (foreverOnlineManager) {
-            await foreverOnlineManager.deactivate();
-            foreverOnlineManager = null;
-        }
-        if (window.soundManager) window.soundManager.stopRideRequestSound();
-
-        localStorage.removeItem('tarhal_driver');
-        localStorage.removeItem('driver_id');
-        localStorage.removeItem('tarhal_driver_id');
-        currentDriver = null;
-
-        // مزامنة مع Flutter
-        FlutterBridge.postMessage('pwa_logout');
-
-        showScreen('driver-login-screen');
-        showNotification('تم تسجيل خروج السائق', 'success');
-    }
-</script>
 
 <!-- Driver Agreement Modal -->
 <div id="driver-agreement-modal" class="overlay agreement-overlay hidden">
@@ -2338,902 +1001,6 @@
         </div>
     </div>
 </div>
-<script>
-// ============================================
-// FOREVER ONLINE SYSTEM - مدمج في index.html
-// ============================================
-
-class ForeverOnlineManager {
-    constructor(driver) {
-        this.driver = driver;
-        this.driverId = driver.id;
-        this.isActive = false;
-        this.heartbeatInterval = null;
-        this.locationWatcher = null;
-        this.reconnectAttempts = 0;
-        this.maxReconnectAttempts = 10;
-        this.lastUpdateTime = null;
-        this.forceStop = false;
-        
-        console.log(` Forever Online Manager created for driver: ${this.driverId}`);
-    }
-
-    // تفعيل وضع "الأبدي"
-    async activate(providedPosition = null) {
-        if (this.isActive || this.forceStop) {
-            console.log('✅ Already active or force stopped');
-            return true;
-        }
-
-        console.log(' Activating FOREVER ONLINE mode...');
-        this.isActive = true;
-        this.forceStop = false;
-
-        try {
-            // A. تأكيد السجل في قاعدة البيانات مع الموقع الجغرافي
-            await this.ensureDriverLocationRecord(providedPosition);
-            
-            // B. تحديث وقت الحالة محلياً
-            this.lastUpdateTime = new Date().toISOString();
-            
-            // C. بدء Heartbeat الإجباري (كل 20 ثانية)
-            this.startHeartbeat();
-            
-            // D. مراقبة حالة الاتصال
-            this.startConnectionWatchdog();
-            
-            // E. الاستماع لأحداث الصفحة
-            this.setupEventListeners();
-            
-            console.log(' FOREVER ONLINE mode ACTIVATED');
-            return true;
-            
-        } catch (error) {
-            console.error('❌ Failed to activate forever online:', error);
-            if (typeof showNotification === 'function') {
-                showNotification('❌ فشل تفعيل وضع العمل: ' + (error.message || error), 'error');
-            }
-            this.isActive = false;
-            return false;
-        }
-    }
-
-    // تعطيل وضع "الأبدي"
-    async deactivate() {
-        if (!this.isActive) {
-            return true;
-        }
-
-        console.log(' Deactivating FOREVER ONLINE mode...');
-        this.isActive = false;
-        this.forceStop = true;
-
-        // إيقاف جميع المؤقتات
-        this.stopAllIntervals();
-
-        try {
-            // تعيين is_online = false
-            await this.forceOfflineStatus();
-        } catch (error) {
-            console.warn('⚠️ Could not set offline status in DB, but stopping local manager anyway');
-        }
-        
-        console.log(' FOREVER ONLINE mode DEACTIVATED');
-        return true;
-    }
-
-    // تأكد من وجود سجل في driver_locations
-    async ensureDriverLocationRecord(providedPosition = null) {
-        try {
-            // انتظار الحصول على الموقع الجغرافي قبل المتابعة - استخدام النسخة المحسنة
-            const position = providedPosition || await getCurrentLocationWithTimeout();
-
-            // التأكد من استخراج الإحداثيات مباشرة لضمان عدم وجود قيم null
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
-
-            const now = new Date().toISOString();
-            
-            // التحقق من وجود السجل أولاً لتجنب مشاكل ON CONFLICT
-            const { data, error: selectError } = await tarhalDB
-                .from('driver_locations')
-                .select('driver_id')
-                .eq('driver_id', this.driverId)
-                .maybeSingle();
-
-            if (selectError) throw selectError;
-
-            const locationData = {
-                is_online: true,
-                is_available: true,
-                lat: lat,
-                lng: lng,
-                car_type: this.driver ? this.driver.car_type : null,
-                last_seen: now,
-                updated_at: now
-            };
-
-            if (data) {
-                // تحديث السجل الموجود
-                const { error: updateError } = await tarhalDB
-                    .from('driver_locations')
-                    .update(locationData)
-                    .eq('driver_id', this.driverId);
-
-                if (updateError) throw updateError;
-            } else {
-                // إنشاء سجل جديد
-                const { error: insertError } = await tarhalDB
-                    .from('driver_locations')
-                    .insert({
-                        driver_id: this.driverId,
-                        ...locationData
-                    });
-
-                if (insertError) throw insertError;
-            }
-            
-            console.log('✅ Driver location record ensured with coordinates');
-            return true;
-            
-        } catch (error) {
-            console.error('❌ Error ensuring driver location record:', error);
-            throw error;
-        }
-    }
-
-    // تحديث الحالة محلياً
-    async forceOnlineStatus() {
-        try {
-            const now = new Date().toISOString();
-            this.lastUpdateTime = now;
-            console.log(`✅ FORCED ONLINE at ${now}`);
-            return true;
-            
-        } catch (error) {
-            console.error('❌ Failed to force online status:', error);
-            throw error;
-        }
-    }
-
-    // تعيين is_online = false
-    async forceOfflineStatus() {
-        try {
-            const now = new Date().toISOString();
-            
-            const { error } = await tarhalDB
-                .from('driver_locations')
-                .update({
-                    is_online: false,
-                    is_available: false,
-                    last_seen: now,
-                    updated_at: now
-                })
-                .eq('driver_id', this.driverId);
-
-            if (error) {
-                console.error('❌ Force Offline Error:', error);
-                throw error;
-            }
-
-            console.log(`✅ FORCED OFFLINE at ${now}`);
-            return true;
-            
-        } catch (error) {
-            console.error('❌ Failed to force offline status:', error);
-            throw error;
-        }
-    }
-
-    // تحديث last_seen فقط
-    async updateLastSeen() {
-        try {
-            const now = new Date().toISOString();
-            
-            const { error } = await tarhalDB
-                .from('driver_locations')
-                .update({
-                    last_seen: now,
-                    updated_at: now
-                })
-                .eq('driver_id', this.driverId);
-
-            if (error) {
-                console.error('❌ Update Last Seen Error:', error);
-                return false;
-            }
-
-            this.lastUpdateTime = now;
-            return true;
-            
-        } catch (error) {
-            console.error('❌ Failed to update last seen:', error);
-            return false;
-        }
-    }
-
-    // Heartbeat الإجباري (كل 20 ثانية)
-    startHeartbeat() {
-        if (this.heartbeatInterval) {
-            clearInterval(this.heartbeatInterval);
-        }
-
-        // أول heartbeat فوري
-        this.updateLastSeen().then(() => {
-            console.log(' First heartbeat sent');
-        });
-
-        // ثم كل 20 ثانية
-        this.heartbeatInterval = setInterval(async () => {
-            if (!this.isActive || this.forceStop) {
-                clearInterval(this.heartbeatInterval);
-                return;
-            }
-
-            try {
-                const success = await this.updateLastSeen();
-                if (success) {
-                    console.log(' Heartbeat sent');
-                    this.reconnectAttempts = 0;
-                } else {
-                    this.reconnectAttempts++;
-                    console.warn(`⚠️ Heartbeat failed (attempt ${this.reconnectAttempts})`);
-                }
-                
-                // محاولة إعادة الاتصال التلقائي
-                if (this.reconnectAttempts >= 3) {
-                    await this.recoverConnection();
-                }
-                
-            } catch (error) {
-                console.error('❌ Heartbeat error:', error);
-                this.reconnectAttempts++;
-            }
-        }, 20000); // كل 20 ثانية
-    }
-
-    // كلب الحراسة لمراقبة الاتصال
-    startConnectionWatchdog() {
-        if (this.watchdogInterval) clearInterval(this.watchdogInterval);
-        // التحقق من الاتصال كل دقيقة
-        this.watchdogInterval = setInterval(async () => {
-            if (!this.isActive || this.forceStop) return;
-            
-            try {
-                // اختبار اتصال بسيط
-                const { data, error } = await tarhalDB
-                    .from('driver_locations')
-                    .select('last_seen')
-                    .eq('driver_id', this.driverId)
-                    .maybeSingle();
-
-                if (error) {
-                    console.warn('⚠️ Connection watchdog detected issue:', error.message);
-                    await this.recoverConnection();
-                } else {
-                    console.log(' Connection is healthy');
-                }
-                
-            } catch (error) {
-                console.warn('⚠️ Connection test failed:', error.message);
-                await this.recoverConnection();
-            }
-        }, 60000);
-    }
-
-    // استعادة الاتصال التلقائي
-    async recoverConnection() {
-        if (this.reconnectAttempts >= this.maxReconnectAttempts || this.forceStop) {
-            console.error('❌ Max reconnection attempts reached or force stopped');
-            return false;
-        }
-
-        this.reconnectAttempts++;
-        console.log(` Reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
-        
-        try {
-            // محاولة الإصلاح - تحديث السجل والموقع
-            await this.ensureDriverLocationRecord();
-            await this.forceOnlineStatus();
-            this.reconnectAttempts = 0;
-            console.log('✅ Connection recovered');
-            return true;
-            
-        } catch (error) {
-            console.error('❌ Reconnection failed:', error);
-            
-            // المحاولة مرة أخرى بعد 10 ثواني
-            setTimeout(() => {
-                if (this.isActive && !this.forceStop) {
-                    this.recoverConnection();
-                }
-            }, 10000);
-            
-            return false;
-        }
-    }
-
-    // إعداد مستمعي الأحداث
-    setupEventListeners() {
-        // عند التركيز على الصفحة
-        window.addEventListener('focus', () => {
-            if (this.isActive && !this.forceStop) {
-                console.log(' Page focused, refreshing connection...');
-                this.ensureDriverLocationRecord()
-                    .then(() => this.forceOnlineStatus())
-                    .catch(err => console.warn('⚠️ Focus recovery failed:', err.message));
-            }
-        });
-
-        // عند استعادة الاتصال بالإنترنت
-        window.addEventListener('online', () => {
-            if (this.isActive && !this.forceStop) {
-                console.log(' Internet connection restored');
-                setTimeout(() => {
-                    this.ensureDriverLocationRecord()
-                        .then(() => this.forceOnlineStatus())
-                        .catch(err => console.warn('⚠️ Online recovery failed:', err.message));
-                }, 2000);
-            }
-        });
-
-        // قبل إغلاق الصفحة
-        window.addEventListener('beforeunload', () => {
-            if (this.isActive && !this.forceStop) {
-                console.log('⚠️ Page unloading, sending final heartbeat...');
-                this.updateLastSeen();
-            }
-        });
-    }
-
-    // إيقاف جميع المؤقتات
-    stopAllIntervals() {
-        if (this.heartbeatInterval) {
-            clearInterval(this.heartbeatInterval);
-            this.heartbeatInterval = null;
-        }
-        
-        if (this.watchdogInterval) {
-            clearInterval(this.watchdogInterval);
-            this.watchdogInterval = null;
-        }
-
-        if (this.locationWatcher && navigator.geolocation) {
-            navigator.geolocation.clearWatch(this.locationWatcher);
-            this.locationWatcher = null;
-        }
-        
-        console.log(' All intervals stopped');
-    }
-
-    // الحصول على الحالة الحالية
-    getStatus() {
-        return {
-            isActive: this.isActive,
-            driverId: this.driverId,
-            lastUpdate: this.lastUpdateTime,
-            reconnectAttempts: this.reconnectAttempts,
-            forceStop: this.forceStop
-        };
-    }
-}
-
-// ============================================
-// نظام إدارة حالة السائق - مدمج في index.html
-// ============================================
-
-// foreverOnlineManager already declared above
-// isDriverOnline already declared above
-let driverOnlineSince = null;
-
-// دالة تفعيل/إيقاف وضع العمل المعدلة مع مزامنة التوكن
-async function toggleDriverStatus() {
-    if (!currentDriver) {
-        showNotification('❌ يجب تسجيل الدخول أولاً', 'error');
-        return;
-    }
-
-    // Check if driver is banned before allowing them to go online
-    const isBanned = await checkDriverBanStatus();
-    if (isBanned) {
-        showNotification('❌ لا يمكنك تفعيل وضع العمل، الحساب معلق ومحظور حالياً', 'error');
-        return;
-    }
-
-    const statusIndicator = document.getElementById('driver-status-indicator');
-    const statusText = document.getElementById('driver-status-text');
-    const toggleBtn = document.getElementById('toggle-online-btn');
-
-    if (!isDriverOnline) {
-        // ==================== تفعيل وضع العمل ====================
-        console.log(' Activating DRIVER ONLINE mode...');
-        
-        toggleBtn.innerHTML = '<span class="loading"></span> جاري التجهيز...';
-        toggleBtn.disabled = true;
-        
-        try {
-            // ============ الخطوة 1: مزامنة توكن FCM ============
-            showNotification('🔄 جاري مزامنة توكن الإشعارات...', 'info');
-            
-            // محاولة الحصول على التوكن
-            let fcmToken = getFCMTokenFromStorage();
-            console.log(`📱 Current token from localStorage: ${fcmToken || 'none'}`);
-
-            // إذا لم يوجد توكن، نحاول من Flutter
-            if (!fcmToken) {
-                console.log('📱 No token in localStorage, trying Flutter...');
-                await requestTokenFromFlutter();
-                fcmToken = getFCMTokenFromStorage();
-            }
-
-            // مزامنة التوكن إذا وجد
-            if (fcmToken) {
-                console.log('📱 Syncing token with Supabase...');
-                const synced = await syncFCMTokenWithSupabase();
-                if (synced) {
-                    showNotification('✅ تم مزامنة توكن الإشعارات', 'success');
-                } else {
-                    console.warn('⚠️ Token sync failed but continuing...');
-                    showNotification('⚠️ فشلت مزامنة التوكن، ولكن يمكنك الاستمرار', 'warning');
-                }
-            } else {
-                console.warn('⚠️ No FCM token available');
-                showNotification('⚠️ لم يتم العثور على توكن إشعارات. تأكد من تشغيل التطبيق عبر Flutter.', 'warning');
-            }
-
-            // ============ الخطوة 2: الحصول على الموقع الجغرافي ============
-            showNotification('📍 جاري تحديد الموقع...', 'info');
-            const position = await getCurrentLocationWithTimeout();
-
-            // ============ الخطوة 3: تفعيل النظام الأبدي ============
-            foreverOnlineManager = new ForeverOnlineManager(currentDriver);
-            const activated = await foreverOnlineManager.activate(position);
-            
-            if (!activated) {
-                throw new Error('فشل تفعيل النظام');
-            }
-            
-            // ============ الخطوة 4: تحديث الواجهة ============
-            statusIndicator.className = 'status-indicator status-online';
-            statusText.textContent = 'متصل وجاهز';
-            toggleBtn.innerHTML = '<i class="ph-bold ph-power"></i> متصل الآن';
-            toggleBtn.classList.add('btn-danger');
-            toggleBtn.classList.remove('btn-driver');
-            toggleBtn.style.background = '#dc2626';
-            toggleBtn.style.borderColor = '#dc2626';
-            toggleBtn.style.boxShadow = '0 6px 20px rgba(239, 68, 68, 0.3)';
-            
-            isDriverOnline = true;
-            driverOnlineSince = new Date().toISOString();
-            
-            localStorage.setItem('driver_forever_online', 'true');
-            localStorage.setItem('driver_online_since', driverOnlineSince);
-            localStorage.setItem('driver_online_id', currentDriver.id);
-            
-            showNotification('✅ أنت الآن متصل وجاهز لاستقبال الطلبات', 'success');
-            
-            // مزامنة مع Flutter
-            FlutterBridge.callHandler('driverLogin', {
-                id: currentDriver.id,
-                driver_id: currentDriver.id,
-                online: true
-            });
-            FlutterBridge.postMessage('driver_status_change', { online: true });
-
-            console.log(' DRIVER ONLINE mode ACTIVATED FOREVER');
-            
-        } catch (error) {
-            console.error('❌ Activation error:', error);
-            
-            let errorMsg = '❌ تعذر تفعيل وضع العمل. ';
-            if (error.message && error.message.includes('توكن')) {
-                errorMsg += 'تأكد من تشغيل التطبيق عبر Flutter والحصول على توكن الإشعارات.';
-            } else if (error.code === 1) {
-                errorMsg += 'يرجى السماح بالوصول للموقع الجغرافي.';
-            } else if (error.code === 3) {
-                errorMsg += 'انتهت مهلة البحث عن الموقع. تأكد من وجودك في مكان مكشوف.';
-            } else {
-                errorMsg += error.message || 'يرجى المحاولة مرة أخرى.';
-            }
-
-            showNotification(errorMsg, 'error');
-
-            // التراجع للحالة السابقة (Offline)
-            isDriverOnline = false;
-            foreverOnlineManager = null;
-            toggleBtn.innerHTML = '<i class="ph-bold ph-power"></i> تفعيل وضع العمل';
-            toggleBtn.classList.remove('btn-danger');
-            toggleBtn.classList.add('btn-driver');
-            toggleBtn.style.background = '';
-            toggleBtn.style.borderColor = '';
-            toggleBtn.style.boxShadow = '';
-
-            // تحديث مؤشر الحالة أيضاً
-            statusIndicator.className = 'status-indicator status-offline';
-            statusText.textContent = 'غير متصل';
-            
-        } finally {
-            toggleBtn.disabled = false;
-        }
-
-    } else {
-        // ==================== إيقاف وضع العمل ====================
-        console.log(' Deactivating DRIVER ONLINE mode...');
-        
-        toggleBtn.innerHTML = '<span class="loading"></span> جاري الإيقاف...';
-        toggleBtn.disabled = true;
-        
-        try {
-            // 1. إيقاف النظام الأبدي
-            if (foreverOnlineManager) {
-                await foreverOnlineManager.deactivate();
-                foreverOnlineManager = null;
-            }
-            
-            // 2. التأكيد النهائي على قاعدة البيانات
-            await forceDriverOfflineInDB();
-            
-            // 3. تحديث الواجهة
-            statusIndicator.className = 'status-indicator status-offline';
-            statusText.textContent = 'غير متصل';
-            toggleBtn.innerHTML = '<i class="ph-bold ph-power"></i> تفعيل وضع العمل';
-            toggleBtn.classList.remove('btn-danger');
-            toggleBtn.classList.add('btn-driver');
-            toggleBtn.style.background = '';
-            toggleBtn.style.borderColor = '';
-            toggleBtn.style.boxShadow = '';
-            
-            isDriverOnline = false;
-            
-            // 4. مسح الحالة من localStorage
-            localStorage.removeItem('driver_forever_online');
-            localStorage.removeItem('driver_online_since');
-            localStorage.removeItem('driver_online_id');
-            
-            // مزامنة مع Flutter
-            FlutterBridge.postMessage('driver_status_change', { online: false });
-
-            showNotification('تم إيقاف وضع العمل بنجاح', 'info');
-            console.log(' DRIVER ONLINE mode DEACTIVATED');
-            
-        } catch (error) {
-            console.error('❌ Deactivation error:', error);
-            showNotification('❌ فشل إيقاف وضع العمل', 'error');
-        } finally {
-            toggleBtn.disabled = false;
-        }
-    }
-}
-
-// التأكد من إيقاف السائق في قاعدة البيانات
-async function forceDriverOfflineInDB() {
-    try {
-        if (!currentDriver) return;
-        
-        const now = new Date().toISOString();
-        
-        await tarhalDB
-            .from('driver_locations')
-            .update({
-                is_online: false,
-                last_seen: now,
-                updated_at: now
-            })
-            .eq('driver_id', currentDriver.id);
-            
-        console.log('✅ Driver forcefully set to offline in database');
-        
-    } catch (error) {
-        console.error('❌ Error forcing offline:', error);
-    }
-}
-
-// استعادة الحالة عند تحميل الصفحة
-async function restoreDriverStatus() {
-    const wasOnline = localStorage.getItem('driver_forever_online') === 'true';
-    const savedDriverId = localStorage.getItem('driver_online_id');
-    const onlineSince = localStorage.getItem('driver_online_since');
-    
-    if (wasOnline && currentDriver && savedDriverId === currentDriver.id) {
-        console.log(' Restoring FOREVER ONLINE mode from storage...');
-        
-        // تحديث الواجهة أولاً - مع استخدام inline style لضمان استمرار اللون الأحمر
-        const statusIndicator = document.getElementById('driver-status-indicator');
-        const statusText = document.getElementById('driver-status-text');
-        const toggleBtn = document.getElementById('toggle-online-btn');
-        
-        statusIndicator.className = 'status-indicator status-online';
-        statusIndicator.style.background = '#dcfce7';
-        statusIndicator.style.color = '#16a34a';
-        statusText.textContent = 'متصل وجاهز';
-        toggleBtn.innerHTML = '<i class="ph-bold ph-power"></i> متصل الآن';
-        
-        // إضافة clsas btn-danger مع inline style كاحتياط
-        toggleBtn.classList.add('btn-danger');
-        toggleBtn.classList.remove('btn-driver');
-        toggleBtn.style.background = '#dc2626';
-        toggleBtn.style.borderColor = '#dc2626';
-        toggleBtn.style.boxShadow = '0 6px 20px rgba(239, 68, 68, 0.3)';
-        
-        isDriverOnline = true;
-        driverOnlineSince = onlineSince || new Date().toISOString();
-        
-        // إعادة تهيئة النظام
-        foreverOnlineManager = new ForeverOnlineManager(currentDriver);
-        setTimeout(async () => {
-            try {
-                await foreverOnlineManager.activate();
-                console.log('✅ FOREVER ONLINE mode restored');
-                
-                if (onlineSince) {
-                    const hours = Math.floor((new Date() - new Date(onlineSince)) / 3600000);
-                    console.log(`⏰ Driver has been online for ${hours} hours`);
-                }
-            } catch (error) {
-                console.error('❌ Failed to restore forever online:', error);
-                // في حالة الفشل، نعيد الحالة إلى offline
-                localStorage.removeItem('driver_forever_online');
-                localStorage.removeItem('driver_online_since');
-                localStorage.removeItem('driver_online_id');
-                
-                const statusIndicatorOff = document.getElementById('driver-status-indicator');
-                const statusTextOff = document.getElementById('driver-status-text');
-                const toggleBtnOff = document.getElementById('toggle-online-btn');
-                
-                statusIndicatorOff.className = 'status-indicator status-offline';
-                statusIndicatorOff.style.background = '#fee2e2';
-                statusIndicatorOff.style.color = '#dc2626';
-                statusTextOff.textContent = 'غير متصل';
-                toggleBtnOff.innerHTML = '<i class="ph-bold ph-power"></i> تفعيل وضع العمل';
-                toggleBtnOff.classList.remove('btn-danger');
-                toggleBtnOff.classList.add('btn-driver');
-                toggleBtnOff.style.background = '';
-                toggleBtnOff.style.borderColor = '';
-                toggleBtnOff.style.boxShadow = '';
-                
-                isDriverOnline = false;
-            }
-        }, 1000);
-    }
-}
-
-
-function initRealtime() {
-    if (!currentDriver || !currentDriver.id) return;
-
-    console.log(' Initializing Supabase Realtime for Driver...');
-
-    // Subscribe to ride requests assigned to this driver
-    tarhalDB
-        .channel('driver-rides')
-        .on('postgres_changes', {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'rides',
-            filter: `driver_id=eq.${currentDriver.id}`
-        }, (payload) => {
-            console.log(' New ride request received via Realtime (INSERT):', payload);
-            if (typeof handleRideRequest === 'function') {
-                handleRideRequest(payload.new);
-            }
-        })
-        .on('postgres_changes', {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'rides',
-            filter: `driver_id=eq.${currentDriver.id}`
-        }, (payload) => {
-            console.log(' Ride update received via Realtime (UPDATE):', payload);
-
-            const ride = payload.new;
-            // التحقق مما إذا كان التحديث يعني وجود طلب رحلة جديد ينتظر القبول
-            // نتحقق من الحالة 'awaiting_driver_acceptance' التي يضبطها تطبيق الراكب بعد اختيار السائق
-            if (ride.status === 'awaiting_driver_acceptance' && !ride.driver_accepted && !ride.driver_rejected) {
-                console.log('✨ Triggering ride request display from update event');
-                if (typeof handleRideRequest === 'function') {
-                    // تجنب تكرار العرض لنفس الرحلة إذا كانت مفتوحة بالفعل
-                    if (!window.currentIncomingRide || window.currentIncomingRide.id !== ride.id) {
-                        handleRideRequest(ride);
-                    }
-                }
-            }
-        })
-        .subscribe();
-}
-
-// دالة التحقق من الحظر والتعليق للسائق
-async function checkDriverBanStatus() {
-    if (!currentDriver || !currentDriver.id) return false;
-    try {
-        const { data, error } = await tarhalDB
-            .from('drivers')
-            .select('is_banned, ban_until, ban_reason')
-            .eq('id', currentDriver.id)
-            .single();
-
-        if (!error && data) {
-            const isBanned = data.is_banned && data.ban_until && new Date(data.ban_until) > new Date();
-            if (isBanned) {
-                console.log(`Driver is banned until ${data.ban_until}`);
-
-                // Update currentDriver locally
-                currentDriver.is_banned = true;
-                currentDriver.ban_until = data.ban_until;
-                currentDriver.ban_reason = data.ban_reason;
-                localStorage.setItem('tarhal_driver', JSON.stringify(currentDriver));
-
-                // Force offline
-                if (isDriverOnline) {
-                    isDriverOnline = false;
-                    if (foreverOnlineManager) {
-                        await foreverOnlineManager.deactivate();
-                        foreverOnlineManager = null;
-                    }
-                    await forceDriverOfflineInDB();
-                    localStorage.removeItem('driver_forever_online');
-                    localStorage.removeItem('driver_online_since');
-                    localStorage.removeItem('driver_online_id');
-                }
-
-                // Show banner
-                showBanBanner(data.ban_until, data.ban_reason);
-
-                // Disable online toggle button
-                const toggleBtn = document.getElementById('toggle-online-btn');
-                if (toggleBtn) {
-                    toggleBtn.disabled = true;
-                    toggleBtn.style.opacity = '0.5';
-                    toggleBtn.style.pointerEvents = 'none';
-                    toggleBtn.innerHTML = '<i class="ph-bold ph-prohibit"></i> الحساب معلق';
-                }
-
-                // Update indicator
-                const statusIndicator = document.getElementById('driver-status-indicator');
-                const statusText = document.getElementById('driver-status-text');
-                if (statusIndicator && statusText) {
-                    statusIndicator.className = 'status-indicator status-offline';
-                    statusText.textContent = 'معلق / محظور';
-                }
-
-                return true;
-            } else {
-                // Ban expired or not banned
-                if (currentDriver.is_banned) {
-                    currentDriver.is_banned = false;
-                    localStorage.setItem('tarhal_driver', JSON.stringify(currentDriver));
-                }
-                const banner = document.getElementById('ban-banner');
-                if (banner) banner.remove();
-
-                const toggleBtn = document.getElementById('toggle-online-btn');
-                if (toggleBtn) {
-                    toggleBtn.disabled = false;
-                    toggleBtn.style.opacity = '1';
-                    toggleBtn.style.pointerEvents = 'auto';
-                    toggleBtn.innerHTML = '<i class="ph-bold ph-power"></i> تفعيل وضع العمل';
-                }
-            }
-        }
-    } catch (err) {
-        console.error('Error checking ban status:', err);
-    }
-    return false;
-}
-
-function showBanBanner(banUntil, banReason) {
-    const existing = document.getElementById('ban-banner');
-    if (existing) existing.remove();
-
-    const formattedDate = new Date(banUntil).toLocaleString('ar-SA', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-
-    const banner = document.createElement('div');
-    banner.id = 'ban-banner';
-    banner.style.cssText = `
-        background: #fee2e2;
-        color: #991b1b;
-        padding: 12px 15px;
-        text-align: center;
-        font-weight: bold;
-        font-size: 14px;
-        border-bottom: 2px solid #ef4444;
-        width: 100%;
-        box-sizing: border-box;
-        direction: rtl;
-    `;
-    banner.innerHTML = `
-        <i class="ph-bold ph-warning-circle" style="vertical-align: middle; font-size: 18px; margin-left: 6px;"></i>
-        <span>حسابك معلق ومحظور من استقبال الرحلات حتى: <strong>${formattedDate}</strong></span>
-        ${banReason ? `<div style="font-size: 12px; margin-top: 4px; opacity: 0.9;">السبب: ${banReason}</div>` : ''}
-    `;
-
-    const container = document.querySelector('.app-container');
-    if (container) {
-        container.insertBefore(banner, container.firstChild);
-    } else {
-        document.body.insertBefore(banner, document.body.firstChild);
-    }
-}
-
-// تعديل checkAuth لاستعادة الحالة
-async function checkAuth() {
-    const savedDriver = localStorage.getItem('tarhal_driver');
-    
-    if (savedDriver) {
-        try {
-            currentDriver = JSON.parse(savedDriver);
-            localStorage.setItem('driver_id', currentDriver.id);
-            showScreen('driver-dashboard-screen');
-            updateDriverDashboard();
-            initDriverSystems(); // تهيئة الأنظمة عند تحميل الصفحة
-            initRealtime();
-            updatePushSubscriptionOnLogin();
-
-            // مزامنة توكن FCM إذا وجد في التخزين المحلي
-            const pendingToken = localStorage.getItem('pending_fcm_token');
-            if (pendingToken) {
-                await syncFCMTokenWithSupabase();
-            }
-
-            // Check driver ban status immediately
-            const isBanned = await checkDriverBanStatus();
-
-            // استعادة وضع التشغيل بعد ثانية إن لم يكن محظوراً
-            if (!isBanned) {
-                setTimeout(() => {
-                    restoreDriverStatus();
-                }, 1000);
-            }
-            
-        } catch (e) {
-            localStorage.removeItem('tarhal_driver');
-            showScreen('driver-login-screen');
-        }
-    } else {
-        showScreen('driver-login-screen');
-    }
-}
-
-</script>
-<script>
-// تسجيل Service Worker
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw-driver.js')
-      .then(registration => {
-        console.log('✅ Service Worker registered:', registration.scope);
-        
-        // إرسال driverId إلى Service Worker إذا كان السائق متصلاً
-        if (foreverOnlineManager && foreverOnlineManager.isActive) {
-          registration.active.postMessage({
-            type: 'DRIVER_HEARTBEAT',
-            driverId: currentDriver.id
-          });
-        }
-      })
-      .catch(error => {
-        console.log('⚠️ Service Worker registration failed:', error);
-      });
-  });
-  
-  // استقبال رسائل من Service Worker
-  navigator.serviceWorker.addEventListener('message', event => {
-    if (event.data.type === 'REQUEST_DRIVER_ID') {
-      if (currentDriver && foreverOnlineManager && foreverOnlineManager.isActive) {
-        event.source.postMessage({
-          type: 'DRIVER_HEARTBEAT',
-          driverId: currentDriver.id
-        });
-      }
-    }
-  });
-}
-</script>
 
 <!-- Complaints Modal -->
 <div id="complaints-modal" class="overlay hidden">
@@ -3318,11 +1085,1809 @@ if ('serviceWorker' in navigator) {
 </div>
 
 <script>
+// ============================================
+//  تهيئة التطبيق للسائقين فقط
+// ============================================
+
+// Supabase Configuration (from shared config)
+const sessionToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_admin_token');
+const tarhalDB = supabase.createClient(window.SB_URL, window.SB_KEY, {
+    global: {
+        headers: {
+            'x-session-token': sessionToken || ''
+        }
+    }
+});
+
+// Application State
+let currentDriver = null;
+let isDriverOnline = false;
+let foreverOnlineManager = null;
+let fcmTokenHealthCheckInterval = null;
+
+// ============================================
+// Flutter & WebView Bridge
+// ============================================
+const FlutterBridge = {
+    postMessage: function(type, data = {}) {
+        console.log(`[Bridge] Sending message: ${type}`, data);
+        if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+            window.flutter_inappwebview.callHandler(type, JSON.stringify(data));
+        } else if (window.parent && window.parent.postMessage) {
+            window.parent.postMessage({ type, data, source: 'tarhal_pwa_driver' }, '*');
+        }
+    },
+
+    callHandler: function(handlerName, data = {}) {
+        console.log(`[Bridge] Calling Flutter handler: ${handlerName}`, data);
+        if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+            window.flutter_inappwebview.callHandler(handlerName, JSON.stringify(data));
+        }
+    },
+
+    waitForStorage: async function(maxAttempts = 10) {
+        for (let i = 0; i < maxAttempts; i++) {
+            if (window.localStorage) return true;
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        return !!window.localStorage;
+    }
+};
+
+// مستمع لطلبات الرحلات من Flutter
+window.addEventListener('rideRequest', (event) => {
+    console.log(' Ride Request received from Flutter:', event.detail);
+    if (typeof handleRideRequest === 'function') {
+        handleRideRequest(event.detail);
+    }
+});
+
+// ============================================================
+// التعديلات المطلوبة على السكربت داخل driver_app/index.html
+// ============================================================
+
+// ---------------------------------------------------------
+// 1) تحقق من شكل التوكن (مطابقة لنفس المنطق في Flutter)
+// ---------------------------------------------------------
+function isValidFcmTokenFormat(token) {
+    if (!token || typeof token !== 'string') return false;
+    if (token === 'false' || token === 'null' || token.trim() === '') return false;
+    if (token.length < 100) return false;
+    return true;
+}
+
+// ---------------------------------------------------------
+// 2) دالة مزامنة منفصلة وقابلة لإعادة الاستخدام
+// ---------------------------------------------------------
+async function syncFcmTokenToSupabase(token) {
+    if (!currentDriver || !currentDriver.id) return false;
+    if (!isValidFcmTokenFormat(token)) {
+        console.warn('⚠️ Skipping sync: invalid token format');
+        return false;
+    }
+
+    console.log('🔄 Syncing FCM Token to Supabase for driver:', currentDriver.id);
+    try {
+        const { error } = await tarhalDB
+            .from('drivers')
+            .update({
+                fcm_token: token,
+                fcm_token_updated_at: new Date().toISOString(),
+                fcm_token_valid: true
+            })
+            .eq('id', currentDriver.id);
+
+        if (error) throw error;
+
+        console.log('✅ FCM Token updated successfully in Supabase');
+
+        currentDriver.fcm_token = token;
+        localStorage.setItem('tarhal_driver', JSON.stringify(currentDriver));
+
+        localStorage.removeItem('pending_fcm_token');
+        localStorage.setItem('last_synced_fcm_token', token);
+
+        return true;
+
+    } catch (err) {
+        console.error('❌ Failed to update FCM Token in DB:', err);
+        return false;
+    }
+}
+
+// ---------------------------------------------------------
+// 3) عدّل window.setFCMToken
+// ---------------------------------------------------------
+window.setFCMToken = async function(token) {
+    console.log('FCM Token received from Flutter:', token ? token.substring(0, 12) + '...' : token);
+
+    if (!isValidFcmTokenFormat(token)) {
+        console.warn('⚠️ Received invalid/malformed FCM Token, ignoring:', token);
+        return;
+    }
+
+    localStorage.setItem('pending_fcm_token', token);
+    localStorage.setItem('pending_fcm_token_received_at', Date.now().toString());
+
+    if (currentDriver && currentDriver.id) {
+        await syncFcmTokenToSupabase(token);
+    } else {
+        console.log('⏳ Driver not logged in yet. Token stored in localStorage, will sync after login.');
+    }
+};
+
+// ---------------------------------------------------------
+// 4) مزامنة التوكن بعد تسجيل الدخول
+// ---------------------------------------------------------
+async function syncPendingFcmTokenAfterLogin() {
+    const pendingToken = localStorage.getItem('pending_fcm_token');
+    if (pendingToken && isValidFcmTokenFormat(pendingToken)) {
+        console.log('🔄 Syncing pending FCM token after login...');
+        const success = await syncFcmTokenToSupabase(pendingToken);
+        if (!success) {
+            console.warn('⚠️ Pending token sync failed, will retry via periodic check');
+        }
+    } else if (pendingToken) {
+        console.warn('⚠️ Discarding malformed pending token');
+        localStorage.removeItem('pending_fcm_token');
+    }
+}
+
+// ---------------------------------------------------------
+// 5) شبكة أمان إضافية: تحقق دوري (كل دقيقتين)
+// ---------------------------------------------------------
+function startFcmTokenHealthCheck() {
+    if (fcmTokenHealthCheckInterval) clearInterval(fcmTokenHealthCheckInterval);
+
+    fcmTokenHealthCheckInterval = setInterval(async () => {
+        if (!currentDriver || !currentDriver.id) return;
+
+        const localToken = localStorage.getItem('pending_fcm_token')
+            || localStorage.getItem('last_synced_fcm_token');
+
+        if (!localToken || !isValidFcmTokenFormat(localToken)) return;
+
+        try {
+            const { data, error } = await tarhalDB
+                .from('drivers')
+                .select('fcm_token, fcm_token_updated_at')
+                .eq('id', currentDriver.id)
+                .single();
+
+            if (error) {
+                console.warn('⚠️ FCM health check query failed:', error.message);
+                return;
+            }
+
+            if (!data.fcm_token || data.fcm_token !== localToken) {
+                console.warn('⚠️ FCM token mismatch/missing in DB, re-syncing...');
+                await syncFcmTokenToSupabase(localToken);
+            }
+        } catch (err) {
+            console.error('❌ FCM health check error:', err);
+        }
+    }, 120000);
+}
+
+// ============================================
+//  دوال التطبيق الرئيسية
+// ============================================
+
+// Initialize
+document.addEventListener('DOMContentLoaded', async function() {
+    console.log(' تطبيق تراكا للنقل للسائقين');
+    
+    await FlutterBridge.waitForStorage();
+
+    setTimeout(() => {
+        document.getElementById('splash-screen').classList.add('hide');
+    }, 900);
+    
+    // =====================================================
+    // نظام الحارس (Gatekeeper) - Strict Lockdown
+    // =====================================================
+    
+    const driverDataStr = localStorage.getItem('tarhal_driver');
+    
+    if (driverDataStr) {
+        try {
+            const driverData = JSON.parse(driverDataStr);
+            
+            const localRideId = localStorage.getItem('active_ride_id');
+            const localRideStatus = localStorage.getItem('active_ride_status');
+            
+            if (localRideId && localRideStatus && ['accepted', 'arrived', 'ongoing'].includes(localRideStatus)) {
+                console.log(' اكتشاف رحلة نشطة من localStorage!');
+                window.location.href = `active-ride.html?rideId=${localRideId}`;
+                return;
+            }
+            
+            const { data: activeRide, error } = await tarhalDB
+                .from('rides')
+                .select('id, status, passenger_id, pickup_location, dropoff_location, amount')
+                .eq('driver_id', driverData.id)
+                .in('status', ['accepted', 'arrived', 'ongoing'])
+                .maybeSingle();
+            
+            if (activeRide) {
+                console.log(' اكتشاف رحلة نشطة! توجيه السائق لـ active-ride.html');
+                localStorage.setItem('active_ride_id', activeRide.id);
+                localStorage.setItem('active_ride_status', activeRide.status);
+                window.location.href = 'active-ride.html';
+                return;
+            } else {
+                localStorage.removeItem('active_ride_id');
+                localStorage.removeItem('active_ride_status');
+                localStorage.removeItem('active_ride_data');
+            }
+        } catch (e) {
+            console.error('خطأ في فحص الرحلة النشطة:', e);
+        }
+    }
+
+    checkAuth();
+    FlutterBridge.postMessage('pwa_ready', { app: 'driver' });
+});
+
+// تهيئة الأنظمة بعد تسجيل الدخول
+async function initDriverSystems() {
+    if (!currentDriver) {
+        console.log('⚠️ No driver logged in');
+        return;
+    }
+    
+    console.log(' Initializing driver systems...');
+    
+    if (soundManager) {
+        console.log('✅ Sound Manager is ready');
+    }
+    
+    showNotification('✅ الأنظمة جاهزة لاستقبال الطلبات', 'success');
+    
+    setupBalanceUpdateListener();
+    startBalancePolling();
+    startFcmTokenHealthCheck();
+}
+
+// ============ تحديث الرصيد التلقائي ============
+let balancePollingInterval = null;
+
+function startBalancePolling() {
+    if (balancePollingInterval) {
+        clearInterval(balancePollingInterval);
+    }
+    
+    refreshDriverBalance();
+    
+    balancePollingInterval = setInterval(() => {
+        if (currentDriver && currentDriver.id) {
+            refreshDriverBalance();
+        }
+    }, 10000);
+    
+    console.log(' Balance polling started (every 10 seconds)');
+}
+
+function stopBalancePolling() {
+    if (balancePollingInterval) {
+        clearInterval(balancePollingInterval);
+        balancePollingInterval = null;
+        console.log(' Balance polling stopped');
+    }
+}
+
+// Screen Navigation
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.add('hidden');
+    });
+    document.getElementById(screenId).classList.remove('hidden');
+
+    const backBtn = document.getElementById('header-back-btn');
+    if (backBtn) {
+        if (screenId === 'driver-login-screen' || screenId === 'driver-register-info-screen') {
+            backBtn.style.display = 'flex';
+        } else {
+            backBtn.style.display = 'none';
+        }
+    }
+}
+
+function showDriverLogin() {
+    showScreen('driver-login-screen');
+    document.getElementById('driver-phone').focus();
+}
+
+function showDriverRegisterInfo() {
+    const hasAccepted = localStorage.getItem('driver_agreement_accepted');
+
+    if (!hasAccepted) {
+        showDriverAgreement();
+    } else {
+        document.getElementById('register-form-card').classList.remove('hidden');
+        document.getElementById('register-success-card').classList.add('hidden');
+
+        localStorage.removeItem('driver_license_image_url');
+        localStorage.removeItem('driver_vehicle_registration_url');
+        localStorage.removeItem('driver_car_photo_url');
+        localStorage.removeItem('driver_plate_photo_url');
+
+        document.getElementById('license-status').textContent = 'لم يتم اختيار ملف';
+        document.getElementById('license-status').style.color = 'var(--gray)';
+        document.getElementById('registration-status').textContent = 'لم يتم اختيار ملف';
+        document.getElementById('registration-status').style.color = 'var(--gray)';
+        document.getElementById('car-status').textContent = 'لم يتم اختيار ملف';
+        document.getElementById('car-status').style.color = 'var(--gray)';
+        document.getElementById('plate-status').textContent = 'لم يتم اختيار ملف';
+        document.getElementById('plate-status').style.color = 'var(--gray)';
+
+        showScreen('driver-register-info-screen');
+        loadTurnstile();
+    }
+}
+
+function loadTurnstile() {
+    if (window.turnstile) {
+        initTurnstileWidget();
+        return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+    script.onload = initTurnstileWidget;
+}
+
+let turnstileWidgetId = null;
+async function initTurnstileWidget() {
+    try {
+        const res = await fetch('/api/turnstile-config');
+        const data = await res.json();
+        if (data.success && window.turnstile) {
+            const container = document.getElementById('turnstile-container');
+            if (container) {
+                container.innerHTML = '';
+                window.turnstileToken = null;
+                const registerBtn = document.getElementById('register-btn');
+                if (registerBtn) registerBtn.setAttribute('disabled', 'true');
+
+                turnstileWidgetId = window.turnstile.render(container, {
+                    sitekey: data.siteKey,
+                    callback: function(token) {
+                        window.turnstileToken = token;
+                        const btn = document.getElementById('register-btn');
+                        if (btn) btn.removeAttribute('disabled');
+                    },
+                    'expired-callback': function() {
+                        window.turnstileToken = null;
+                        const btn = document.getElementById('register-btn');
+                        if (btn) btn.setAttribute('disabled', 'true');
+                    },
+                    'error-callback': function() {
+                        window.turnstileToken = null;
+                        const btn = document.getElementById('register-btn');
+                        if (btn) btn.setAttribute('disabled', 'true');
+                    }
+                });
+            }
+        }
+    } catch (err) {
+        console.error('Error rendering Turnstile:', err);
+    }
+}
+
+async function uploadToImageKit(fileInputId, statusId, storageKey) {
+    const fileInput = document.getElementById(fileInputId);
+    const statusDiv = document.getElementById(statusId);
+
+    if (!fileInput || fileInput.files.length === 0) return;
+
+    const file = fileInput.files[0];
+    statusDiv.innerHTML = '<span class="loading"></span> جاري الرفع...';
+    statusDiv.style.color = 'var(--driver)';
+
+    try {
+        const authRes = await fetch('/api/imagekit-auth');
+        if (!authRes.ok) throw new Error('فشل جلب تصريح الرفع');
+        const authData = await authRes.json();
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('fileName', file.name);
+        formData.append('publicKey', 'public_SnxtM9/xheLA8u65v643QBMQcMo=');
+        formData.append('signature', authData.signature);
+        formData.append('expire', authData.expire);
+        formData.append('token', authData.token);
+
+        const uploadRes = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!uploadRes.ok) throw new Error('فشل الرفع');
+        const uploadData = await uploadRes.json();
+
+        localStorage.setItem(storageKey, uploadData.url);
+        statusDiv.innerHTML = '✅ تم الرفع بنجاح';
+        statusDiv.style.color = '#16a34a';
+
+    } catch (error) {
+        console.error('ImageKit upload error:', error);
+        statusDiv.innerHTML = '❌ فشل الرفع: ' + error.message;
+        statusDiv.style.color = 'var(--danger)';
+    }
+}
+
+async function registerDriver() {
+    const fullName = document.getElementById('register-fullname').value.trim();
+    const whatsappNumber = document.getElementById('register-whatsapp').value.trim();
+    const phone = document.getElementById('register-phone').value.trim();
+    const password = document.getElementById('register-password').value;
+    const carModel = document.getElementById('register-carmodel').value.trim();
+    const plateNumber = document.getElementById('register-platenumber').value.trim();
+    const carColor = document.getElementById('register-carcolor').value.trim();
+
+    const license_image_url = localStorage.getItem('driver_license_image_url');
+    const vehicle_registration_url = localStorage.getItem('driver_vehicle_registration_url');
+    const car_photo_url = localStorage.getItem('driver_car_photo_url');
+    const plate_photo_url = localStorage.getItem('driver_plate_photo_url');
+
+    if (!fullName || !whatsappNumber || !phone || !password || !carModel || !plateNumber || !carColor) {
+        showNotification('الرجاء إكمال جميع الحقول الإلزامية', 'error');
+        return;
+    }
+
+    if (!license_image_url || !vehicle_registration_url || !car_photo_url || !plate_photo_url) {
+        showNotification('الرجاء رفع جميع الصور والمستندات المطلوبة والمحاولة مرة أخرى بعد اكتمال الرفع', 'error');
+        return;
+    }
+
+    if (password.length !== 6 || isNaN(password)) {
+        showNotification('كلمة المرور يجب أن تكون رقمية ومكونة من 6 خانات تماماً', 'warning');
+        return;
+    }
+
+    const cleanName = fullName.replace(/\s+/g, ' ');
+    const parts = cleanName.split(' ');
+    const arabicRegex = /^[\u0600-\u06FF]+$/;
+    if (parts.length !== 4 || !parts.every(part => arabicRegex.test(part))) {
+        showNotification('الاسم الرباعي الكامل باللغة العربية مطلوب ومحدد بأربعة أسماء فقط', 'error');
+        return;
+    }
+
+    if (!window.turnstileToken) {
+        showNotification('الرجاء إكمال التحقق البشري (Turnstile) أولاً', 'error');
+        return;
+    }
+
+    const registerBtn = document.getElementById('register-btn');
+    const originalText = registerBtn.innerHTML;
+    registerBtn.disabled = true;
+    registerBtn.innerHTML = '<span class="loading"></span> جاري إنشاء الحساب...';
+
+    try {
+        const response = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'register',
+                role: 'driver',
+                fullName,
+                whatsappNumber,
+                phone,
+                password,
+                carModel,
+                plateNumber,
+                carColor,
+                license_image_url,
+                vehicle_registration_url,
+                car_photo_url,
+                plate_photo_url,
+                turnstileToken: window.turnstileToken
+            })
+        });
+
+        const resData = await response.json();
+
+        if (!response.ok || !resData.success) {
+            showNotification(resData.error || 'حدث خطأ أثناء التسجيل', 'error');
+            registerBtn.innerHTML = originalText;
+            registerBtn.disabled = false;
+            if (window.turnstile && turnstileWidgetId !== null) {
+                window.turnstile.reset(turnstileWidgetId);
+                window.turnstileToken = null;
+            }
+            return;
+        }
+
+        localStorage.setItem('success_driver_fullname', fullName);
+        localStorage.setItem('success_driver_whatsapp', whatsappNumber);
+        localStorage.setItem('success_driver_carmodel', carModel);
+        localStorage.setItem('success_driver_platenumber', plateNumber);
+
+        document.getElementById('register-form-card').classList.add('hidden');
+        document.getElementById('register-success-card').classList.remove('hidden');
+        showNotification('✅ تم تسجيل بياناتك بنجاح!', 'success');
+
+    } catch (error) {
+        console.error('Driver registration error:', error);
+        showNotification('حدث خطأ أثناء التسجيل: ' + error.message, 'error');
+        registerBtn.innerHTML = originalText;
+        registerBtn.disabled = false;
+    }
+}
+
+function sendActivationWhatsApp() {
+    const fullName = localStorage.getItem('success_driver_fullname') || '';
+    const whatsapp = localStorage.getItem('success_driver_whatsapp') || '';
+    const carModel = localStorage.getItem('success_driver_carmodel') || '';
+    const plateNumber = localStorage.getItem('success_driver_platenumber') || '';
+
+    const adminNumber = "249111991551";
+    const templateMessage = ` طلب تفعيل حساب سائق جديد 
+
+الاسم: ${fullName}
+رقم الواتساب: ${whatsapp}
+موديل السيارة: ${carModel}
+رقم اللوحة: ${plateNumber}
+
+ أرجو تفعيل حسابي في تطبيق تراكا.`;
+
+    const whatsappUrl = `https://wa.me/${adminNumber}?text=${encodeURIComponent(templateMessage)}`;
+    window.open(whatsappUrl, '_blank');
+    showNotification('تم فتح واتساب طلب التفعيل للإدارة', 'info');
+}
+
+function showDriverAgreement() {
+    const modal = document.getElementById('driver-agreement-modal');
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+
+    const contentDiv = document.getElementById('agreement-content');
+    contentDiv.innerHTML = `
+        <div style="text-align: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <div style="font-size: 36px; color: var(--driver); margin-bottom: 8px;"></div>
+            <h3 style="color: var(--driver-dark); font-size: 16px; margin: 0;">مقدمة</h3>
+        </div>
+
+        <p style="font-size: 14px; color: #4b5563;">
+            تطبيق "تراكا" للسائقين هو منصة تقنية تطوعية وغير ربحية، تهدف إلى تسهيل التعاون المجتمعي بين الأفراد لتخفيف أعباء التنقل. باستخدامك لهذا التطبيق، فإنك تقر وتوافق على البنود التالية:
+        </p>
+
+        <h3 style="color: var(--driver-dark); font-size: 15px; margin: 20px 0 12px 0; padding-bottom: 6px; border-bottom: 1px solid var(--driver-light);">
+            بنود الإقرار والموافقة
+        </h3>
+
+        <ol style="font-size: 13.5px;">
+            <li>أقر بأنني سائق متطوع في مبادرة مجتمعية عبر تطبيق «تراكا» وليس في عمل تجاري.</li>
+            <li>أقر بأن تطبيق «تراكا» منصة تقنية وسيطة فقط لربط السائقين بالركاب، ولا يمنحني أي صفة رسمية كسائق نقل عام أو خاص.</li>
+            <li>أقر بعدم وجود أي علاقة تعاقدية أو عقد عمل بيني وبين إدارة التطبيق، وأنني مجرد مستخدم للمنصة.</li>
+            <li>أستخدم مركبتي الخاصة تحت مسؤوليتي الشخصية الكاملة، وأتحمل وحدي جميع النتائج القانونية والمرورية.</li>
+            <li>أتعهد بأن لدي رخصة قيادة سارية المفعول، وأن مركبتي مؤمنة ومستوفية للشروط القانونية والفنية.</li>
+            <li>أتحمل وحدي أي مخالفات مرورية أو عقوبات قانونية تنتج عن نقل الركاب باستخدام التطبيق.</li>
+            <li>أوافق على أن إدارة ومطوري التطبيق غير مسؤولين عن أي حوادث مرورية أو أضرار تلحق بالمركبة أو الركاب.</li>
+            <li>أوافق على أن التطبيق غير مسؤول عن أي نزاعات أو تصرفات ناتجة عن الركاب الذين يتم ربطهم بي عبر المنصة.</li>
+            <li>أوافق على أن التطبيق غير مسؤول عن أي مفقودات داخل المركبة.</li>
+            <li>أقر بأن أي عملية تبادل مالي بيني وبين الراكب يتم خارج مسؤولية التطبيق المالية والتقنية.</li>
+            <li>أقر بأن الرسوم التي أدفعها للتطبيق هي رسوم تقنية رمزية لتغطية التشغيل والتطوير والصيانة التقنية فقط.</li>
+            <li>أقر بأن التطبيق لا يشاركني في أي مبالغ يتم تحصيلها من الركاب.</li>
+            <li>أقر بأن التطبيق لا يتدخل في عملية الدفع بيني وبين الراكب، ويخلي مسؤوليته عن أي نزاع مالي أو تخلف عن الدفع.</li>
+            <li>أقر بأن التطبيق لا يوفر أي نوع من التأمين على الركاب أو المركبة.</li>
+            <li>أتعهد بالتحقق من أن نشاط مشاركة الرحلات (Carpooling) لا يخالف القوانين المحلية في منطقتي.</li>
+            <li>أوافق على مشاركة موقعي الجغرافي ونوع المركبة ورقم اللوحة مع الركاب عبر المنصة لتعزيز الأمان.</li>
+            <li>يحق لإدارة التطبيق تعليق أو إلغاء عضويتي في حال مخالفة الشروط أو ورود شكاوى.</li>
+            <li>أقر بأن تسجيلي في التطبيق يعني موافقتي الصريحة على جميع ما ورد أعلاه.</li>
+        </ol>
+
+        <div style="background: #f0f9ff; padding: 12px; border-radius: 8px; margin-top: 20px; text-align: center; border: 1px solid #bae6fd;">
+            <p style="color: var(--driver-dark); font-weight: 600; margin: 0; font-size: 13px;">
+                <i class="ph-bold ph-info" style="vertical-align: middle;"></i>
+                يرجى قراءة جميع البنود بعناية قبل الموافقة
+            </p>
+        </div>
+    `;
+
+    contentDiv.scrollTop = 0;
+}
+
+function acceptAgreement() {
+    const modal = document.getElementById('driver-agreement-modal');
+    modal.classList.add('hidden');
+    document.body.style.overflow = 'auto';
+
+    localStorage.setItem('driver_agreement_accepted', 'true');
+
+    showNotification('✅ شكراً لك، تم تسجيل موافقتك على بنود الاستخدام', 'success');
+
+    showScreen('driver-register-info-screen');
+}
+
+function rejectAgreement() {
+    const modal = document.getElementById('driver-agreement-modal');
+    modal.classList.add('hidden');
+    document.body.style.overflow = 'auto';
+
+    showScreen('driver-login-screen');
+
+    showNotification('❌ يجب الموافقة على بنود الاستخدام للمتابعة في التسجيل', 'error');
+}
+
+// ============================================================
+// 4) عدّل loginDriver()
+// ============================================================
+async function loginDriver() {
+    const phone = document.getElementById('driver-phone').value.trim();
+    const password = document.getElementById('driver-password').value;
+
+    if (!phone || !password) {
+        showNotification('الرجاء إدخال رقم الواتساب وكلمة المرور', 'error');
+        return;
+    }
+
+    const loginBtn = document.querySelector('#driverLoginForm button');
+    const originalText = loginBtn.innerHTML;
+    loginBtn.innerHTML = '<span class="loading"></span> جاري تسجيل الدخول...';
+    loginBtn.disabled = true;
+
+    try {
+        const response = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'login', role: 'driver', phone, password })
+        });
+        const resData = await response.json();
+
+        if (!response.ok || !resData.success) {
+            showNotification(resData.error || 'رقم الواتساب غير مسجل أو كلمة المرور غير صحيحة', 'error');
+            return;
+        }
+
+        const driver = resData.user;
+
+        currentDriver = driver;
+        
+        localStorage.setItem('tarhal_driver', JSON.stringify(driver));
+        localStorage.setItem('driver_id', driver.id);
+        localStorage.setItem('tarhal_driver_id', driver.id);
+        if (resData.token) {
+            localStorage.setItem('tarhal_session_token', resData.token);
+            localStorage.setItem('session_token', resData.token);
+            localStorage.setItem('user_data', JSON.stringify(driver));
+            localStorage.setItem('user_type', 'driver');
+        }
+
+        FlutterBridge.postMessage('pwa_login', {
+            id: driver.id,
+            phone: driver.whatsapp_number,
+            role: 'driver'
+        });
+
+        const url = new URL(window.location.href);
+        url.searchParams.set('driver_id', driver.id);
+        window.history.replaceState({}, '', url);
+
+        showNotification('مرحباً بعودتك أيها السائق!', 'success');
+        
+        showScreen('driver-dashboard-screen');
+        updateDriverDashboard();
+        await initDriverSystems();
+        await updatePushSubscriptionOnLogin();
+
+        // ✅ استخدم الدالة الجديدة لمزامنة التوكن بعد تسجيل الدخول
+        await syncPendingFcmTokenAfterLogin();
+
+    } catch (error) {
+        console.error('Driver login error:', error);
+        showNotification('حدث خطأ أثناء تسجيل الدخول، حاول مرة أخرى', 'error');
+    } finally {
+        loginBtn.innerHTML = originalText;
+        loginBtn.disabled = false;
+    }
+}
+
+async function updatePushSubscriptionOnLogin() {
+    if (!currentDriver || !currentDriver.id) return;
+
+    console.log(' Updating push subscription for driver...');
+
+    try {
+        const subscription = await NotificationUtils.subscribeUserToPush(
+            currentDriver.id,
+            'driver',
+            'sw-driver.js'
+        );
+
+        if (subscription) {
+            console.log('✅ Push subscription updated successfully');
+        } else {
+            console.warn('⚠️ Push subscription was not created (permission denied or error)');
+        }
+    } catch (error) {
+        console.error('❌ Error updating push subscription:', error);
+    }
+}
+
+// Driver Dashboard
+async function updateDriverDashboard() {
+    if (!currentDriver) return;
+
+    document.getElementById('driver-avatar').textContent = currentDriver.full_name.charAt(0);
+    document.getElementById('driver-name').textContent = currentDriver.full_name;
+    document.getElementById('driver-car-info').textContent = 
+        `${currentDriver.car_model || 'سيارة'} - ${getVehicleTypeName(currentDriver.car_type)}`;
+
+    document.getElementById('driver-balance').textContent = 
+        Math.floor(currentDriver.balance || 0);
+
+    try {
+        const { data: totalRides, error: totalError } = await tarhalDB
+            .from('rides')
+            .select('id')
+            .eq('driver_id', currentDriver.id)
+            .eq('status', 'completed');
+
+        if (!totalError && totalRides) {
+            document.getElementById('total-trips').textContent = totalRides.length;
+        }
+
+    } catch (error) {
+        console.error('Error fetching driver stats:', error);
+    }
+}
+
+function getCurrentLocationWithTimeout(retryCount = 0) {
+    return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+            reject(new Error('المتصفح لا يدعم تحديد الموقع'));
+            return;
+        }
+
+        if (retryCount === 0) {
+            showNotification(' جاري البحث عن موقعك... قد يستغرق ذلك 30 ثانية', 'info');
+        }
+
+        const locationOptions = {
+            enableHighAccuracy: true,
+            timeout: 30000,
+            maximumAge: 0
+        };
+
+        const searchingTimer = setTimeout(() => {
+            showNotification('⏰ لا يزال البحث جارياً عن موقعك...', 'info');
+        }, 10000);
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                clearTimeout(searchingTimer);
+                resolve(position);
+            },
+            async (error) => {
+                clearTimeout(searchingTimer);
+                console.error('GPS Error:', error);
+
+                if (error.code === error.TIMEOUT && retryCount < 2) {
+                    showNotification('⏰ لم نتمكن من تحديد موقعك. جاري إعادة المحاولة...', 'warning');
+                    setTimeout(async () => {
+                        try {
+                            const pos = await getCurrentLocationWithTimeout(retryCount + 1);
+                            resolve(pos);
+                        } catch (e) {
+                            reject(e);
+                        }
+                    }, 2000);
+                } else {
+                    reject(error);
+                }
+            },
+            locationOptions
+        );
+    });
+}
+
+function handleRideRequest(data) {
+    console.log(' Incoming ride request:', data);
+    if (!data) return;
+
+    const rideId = data.ride_id || data.id;
+    if (!rideId) return;
+
+    window.location.href = `accept-ride.html?rideId=${rideId}`;
+}
+
+async function acceptRide() {
+    const data = window.currentIncomingRide;
+    if (!data || !data.ride_id) return;
+
+    const driverDataStr = localStorage.getItem('tarhal_driver');
+    let driverData = null;
+    if (driverDataStr) {
+        try {
+            driverData = JSON.parse(driverDataStr);
+        } catch (e) {
+            console.error('Error parsing driver data:', e);
+        }
+    }
+
+    if (!driverData) {
+        showNotification('يجب تسجيل الدخول أولاً', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/rides', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'accept',
+                rideId: data.ride_id,
+                driverId: driverData.id
+            })
+        });
+        const resData = await response.json();
+
+        if (!response.ok || !resData.success) {
+            showNotification('❌ ' + (resData.error || 'فشل قبول الرحلة'), 'error');
+            document.getElementById('incoming-ride-modal').classList.add('hidden');
+            return;
+        }
+
+        const result = resData.result;
+
+        if (result && result.success) {
+            driverData.balance = result.new_balance;
+            localStorage.setItem('tarhal_driver', JSON.stringify(driverData));
+
+            const balanceEl = document.getElementById('driver-balance');
+            if (balanceEl) balanceEl.textContent = Math.floor(driverData.balance);
+
+            showNotification('✅ ' + result.message, 'success');
+        } else {
+            showNotification('❌ ' + (result?.message || 'فشل قبول الرحلة'), 'error');
+            document.getElementById('incoming-ride-modal').classList.add('hidden');
+            return;
+        }
+
+        document.getElementById('incoming-ride-modal').classList.add('hidden');
+        if (window.incomingRideTimer) {
+            clearInterval(window.incomingRideTimer);
+            window.incomingRideTimer = null;
+        }
+        if (window.soundManager) {
+            window.soundManager.stopRideRequestSound();
+            if (typeof window.soundManager.playSuccessSound === 'function') {
+                window.soundManager.playSuccessSound();
+            }
+        }
+        
+        showNotification('✅ تم قبول الرحلة بنجاح!', 'success');
+        
+        setTimeout(() => {
+            window.location.href = `active-ride.html?rideId=${data.ride_id}`;
+        }, 1000);
+
+    } catch (error) {
+        console.error('Accept ride error:', error);
+        showNotification('خطأ في قبول الرحلة', 'error');
+    }
+}
+
+function declineRide() {
+    const data = window.currentIncomingRide;
+
+    document.getElementById('incoming-ride-modal').classList.add('hidden');
+    if (window.incomingRideTimer) {
+        clearInterval(window.incomingRideTimer);
+        window.incomingRideTimer = null;
+    }
+    if (window.soundManager) window.soundManager.stopRideRequestSound();
+
+    showNotification('تم رفض الرحلة', 'info');
+
+    if (data && data.ride_id) {
+        tarhalDB.from('rides').update({ driver_rejected: true }).eq('id', data.ride_id);
+    }
+}
+
+function getVehicleTypeName(type) {
+    const names = {
+        tuktuk: 'توك توك',
+        economy: 'اقتصادية',
+        comfort: 'متوسطة',
+        vip: 'VIP'
+    };
+    return names[type] || type;
+}
+
+async function setupBalanceUpdateListener() {
+    if (window.BroadcastChannel) {
+        const balanceChannel = new BroadcastChannel('driver_balance_channel');
+        balanceChannel.onmessage = async (event) => {
+            if (event.data.type === 'BALANCE_UPDATED') {
+                console.log(' Received balance update from active ride');
+                await refreshDriverBalance();
+            }
+        };
+    }
+    
+    window.addEventListener('message', async (event) => {
+        if (event.data.type === 'BALANCE_UPDATE') {
+            console.log(' Received balance update message');
+            await refreshDriverBalance();
+        }
+    });
+    
+    const needsUpdate = localStorage.getItem('balance_update_needed') === 'true';
+    if (needsUpdate) {
+        localStorage.removeItem('balance_update_needed');
+        await refreshDriverBalance();
+    }
+}
+
+async function refreshDriverBalance() {
+    if (!currentDriver || !currentDriver.id) return;
+    
+    console.log(' Refreshing driver balance from database...');
+    
+    try {
+        const { data: driverData, error } = await tarhalDB
+            .from('drivers')
+            .select('balance')
+            .eq('id', currentDriver.id)
+            .single();
+            
+        if (!error && driverData) {
+            currentDriver.balance = driverData.balance;
+            localStorage.setItem('tarhal_driver', JSON.stringify(currentDriver));
+            
+            const balanceEl = document.getElementById('driver-balance');
+            if (balanceEl) {
+                const intBalance = Math.floor(driverData.balance || 0);
+                balanceEl.textContent = intBalance.toString();
+            }
+            
+            console.log('✅ Balance updated:', driverData.balance);
+        }
+    } catch (error) {
+        console.error('❌ Error refreshing balance:', error);
+    }
+}
+
+function showNotification(message, type = 'info') {
+    const notificationArea = document.getElementById('notification-area');
+
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+
+    let icon = 'ph-info';
+    if (type === 'success') icon = 'ph-check-circle';
+    else if (type === 'error') icon = 'ph-x-circle';
+    else if (type === 'warning') icon = 'ph-warning';
+
+    notification.innerHTML = `
+        <div class="notification-icon"><i class="ph-bold ${icon} neon-icon-emerald"></i></div>
+        <div style="flex: 1; font-weight: 600;">${message}</div>
+    `;
+
+    notificationArea.appendChild(notification);
+
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateY(-20px)';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+async function logoutDriver() {
+    if (isDriverOnline) {
+        await toggleDriverStatus();
+    }
+
+    if (locationUpdateInterval) {
+        clearInterval(locationUpdateInterval);
+        locationUpdateInterval = null;
+    }
+    if (window.incomingRideTimer) {
+        clearInterval(window.incomingRideTimer);
+        window.incomingRideTimer = null;
+    }
+    if (foreverOnlineManager) {
+        await foreverOnlineManager.deactivate();
+        foreverOnlineManager = null;
+    }
+    if (window.soundManager) window.soundManager.stopRideRequestSound();
+    if (fcmTokenHealthCheckInterval) {
+        clearInterval(fcmTokenHealthCheckInterval);
+        fcmTokenHealthCheckInterval = null;
+    }
+    if (balancePollingInterval) {
+        clearInterval(balancePollingInterval);
+        balancePollingInterval = null;
+    }
+
+    localStorage.removeItem('tarhal_driver');
+    localStorage.removeItem('driver_id');
+    localStorage.removeItem('tarhal_driver_id');
+    currentDriver = null;
+
+    FlutterBridge.postMessage('pwa_logout');
+
+    showScreen('driver-login-screen');
+    showNotification('تم تسجيل خروج السائق', 'success');
+}
+
+// ============================================
+// FOREVER ONLINE SYSTEM
+// ============================================
+
+class ForeverOnlineManager {
+    constructor(driver) {
+        this.driver = driver;
+        this.driverId = driver.id;
+        this.isActive = false;
+        this.heartbeatInterval = null;
+        this.locationWatcher = null;
+        this.reconnectAttempts = 0;
+        this.maxReconnectAttempts = 10;
+        this.lastUpdateTime = null;
+        this.forceStop = false;
+        
+        console.log(` Forever Online Manager created for driver: ${this.driverId}`);
+    }
+
+    async activate(providedPosition = null) {
+        if (this.isActive || this.forceStop) {
+            console.log('✅ Already active or force stopped');
+            return true;
+        }
+
+        console.log(' Activating FOREVER ONLINE mode...');
+        this.isActive = true;
+        this.forceStop = false;
+
+        try {
+            await this.ensureDriverLocationRecord(providedPosition);
+            this.lastUpdateTime = new Date().toISOString();
+            this.startHeartbeat();
+            this.startConnectionWatchdog();
+            this.setupEventListeners();
+            
+            console.log(' FOREVER ONLINE mode ACTIVATED');
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Failed to activate forever online:', error);
+            if (typeof showNotification === 'function') {
+                showNotification('❌ فشل تفعيل وضع العمل: ' + (error.message || error), 'error');
+            }
+            this.isActive = false;
+            return false;
+        }
+    }
+
+    async deactivate() {
+        if (!this.isActive) {
+            return true;
+        }
+
+        console.log(' Deactivating FOREVER ONLINE mode...');
+        this.isActive = false;
+        this.forceStop = true;
+
+        this.stopAllIntervals();
+
+        try {
+            await this.forceOfflineStatus();
+        } catch (error) {
+            console.warn('⚠️ Could not set offline status in DB, but stopping local manager anyway');
+        }
+        
+        console.log(' FOREVER ONLINE mode DEACTIVATED');
+        return true;
+    }
+
+    async ensureDriverLocationRecord(providedPosition = null) {
+        try {
+            const position = providedPosition || await getCurrentLocationWithTimeout();
+
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+
+            const now = new Date().toISOString();
+            
+            const { data, error: selectError } = await tarhalDB
+                .from('driver_locations')
+                .select('driver_id')
+                .eq('driver_id', this.driverId)
+                .maybeSingle();
+
+            if (selectError) throw selectError;
+
+            const locationData = {
+                is_online: true,
+                is_available: true,
+                lat: lat,
+                lng: lng,
+                car_type: this.driver ? this.driver.car_type : null,
+                last_seen: now,
+                updated_at: now
+            };
+
+            if (data) {
+                const { error: updateError } = await tarhalDB
+                    .from('driver_locations')
+                    .update(locationData)
+                    .eq('driver_id', this.driverId);
+
+                if (updateError) throw updateError;
+            } else {
+                const { error: insertError } = await tarhalDB
+                    .from('driver_locations')
+                    .insert({
+                        driver_id: this.driverId,
+                        ...locationData
+                    });
+
+                if (insertError) throw insertError;
+            }
+            
+            console.log('✅ Driver location record ensured with coordinates');
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Error ensuring driver location record:', error);
+            throw error;
+        }
+    }
+
+    async forceOfflineStatus() {
+        try {
+            const now = new Date().toISOString();
+            
+            const { error } = await tarhalDB
+                .from('driver_locations')
+                .update({
+                    is_online: false,
+                    is_available: false,
+                    last_seen: now,
+                    updated_at: now
+                })
+                .eq('driver_id', this.driverId);
+
+            if (error) {
+                console.error('❌ Force Offline Error:', error);
+                throw error;
+            }
+
+            console.log(`✅ FORCED OFFLINE at ${now}`);
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Failed to force offline status:', error);
+            throw error;
+        }
+    }
+
+    async updateLastSeen() {
+        try {
+            const now = new Date().toISOString();
+            
+            const { error } = await tarhalDB
+                .from('driver_locations')
+                .update({
+                    last_seen: now,
+                    updated_at: now
+                })
+                .eq('driver_id', this.driverId);
+
+            if (error) {
+                console.error('❌ Update Last Seen Error:', error);
+                return false;
+            }
+
+            this.lastUpdateTime = now;
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Failed to update last seen:', error);
+            return false;
+        }
+    }
+
+    startHeartbeat() {
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+        }
+
+        this.updateLastSeen().then(() => {
+            console.log(' First heartbeat sent');
+        });
+
+        this.heartbeatInterval = setInterval(async () => {
+            if (!this.isActive || this.forceStop) {
+                clearInterval(this.heartbeatInterval);
+                return;
+            }
+
+            try {
+                const success = await this.updateLastSeen();
+                if (success) {
+                    console.log(' Heartbeat sent');
+                    this.reconnectAttempts = 0;
+                } else {
+                    this.reconnectAttempts++;
+                    console.warn(`⚠️ Heartbeat failed (attempt ${this.reconnectAttempts})`);
+                }
+                
+                if (this.reconnectAttempts >= 3) {
+                    await this.recoverConnection();
+                }
+                
+            } catch (error) {
+                console.error('❌ Heartbeat error:', error);
+                this.reconnectAttempts++;
+            }
+        }, 20000);
+    }
+
+    startConnectionWatchdog() {
+        if (this.watchdogInterval) clearInterval(this.watchdogInterval);
+        this.watchdogInterval = setInterval(async () => {
+            if (!this.isActive || this.forceStop) return;
+            
+            try {
+                const { data, error } = await tarhalDB
+                    .from('driver_locations')
+                    .select('last_seen')
+                    .eq('driver_id', this.driverId)
+                    .maybeSingle();
+
+                if (error) {
+                    console.warn('⚠️ Connection watchdog detected issue:', error.message);
+                    await this.recoverConnection();
+                } else {
+                    console.log(' Connection is healthy');
+                }
+                
+            } catch (error) {
+                console.warn('⚠️ Connection test failed:', error.message);
+                await this.recoverConnection();
+            }
+        }, 60000);
+    }
+
+    async recoverConnection() {
+        if (this.reconnectAttempts >= this.maxReconnectAttempts || this.forceStop) {
+            console.error('❌ Max reconnection attempts reached or force stopped');
+            return false;
+        }
+
+        this.reconnectAttempts++;
+        console.log(` Reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
+        
+        try {
+            await this.ensureDriverLocationRecord();
+            await this.updateLastSeen();
+            this.reconnectAttempts = 0;
+            console.log('✅ Connection recovered');
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Reconnection failed:', error);
+            
+            setTimeout(() => {
+                if (this.isActive && !this.forceStop) {
+                    this.recoverConnection();
+                }
+            }, 10000);
+            
+            return false;
+        }
+    }
+
+    setupEventListeners() {
+        window.addEventListener('focus', () => {
+            if (this.isActive && !this.forceStop) {
+                console.log(' Page focused, refreshing connection...');
+                this.ensureDriverLocationRecord()
+                    .then(() => this.updateLastSeen())
+                    .catch(err => console.warn('⚠️ Focus recovery failed:', err.message));
+            }
+        });
+
+        window.addEventListener('online', () => {
+            if (this.isActive && !this.forceStop) {
+                console.log(' Internet connection restored');
+                setTimeout(() => {
+                    this.ensureDriverLocationRecord()
+                        .then(() => this.updateLastSeen())
+                        .catch(err => console.warn('⚠️ Online recovery failed:', err.message));
+                }, 2000);
+            }
+        });
+
+        window.addEventListener('beforeunload', () => {
+            if (this.isActive && !this.forceStop) {
+                console.log('⚠️ Page unloading, sending final heartbeat...');
+                this.updateLastSeen();
+            }
+        });
+    }
+
+    stopAllIntervals() {
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+            this.heartbeatInterval = null;
+        }
+        
+        if (this.watchdogInterval) {
+            clearInterval(this.watchdogInterval);
+            this.watchdogInterval = null;
+        }
+
+        if (this.locationWatcher && navigator.geolocation) {
+            navigator.geolocation.clearWatch(this.locationWatcher);
+            this.locationWatcher = null;
+        }
+        
+        console.log(' All intervals stopped');
+    }
+
+    getStatus() {
+        return {
+            isActive: this.isActive,
+            driverId: this.driverId,
+            lastUpdate: this.lastUpdateTime,
+            reconnectAttempts: this.reconnectAttempts,
+            forceStop: this.forceStop
+        };
+    }
+}
+
+async function toggleDriverStatus() {
+    if (!currentDriver) {
+        showNotification('❌ يجب تسجيل الدخول أولاً', 'error');
+        return;
+    }
+
+    const isBanned = await checkDriverBanStatus();
+    if (isBanned) {
+        showNotification('❌ لا يمكنك تفعيل وضع العمل، الحساب معلق ومحظور حالياً', 'error');
+        return;
+    }
+
+    const statusIndicator = document.getElementById('driver-status-indicator');
+    const statusText = document.getElementById('driver-status-text');
+    const toggleBtn = document.getElementById('toggle-online-btn');
+
+    const originalText = toggleBtn.innerHTML;
+
+    if (!isDriverOnline) {
+        console.log(' Activating DRIVER ONLINE mode...');
+        
+        toggleBtn.innerHTML = '<span class="loading"></span> انتظار...';
+        toggleBtn.disabled = true;
+        
+        try {
+            const position = await getCurrentLocationWithTimeout();
+
+            foreverOnlineManager = new ForeverOnlineManager(currentDriver);
+            const activated = await foreverOnlineManager.activate(position);
+            
+            if (!activated) {
+                throw new Error('فشل تفعيل النظام');
+            }
+            
+            statusIndicator.className = 'status-indicator status-online';
+            statusText.textContent = 'متصل وجاهز';
+            toggleBtn.innerHTML = '<i class="ph-bold ph-power"></i> متصل الآن';
+            toggleBtn.classList.add('btn-danger');
+            toggleBtn.classList.remove('btn-driver');
+            toggleBtn.style.background = '#dc2626';
+            toggleBtn.style.borderColor = '#dc2626';
+            toggleBtn.style.boxShadow = '0 6px 20px rgba(239, 68, 68, 0.3)';
+            
+            isDriverOnline = true;
+            driverOnlineSince = new Date().toISOString();
+            
+            localStorage.setItem('driver_forever_online', 'true');
+            localStorage.setItem('driver_online_since', driverOnlineSince);
+            localStorage.setItem('driver_online_id', currentDriver.id);
+            
+            showNotification('✅ أنت الآن متصل وجاهز لاستقبال الطلبات', 'success');
+            
+            FlutterBridge.callHandler('driverLogin', {
+                id: currentDriver.id,
+                driver_id: currentDriver.id,
+                online: true
+            });
+            FlutterBridge.postMessage('driver_status_change', { online: true });
+
+            console.log(' DRIVER ONLINE mode ACTIVATED FOREVER');
+            
+        } catch (error) {
+            console.error('❌ Activation error:', error);
+            
+            let errorMsg = '❌ تعذر تفعيل وضع العمل. يرجى التأكد من تشغيل الموقع (GPS) والمحاولة مرة أخرى.';
+            if (error.code === 1) {
+                errorMsg = '❌ يرجى السماح بالوصول للموقع الجغرافي لتتمكن من استقبال الطلبات.';
+            } else if (error.code === 3) {
+                errorMsg = '❌ انتهت مهلة البحث عن الموقع. تأكد من وجودك في مكان مكشوف.';
+            }
+
+            showNotification(errorMsg, 'error');
+
+            isDriverOnline = false;
+            foreverOnlineManager = null;
+            toggleBtn.innerHTML = '<i class="ph-bold ph-power"></i> تفعيل وضع العمل';
+            toggleBtn.classList.remove('btn-danger');
+            toggleBtn.classList.add('btn-driver');
+            toggleBtn.style.background = '';
+            toggleBtn.style.borderColor = '';
+            toggleBtn.style.boxShadow = '';
+
+            statusIndicator.className = 'status-indicator status-offline';
+            statusText.textContent = 'غير متصل';
+        } finally {
+            toggleBtn.disabled = false;
+        }
+
+    } else {
+        console.log(' Deactivating DRIVER ONLINE mode...');
+        
+        toggleBtn.innerHTML = '<span class="loading"></span> جاري الإيقاف...';
+        toggleBtn.disabled = true;
+        
+        try {
+            if (foreverOnlineManager) {
+                await foreverOnlineManager.deactivate();
+                foreverOnlineManager = null;
+            }
+            
+            await forceDriverOfflineInDB();
+            
+            statusIndicator.className = 'status-indicator status-offline';
+            statusText.textContent = 'غير متصل';
+            toggleBtn.innerHTML = '<i class="ph-bold ph-power"></i> تفعيل وضع العمل';
+            toggleBtn.classList.remove('btn-danger');
+            toggleBtn.classList.add('btn-driver');
+            toggleBtn.style.background = '';
+            toggleBtn.style.borderColor = '';
+            toggleBtn.style.boxShadow = '';
+            
+            isDriverOnline = false;
+            
+            localStorage.removeItem('driver_forever_online');
+            localStorage.removeItem('driver_online_since');
+            localStorage.removeItem('driver_online_id');
+            
+            FlutterBridge.postMessage('driver_status_change', { online: false });
+
+            showNotification('تم إيقاف وضع العمل بنجاح', 'info');
+            console.log(' DRIVER ONLINE mode DEACTIVATED');
+            
+        } catch (error) {
+            console.error('❌ Deactivation error:', error);
+            showNotification('❌ فشل إيقاف وضع العمل', 'error');
+            toggleBtn.innerHTML = originalText;
+        } finally {
+            toggleBtn.disabled = false;
+        }
+    }
+}
+
+async function forceDriverOfflineInDB() {
+    try {
+        if (!currentDriver) return;
+        
+        const now = new Date().toISOString();
+        
+        await tarhalDB
+            .from('driver_locations')
+            .update({
+                is_online: false,
+                last_seen: now,
+                updated_at: now
+            })
+            .eq('driver_id', currentDriver.id);
+            
+        console.log('✅ Driver forcefully set to offline in database');
+        
+    } catch (error) {
+        console.error('❌ Error forcing offline:', error);
+    }
+}
+
+async function restoreDriverStatus() {
+    const wasOnline = localStorage.getItem('driver_forever_online') === 'true';
+    const savedDriverId = localStorage.getItem('driver_online_id');
+    const onlineSince = localStorage.getItem('driver_online_since');
+    
+    if (wasOnline && currentDriver && savedDriverId === currentDriver.id) {
+        console.log(' Restoring FOREVER ONLINE mode from storage...');
+        
+        const statusIndicator = document.getElementById('driver-status-indicator');
+        const statusText = document.getElementById('driver-status-text');
+        const toggleBtn = document.getElementById('toggle-online-btn');
+        
+        statusIndicator.className = 'status-indicator status-online';
+        statusIndicator.style.background = '#dcfce7';
+        statusIndicator.style.color = '#16a34a';
+        statusText.textContent = 'متصل وجاهز';
+        toggleBtn.innerHTML = '<i class="ph-bold ph-power"></i> متصل الآن';
+        
+        toggleBtn.classList.add('btn-danger');
+        toggleBtn.classList.remove('btn-driver');
+        toggleBtn.style.background = '#dc2626';
+        toggleBtn.style.borderColor = '#dc2626';
+        toggleBtn.style.boxShadow = '0 6px 20px rgba(239, 68, 68, 0.3)';
+        
+        isDriverOnline = true;
+        driverOnlineSince = onlineSince || new Date().toISOString();
+        
+        foreverOnlineManager = new ForeverOnlineManager(currentDriver);
+        setTimeout(async () => {
+            try {
+                await foreverOnlineManager.activate();
+                console.log('✅ FOREVER ONLINE mode restored');
+                
+                if (onlineSince) {
+                    const hours = Math.floor((new Date() - new Date(onlineSince)) / 3600000);
+                    console.log(`⏰ Driver has been online for ${hours} hours`);
+                }
+            } catch (error) {
+                console.error('❌ Failed to restore forever online:', error);
+                localStorage.removeItem('driver_forever_online');
+                localStorage.removeItem('driver_online_since');
+                localStorage.removeItem('driver_online_id');
+                
+                const statusIndicatorOff = document.getElementById('driver-status-indicator');
+                const statusTextOff = document.getElementById('driver-status-text');
+                const toggleBtnOff = document.getElementById('toggle-online-btn');
+                
+                statusIndicatorOff.className = 'status-indicator status-offline';
+                statusIndicatorOff.style.background = '#fee2e2';
+                statusIndicatorOff.style.color = '#dc2626';
+                statusTextOff.textContent = 'غير متصل';
+                toggleBtnOff.innerHTML = '<i class="ph-bold ph-power"></i> تفعيل وضع العمل';
+                toggleBtnOff.classList.remove('btn-danger');
+                toggleBtnOff.classList.add('btn-driver');
+                toggleBtnOff.style.background = '';
+                toggleBtnOff.style.borderColor = '';
+                toggleBtnOff.style.boxShadow = '';
+                
+                isDriverOnline = false;
+            }
+        }, 1000);
+    }
+}
+
+function initRealtime() {
+    if (!currentDriver || !currentDriver.id) return;
+
+    console.log(' Initializing Supabase Realtime for Driver...');
+
+    tarhalDB
+        .channel('driver-rides')
+        .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'rides',
+            filter: `driver_id=eq.${currentDriver.id}`
+        }, (payload) => {
+            console.log(' New ride request received via Realtime (INSERT):', payload);
+            if (typeof handleRideRequest === 'function') {
+                handleRideRequest(payload.new);
+            }
+        })
+        .on('postgres_changes', {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'rides',
+            filter: `driver_id=eq.${currentDriver.id}`
+        }, (payload) => {
+            console.log(' Ride update received via Realtime (UPDATE):', payload);
+
+            const ride = payload.new;
+            if (ride.status === 'awaiting_driver_acceptance' && !ride.driver_accepted && !ride.driver_rejected) {
+                console.log('✨ Triggering ride request display from update event');
+                if (typeof handleRideRequest === 'function') {
+                    if (!window.currentIncomingRide || window.currentIncomingRide.id !== ride.id) {
+                        handleRideRequest(ride);
+                    }
+                }
+            }
+        })
+        .subscribe();
+}
+
+async function checkDriverBanStatus() {
+    if (!currentDriver || !currentDriver.id) return false;
+    try {
+        const { data, error } = await tarhalDB
+            .from('drivers')
+            .select('is_banned, ban_until, ban_reason')
+            .eq('id', currentDriver.id)
+            .single();
+
+        if (!error && data) {
+            const isBanned = data.is_banned && data.ban_until && new Date(data.ban_until) > new Date();
+            if (isBanned) {
+                console.log(`Driver is banned until ${data.ban_until}`);
+
+                currentDriver.is_banned = true;
+                currentDriver.ban_until = data.ban_until;
+                currentDriver.ban_reason = data.ban_reason;
+                localStorage.setItem('tarhal_driver', JSON.stringify(currentDriver));
+
+                if (isDriverOnline) {
+                    isDriverOnline = false;
+                    if (foreverOnlineManager) {
+                        await foreverOnlineManager.deactivate();
+                        foreverOnlineManager = null;
+                    }
+                    await forceDriverOfflineInDB();
+                    localStorage.removeItem('driver_forever_online');
+                    localStorage.removeItem('driver_online_since');
+                    localStorage.removeItem('driver_online_id');
+                }
+
+                showBanBanner(data.ban_until, data.ban_reason);
+
+                const toggleBtn = document.getElementById('toggle-online-btn');
+                if (toggleBtn) {
+                    toggleBtn.disabled = true;
+                    toggleBtn.style.opacity = '0.5';
+                    toggleBtn.style.pointerEvents = 'none';
+                    toggleBtn.innerHTML = '<i class="ph-bold ph-prohibit"></i> الحساب معلق';
+                }
+
+                const statusIndicator = document.getElementById('driver-status-indicator');
+                const statusText = document.getElementById('driver-status-text');
+                if (statusIndicator && statusText) {
+                    statusIndicator.className = 'status-indicator status-offline';
+                    statusText.textContent = 'معلق / محظور';
+                }
+
+                return true;
+            } else {
+                if (currentDriver.is_banned) {
+                    currentDriver.is_banned = false;
+                    localStorage.setItem('tarhal_driver', JSON.stringify(currentDriver));
+                }
+                const banner = document.getElementById('ban-banner');
+                if (banner) banner.remove();
+
+                const toggleBtn = document.getElementById('toggle-online-btn');
+                if (toggleBtn) {
+                    toggleBtn.disabled = false;
+                    toggleBtn.style.opacity = '1';
+                    toggleBtn.style.pointerEvents = 'auto';
+                    toggleBtn.innerHTML = '<i class="ph-bold ph-power"></i> تفعيل وضع العمل';
+                }
+            }
+        }
+    } catch (err) {
+        console.error('Error checking ban status:', err);
+    }
+    return false;
+}
+
+function showBanBanner(banUntil, banReason) {
+    const existing = document.getElementById('ban-banner');
+    if (existing) existing.remove();
+
+    const formattedDate = new Date(banUntil).toLocaleString('ar-SA', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+
+    const banner = document.createElement('div');
+    banner.id = 'ban-banner';
+    banner.style.cssText = `
+        background: #fee2e2;
+        color: #991b1b;
+        padding: 12px 15px;
+        text-align: center;
+        font-weight: bold;
+        font-size: 14px;
+        border-bottom: 2px solid #ef4444;
+        width: 100%;
+        box-sizing: border-box;
+        direction: rtl;
+    `;
+    banner.innerHTML = `
+        <i class="ph-bold ph-warning-circle" style="vertical-align: middle; font-size: 18px; margin-left: 6px;"></i>
+        <span>حسابك معلق ومحظور من استقبال الرحلات حتى: <strong>${formattedDate}</strong></span>
+        ${banReason ? `<div style="font-size: 12px; margin-top: 4px; opacity: 0.9;">السبب: ${banReason}</div>` : ''}
+    `;
+
+    const container = document.querySelector('.app-container');
+    if (container) {
+        container.insertBefore(banner, container.firstChild);
+    } else {
+        document.body.insertBefore(banner, document.body.firstChild);
+    }
+}
+
+// ============================================
+// checkAuth المعدلة
+// ============================================
+async function checkAuth() {
+    const savedDriver = localStorage.getItem('tarhal_driver');
+    
+    if (savedDriver) {
+        try {
+            currentDriver = JSON.parse(savedDriver);
+            localStorage.setItem('driver_id', currentDriver.id);
+            showScreen('driver-dashboard-screen');
+            updateDriverDashboard();
+            initDriverSystems();
+            initRealtime();
+            updatePushSubscriptionOnLogin();
+
+            // ✅ مزامنة التوكن بعد استعادة الجلسة
+            await syncPendingFcmTokenAfterLogin();
+
+            const isBanned = await checkDriverBanStatus();
+
+            if (!isBanned) {
+                setTimeout(() => {
+                    restoreDriverStatus();
+                }, 1000);
+            }
+            
+        } catch (e) {
+            localStorage.removeItem('tarhal_driver');
+            showScreen('driver-login-screen');
+        }
+    } else {
+        showScreen('driver-login-screen');
+    }
+}
+
+// تسجيل Service Worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw-driver.js')
+      .then(registration => {
+        console.log('✅ Service Worker registered:', registration.scope);
+        
+        if (foreverOnlineManager && foreverOnlineManager.isActive) {
+          registration.active.postMessage({
+            type: 'DRIVER_HEARTBEAT',
+            driverId: currentDriver.id
+          });
+        }
+      })
+      .catch(error => {
+        console.log('⚠️ Service Worker registration failed:', error);
+      });
+  });
+  
+  navigator.serviceWorker.addEventListener('message', event => {
+    if (event.data.type === 'REQUEST_DRIVER_ID') {
+      if (currentDriver && foreverOnlineManager && foreverOnlineManager.isActive) {
+        event.source.postMessage({
+          type: 'DRIVER_HEARTBEAT',
+          driverId: currentDriver.id
+        });
+      }
+    }
+  });
+}
+
+// ============================================
+// دوال الشكاوى والمقترحات
+// ============================================
+
 function showComplaintsModal() {
     const modal = document.getElementById('complaints-modal');
     modal.classList.remove('hidden');
     
-    // Fill driver data from localStorage - do this FIRST before any reset
     const driverData = localStorage.getItem('tarhal_driver');
     if (driverData) {
         try {
@@ -3337,7 +2902,6 @@ function showComplaintsModal() {
         }
     }
     
-    // Only reset rating, don't reset form (to keep auto-filled data)
     setComplaintRating(0);
 }
 
@@ -3362,7 +2926,6 @@ async function submitComplaint(event) {
     const form = event.target;
     const formData = new FormData(form);
     
-    // Get driver ID and name from localStorage
     const driverData = localStorage.getItem('tarhal_driver');
     let userId = null;
     let userName = null;
@@ -3406,7 +2969,6 @@ async function submitComplaint(event) {
     }
 }
 
-// Close modal when clicking outside
 document.getElementById('complaints-modal').addEventListener('click', function(e) {
     if (e.target === this) {
         closeComplaintsModal();
