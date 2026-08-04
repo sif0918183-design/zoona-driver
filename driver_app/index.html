@@ -1025,6 +1025,11 @@
                     <i class="ph-bold ph-flask"></i>
                     🧪 الاختبار الكامل
                 </button>
+
+                <button class="btn btn-test" onclick="checkFCMStatus()" style="border-color: #8b5cf6; color: #8b5cf6;">
+                    <i class="ph-light ph-bug"></i>
+                    فحص حالة FCM
+                </button>
             </div>
 
             <button class="btn btn-danger mt-2" onclick="logoutDriver()">
@@ -1258,7 +1263,7 @@
     function showTokenInUI(token) {
         const area = document.getElementById('token-display-area');
         const text = document.getElementById('token-display-text');
-        if (token) {
+        if (token && typeof token === 'string' && token.length > 10) {
             area.style.display = 'block';
             text.textContent = token.substring(0, 30) + '...';
             text.style.color = '#16a34a';
@@ -1300,7 +1305,21 @@
         showNotification('🔑 جاري طلب التوكن من التطبيق...', 'info');
         
         try {
-            const token = await FlutterBridge.callHandler('getFCMToken');
+            // محاولة 1: جلب مباشر
+            let token = await FlutterBridge.callHandler('getFCMToken');
+            
+            // محاولة 2: إذا فشل، جرب من SharedPreferences
+            if (!token) {
+                showNotification('📦 محاولة جلب التوكن المخزن...', 'info');
+                token = await FlutterBridge.callHandler('getStoredFCMToken');
+            }
+            
+            // محاولة 3: إذا ما زال فاشلاً، أعد المحاولة بعد 2 ثانية
+            if (!token) {
+                showNotification('⏳ إعادة المحاولة بعد ثانيتين...', 'warning');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                token = await FlutterBridge.callHandler('getFCMToken');
+            }
             
             if (token && typeof token === 'string' && token.length > 10) {
                 currentFCMToken = token;
@@ -1375,6 +1394,29 @@
     }
 
     /**
+     * فحص حالة FCM
+     */
+    async function checkFCMStatus() {
+        showNotification('🔍 فحص حالة Firebase...', 'info');
+        try {
+            const status = await FlutterBridge.callHandler('checkFCMStatus');
+            console.log('📊 FCM Status:', status);
+            
+            if (status && status.hasToken) {
+                showNotification(`✅ التوكن موجود (${status.tokenLength} حرف)`, 'success');
+                showTokenInUI(status.token);
+            } else {
+                const error = status?.error || 'غير معروف';
+                showNotification(`❌ لا يوجد توكن. الخطأ: ${error}`, 'error');
+                showTokenInUI(null);
+            }
+        } catch (e) {
+            showNotification('❌ خطأ في الفحص: ' + e.message, 'error');
+            console.error('[TEST] ❌ Error:', e);
+        }
+    }
+
+    /**
      * الاختبار الكامل
      */
     async function fullFCMTest() {
@@ -1424,7 +1466,13 @@
         }
         
         // 1. جلب التوكن
-        const token = await FlutterBridge.callHandler('getFCMToken');
+        let token = await FlutterBridge.callHandler('getFCMToken');
+        
+        // 2. إذا فشل، جرب المخزن
+        if (!token) {
+            token = await FlutterBridge.callHandler('getStoredFCMToken');
+        }
+        
         if (!token) {
             if (showMessages) {
                 showNotification('❌ فشل جلب التوكن من التطبيق', 'error');
@@ -1435,7 +1483,7 @@
         currentFCMToken = token;
         showTokenInUI(token);
         
-        // 2. حفظ في Supabase
+        // 3. حفظ في Supabase
         try {
             const { error } = await tarhalDB
                 .from('drivers')
@@ -3174,6 +3222,19 @@
             closeComplaintsModal();
         }
     });
+
+    // ============================================
+    //  مزامنة دورية للـ FCM Token (كل 5 دقائق)
+    // ============================================
+
+    setInterval(async () => {
+        if (currentDriver && currentDriver.id) {
+            console.log('[PWA] 🔄 Periodic FCM Token sync...');
+            await syncFCMTokenWithDriver(false);
+        }
+    }, 300000);
+
+    console.log('[PWA] ✅ FCM Token Management System initialized');
 
     // ============================================
     //  تسجيل Service Worker
