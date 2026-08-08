@@ -6,3 +6,11 @@
 127.0.0.1 - - [08/Aug/2026 12:18:39] "GET /shared/theme.css HTTP/1.1" 200 -
 127.0.0.1 - - [08/Aug/2026 12:18:39] "GET /api/supabase-config HTTP/1.1" 404 -
 127.0.0.1 - - [08/Aug/2026 12:18:39] "GET /assets/branding/icon-512x512.png HTTP/1.1" 200 -
+127.0.0.1 - - [08/Aug/2026 12:39:29] "GET /driver_app/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [08/Aug/2026 12:39:30] "GET /shared/theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [08/Aug/2026 12:39:30] "GET /shared/supabase-config.js HTTP/1.1" 200 -
+127.0.0.1 - - [08/Aug/2026 12:39:30] code 404, message File not found
+127.0.0.1 - - [08/Aug/2026 12:39:30] "GET /api/supabase-config HTTP/1.1" 404 -
+127.0.0.1 - - [08/Aug/2026 12:39:30] "GET /shared/notification-utils.js HTTP/1.1" 200 -
+127.0.0.1 - - [08/Aug/2026 12:39:30] "GET /assets/branding/icon-512x512.png HTTP/1.1" 200 -
+127.0.0.1 - - [08/Aug/2026 12:39:30] "GET /sound-manager.js HTTP/1.1" 200 -
