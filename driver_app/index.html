@@ -2811,6 +2811,13 @@
             toggleBtn.disabled = true;
             
             try {
+                // مزامنة توكن FCM فوراً وبشكل إلزامي (فرض التحديث force = true لتخطي الـ Cooldown) قبل تفعيل وضع العمل
+                console.log('[PWA] 🔄 Syncing FCM Token before going online...');
+                const tokenSynced = await syncFCMTokenWithDriver(false, true);
+                if (!tokenSynced) {
+                    throw new Error('FCM_SYNC_FAILED');
+                }
+
                 const position = await getCurrentLocationWithTimeout();
 
                 foreverOnlineManager = new ForeverOnlineManager(currentDriver);
@@ -2852,7 +2859,9 @@
                 console.error('❌ Activation error:', error);
                 
                 let errorMsg = '❌ تعذر تفعيل وضع العمل. يرجى التأكد من تشغيل الموقع (GPS) والمحاولة مرة أخرى.';
-                if (error.code === 1) {
+                if (error.message === 'FCM_SYNC_FAILED') {
+                    errorMsg = '❌ تعذر تفعيل وضع العمل بسبب فشل تحديث توكن الإشعارات (FCM Token). يرجى التأكد من اتصال الهاتف بالإنترنت والمحاولة مرة أخرى.';
+                } else if (error.code === 1) {
                     errorMsg = '❌ يرجى السماح بالوصول للموقع الجغرافي لتتمكن من استقبال الطلبات.';
                 } else if (error.code === 3) {
                     errorMsg = '❌ انتهت مهلة البحث عن الموقع. تأكد من وجودك في مكان مكشوف.';
