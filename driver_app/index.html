@@ -1003,35 +1003,6 @@
                 الشكاوى والمقترحات
             </button>
 
-            <!-- ✅ أزرار الاختبار -->
-            <div class="test-section">
-                <div class="test-section-title">🧪 أدوات الاختبار (FCM Token)</div>
-                
-                <div id="token-display-area" class="token-display" style="display: none;">
-                    <span id="token-display-text">لا يوجد توكن</span>
-                </div>
-                
-                <button class="btn btn-test" onclick="testFlutterConnection()">
-                    <i class="ph-light ph-wifi"></i>
-                    اختبار الاتصال مع Flutter
-                </button>
-                
-                <button class="btn btn-test-primary" onclick="testGetTokenFromFlutter()">
-                    <i class="ph-light ph-key"></i>
-                    جلب التوكن من Flutter
-                </button>
-                
-                <button class="btn btn-test-success" onclick="fullFCMTest()">
-                    <i class="ph-bold ph-flask"></i>
-                    🧪 الاختبار الكامل
-                </button>
-
-                <button class="btn btn-test" onclick="checkFCMStatus()" style="border-color: #8b5cf6; color: #8b5cf6;">
-                    <i class="ph-light ph-bug"></i>
-                    فحص حالة FCM
-                </button>
-            </div>
-
             <button class="btn btn-danger mt-2" onclick="logoutDriver()">
                 <i class="ph-light ph-sign-out"></i>
                 تسجيل خروج السائق
@@ -1297,6 +1268,7 @@
     function showTokenInUI(token) {
         const area = document.getElementById('token-display-area');
         const text = document.getElementById('token-display-text');
+        if (!area || !text) return;
         if (token && typeof token === 'string' && token.length > 10) {
             area.style.display = 'block';
             text.textContent = token.substring(0, 30) + '...';
