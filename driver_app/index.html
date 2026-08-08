@@ -1459,18 +1459,21 @@
     // ============================================
 
     /**
-     * المزامنة الكاملة مع تنبيهات
+     * المزامنة الكاملة لتحديث التوكن بدون تنبيهات مزعجة ومع كفاءة تكرار الطلبات من Supabase
      */
-    async function syncFCMTokenWithDriver(showMessages = true) {
+    async function syncFCMTokenWithDriver(showMessages = false, force = false) {
         if (!currentDriver || !currentDriver.id) {
-            if (showMessages) {
-                showNotification('⚠️ الرجاء تسجيل الدخول أولاً', 'warning');
-            }
             return false;
         }
-        
-        if (showMessages) {
-            showNotification(`🔄 جاري مزامنة التوكن للسائق ${currentDriver.full_name}...`, 'info');
+
+        // تقليل الطلبات من Supabase بضبط فترة انتظار (Cooldown) تبلغ 6 ساعات
+        if (!force) {
+            const lastSync = localStorage.getItem('last_fcm_sync_timestamp');
+            const cooldown = 6 * 60 * 60 * 1000; // 6 ساعات بالملي ثانية
+            if (lastSync && (Date.now() - parseInt(lastSync) < cooldown)) {
+                console.log('[PWA] 🚀 FCM Token sync skipped (cooldown active). Last sync was less than 6 hours ago.');
+                return true;
+            }
         }
         
         // 1. جلب التوكن
@@ -1482,9 +1485,7 @@
         }
         
         if (!token) {
-            if (showMessages) {
-                showNotification('❌ فشل جلب التوكن من التطبيق', 'error');
-            }
+            console.warn('[PWA] ⚠️ Failed to retrieve FCM token from Flutter');
             return false;
         }
         
@@ -1504,15 +1505,13 @@
                 .eq('id', currentDriver.id);
             
             if (error) {
-                if (showMessages) {
-                    showNotification('❌ فشل الحفظ: ' + error.message, 'error');
-                }
+                console.error('[PWA] ❌ Failed to save token to DB:', error.message);
                 return false;
             }
             
-            if (showMessages) {
-                showNotification('✅ تم تحديث التوكن بنجاح في قاعدة البيانات', 'success');
-            }
+            // تحديث طابع آخر مزامنة ناجحة لتفادي تكرار طلبات Supabase
+            localStorage.setItem('last_fcm_sync_timestamp', Date.now().toString());
+            console.log('[PWA] ✅ FCM Token synced and updated in DB successfully');
             
             // إعلام Flutter
             FlutterBridge.callHandler('tokenSyncComplete', { 
@@ -1522,9 +1521,7 @@
             
             return true;
         } catch (error) {
-            if (showMessages) {
-                showNotification('❌ خطأ في الحفظ: ' + error.message, 'error');
-            }
+            console.error('[PWA] ❌ Error in syncFCMTokenWithDriver:', error);
             return false;
         }
     }
@@ -1557,7 +1554,8 @@
                 .eq('id', currentDriver.id);
             
             if (!error) {
-                showNotification('✅ تم تحديث التوكن الجديد في قاعدة البيانات', 'success');
+                localStorage.setItem('last_fcm_sync_timestamp', Date.now().toString());
+                console.log('[PWA] ✅ FCM Token updated from native change');
             }
         } catch (e) {
             console.error('[PWA] ❌ Error updating token:', e);
@@ -2089,17 +2087,17 @@
             await updatePushSubscriptionOnLogin();
             initRealtime();
 
-            // ✅ مزامنة FCM Token بعد تسجيل الدخول
+            // ✅ مزامنة FCM Token بعد تسجيل الدخول (نفرض المزامنة الإلزامية force = true لتخطي الـ Cooldown)
             console.log('[PWA] 🔄 Syncing FCM Token after login...');
             
             // المحاولة الأولى
-            const syncResult = await syncFCMTokenWithDriver(true);
+            const syncResult = await syncFCMTokenWithDriver(false, true);
             
             if (!syncResult) {
                 // المحاولة الثانية بعد 3 ثوان
                 console.log('[PWA] ⏳ Retrying FCM Token sync in 3 seconds...');
                 setTimeout(async () => {
-                    await syncFCMTokenWithDriver(true);
+                    await syncFCMTokenWithDriver(false, true);
                 }, 3000);
             }
 
@@ -2119,7 +2117,7 @@
                         .eq('id', driver.id);
                     
                     if (!error) {
-                        showNotification('✅ تم مزامنة التوكن المعلق', 'success');
+                        localStorage.setItem('last_fcm_sync_timestamp', Date.now().toString());
                         localStorage.removeItem('pending_fcm_token');
                     }
                 } catch (e) {
@@ -2457,10 +2455,10 @@
                 initRealtime();
                 updatePushSubscriptionOnLogin();
 
-                // مزامنة FCM Token بعد استعادة الجلسة
+                // مزامنة FCM Token بعد استعادة الجلسة (بدون فرض force=false للاعتماد على الـ Cooldown لتفادي كثرة الطلبات)
                 console.log('[PWA] 🔄 Syncing FCM Token after session restore...');
                 setTimeout(async () => {
-                    await syncFCMTokenWithDriver(true);
+                    await syncFCMTokenWithDriver(false, false);
                 }, 2000);
 
                 // التحقق من الحظر
