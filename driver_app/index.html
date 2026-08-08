@@ -1220,6 +1220,40 @@
         }
     });
 
+    let supabaseAdmin = null;
+    async function initSupabaseAdmin() {
+        if (supabaseAdmin) return supabaseAdmin;
+        let serviceRoleKey = window.SUPABASE_SERVICE_ROLE_KEY;
+        if (!serviceRoleKey) {
+            try {
+                const sToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_session_token') || localStorage.getItem('tarhal_admin_token');
+                const sResponse = await fetch('/api/get-service-key', {
+                    headers: {
+                        'Authorization': sToken ? `Bearer ${sToken}` : ''
+                    }
+                });
+                const sData = await sResponse.json();
+                serviceRoleKey = sData.serviceRoleKey || (sData.data && sData.data.serviceRoleKey);
+            } catch (fetchKeyErr) {
+                console.error('❌ خطأ في جلب مفتاح الخدمة:', fetchKeyErr);
+            }
+        }
+
+        if (serviceRoleKey) {
+            supabaseAdmin = supabase.createClient(
+                window.SB_URL,
+                serviceRoleKey,
+                {
+                    auth: {
+                        autoRefreshToken: false,
+                        persistSession: false
+                    }
+                }
+            );
+        }
+        return supabaseAdmin;
+    }
+
     // Application State
     let currentDriver = null;
     let isDriverOnline = false;
@@ -1357,7 +1391,9 @@
         showNotification('💾 جاري حفظ التوكن في قاعدة البيانات...', 'info');
         
         try {
-            const { error } = await tarhalDB
+            await initSupabaseAdmin();
+            const dbClient = supabaseAdmin || tarhalDB;
+            const { error } = await dbClient
                 .from('drivers')
                 .update({
                     fcm_token: token,
@@ -1375,7 +1411,7 @@
             console.log('[TEST] ✅ Token saved successfully');
             
             // التحقق من الحفظ
-            const { data } = await tarhalDB
+            const { data } = await dbClient
                 .from('drivers')
                 .select('fcm_token, last_fcm_sync')
                 .eq('id', currentDriver.id)
@@ -1485,7 +1521,9 @@
         
         // 3. حفظ في Supabase
         try {
-            const { error } = await tarhalDB
+            await initSupabaseAdmin();
+            const dbClient = supabaseAdmin || tarhalDB;
+            const { error } = await dbClient
                 .from('drivers')
                 .update({
                     fcm_token: token,
@@ -1536,7 +1574,9 @@
         
         // تحديث فوري في Supabase
         try {
-            const { error } = await tarhalDB
+            await initSupabaseAdmin();
+            const dbClient = supabaseAdmin || tarhalDB;
+            const { error } = await dbClient
                 .from('drivers')
                 .update({
                     fcm_token: newToken,
@@ -2096,7 +2136,9 @@
             if (pendingToken) {
                 console.log('[PWA] ⏳ Found pending token, syncing...');
                 try {
-                    const { error } = await tarhalDB
+                    await initSupabaseAdmin();
+                    const dbClient = supabaseAdmin || tarhalDB;
+                    const { error } = await dbClient
                         .from('drivers')
                         .update({
                             fcm_token: pendingToken,
