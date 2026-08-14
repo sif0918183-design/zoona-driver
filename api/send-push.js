@@ -69,45 +69,104 @@ export default async function handler(req, res) {
             return res.status(404).json({ error: 'Token missing' });
         }
 
-        // ✅ بناء الرسالة المحسّنة
+        // ✅ بناء البيانات مع جميع المعلومات المطلوبة
+        const payloadData = {
+            ride_id: String(rideId || ''),
+            type: 'RIDE_REQUEST',
+            customer_name: customerName || 'عميل',
+            amount: String(amount || '0'),
+            vehicle_type: vehicleType || '',
+        };
+
+        // ✅ بناء الرسالة المحسّنة للتوافق مع التطبيق
         const message = {
             token: driver.fcm_token,
             notification: {
-                title: '🚨 طلب رحلة جديد - تراكا',
-                body: `عميل: ${customerName || 'عميل'}\nالأجرة: ${amount || '0'} SDG`,
+                title: '🚨 طلب رحلة جديد',
+                body: `${customerName || 'عميل'} - ${amount || '0'} SDG`,
             },
             data: {
+                ...payloadData,
+                // ✅ هذه الحقول ضرورية لفتح الرحلة عند الضغط على الإشعار
                 ride_id: String(rideId || ''),
                 type: 'RIDE_REQUEST',
-                click_action: 'FLUTTER_NOTIFICATION_CLICK',
-                customer_name: customerName || 'عميل',
-                amount: String(amount || '0'),
-                vehicle_type: vehicleType || '',
             },
             android: {
                 priority: 'high',
+                ttl: 86400, // 24 ساعة
                 notification: {
-                    channelId: 'emergency_channel_default',
-                    sound: 'default',
+                    channelId: 'emergency_channel_v15', // ✅ نفس القناة المستخدمة في التطبيق
+                    sound: 'ride_request_sound', // ✅ اسم ملف الصوت
                     priority: 'max',
                     defaultVibrateTimings: true,
                     visibility: 'public',
-                    clickAction: 'FLUTTER_NOTIFICATION_CLICK',
-                }
+                    clickAction: 'FLUTTER_NOTIFICATION_CLICK', // ✅ مطلوب لفتح التطبيق
+                    tag: 'ride_request', // ✅ لمنع التكرار
+                    color: '#FF0000',
+                    sticky: true,
+                    timeoutAfter: 30000, // 30 ثانية
+                },
+                // ✅ إعدادات إضافية لضمان الظهور
+                fcmOptions: {
+                    analyticsLabel: 'ride_request',
+                },
             },
             apns: {
                 payload: {
                     aps: {
+                        alert: {
+                            title: '🚨 طلب رحلة جديد',
+                            body: `${customerName || 'عميل'} - ${amount || '0'} SDG`,
+                        },
                         sound: 'default',
                         badge: 1,
                         'mutable-content': 1,
                         category: 'RIDE_REQUEST_CATEGORY',
                         'interruption-level': 'critical',
                         'relevance-score': 1.0,
-                    }
-                }
-            }
+                    },
+                },
+                fcmOptions: {
+                    analyticsLabel: 'ride_request_ios',
+                },
+            },
+            // ✅ WebPush للإشعارات على المتصفحات
+            webpush: {
+                notification: {
+                    title: '🚨 طلب رحلة جديد',
+                    body: `${customerName || 'عميل'} - ${amount || '0'} SDG`,
+                    icon: '/icon-192.png',
+                    badge: '/badge-72.png',
+                    vibrate: [500, 300, 500, 300, 500, 300, 500, 300, 500],
+                    requireInteraction: true,
+                    tag: 'ride_request',
+                    renotify: true,
+                    data: {
+                        ride_id: String(rideId || ''),
+                        type: 'RIDE_REQUEST',
+                        url: `https://tracka.zoonasd.com/driver_app/accept-ride.html?id=${rideId}`,
+                    },
+                    actions: [
+                        {
+                            action: 'accept',
+                            title: 'قبول',
+                            icon: '/check-icon.png',
+                        },
+                        {
+                            action: 'reject',
+                            title: 'تجاهل',
+                            icon: '/close-icon.png',
+                        },
+                    ],
+                },
+                fcmOptions: {
+                    link: `https://tracka.zoonasd.com/driver_app/accept-ride.html?id=${rideId}`,
+                },
+            },
         };
+
+        console.log('📤 إرسال إشعار RIDE_REQUEST للسائق:', driverId);
+        console.log('📋 البيانات:', JSON.stringify(payloadData, null, 2));
 
         // ✅ إرسال الإشعار مع محاولة إعادة المحاولة عند الفشل
         let response;
@@ -128,12 +187,17 @@ export default async function handler(req, res) {
         return res.status(200).json({ 
             success: true, 
             message: 'تم الإرسال بنجاح',
-            response: response
+            response: response,
+            data: payloadData,
         });
 
     } catch (error) {
         console.error('❌ خطأ في إرسال الإشعار:', error);
-        return res.status(500).json({ error: error.message });
+        return res.status(500).json({ 
+            success: false,
+            error: error.message,
+            stack: error.stack 
+        });
     }
 }
 
