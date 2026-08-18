@@ -60,7 +60,7 @@ export default async function handler(req, res) {
         console.log('📤 Amount:', amount || '0');
         console.log('📤 ==========================================');
 
-        // --- صمام الأمان لمنع تكرار الإشعار ---
+        // --- صمام الأمان لمنع تكرار الإشعار (Ghosting Fix) ---
         if (rideId) {
             const { data: ride, error: rideError } = await tarhalDB
                 .from('rides')
@@ -70,6 +70,7 @@ export default async function handler(req, res) {
 
             if (rideError) {
                 console.error('❌ Error checking ride status:', rideError);
+                // نستمر في الإرسال حتى لو كان هناك خطأ في التحقق
             }
 
             if (ride) {
@@ -79,7 +80,7 @@ export default async function handler(req, res) {
                     console.log(`🚫 تم منع التكرار: الرحلة في حالة ${ride.status}`);
                     return res.status(200).json({ 
                         success: false, 
-                        message: `تم التعامل مع هذه الرحلة مسبقاً (الحالة: ${ride.status})`,
+                        message: `تم التعامل مع هذه الرحلة مسبقاً (الحالة: ${ride.status})، لن يتم إرسال إشعار مكرر.`,
                         rideStatus: ride.status
                     });
                 }
@@ -87,7 +88,7 @@ export default async function handler(req, res) {
             }
         }
 
-        // ✅ جلب توكن السائق
+        // ✅ جلب توكن وحالة حظر السائق
         const { data: driver, error: dbError } = await tarhalDB
             .from('drivers')
             .select('fcm_token, is_banned, ban_until')
@@ -102,10 +103,10 @@ export default async function handler(req, res) {
         // ✅ التحقق من حظر السائق
         const isBanned = driver.is_banned && driver.ban_until && new Date(driver.ban_until) > new Date();
         if (isBanned) {
-            console.log(`🚫 Driver ${driverId} is banned`);
+            console.log(`🚫 Driver ${driverId} is banned until ${driver.ban_until}. Preventing push notification.`);
             return res.status(403).json({ 
                 success: false, 
-                error: 'حساب السائق معلق',
+                error: 'حساب السائق معلق ومحظور حالياً من العمل.',
                 banned: true,
                 banUntil: driver.ban_until
             });
@@ -120,16 +121,10 @@ export default async function handler(req, res) {
         console.log('✅ FCM Token found:', driver.fcm_token.substring(0, 20) + '...');
 
         // ============================================
-        // ✅ NOTIFICATION + DATA معاً
+        // ✅ رسالة DATA-ONLY (بدون notification)
         // ============================================
         const message = {
             token: driver.fcm_token,
-            // ✅ notification - لعرض الإشعار في النظام
-            notification: {
-                title: '🚨 طلب رحلة جديد',
-                body: `${customerName || 'عميل'} - ${amount || '0'} SDG`,
-            },
-            // ✅ data - لنقل البيانات إلى التطبيق
             data: {
                 ride_id: String(rideId || ''),
                 type: 'RIDE_REQUEST',
@@ -137,40 +132,23 @@ export default async function handler(req, res) {
                 amount: String(amount || '0'),
                 vehicle_type: vehicleType || '',
                 timestamp: String(Date.now()),
-                // ✅ click_action مهم لفتح التطبيق
-                click_action: 'FLUTTER_NOTIFICATION_CLICK',
             },
             android: {
                 priority: 'high',
                 ttl: 86400, // 24 ساعة
-                notification: {
-                    channelId: 'emergency_channel_v15',
-                    sound: 'ride_request_sound',
-                    priority: 'max',
-                    defaultVibrateTimings: true,
-                    visibility: 'public',
-                    sticky: true,
-                    tag: `ride_${rideId}`,
-                    // ✅ click_action مهم لفتح التطبيق
-                    clickAction: 'FLUTTER_NOTIFICATION_CLICK',
-                },
+                // ✅ إعدادات إضافية لضمان وصول البيانات
                 fcmOptions: {
                     analyticsLabel: 'ride_request_android',
                 },
+                // ✅ إعدادات إضافية للـ Android
+                directBootOk: true,
             },
             apns: {
                 payload: {
                     aps: {
-                        alert: {
-                            title: '🚨 طلب رحلة جديد',
-                            body: `${customerName || 'عميل'} - ${amount || '0'} SDG`,
-                        },
+                        'content-available': 1,
                         sound: 'default',
                         badge: 1,
-                        'mutable-content': 1,
-                        category: 'RIDE_REQUEST_CATEGORY',
-                        'interruption-level': 'critical',
-                        'relevance-score': 1.0,
                     },
                 },
                 fcmOptions: {
@@ -212,9 +190,9 @@ export default async function handler(req, res) {
             },
         };
 
-        console.log('📤 Sending FCM message with Notification + Data...');
+        console.log('📤 Sending Data-only FCM message...');
 
-        // ✅ إرسال الإشعار مع محاولة إعادة المحاولة
+        // ✅ إرسال الإشعار مع محاولة إعادة المحاولة عند الفشل
         let response;
         let retries = 3;
         let lastError = null;
@@ -229,7 +207,7 @@ export default async function handler(req, res) {
                 retries--;
                 console.log(`⚠️ Attempt ${3 - retries}/3 failed:`, error.message);
                 
-                // ✅ إذا كان الخطأ بسبب Token غير صالح
+                // ✅ إذا كان الخطأ بسبب Token غير صالح، لا نعيد المحاولة
                 if (error.code === 'messaging/invalid-registration-token' || 
                     error.code === 'messaging/registration-token-not-registered') {
                     console.log('❌ Invalid token, removing from database...');
@@ -257,7 +235,7 @@ export default async function handler(req, res) {
             });
         }
 
-        // ✅ تسجيل نجاح الإرسال في Supabase
+        // ✅ تسجيل نجاح الإرسال في Supabase (اختياري)
         try {
             await tarhalDB
                 .from('notification_logs')
@@ -312,4 +290,28 @@ function getVehicleTypeArabic(type) {
         'bus': 'حافلة'
     };
     return types[type] || type || 'سيارة';
+}
+
+// ✅ دالة مساعدة للتحقق من صحة التوكن
+function isValidToken(token) {
+    if (!token || typeof token !== 'string') return false;
+    // توكن Firebase عادة يبدأ بـ "fcm-" أو يكون طويلاً
+    return token.length > 20;
+}
+
+// ✅ دالة مساعدة لتنسيق رسالة الخطأ
+function formatErrorMessage(error) {
+    if (error.code === 'messaging/invalid-registration-token') {
+        return 'توكن الإشعار غير صالح، يرجى تحديث التوكن';
+    }
+    if (error.code === 'messaging/registration-token-not-registered') {
+        return 'توكن الإشعار غير مسجل، يرجى إعادة التسجيل';
+    }
+    if (error.code === 'messaging/mismatched-credential') {
+        return 'خطأ في صلاحيات Firebase';
+    }
+    if (error.code === 'messaging/device-message-rate-exceeded') {
+        return 'تم تجاوز حد الإشعارات لهذا الجهاز';
+    }
+    return error.message || 'خطأ غير معروف';
 }
