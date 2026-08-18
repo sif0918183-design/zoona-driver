@@ -113,10 +113,14 @@ export default async function handler(req, res) {
         console.log('✅ FCM Token found:', driver.fcm_token.substring(0, 20) + '...');
 
         // ============================================
-        // ✅ DATA-ONLY (بدون notification)
+        // ✅ NOTIFICATION + DATA (يعمل)
         // ============================================
         const message = {
             token: driver.fcm_token,
+            notification: {
+                title: '🚨 طلب رحلة جديد',
+                body: `${customerName || 'عميل'} - ${amount || '0'} SDG`,
+            },
             data: {
                 ride_id: String(rideId || ''),
                 type: 'RIDE_REQUEST',
@@ -138,9 +142,6 @@ export default async function handler(req, res) {
                     tag: `ride_${rideId}`,
                     clickAction: 'FLUTTER_NOTIFICATION_CLICK',
                 },
-                fcmOptions: {
-                    analyticsLabel: 'ride_request_android',
-                },
             },
             apns: {
                 payload: {
@@ -157,13 +158,10 @@ export default async function handler(req, res) {
                         'relevance-score': 1.0,
                     },
                 },
-                fcmOptions: {
-                    analyticsLabel: 'ride_request_ios',
-                },
             },
         };
 
-        console.log('📤 Sending Data-only FCM message...');
+        console.log('📤 Sending FCM message with Notification + Data...');
 
         let response;
         let retries = 3;
