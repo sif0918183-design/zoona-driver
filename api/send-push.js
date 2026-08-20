@@ -127,7 +127,7 @@ export default async function handler(req, res) {
             },
             android: {
                 priority: 'high',
-                ttl: 86400, // 24 ساعة
+                ttl: 60 * 60 * 1000, // ساعة واحدة
             },
         };
 
