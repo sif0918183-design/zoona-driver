@@ -48,7 +48,7 @@ export default async function handler(req, res) {
         }
 
         console.log('📤 ==========================================');
-        console.log('📤 Sending RIDE_REQUEST notification');
+        console.log('📤 Sending RIDE_REQUEST (DATA-ONLY)');
         console.log('📤 Driver ID:', driverId);
         console.log('📤 Ride ID:', rideId);
         console.log('📤 Customer:', customerName || 'غير معروف');
@@ -113,14 +113,10 @@ export default async function handler(req, res) {
         console.log('✅ FCM Token found:', driver.fcm_token.substring(0, 20) + '...');
 
         // ============================================
-        // ✅ NOTIFICATION + DATA (يعمل)
+        // ✅ DATA-ONLY (بدون notification)
         // ============================================
         const message = {
             token: driver.fcm_token,
-            notification: {
-                title: '🚨 طلب رحلة جديد',
-                body: `${customerName || 'عميل'} - ${amount || '0'} SDG`,
-            },
             data: {
                 ride_id: String(rideId || ''),
                 type: 'RIDE_REQUEST',
@@ -131,37 +127,11 @@ export default async function handler(req, res) {
             },
             android: {
                 priority: 'high',
-                ttl: 86400,
-                notification: {
-                    channelId: 'emergency_channel_v15',
-                    sound: 'ride_request_sound',
-                    priority: 'max',
-                    defaultVibrateTimings: true,
-                    visibility: 'public',
-                    sticky: true,
-                    tag: `ride_${rideId}`,
-                    clickAction: 'FLUTTER_NOTIFICATION_CLICK',
-                },
-            },
-            apns: {
-                payload: {
-                    aps: {
-                        alert: {
-                            title: '🚨 طلب رحلة جديد',
-                            body: `${customerName || 'عميل'} - ${amount || '0'} SDG`,
-                        },
-                        sound: 'default',
-                        badge: 1,
-                        'mutable-content': 1,
-                        category: 'RIDE_REQUEST_CATEGORY',
-                        'interruption-level': 'critical',
-                        'relevance-score': 1.0,
-                    },
-                },
+                ttl: 86400, // 24 ساعة
             },
         };
 
-        console.log('📤 Sending FCM message with Notification + Data...');
+        console.log('📤 Sending DATA-ONLY FCM message...');
 
         let response;
         let retries = 3;
@@ -240,19 +210,4 @@ export default async function handler(req, res) {
             stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
-}
-
-function getVehicleTypeArabic(type) {
-    const types = {
-        'tuktuk': 'توك توك',
-        'economy': 'اقتصادية',
-        'comfort': 'متوسطة',
-        'vip': 'VIP',
-        'motorcycle': 'دراجة نارية',
-        'car': 'سيارة',
-        'suv': 'دفع رباعي',
-        'van': 'فان',
-        'bus': 'حافلة'
-    };
-    return types[type] || type || 'سيارة';
 }
