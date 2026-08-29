@@ -10,11 +10,13 @@ if (!admin.apps.length) {
     try {
         if (process.env.FIREBASE_SERVICE_ACCOUNT) {
             admin.initializeApp({
-                credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT))
+                credential: admin.credential.cert(
+                    JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+                )
             });
         }
-    } catch (error) { 
-        console.error('Firebase Error:', error); 
+    } catch (error) {
+        console.error('Firebase Error:', error);
     }
 }
 
@@ -22,14 +24,22 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    
+
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).end();
 
     try {
-        const { driverId, rideId, customerName, vehicleType, amount } = req.body;
+        const {
+            driverId,
+            rideId,
+            customerName,
+            vehicleType,
+            amount
+        } = req.body;
 
-        // --- صمام الأمان لمنع تكرار الإشعار (Ghosting Fix) ---
+        // =========================================================
+        // منع إرسال إشعار مكرر للرحلة التي تم التعامل معها
+        // =========================================================
         if (rideId) {
             const { data: ride } = await tarhalDB
                 .from('rides')
@@ -37,18 +47,28 @@ export default async function handler(req, res) {
                 .eq('id', rideId)
                 .single();
 
-            const allowedStatuses = ['searching', 'pending', 'awaiting_driver_acceptance'];
-            
+            const allowedStatuses = [
+                'searching',
+                'pending',
+                'awaiting_driver_acceptance'
+            ];
+
             if (ride && !allowedStatuses.includes(ride.status)) {
-                console.log(` تم منع التكرار: الرحلة في حالة ${ride.status}`);
-                return res.status(200).json({ 
-                    success: false, 
-                    message: 'تم التعامل مع هذه الرحلة مسبقاً، لن يتم إرسال إشعار مكرر.' 
+                console.log(
+                    `تم منع التكرار: الرحلة في حالة ${ride.status}`
+                );
+
+                return res.status(200).json({
+                    success: false,
+                    message:
+                        'تم التعامل مع هذه الرحلة مسبقاً، لن يتم إرسال إشعار مكرر.'
                 });
             }
         }
 
-        // جلب توكن وحالة حظر السائق
+        // =========================================================
+        // جلب بيانات السائق
+        // =========================================================
         const { data: driver, error: dbError } = await tarhalDB
             .from('drivers')
             .select('fcm_token, is_banned, ban_until')
@@ -56,45 +76,94 @@ export default async function handler(req, res) {
             .single();
 
         if (dbError || !driver) {
-            return res.status(404).json({ error: 'Driver not found' });
+            return res.status(404).json({
+                error: 'Driver not found'
+            });
         }
 
-        const isBanned = driver.is_banned && driver.ban_until && new Date(driver.ban_until) > new Date();
+        // =========================================================
+        // التحقق من الحظر
+        // =========================================================
+        const isBanned =
+            driver.is_banned &&
+            driver.ban_until &&
+            new Date(driver.ban_until) > new Date();
+
         if (isBanned) {
-            console.log(` Driver ${driverId} is banned until ${driver.ban_until}. Preventing push notification.`);
-            return res.status(403).json({ success: false, error: 'حساب السائق معلق ومحظور حالياً من العمل.' });
+            console.log(
+                `Driver ${driverId} is banned until ${driver.ban_until}.`
+            );
+
+            return res.status(403).json({
+                success: false,
+                error: 'حساب السائق معلق ومحظور حالياً من العمل.'
+            });
         }
 
         if (!driver.fcm_token) {
-            return res.status(404).json({ error: 'Token missing' });
+            return res.status(404).json({
+                error: 'Token missing'
+            });
         }
 
-        // ✅ بناء الرسالة المحسّنة
+        // =========================================================
+        // RIDE_REQUEST
+        //
+        // مهم جداً:
+        // هذا الإشعار DATA-ONLY.
+        //
+        // لا يوجد notification block.
+        //
+        // الهدف:
+        // FCM
+        // -> Flutter background handler
+        // -> flutter_local_notifications
+        // -> emergency_channel_v25
+        // =========================================================
+
+        const title = 'طلب رحلة جديد - تراكا';
+
+        const body =
+            `عميل: ${customerName || 'عميل'}\n` +
+            `الأجرة: ${amount || '0'} SDG`;
+
         const message = {
             token: driver.fcm_token,
-            notification: {
-                title: ' طلب رحلة جديد - تراكا',
-                body: `عميل: ${customerName || 'عميل'}\nالأجرة: ${amount || '0'} SDG`,
-            },
+
+            // =====================================================
+            // لا تضف notification هنا.
+            // RIDE_REQUEST يجب أن يكون DATA-ONLY.
+            // =====================================================
+
             data: {
-                ride_id: String(rideId || ''),
                 type: 'RIDE_REQUEST',
-                click_action: 'FLUTTER_NOTIFICATION_CLICK',
-                customer_name: customerName || 'عميل',
-                amount: String(amount || '0'),
-                vehicle_type: vehicleType || '',
+
+                ride_id: String(rideId || ''),
+
+                customer_name: String(
+                    customerName || 'عميل'
+                ),
+
+                amount: String(
+                    amount || '0'
+                ),
+
+                vehicle_type: String(
+                    vehicleType || ''
+                ),
+
+                title: title,
+
+                body: body,
+
+                click_action:
+                    'FLUTTER_NOTIFICATION_CLICK'
             },
+
             android: {
-                priority: 'high',
-                notification: {
-                    channelId: 'emergency_channel_default',
-                    sound: 'default',
-                    priority: 'max',
-                    defaultVibrateTimings: true,
-                    visibility: 'public',
-                    clickAction: 'FLUTTER_NOTIFICATION_CLICK',
-                }
+                priority: 'high'
             },
+
             apns: {
                 payload: {
                     aps: {
@@ -103,47 +172,72 @@ export default async function handler(req, res) {
                         'mutable-content': 1,
                         category: 'RIDE_REQUEST_CATEGORY',
                         'interruption-level': 'critical',
-                        'relevance-score': 1.0,
+                        'relevance-score': 1.0
                     }
                 }
             }
         };
 
-        // ✅ إرسال الإشعار مع محاولة إعادة المحاولة عند الفشل
+        console.log(
+            '[RIDE_REQUEST] Sending DATA-ONLY FCM message'
+        );
+
+        console.log(
+            '[RIDE_REQUEST] Channel is controlled by Flutter:',
+            'emergency_channel_v25'
+        );
+
+        // =========================================================
+        // إرسال مع إعادة المحاولة
+        // =========================================================
+
         let response;
         let retries = 3;
+
         while (retries > 0) {
             try {
-                response = await admin.messaging().send(message);
-                console.log('✅ تم إرسال الإشعار:', response);
+                response = await admin
+                    .messaging()
+                    .send(message);
+
+                console.log(
+                    '✅ تم إرسال RIDE_REQUEST:',
+                    response
+                );
+
                 break;
             } catch (error) {
                 retries--;
-                console.log(`⚠️ محاولة إعادة الإرسال (${3 - retries}/3):`, error.message);
-                if (retries === 0) throw error;
-                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                console.log(
+                    `⚠️ محاولة إعادة الإرسال (${3 - retries}/3):`,
+                    error.message
+                );
+
+                if (retries === 0) {
+                    throw error;
+                }
+
+                await new Promise(resolve =>
+                    setTimeout(resolve, 1000)
+                );
             }
         }
-        
-        return res.status(200).json({ 
-            success: true, 
-            message: 'تم الإرسال بنجاح',
+
+        return res.status(200).json({
+            success: true,
+            message: 'تم إرسال RIDE_REQUEST بنجاح',
             response: response
         });
 
     } catch (error) {
-        console.error('❌ خطأ في إرسال الإشعار:', error);
-        return res.status(500).json({ error: error.message });
-    }
-}
+        console.error(
+            '❌ خطأ في إرسال الإشعار:',
+            error
+        );
 
-function getVehicleTypeArabic(type) {
-    const types = {
-        'tuktuk': 'توك توك',
-        'economy': 'اقتصادية',
-        'comfort': 'متوسطة',
-        'vip': 'VIP',
-        'motorcycle': 'دراجة نارية'
-    };
-    return types[type] || 'سيارة';
+        return res.status(500).json({
+            error: error.message
+        });
+    }
 }
