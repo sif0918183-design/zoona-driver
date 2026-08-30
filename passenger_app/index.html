@@ -2225,6 +2225,40 @@ let currentUser = null;
 // ============================================
 // Flutter & WebView Bridge
 // ============================================
+let supabaseAdmin = null;
+async function initSupabaseAdmin() {
+    if (supabaseAdmin) return supabaseAdmin;
+    let serviceRoleKey = window.SUPABASE_SERVICE_ROLE_KEY;
+    if (!serviceRoleKey) {
+        try {
+            const sToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_session_token') || localStorage.getItem('tarhal_admin_token');
+            const sResponse = await fetch('/api/get-service-key', {
+                headers: {
+                    'Authorization': sToken ? `Bearer ${sToken}` : ''
+                }
+            });
+            const sData = await sResponse.json();
+            serviceRoleKey = sData.serviceRoleKey || (sData.data && sData.data.serviceRoleKey);
+        } catch (fetchKeyErr) {
+            console.error('❌ خطأ في جلب مفتاح الخدمة:', fetchKeyErr);
+        }
+    }
+
+    if (serviceRoleKey) {
+        supabaseAdmin = supabase.createClient(
+            window.SB_URL,
+            serviceRoleKey,
+            {
+                auth: {
+                    autoRefreshToken: false,
+                    persistSession: false
+                }
+            }
+        );
+    }
+    return supabaseAdmin;
+}
+
 const FlutterBridge = {
     // إرسال رسالة إلى تطبيق Flutter
     postMessage: function(type, data = {}) {
@@ -2236,6 +2270,14 @@ const FlutterBridge = {
         }
     },
 
+    callHandler: function(handlerName, data = {}) {
+        console.log(`[Bridge] Calling Flutter handler: ${handlerName}`, data);
+        if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+            return window.flutter_inappwebview.callHandler(handlerName, JSON.stringify(data));
+        }
+        return Promise.resolve(null);
+    },
+
     // انتظار جاهزية localStorage
     waitForStorage: async function(maxAttempts = 10) {
         for (let i = 0; i < maxAttempts; i++) {
@@ -2243,6 +2285,96 @@ const FlutterBridge = {
             await new Promise(resolve => setTimeout(resolve, 100));
         }
         return !!window.localStorage;
+    }
+};
+
+let currentFCMToken = null;
+
+async function syncFCMTokenWithPassenger(showMessages = false, force = false) {
+    if (!currentUser || !currentUser.id) {
+        return false;
+    }
+
+    if (!force) {
+        const lastSync = localStorage.getItem('last_fcm_sync_timestamp');
+        const cooldown = 6 * 60 * 60 * 1000;
+        if (lastSync && (Date.now() - parseInt(lastSync) < cooldown)) {
+            console.log('[PWA] 🚀 Passenger FCM Token sync skipped (cooldown active).');
+            return true;
+        }
+    }
+
+    let token = await FlutterBridge.callHandler('getFCMToken');
+    if (!token) {
+        token = await FlutterBridge.callHandler('getStoredFCMToken');
+    }
+
+    if (!token) {
+        console.warn('[PWA] ⚠️ Failed to retrieve FCM token from Flutter');
+        return false;
+    }
+
+    currentFCMToken = token;
+
+    try {
+        await initSupabaseAdmin();
+        const dbClient = supabaseAdmin || tarhalDB;
+        const { error } = await dbClient
+            .from('customers')
+            .update({
+                fcm_token: token,
+                last_fcm_sync: new Date().toISOString()
+            })
+            .eq('id', currentUser.id);
+
+        if (error) {
+            console.error('[PWA] ❌ Failed to save passenger FCM token to DB:', error.message);
+            return false;
+        }
+
+        localStorage.setItem('last_fcm_sync_timestamp', Date.now().toString());
+        console.log('[PWA] ✅ Passenger FCM Token synced and updated in DB successfully');
+
+        FlutterBridge.callHandler('tokenSyncComplete', {
+            passengerId: currentUser.id,
+            success: true
+        });
+
+        return true;
+    } catch (error) {
+        console.error('[PWA] ❌ Error in syncFCMTokenWithPassenger:', error);
+        return false;
+    }
+}
+
+window.onNativeTokenChanged = async function(newToken) {
+    console.log('[PWA] 🔄 Native token changed from Flutter bridge');
+
+    if (!currentUser || !currentUser.id) {
+        console.log('[PWA] ⏳ No passenger logged in, saving pending_fcm_token');
+        localStorage.setItem('pending_fcm_token', newToken);
+        return;
+    }
+
+    currentFCMToken = newToken;
+
+    try {
+        await initSupabaseAdmin();
+        const dbClient = supabaseAdmin || tarhalDB;
+        const { error } = await dbClient
+            .from('customers')
+            .update({
+                fcm_token: newToken,
+                last_fcm_sync: new Date().toISOString()
+            })
+            .eq('id', currentUser.id);
+
+        if (!error) {
+            localStorage.setItem('last_fcm_sync_timestamp', Date.now().toString());
+            console.log('[PWA] ✅ Passenger FCM Token updated from native change');
+        }
+    } catch (e) {
+        console.error('[PWA] ❌ Error updating passenger FCM token on native change:', e);
     }
 };
 
@@ -2860,6 +2992,8 @@ async function loginCustomer() {
             role: 'passenger'
         });
 
+        syncFCMTokenWithPassenger(false, true);
+
         showNotification('تم تسجيل الدخول بنجاح!', 'success');
 
         showPageLoader(true);
@@ -3138,6 +3272,21 @@ async function checkAuth() {
     if (savedUser) {
         try {
             currentUser = JSON.parse(savedUser);
+
+            // Sync FCM Token
+            const pendingToken = localStorage.getItem('pending_fcm_token');
+            if (pendingToken) {
+                try {
+                    await initSupabaseAdmin();
+                    const dbClient = supabaseAdmin || tarhalDB;
+                    await dbClient.from('customers').update({
+                        fcm_token: pendingToken,
+                        last_fcm_sync: new Date().toISOString()
+                    }).eq('id', currentUser.id);
+                    localStorage.removeItem('pending_fcm_token');
+                } catch(pe) { console.error('Error applying pending token:', pe); }
+            }
+            syncFCMTokenWithPassenger();
 
             // Check for active rides before showing home screen
             const hasActiveRide = await checkForActiveRide();
