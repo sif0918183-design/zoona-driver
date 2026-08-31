@@ -778,9 +778,6 @@
     <!-- Header -->
     <header class="app-header">
         <div class="header-content">
-            <a href="../landing.html" class="back-btn" id="header-back-btn" style="display: none;">
-                <i class="ph-light ph-caret-right"></i>
-            </a>
             <h1 class="app-title">
                 <img src="/assets/branding/icon-512x512.png" alt="تراكا للنقل" class="logo-img">
                 تراكا - السائقين
@@ -1700,14 +1697,6 @@
         });
         document.getElementById(screenId).classList.remove('hidden');
 
-        const backBtn = document.getElementById('header-back-btn');
-        if (backBtn) {
-            if (screenId === 'driver-login-screen' || screenId === 'driver-register-info-screen') {
-                backBtn.style.display = 'flex';
-            } else {
-                backBtn.style.display = 'none';
-            }
-        }
     }
 
     function showDriverLogin() {

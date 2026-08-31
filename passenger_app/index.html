@@ -1725,9 +1725,6 @@
     <!-- Header -->
     <header class="app-header" id="main-header">
         <div class="header-content">
-            <a href="../landing.html" class="back-btn" id="header-back-btn" style="display: none;">
-                <i class="ph-light ph-caret-right"></i>
-            </a>
             <h1 class="app-title">
                 <img src="../assets/branding/icon-512x512.png" alt="تراكا للنقل السودان" class="logo-img">
                 تراكا / Tracka Transport
@@ -2734,15 +2731,6 @@ function showScreen(screenId) {
         screen.classList.remove('hidden');
     }
 
-    // إظهار أو إخفاء زر العودة
-    const backBtn = document.getElementById('header-back-btn');
-    if (backBtn) {
-        if (screenId === 'customer-login-screen' || screenId === 'customer-register-screen') {
-            backBtn.style.display = 'flex';
-        } else {
-            backBtn.style.display = 'none';
-        }
-    }
     
     // إخفاء أو إظهار الهيدر
     const header = document.getElementById('main-header');
