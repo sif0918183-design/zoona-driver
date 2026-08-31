@@ -855,6 +855,18 @@
 
         <!-- Driver Interface -->
         <div id="driver-interface" class="hidden">
+            <!-- Travel Notifications Toggle -->
+            <div id="travel-notif-bar" style="display:flex;align-items:center;justify-content:space-between;background:var(--tech-card);border:1px solid var(--tech-border);padding:0.65rem 1rem;border-radius:12px;margin-bottom:1rem;box-shadow:var(--tech-shadow);">
+                <div style="display:flex;align-items:center;gap:0.6rem;font-size:13px;font-weight:700;color:var(--text-primary);">
+                    <i class="ph-bold ph-bell-ringing" style="font-size:18px;color:var(--Tracka-primary);"></i>
+                    <span>إشعارات الرحلات السفرية</span>
+                </div>
+                <button id="toggle-travel-notifs-btn" class="btn btn-sm" onclick="toggleTravelNotifications()" style="font-size:12px;padding:0.4rem 0.8rem;border-radius:20px;font-weight:700;transition:all 0.3s ease;display:inline-flex;align-items:center;gap:6px;background:rgba(22,163,74,0.15);color:#16a34a;border:1px solid rgba(22,163,74,0.3);">
+                    <i id="travel-notif-icon" class="ph-bold ph-toggle-right" style="font-size:18px;"></i>
+                    <span id="travel-notif-status-text">مفعلة</span>
+                </button>
+            </div>
+
             <div class="tabs-container">
                 <button class="tab active" onclick="showTab('available-rides',this)">الرحلات المتاحة</button>
                 <button class="tab" onclick="showTab('accepted-rides',this)">رحلات قبلتها</button>
@@ -1208,6 +1220,16 @@ async function handleHashRouting() {
         const tabId = userType === 'passenger' ? 'active-chats' : 'driver-chats';
         const button = document.querySelector(`.tab[onclick*="${tabId}"]`);
         if (button) showTab(tabId, button);
+    } else if (hash === '#my-rides' || hash === '#my-trips' || hash === '#driver-my-rides') {
+        const chatModal = document.getElementById('chat-modal');
+        if (chatModal && !chatModal.classList.contains('hidden')) {
+            chatModal.classList.add('hidden');
+            currentChat = null;
+        }
+
+        const tabId = userType === 'passenger' ? 'my-rides' : 'driver-my-rides';
+        const button = document.querySelector(`.tab[onclick*="${tabId}"]`);
+        if (button) showTab(tabId, button);
     } else if (hash.startsWith('#chat-')) {
         const rideId = hash.replace('#chat-', '');
         if (!rideId) return;
@@ -1396,6 +1418,63 @@ async function verifyDriver(driverData) {
     return false;
 }
 
+let travelNotifsEnabled = true;
+
+function updateTravelNotificationsUI() {
+    const btn = document.getElementById('toggle-travel-notifs-btn');
+    const text = document.getElementById('travel-notif-status-text');
+    const icon = document.getElementById('travel-notif-icon');
+    if (!btn || !text || !icon) return;
+
+    if (travelNotifsEnabled) {
+        text.textContent = 'مفعلة';
+        icon.className = 'ph-bold ph-toggle-right';
+        btn.style.background = 'rgba(22,163,74,0.15)';
+        btn.style.color = '#16a34a';
+        btn.style.borderColor = 'rgba(22,163,74,0.3)';
+    } else {
+        text.textContent = 'معطلة';
+        icon.className = 'ph-bold ph-toggle-left';
+        btn.style.background = 'rgba(239,68,68,0.15)';
+        btn.style.color = '#ef4444';
+        btn.style.borderColor = 'rgba(239,68,68,0.3)';
+    }
+}
+
+async function initTravelNotificationsState() {
+    if (!currentUser || userType !== 'driver') return;
+    if (currentUser.travel_notifications_enabled !== undefined && currentUser.travel_notifications_enabled !== null) {
+        travelNotifsEnabled = currentUser.travel_notifications_enabled;
+    } else {
+        const stored = localStorage.getItem('travel_notifications_enabled');
+        if (stored !== null) {
+            travelNotifsEnabled = (stored === 'true');
+        }
+    }
+    updateTravelNotificationsUI();
+}
+
+async function toggleTravelNotifications() {
+    if (!currentUser || userType !== 'driver') return;
+    travelNotifsEnabled = !travelNotifsEnabled;
+    localStorage.setItem('travel_notifications_enabled', String(travelNotifsEnabled));
+    updateTravelNotificationsUI();
+
+    try {
+        await travelSupabase.from('drivers').update({
+            travel_notifications_enabled: travelNotifsEnabled
+        }).eq('id', currentUser.id);
+
+        if (travelNotifsEnabled) {
+            showNotification('✅ تم تفعيل إستقبال إشعارات الرحلات السفرية', 'success');
+        } else {
+            showNotification('⏸️ تم إيقاف إستقبال إشعارات الرحلات السفرية', 'info');
+        }
+    } catch(err) {
+        console.error('Error updating travel notifications setting:', err);
+    }
+}
+
 function updateUserInterface() {
     if (!currentUser) { document.querySelector('.user-info').classList.add('hidden'); return; }
     document.getElementById('user-avatar').textContent = (currentUser.full_name || 'م').split(' ')[0];
@@ -1408,6 +1487,7 @@ function updateUserInterface() {
     } else {
         document.getElementById('driver-interface').classList.remove('hidden');
         document.getElementById('passenger-interface').classList.add('hidden');
+        initTravelNotificationsState();
     }
 }
 

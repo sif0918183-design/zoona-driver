@@ -1236,6 +1236,16 @@ async function handleHashRouting() {
         const tabId = userType === 'passenger' ? 'active-chats' : 'driver-chats';
         const button = document.querySelector(`.tab[onclick*="${tabId}"]`);
         if (button) showTab(tabId, button);
+    } else if (hash === '#my-rides' || hash === '#my-trips' || hash === '#driver-my-rides') {
+        const chatModal = document.getElementById('chat-modal');
+        if (chatModal && !chatModal.classList.contains('hidden')) {
+            chatModal.classList.add('hidden');
+            currentChat = null;
+        }
+
+        const tabId = userType === 'passenger' ? 'my-rides' : 'driver-my-rides';
+        const button = document.querySelector(`.tab[onclick*="${tabId}"]`);
+        if (button) showTab(tabId, button);
     } else if (hash.startsWith('#chat-')) {
         const rideId = hash.replace('#chat-', '');
         if (!rideId) return;
@@ -2258,6 +2268,14 @@ document.getElementById('ride-request-form')?.addEventListener('submit', async f
         if (error) throw error;
 
         if (data?.id) await syncPassengerIdFromWhatsApp(data.id, currentUser.phone);
+
+        sendTravelPush({
+            type: 'NEW_TRAVEL_REQUEST',
+            rideId: data.id,
+            fromCity: fromCity,
+            toCity: toCity,
+            vehicleCategory: cat.name_ar || cat.name
+        });
 
         showNotification('تم نشر طلب الرحلة بنجاح!', 'success');
         this.reset();
@@ -3457,7 +3475,17 @@ function updateChatBadge(chats) {
 async function cancelRide(rideId) {
     if (!confirm('هل أنت متأكد من إلغاء هذه الرحلة؟')) return;
     try {
+        const { data: ride } = await travelSupabase.from('ride_requests').select('from_city, to_city, driver_id').eq('id', rideId).single();
         await travelSupabase.from('ride_requests').update({status:'cancelled'}).eq('id',rideId);
+
+        sendTravelPush({
+            type: 'TRIP_CANCELLED',
+            rideId: rideId,
+            driverId: ride?.driver_id,
+            fromCity: ride?.from_city,
+            toCity: ride?.to_city
+        });
+
         showNotification('تم إلغاء الرحلة بنجاح', 'success');
         await loadPassengerRides();
     } catch(err) {
