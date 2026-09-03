@@ -1,3 +1,5 @@
+// travel-push.js - النسخة المحسنة بالكامل
+
 import admin from 'firebase-admin';
 import { createClient } from '@supabase/supabase-js';
 
@@ -13,9 +15,14 @@ if (!admin.apps.length) {
                 credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT))
             });
         }
-    } catch (e) { console.error('Firebase init error:', e.message); }
+    } catch (e) { 
+        console.error('Firebase init error:', e.message); 
+    }
 }
 
+// ============================================
+// بيانات إحداثيات المدن السودانية
+// ============================================
 const CITY_COORDINATES = {
     // ========== ولاية الخرطوم ==========
     'الخرطوم': { lat: 15.5007, lng: 32.5599 },
@@ -106,27 +113,65 @@ const CITY_COORDINATES = {
     'المجد': { lat: 12.0000, lng: 29.0000 },
 };
 
+// ============================================
+// دوال مساعدة محسنة
+// ============================================
+
+/**
+ * دالة محسنة لتطبيع أسماء المدن
+ * تقوم بإزالة "ال" من البداية فقط
+ */
 function normalizeCityName(cityName) {
     if (!cityName) return '';
     return cityName
         .trim()
-        .replace(/^ال/, '')
+        .replace(/^(ال)(.+)/, '$2') // إزالة "ال" من البداية فقط
         .replace(/أ|إ|آ/g, 'ا')
         .replace(/ة/g, 'ه')
         .replace(/ى/g, 'ي')
-        .replace(/\s+/g, '');
+        .replace(/\s+/g, ' ')
+        .trim();
 }
 
+/**
+ * دالة محسنة للتحقق من تطابق المدن
+ * تدعم الأسماء المركبة والمطابقة الجزئية
+ */
 function matchesCityName(cityA, cityB) {
     if (!cityA || !cityB) return false;
+    
+    // تطبيع الاسمين
     const normA = normalizeCityName(cityA);
     const normB = normalizeCityName(cityB);
+    
     if (!normA || !normB) return false;
-    return normA === normB || normA.includes(normB) || normB.includes(normA);
+    
+    // تطابق تام
+    if (normA === normB) return true;
+    
+    // تطابق جزئي (للأسماء المركبة مثل "الخرطوم بحري" و "بحري")
+    const wordsA = normA.split(' ');
+    const wordsB = normB.split(' ');
+    
+    // التحقق من أن أي كلمة من المدينة A موجودة في B أو العكس
+    for (const wordA of wordsA) {
+        if (wordA.length < 2) continue;
+        for (const wordB of wordsB) {
+            if (wordB.length < 2) continue;
+            if (wordA === wordB || wordA.includes(wordB) || wordB.includes(wordA)) {
+                return true;
+            }
+        }
+    }
+    
+    return false;
 }
 
+/**
+ * حساب المسافة بين نقطتين باستخدام صيغة هافرسين
+ */
 function getHaversineDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371;
+    const R = 6371; // نصف قطر الأرض بالكيلومتر
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
@@ -136,8 +181,15 @@ function getHaversineDistance(lat1, lon1, lat2, lon2) {
     return R * c;
 }
 
+/**
+ * جلب معلومات السائق مع التحقق من الحظر
+ */
 async function getDriverFcm(driverId) {
-    const { data } = await db.from('drivers').select('fcm_token,full_name,is_banned,ban_until').eq('id', driverId).single();
+    const { data } = await db.from('drivers')
+        .select('fcm_token, full_name, is_banned, ban_until')
+        .eq('id', driverId)
+        .single();
+    
     if (data) {
         const isBanned = data.is_banned && data.ban_until && new Date(data.ban_until) > new Date();
         if (isBanned) {
@@ -148,13 +200,28 @@ async function getDriverFcm(driverId) {
     return data;
 }
 
+/**
+ * جلب معلومات الراكب
+ */
 async function getPassengerFcm(customerId) {
-    const { data } = await db.from('customers').select('fcm_token,full_name').eq('id', customerId).single();
+    const { data } = await db.from('customers')
+        .select('fcm_token, full_name')
+        .eq('id', customerId)
+        .single();
     return data;
 }
 
+/**
+ * إرسال إشعار عبر FCM مع التحقق من صحة التوكن
+ */
 async function sendQuietPush(token, title, body, data = {}) {
     if (!token) return { skipped: true, reason: 'no_token' };
+    
+    // التحقق من أن التوكن ليس قيمة خاطئة
+    if (token === 'false' || token === 'null' || token === 'undefined' || token === '') {
+        return { skipped: true, reason: 'invalid_token' };
+    }
+    
     const message = {
         token,
         notification: { title, body },
@@ -173,40 +240,76 @@ async function sendQuietPush(token, title, body, data = {}) {
             }
         }
     };
-    await admin.messaging().send(message);
-    return { sent: true };
+    
+    try {
+        await admin.messaging().send(message);
+        return { sent: true };
+    } catch (error) {
+        console.error('Error sending push:', error);
+        return { sent: false, error: error.message };
+    }
 }
 
+// ============================================
+// دالة المعالج الرئيسية
+// ============================================
 export default async function handler(req, res) {
+    // إعدادات CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).end();
 
     try {
-        const { type, rideId, driverId, senderType, senderName, messagePreview, fromCity, toCity, vehicleCategory } = req.body;
+        const { 
+            type, 
+            rideId, 
+            driverId, 
+            senderType, 
+            senderName, 
+            messagePreview, 
+            fromCity, 
+            toCity, 
+            vehicleCategory 
+        } = req.body;
 
-        if (!type) return res.status(400).json({ error: 'type is required' });
-
-        if (!admin.apps.length) {
-            return res.status(200).json({ success: false, reason: 'firebase_not_initialized' });
+        if (!type) {
+            return res.status(400).json({ error: 'type is required' });
         }
 
-        // ─────────────────────────────────────────────
-        // 1. DRIVER_OFFER → driver accepted ride → notify passenger
-        // ─────────────────────────────────────────────
+        if (!admin.apps.length) {
+            return res.status(200).json({ 
+                success: false, 
+                reason: 'firebase_not_initialized' 
+            });
+        }
+
+        // ============================================
+        // 1. DRIVER_OFFER → سائق قبل الرحلة → إشعار للراكب
+        // ============================================
         if (type === 'DRIVER_OFFER') {
-            if (!rideId) return res.status(400).json({ error: 'rideId required' });
+            if (!rideId) {
+                return res.status(400).json({ error: 'rideId required' });
+            }
 
             const { data: ride } = await db.from('ride_requests')
                 .select('customer_id, from_city, to_city')
-                .eq('id', rideId).single();
+                .eq('id', rideId)
+                .single();
 
-            if (!ride?.customer_id) return res.status(404).json({ error: 'ride or customer not found' });
+            if (!ride?.customer_id) {
+                return res.status(404).json({ error: 'ride or customer not found' });
+            }
 
             const passenger = await getPassengerFcm(ride.customer_id);
-            if (!passenger?.fcm_token) return res.status(200).json({ success: false, reason: 'no_passenger_token' });
+            if (!passenger?.fcm_token) {
+                return res.status(200).json({ 
+                    success: false, 
+                    reason: 'no_passenger_token' 
+                });
+            }
 
             const result = await sendQuietPush(
                 passenger.fcm_token,
@@ -218,17 +321,25 @@ export default async function handler(req, res) {
                     url: '/passenger_app/travel-platform.html#my-rides'
                 }
             );
+            
             return res.status(200).json({ success: true, ...result });
         }
 
-        // ─────────────────────────────────────────────
-        // 2. DRIVER_SELECTED → passenger chose driver → notify driver
-        // ─────────────────────────────────────────────
+        // ============================================
+        // 2. DRIVER_SELECTED → راكب اختار سائق → إشعار للسائق
+        // ============================================
         if (type === 'DRIVER_SELECTED') {
-            if (!driverId) return res.status(400).json({ error: 'driverId required' });
+            if (!driverId) {
+                return res.status(400).json({ error: 'driverId required' });
+            }
 
             const driver = await getDriverFcm(driverId);
-            if (!driver?.fcm_token) return res.status(200).json({ success: false, reason: 'no_driver_token' });
+            if (!driver?.fcm_token) {
+                return res.status(200).json({ 
+                    success: false, 
+                    reason: 'no_driver_token' 
+                });
+            }
 
             const routeText = (fromCity && toCity) ? `${fromCity} → ${toCity}` : 'الرحلة';
             const result = await sendQuietPush(
@@ -241,26 +352,45 @@ export default async function handler(req, res) {
                     url: '/driver_app/travel-platform.html'
                 }
             );
+            
             return res.status(200).json({ success: true, ...result });
         }
 
-        // ─────────────────────────────────────────────
-        // 3. NEW_CHAT_MESSAGE → notify the other party
-        // ─────────────────────────────────────────────
+        // ============================================
+        // 3. NEW_CHAT_MESSAGE → إشعار للطرف الآخر
+        // ============================================
         if (type === 'NEW_CHAT_MESSAGE') {
-            if (!rideId || !senderType) return res.status(400).json({ error: 'rideId and senderType required' });
+            if (!rideId || !senderType) {
+                return res.status(400).json({ 
+                    error: 'rideId and senderType required' 
+                });
+            }
 
-            const preview = messagePreview ? messagePreview.substring(0, 60) : 'رسالة جديدة';
+            const preview = messagePreview 
+                ? messagePreview.substring(0, 60) 
+                : 'رسالة جديدة';
 
+            // 3.1 السائق أرسل رسالة → إشعار للراكب
             if (senderType === 'driver') {
-                // Notify passenger
                 const { data: ride } = await db.from('ride_requests')
-                    .select('customer_id').eq('id', rideId).single();
+                    .select('customer_id')
+                    .eq('id', rideId)
+                    .single();
 
-                if (!ride?.customer_id) return res.status(200).json({ success: false, reason: 'no_customer_id' });
+                if (!ride?.customer_id) {
+                    return res.status(200).json({ 
+                        success: false, 
+                        reason: 'no_customer_id' 
+                    });
+                }
 
                 const passenger = await getPassengerFcm(ride.customer_id);
-                if (!passenger?.fcm_token) return res.status(200).json({ success: false, reason: 'no_passenger_token' });
+                if (!passenger?.fcm_token) {
+                    return res.status(200).json({ 
+                        success: false, 
+                        reason: 'no_passenger_token' 
+                    });
+                }
 
                 const result = await sendQuietPush(
                     passenger.fcm_token,
@@ -272,15 +402,20 @@ export default async function handler(req, res) {
                         url: `/passenger_app/travel-platform.html#chat-${rideId}`
                     }
                 );
+                
                 return res.status(200).json({ success: true, ...result });
+            }
 
-            } else {
-                // senderType === 'passenger' → notify driver
+            // 3.2 راكب أرسل رسالة → إشعار للسائق
+            if (senderType === 'passenger') {
                 const { data: ride } = await db.from('ride_requests')
-                    .select('driver_id').eq('id', rideId).single();
+                    .select('driver_id')
+                    .eq('id', rideId)
+                    .single();
 
                 let recipientDriverId = ride?.driver_id;
 
+                // إذا لم يتم اختيار سائق بعد، جلب آخر سائق قبل الرحلة
                 if (!recipientDriverId) {
                     const { data: acc } = await db.from('ride_driver_acceptances')
                         .select('driver_id')
@@ -292,10 +427,20 @@ export default async function handler(req, res) {
                     recipientDriverId = acc?.driver_id;
                 }
 
-                if (!recipientDriverId) return res.status(200).json({ success: false, reason: 'no_driver_id' });
+                if (!recipientDriverId) {
+                    return res.status(200).json({ 
+                        success: false, 
+                        reason: 'no_driver_id' 
+                    });
+                }
 
                 const driver = await getDriverFcm(recipientDriverId);
-                if (!driver?.fcm_token) return res.status(200).json({ success: false, reason: 'no_driver_token' });
+                if (!driver?.fcm_token) {
+                    return res.status(200).json({ 
+                        success: false, 
+                        reason: 'no_driver_token' 
+                    });
+                }
 
                 const result = await sendQuietPush(
                     driver.fcm_token,
@@ -307,17 +452,27 @@ export default async function handler(req, res) {
                         url: `/driver_app/travel-platform.html#chat-${rideId}`
                     }
                 );
+                
                 return res.status(200).json({ success: true, ...result });
             }
+
+            return res.status(400).json({ 
+                error: `invalid senderType: ${senderType}` 
+            });
         }
 
-        // ─────────────────────────────────────────────
-        // 4. NEW_TRAVEL_REQUEST → notify drivers in city scope
-        // ─────────────────────────────────────────────
+        // ============================================
+        // 4. NEW_TRAVEL_REQUEST → إشعار للسائقين في نفس المدينة
+        //    (الجزء المُحسَّن)
+        // ============================================
         if (type === 'NEW_TRAVEL_REQUEST') {
-            if (!fromCity) return res.status(400).json({ error: 'fromCity is required' });
+            if (!fromCity) {
+                return res.status(400).json({ error: 'fromCity is required' });
+            }
 
-            // Fetch drivers with their latest location from driver_locations
+            console.log(`📢 NEW_TRAVEL_REQUEST: fromCity="${fromCity}", toCity="${toCity}", rideId="${rideId}"`);
+
+            // 4.1 جلب جميع السائقين مع مواقعهم
             const { data: drivers, error: driversErr } = await db
                 .from('drivers')
                 .select(`
@@ -327,114 +482,198 @@ export default async function handler(req, res) {
                     is_banned, 
                     ban_until, 
                     travel_notifications_enabled,
-                    driver_locations (
+                    driver_locations!left (
                         lat,
                         lng,
-                        location_point,
                         updated_at
                     )
                 `)
                 .not('fcm_token', 'is', null)
-                .neq('fcm_token', 'false');
+                .neq('fcm_token', 'false')
+                .neq('fcm_token', '');
 
-            if (driversErr || !drivers || drivers.length === 0) {
-                console.error('Error fetching drivers:', driversErr);
-                return res.status(200).json({ success: false, reason: 'no_drivers_found' });
+            if (driversErr) {
+                console.error('❌ Error fetching drivers:', driversErr);
+                return res.status(200).json({ 
+                    success: false, 
+                    error: driversErr.message 
+                });
             }
 
+            if (!drivers || drivers.length === 0) {
+                console.log('ℹ️ No drivers with FCM tokens found');
+                return res.status(200).json({ 
+                    success: false, 
+                    reason: 'no_drivers_found' 
+                });
+            }
+
+            console.log(`🔍 Found ${drivers.length} drivers with FCM tokens`);
+
+            // 4.2 الحصول على إحداثيات مدينة الانطلاق
             const cityCoords = CITY_COORDINATES[fromCity] || null;
+            console.log(`📍 City "${fromCity}" coordinates:`, cityCoords);
+
+            // 4.3 تصفية السائقين المؤهلين
+            let matchedDrivers = [];
             let sentCount = 0;
-            let matchedCount = 0;
 
             for (const driver of drivers) {
-                // Skip if banned
-                const isBanned = driver.is_banned && driver.ban_until && new Date(driver.ban_until) > new Date();
+                // التحقق من الحظر
+                const isBanned = driver.is_banned && 
+                                 driver.ban_until && 
+                                 new Date(driver.ban_until) > new Date();
                 if (isBanned) {
                     console.log(`🚫 Driver ${driver.id} is banned, skipping`);
                     continue;
                 }
 
-                // Skip if driver disabled travel notifications
+                // التحقق من تفعيل الإشعارات
                 if (driver.travel_notifications_enabled === false) {
                     console.log(`🔕 Driver ${driver.id} has travel notifications disabled, skipping`);
                     continue;
                 }
 
-                // Get the latest location from driver_locations
+                // التحقق من وجود توكن صالح
+                if (!driver.fcm_token || 
+                    driver.fcm_token === 'false' || 
+                    driver.fcm_token === 'null' || 
+                    driver.fcm_token === '') {
+                    console.log(`⚠️ Driver ${driver.id} has invalid FCM token, skipping`);
+                    continue;
+                }
+
+                // الحصول على آخر موقع معروف للسائق
                 let driverLat = null;
                 let driverLng = null;
-                
+                let locationUpdatedAt = null;
+
                 if (driver.driver_locations && driver.driver_locations.length > 0) {
-                    // Sort locations by updated_at and get the latest
+                    // ترتيب المواقع حسب تاريخ التحديث (الأحدث أولاً)
                     const sortedLocations = driver.driver_locations.sort((a, b) => 
                         new Date(b.updated_at) - new Date(a.updated_at)
                     );
                     const latestLocation = sortedLocations[0];
                     driverLat = parseFloat(latestLocation.lat);
                     driverLng = parseFloat(latestLocation.lng);
+                    locationUpdatedAt = latestLocation.updated_at;
                 }
 
-                // City matching logic
                 let matchesCity = false;
+                let matchReason = '';
 
-                // 1. Text matching (driver's city with normalized comparison)
+                // ====== طريقة المطابقة 1: مطابقة المدينة بالنص ======
                 if (driver.city && matchesCityName(driver.city, fromCity)) {
                     matchesCity = true;
-                    console.log(`✅ Driver ${driver.id} matched by normalized city: ${driver.city} ↔ ${fromCity}`);
-                } 
-                // 2. Location matching (if coordinates available)
-                else if (cityCoords && driverLat !== null && driverLng !== null && !isNaN(driverLat) && !isNaN(driverLng)) {
+                    matchReason = `matched by normalized city: "${driver.city}" ↔ "${fromCity}"`;
+                    console.log(`✅ Driver ${driver.id} ${matchReason}`);
+                }
+
+                // ====== طريقة المطابقة 2: مطابقة الموقع الجغرافي ======
+                if (!matchesCity && cityCoords && 
+                    driverLat !== null && driverLng !== null && 
+                    !isNaN(driverLat) && !isNaN(driverLng) && 
+                    driverLat !== 0 && driverLng !== 0) {
+                    
                     const dist = getHaversineDistance(
                         cityCoords.lat,
                         cityCoords.lng,
                         driverLat,
                         driverLng
                     );
-                    // Within 80 km radius
+                    
+                    // مسافة 80 كيلومتر كحد أقصى للمطابقة
                     if (dist <= 80) {
                         matchesCity = true;
-                        console.log(`📍 Driver ${driver.id} matched by location (${dist.toFixed(1)} km from ${fromCity})`);
+                        matchReason = `matched by location (${dist.toFixed(1)} km from ${fromCity})`;
+                        console.log(`📍 Driver ${driver.id} ${matchReason}`);
+                    } else {
+                        console.log(`📍 Driver ${driver.id} is ${dist.toFixed(1)} km away, too far (limit 80km)`);
                     }
-                } 
-                // 3. Fallback: if driver has no city specified or driver location is not set/outdated,
-                // send push so drivers in the platform won't miss newly posted travel requests in their state
-                else {
-                    matchesCity = true;
-                    console.log(`⚠️ Driver ${driver.id} city/location missing or unverified, sending notification as fallback`);
                 }
 
-                if (matchesCity) {
-                    matchedCount++;
-                    if (driver.fcm_token) {
-                        try {
-                            await sendQuietPush(
-                                driver.fcm_token,
-                                '🚗 رحلة سفرية جديدة - تراكا',
-                                `طلب رحلة سفرية جديد من ${fromCity} إلى ${toCity || ''}`,
-                                {
-                                    type: 'NEW_TRAVEL_REQUEST',
-                                    ride_id: String(rideId || ''),
-                                    url: '/driver_app/travel-platform.html'
+                // ====== طريقة المطابقة 3: المطابقة بالولاية/المنطقة ======
+                if (!matchesCity) {
+                    const fromCityNorm = normalizeCityName(fromCity);
+                    const driverCityNorm = driver.city ? normalizeCityName(driver.city) : '';
+                    
+                    if (driverCityNorm && fromCityNorm) {
+                        // استخراج الكلمات الرئيسية
+                        const fromWords = fromCityNorm.split(' ');
+                        const driverWords = driverCityNorm.split(' ');
+                        
+                        for (const fWord of fromWords) {
+                            if (fWord.length < 2) continue;
+                            for (const dWord of driverWords) {
+                                if (dWord.length < 2) continue;
+                                if (fWord === dWord) {
+                                    matchesCity = true;
+                                    matchReason = `matched by keyword: "${dWord}"`;
+                                    console.log(`✅ Driver ${driver.id} ${matchReason}`);
+                                    break;
                                 }
-                            );
-                            sentCount++;
-                            console.log(`✅ Push sent to driver ${driver.id}`);
-                        } catch (pushErr) {
-                            console.error(`❌ Push failed for driver ${driver.id}:`, pushErr.message);
+                            }
+                            if (matchesCity) break;
                         }
-                    } else {
-                        console.log(`⚠️ Driver ${driver.id} matched but has no FCM token`);
                     }
+                }
+
+                // ====== إذا تطابق المدينة، أضف السائق ======
+                if (matchesCity) {
+                    matchedDrivers.push({
+                        id: driver.id,
+                        fcm_token: driver.fcm_token,
+                        city: driver.city,
+                        lat: driverLat,
+                        lng: driverLng,
+                        match_reason: matchReason
+                    });
                 }
             }
 
-            console.log(`📊 NEW_TRAVEL_REQUEST stats: ${matchedCount} matched, ${sentCount} notifications sent out of ${drivers.length} drivers`);
-            return res.status(200).json({ success: true, sentCount, matchedCount, totalDrivers: drivers.length });
+            console.log(`📊 Matched ${matchedDrivers.length} drivers out of ${drivers.length} total drivers`);
+
+            // 4.4 إرسال الإشعارات للسائقين المتطابقين
+            for (const driver of matchedDrivers) {
+                try {
+                    const result = await sendQuietPush(
+                        driver.fcm_token,
+                        '🚗 رحلة سفرية جديدة - تراكا',
+                        `طلب رحلة سفرية جديدة من ${fromCity} إلى ${toCity || ''}`,
+                        {
+                            type: 'NEW_TRAVEL_REQUEST',
+                            ride_id: String(rideId || ''),
+                            from_city: fromCity,
+                            to_city: toCity || '',
+                            url: '/driver_app/travel-platform.html'
+                        }
+                    );
+                    
+                    if (result.sent) {
+                        sentCount++;
+                        console.log(`✅ Push sent to driver ${driver.id} (${driver.match_reason})`);
+                    } else {
+                        console.log(`❌ Push failed for driver ${driver.id}: ${result.error || 'unknown error'}`);
+                    }
+                } catch (pushErr) {
+                    console.error(`❌ Push failed for driver ${driver.id}:`, pushErr.message);
+                }
+            }
+
+            console.log(`📊 NEW_TRAVEL_REQUEST summary: ${matchedDrivers.length} matched, ${sentCount} notifications sent`);
+
+            return res.status(200).json({ 
+                success: true, 
+                sentCount, 
+                matchedCount: matchedDrivers.length,
+                totalDrivers: drivers.length,
+                matchedDriverIds: matchedDrivers.map(d => d.id)
+            });
         }
 
-        // ─────────────────────────────────────────────
-        // 5. TRIP_CANCELLED / RIDE_CANCELLED → notify driver
-        // ─────────────────────────────────────────────
+        // ============================================
+        // 5. TRIP_CANCELLED / RIDE_CANCELLED → إشعار للسائق
+        // ============================================
         if (type === 'TRIP_CANCELLED' || type === 'RIDE_CANCELLED') {
             let targetDriverId = driverId;
 
@@ -446,6 +685,7 @@ export default async function handler(req, res) {
 
                 targetDriverId = ride?.driver_id;
 
+                // إذا لم يتم اختيار سائق بعد، جلب آخر سائق قبل الرحلة
                 if (!targetDriverId) {
                     const { data: acc } = await db.from('ride_driver_acceptances')
                         .select('driver_id')
@@ -458,10 +698,20 @@ export default async function handler(req, res) {
                 }
             }
 
-            if (!targetDriverId) return res.status(200).json({ success: false, reason: 'no_driver_id' });
+            if (!targetDriverId) {
+                return res.status(200).json({ 
+                    success: false, 
+                    reason: 'no_driver_id' 
+                });
+            }
 
             const driver = await getDriverFcm(targetDriverId);
-            if (!driver?.fcm_token) return res.status(200).json({ success: false, reason: 'no_driver_token' });
+            if (!driver?.fcm_token) {
+                return res.status(200).json({ 
+                    success: false, 
+                    reason: 'no_driver_token' 
+                });
+            }
 
             const routeText = (fromCity && toCity) ? `(${fromCity} → ${toCity})` : '';
             const result = await sendQuietPush(
@@ -474,10 +724,16 @@ export default async function handler(req, res) {
                     url: '/driver_app/travel-platform.html#my-trips'
                 }
             );
+            
             return res.status(200).json({ success: true, ...result });
         }
 
-        return res.status(400).json({ error: `unknown type: ${type}` });
+        // ============================================
+        // نوع غير معروف
+        // ============================================
+        return res.status(400).json({ 
+            error: `unknown type: ${type}` 
+        });
 
     } catch (err) {
         console.error('travel-push error:', err);
