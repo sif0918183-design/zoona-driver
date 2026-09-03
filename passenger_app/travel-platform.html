@@ -1751,6 +1751,15 @@ async function passengerCancelsTrip(tripId, reason) {
             throw new Error(resData.error || 'فشل إلغاء الرحلة من خلال الخادم');
         }
 
+        // Notify driver via push notification
+        sendTravelPush({
+            type: 'TRIP_CANCELLED',
+            rideId: activeTripData?.ride_request_id || tripId,
+            driverId: activeTripData?.driver_id,
+            fromCity: activeTripData?.from_city,
+            toCity: activeTripData?.to_city
+        });
+
         localStorage.removeItem('tarhal_active_trip_id');
         closeActiveTripModal();
         showNotification('تم إلغاء الرحلة', 'success');

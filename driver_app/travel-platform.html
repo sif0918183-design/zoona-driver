@@ -1933,12 +1933,15 @@ function setupTripRealtimeListener(tripId) {
             if (updated.status === 'cancelled') {
                 const cancelledBy = updated.cancelled_by;
                 const isOtherParty = (userType === 'passenger' && cancelledBy === 'driver') ||
-                                     (userType === 'driver' && cancelledBy === 'passenger');
+                                     (userType === 'driver' && cancelledBy === 'passenger') ||
+                                     (!cancelledBy);
 
-                if (isOtherParty) {
+                if (isOtherParty || userType === 'driver') {
                     localStorage.removeItem('tarhal_active_trip_id');
                     closeActiveTripModal();
-                    showCancellationAlert(cancelledBy);
+                    showCancellationAlert(cancelledBy || 'passenger');
+                    loadAvailableRides();
+                    loadDriverRides();
                 }
             } else if (updated.status === 'in_progress' && userType === 'passenger') {
                 // Driver arrived - update passenger view
