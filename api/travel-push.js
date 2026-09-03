@@ -17,28 +17,93 @@ if (!admin.apps.length) {
 }
 
 const CITY_COORDINATES = {
+    // ========== ولاية الخرطوم ==========
     'الخرطوم': { lat: 15.5007, lng: 32.5599 },
     'أم درمان': { lat: 15.6500, lng: 32.4833 },
     'بحري': { lat: 15.6500, lng: 32.5333 },
     'الخرطوم بحري': { lat: 15.6500, lng: 32.5333 },
+    'الحلفاية': { lat: 15.6000, lng: 32.5000 },
+    'كرري': { lat: 15.6667, lng: 32.5167 },
+    'أم بادر': { lat: 15.6000, lng: 32.5000 },
+    'الطائف': { lat: 15.4833, lng: 32.6000 },
+    
+    // ========== ولاية الجزيرة ==========
     'مدني': { lat: 14.4012, lng: 33.5199 },
     'ود مدني': { lat: 14.4012, lng: 33.5199 },
+    'الحصاحيصا': { lat: 14.7431, lng: 33.2981 },
+    'الكاملين': { lat: 14.8500, lng: 33.3500 },
+    'أبو عشر': { lat: 14.5000, lng: 33.3000 },
+    
+    // ========== ولاية القضارف ==========
     'القضارف': { lat: 14.0349, lng: 35.3834 },
+    'فشقة': { lat: 14.5000, lng: 35.5000 },
+    'قلع النحل': { lat: 14.0000, lng: 35.2000 },
+    
+    // ========== ولاية كسلا ==========
     'كسلا': { lat: 15.4556, lng: 36.4000 },
+    'خشم القربة': { lat: 15.6333, lng: 36.2500 },
+    'حلفا الجديدة': { lat: 15.3000, lng: 35.6000 },
+    'أروما': { lat: 15.8000, lng: 36.1000 },
+    'تلكوك': { lat: 15.5000, lng: 36.0000 },
+    
+    // ========== ولاية نهر النيل ==========
     'شندي': { lat: 16.6919, lng: 33.4342 },
     'الدامر': { lat: 17.5922, lng: 33.9592 },
     'عطبرة': { lat: 17.6950, lng: 33.9820 },
+    'ابوحمد': { lat: 19.5333, lng: 33.3167 },
+    'أبو حمد': { lat: 19.5333, lng: 33.3167 },
+    'بربر': { lat: 18.2167, lng: 33.9833 },
+    'المتمة': { lat: 16.5167, lng: 33.3500 },
+    
+    // ========== ولاية الشمالية ==========
     'الدبة': { lat: 18.0500, lng: 30.9500 },
     'دنقلا': { lat: 19.1667, lng: 30.4833 },
+    'مروي': { lat: 18.4833, lng: 31.8167 },
+    'كرمة': { lat: 19.0000, lng: 30.4167 },
+    'أرقو': { lat: 19.5000, lng: 30.4167 },
+    'وادي حلفا': { lat: 21.8000, lng: 31.3500 },
+    
+    // ========== ولاية البحر الأحمر ==========
     'بورتسودان': { lat: 19.6158, lng: 37.2164 },
-    'كوستي': { lat: 13.1629, lng: 32.6635 },
-    'ابوحمد': { lat: 19.5333, lng: 33.3167 },
     'سنكات': { lat: 18.8333, lng: 36.8333 },
-    'الحصاحيصا': { lat: 14.7431, lng: 33.2981 },
-    'الأبيض': { lat: 13.1842, lng: 30.2167 },
-    'الدمازين': { lat: 11.7667, lng: 34.3500 },
+    'سواكن': { lat: 19.1000, lng: 37.3167 },
+    'حلايب': { lat: 22.2333, lng: 36.6500 },
+    
+    // ========== ولاية النيل الأبيض ==========
+    'كوستي': { lat: 13.1629, lng: 32.6635 },
+    'ربك': { lat: 13.1808, lng: 32.7438 },
+    'الدويم': { lat: 13.2333, lng: 32.3167 },
+    'القويع': { lat: 13.0000, lng: 32.5000 },
+    
+    // ========== ولاية سنار ==========
     'سنار': { lat: 13.5500, lng: 33.5667 },
-    'ربك': { lat: 13.1808, lng: 32.7438 }
+    'سنجة': { lat: 13.1500, lng: 33.9333 },
+    'الدندر': { lat: 13.2000, lng: 33.7000 },
+    'أبو حجار': { lat: 13.0000, lng: 33.8000 },
+    
+    // ========== ولاية النيل الأزرق ==========
+    'الدمازين': { lat: 11.7667, lng: 34.3500 },
+    'الروصيرص': { lat: 11.8500, lng: 34.3833 },
+    'القيسان': { lat: 11.5000, lng: 34.1000 },
+    'باو': { lat: 11.0000, lng: 34.1000 },
+    
+    // ========== ولاية شمال كردفان ==========
+    'الأبيض': { lat: 13.1842, lng: 30.2167 },
+    'أم روابة': { lat: 13.3000, lng: 30.6000 },
+    'النهود': { lat: 12.7000, lng: 30.3500 },
+    'سدرة': { lat: 13.0000, lng: 30.0000 },
+    'جبرة الشيخ': { lat: 13.2000, lng: 30.0000 },
+    
+    // ========== ولاية جنوب كردفان ==========
+    'كادقلي': { lat: 11.0167, lng: 29.7167 },
+    'الدلنج': { lat: 11.6667, lng: 29.4500 },
+    'أبو جبيهة': { lat: 11.4500, lng: 29.6500 },
+    'اللقوة': { lat: 11.2000, lng: 29.3000 },
+    'تالودي': { lat: 10.6333, lng: 29.4000 },
+    
+    // ========== ولاية غرب كردفان ==========
+    'الفحل': { lat: 12.1000, lng: 29.4000 },
+    'المجد': { lat: 12.0000, lng: 29.0000 },
 };
 
 function getHaversineDistance(lat1, lon1, lat2, lon2) {
@@ -233,68 +298,118 @@ export default async function handler(req, res) {
         if (type === 'NEW_TRAVEL_REQUEST') {
             if (!fromCity) return res.status(400).json({ error: 'fromCity is required' });
 
-            // Fetch drivers who have enabled travel notifications and have fcm_token
+            // Fetch drivers with their latest location from driver_locations
             const { data: drivers, error: driversErr } = await db
                 .from('drivers')
-                .select('id, fcm_token, current_lat, current_lon, city, is_banned, ban_until, travel_notifications_enabled')
+                .select(`
+                    id, 
+                    fcm_token, 
+                    city, 
+                    is_banned, 
+                    ban_until, 
+                    travel_notifications_enabled,
+                    driver_locations (
+                        lat,
+                        lng,
+                        location_point,
+                        updated_at
+                    )
+                `)
                 .not('fcm_token', 'is', null)
                 .neq('fcm_token', 'false');
 
             if (driversErr || !drivers || drivers.length === 0) {
+                console.error('Error fetching drivers:', driversErr);
                 return res.status(200).json({ success: false, reason: 'no_drivers_found' });
             }
 
             const cityCoords = CITY_COORDINATES[fromCity] || null;
             let sentCount = 0;
+            let matchedCount = 0;
 
             for (const driver of drivers) {
                 // Skip if banned
                 const isBanned = driver.is_banned && driver.ban_until && new Date(driver.ban_until) > new Date();
-                if (isBanned) continue;
+                if (isBanned) {
+                    console.log(`🚫 Driver ${driver.id} is banned, skipping`);
+                    continue;
+                }
 
                 // Skip if driver disabled travel notifications
-                if (driver.travel_notifications_enabled === false) continue;
+                if (driver.travel_notifications_enabled === false) {
+                    console.log(`🔕 Driver ${driver.id} has travel notifications disabled, skipping`);
+                    continue;
+                }
 
-                // City scope matching logic
+                // Get the latest location from driver_locations
+                let driverLat = null;
+                let driverLng = null;
+                
+                if (driver.driver_locations && driver.driver_locations.length > 0) {
+                    // Sort locations by updated_at and get the latest
+                    const sortedLocations = driver.driver_locations.sort((a, b) => 
+                        new Date(b.updated_at) - new Date(a.updated_at)
+                    );
+                    const latestLocation = sortedLocations[0];
+                    driverLat = parseFloat(latestLocation.lat);
+                    driverLng = parseFloat(latestLocation.lng);
+                }
+
+                // City matching logic
                 let matchesCity = false;
 
+                // 1. Text matching (driver's city)
                 if (driver.city && (driver.city.includes(fromCity) || fromCity.includes(driver.city))) {
                     matchesCity = true;
-                } else if (cityCoords && driver.current_lat && driver.current_lon) {
+                    console.log(`✅ Driver ${driver.id} matched by city: ${driver.city} ↔ ${fromCity}`);
+                } 
+                // 2. Location matching (if coordinates available)
+                else if (cityCoords && driverLat !== null && driverLng !== null) {
                     const dist = getHaversineDistance(
                         cityCoords.lat,
                         cityCoords.lng,
-                        parseFloat(driver.current_lat),
-                        parseFloat(driver.current_lon)
+                        driverLat,
+                        driverLng
                     );
-                    if (dist <= 60) { // within 60 km
+                    // Within 60 km radius
+                    if (dist <= 60) {
                         matchesCity = true;
+                        console.log(`📍 Driver ${driver.id} matched by location (${dist.toFixed(1)} km from ${fromCity})`);
                     }
-                } else {
-                    // Fallback: notify if city not specified or unmapped
+                } 
+                // 3. Fallback: if no city and no location, send anyway
+                else if (!driver.city && driverLat === null) {
                     matchesCity = true;
+                    console.log(`⚠️ Driver ${driver.id} has no city or location, sending as fallback`);
                 }
 
-                if (matchesCity && driver.fcm_token) {
-                    try {
-                        await sendQuietPush(
-                            driver.fcm_token,
-                            '🚗 رحلة سفرية جديدة - تراكا',
-                            `طلب رحلة سفرية جديد من ${fromCity} إلى ${toCity || ''}`,
-                            {
-                                type: 'NEW_TRAVEL_REQUEST',
-                                ride_id: String(rideId || ''),
-                                url: '/driver_app/travel-platform.html'
-                            }
-                        );
-                        sentCount++;
-                    } catch (pushErr) {
-                        console.error(`Push failed for driver ${driver.id}:`, pushErr.message);
+                if (matchesCity) {
+                    matchedCount++;
+                    if (driver.fcm_token) {
+                        try {
+                            await sendQuietPush(
+                                driver.fcm_token,
+                                '🚗 رحلة سفرية جديدة - تراكا',
+                                `طلب رحلة سفرية جديد من ${fromCity} إلى ${toCity || ''}`,
+                                {
+                                    type: 'NEW_TRAVEL_REQUEST',
+                                    ride_id: String(rideId || ''),
+                                    url: '/driver_app/travel-platform.html'
+                                }
+                            );
+                            sentCount++;
+                            console.log(`✅ Push sent to driver ${driver.id}`);
+                        } catch (pushErr) {
+                            console.error(`❌ Push failed for driver ${driver.id}:`, pushErr.message);
+                        }
+                    } else {
+                        console.log(`⚠️ Driver ${driver.id} matched but has no FCM token`);
                     }
                 }
             }
 
-            return res.status(200).json({ success: true, sentCount });
+            console.log(`📊 NEW_TRAVEL_REQUEST stats: ${matchedCount} matched, ${sentCount} notifications sent out of ${drivers.length} drivers`);
+            return res.status(200).json({ success: true, sentCount, matchedCount, totalDrivers: drivers.length });
         }
 
         // ─────────────────────────────────────────────
