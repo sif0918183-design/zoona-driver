@@ -106,6 +106,25 @@ const CITY_COORDINATES = {
     'المجد': { lat: 12.0000, lng: 29.0000 },
 };
 
+function normalizeCityName(cityName) {
+    if (!cityName) return '';
+    return cityName
+        .trim()
+        .replace(/^ال/, '')
+        .replace(/أ|إ|آ/g, 'ا')
+        .replace(/ة/g, 'ه')
+        .replace(/ى/g, 'ي')
+        .replace(/\s+/g, '');
+}
+
+function matchesCityName(cityA, cityB) {
+    if (!cityA || !cityB) return false;
+    const normA = normalizeCityName(cityA);
+    const normB = normalizeCityName(cityB);
+    if (!normA || !normB) return false;
+    return normA === normB || normA.includes(normB) || normB.includes(normA);
+}
+
 function getHaversineDistance(lat1, lon1, lat2, lon2) {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -358,29 +377,30 @@ export default async function handler(req, res) {
                 // City matching logic
                 let matchesCity = false;
 
-                // 1. Text matching (driver's city)
-                if (driver.city && (driver.city.includes(fromCity) || fromCity.includes(driver.city))) {
+                // 1. Text matching (driver's city with normalized comparison)
+                if (driver.city && matchesCityName(driver.city, fromCity)) {
                     matchesCity = true;
-                    console.log(`✅ Driver ${driver.id} matched by city: ${driver.city} ↔ ${fromCity}`);
+                    console.log(`✅ Driver ${driver.id} matched by normalized city: ${driver.city} ↔ ${fromCity}`);
                 } 
                 // 2. Location matching (if coordinates available)
-                else if (cityCoords && driverLat !== null && driverLng !== null) {
+                else if (cityCoords && driverLat !== null && driverLng !== null && !isNaN(driverLat) && !isNaN(driverLng)) {
                     const dist = getHaversineDistance(
                         cityCoords.lat,
                         cityCoords.lng,
                         driverLat,
                         driverLng
                     );
-                    // Within 60 km radius
-                    if (dist <= 60) {
+                    // Within 80 km radius
+                    if (dist <= 80) {
                         matchesCity = true;
                         console.log(`📍 Driver ${driver.id} matched by location (${dist.toFixed(1)} km from ${fromCity})`);
                     }
                 } 
-                // 3. Fallback: if no city and no location, send anyway
-                else if (!driver.city && driverLat === null) {
+                // 3. Fallback: if driver has no city specified or driver location is not set/outdated,
+                // send push so drivers in the platform won't miss newly posted travel requests in their state
+                else {
                     matchesCity = true;
-                    console.log(`⚠️ Driver ${driver.id} has no city or location, sending as fallback`);
+                    console.log(`⚠️ Driver ${driver.id} city/location missing or unverified, sending notification as fallback`);
                 }
 
                 if (matchesCity) {
