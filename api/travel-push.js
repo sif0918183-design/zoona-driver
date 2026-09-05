@@ -117,52 +117,121 @@ const CITY_COORDINATES = {
 // دوال مساعدة محسنة
 // ============================================
 
+// ============================================
+// قاموس مرادفات وأسماء المدن السودانية
+// ============================================
+const CITY_ALIASES = {
+    // الخرطوم ومدنها
+    'امدرمان': 'ام درمان',
+    'ام درمان': 'ام درمان',
+    'أم درمان': 'ام درمان',
+    'أمدرمان': 'ام درمان',
+    'الخرطوم': 'الخرطوم',
+    'خرطوم': 'الخرطوم',
+    'بحري': 'خرطوم بحري',
+    'الخرطوم بحري': 'خرطوم بحري',
+    'خرطوم بحري': 'خرطوم بحري',
+
+    // ولاية الجزيرة
+    'مدني': 'ود مدني',
+    'ود مدني': 'ود مدني',
+    'ودمدني': 'ود مدني',
+    'الجزيرة': 'ود مدني',
+
+    // ولاية البحر الأحمر
+    'بورتسودان': 'بورتسودان',
+    'بور سودان': 'بورتسودان',
+    'بورت سودان': 'بورتسودان',
+    'برتسودان': 'بورتسودان',
+
+    // كردفان
+    'الابيض': 'الابيض',
+    'الأبيض': 'الابيض',
+    'ابيض': 'الابيض',
+    'أم روابة': 'ام روابة',
+    'ام روابة': 'ام روابة',
+    'امروابة': 'ام روابة',
+
+    // دارفور
+    'الفاشر': 'الفاشر',
+    'فاشر': 'الفاشر',
+    'الجنينة': 'الجنينة',
+    'جنينة': 'الجنينة',
+    'نيالا': 'نيالا',
+
+    // الشمالية ونهر النيل
+    'دنقلا': 'دنقلا',
+    'عطبرة': 'عطبرة',
+    'عطبره': 'عطبرة',
+    'شندي': 'شندي',
+    'شندي ': 'شندي',
+    'ابوحمد': 'ابو حمد',
+    'أبو حمد': 'ابو حمد',
+    'ابو حمد': 'ابو حمد',
+    'وادي حلفا': 'وادي حلفا',
+    'حلفا': 'وادي حلفا',
+
+    // القناة والشرق
+    'القضارف': 'القضارف',
+    'قضارف': 'القضارف',
+    'كسلا': 'كسلا'
+};
+
 /**
  * دالة محسنة لتطبيع أسماء المدن
- * تقوم بإزالة "ال" من البداية فقط
+ * تقوم بتنظيف علامات التشكيل والهمزات والمسافات الزائدة
  */
 function normalizeCityName(cityName) {
     if (!cityName) return '';
     return cityName
         .trim()
-        .replace(/^(ال)(.+)/, '$2') // إزالة "ال" من البداية فقط
-        .replace(/أ|إ|آ/g, 'ا')
-        .replace(/ة/g, 'ه')
-        .replace(/ى/g, 'ي')
-        .replace(/\s+/g, ' ')
+        .replace(/[\u064B-\u065F]/g, '') // إزالة التشكيل
+        .replace(/[أإآآ]/g, 'ا') // توحيد الهمزات
+        .replace(/ة/g, 'ه')     // توحيد التاء المربوطة
+        .replace(/ى/g, 'ي')     // توحيد الألف المقصورة
+        .replace(/\s+/g, ' ')   // توحيد المسافات
         .trim();
 }
 
 /**
- * دالة محسنة للتحقق من تطابق المدن
- * تدعم الأسماء المركبة والمطابقة الجزئية
+ * الحصول على الاسم المعياري للمدينة عبر قاموس المرادفات
+ */
+function getCanonicalCityName(cityName) {
+    if (!cityName) return '';
+    const norm = normalizeCityName(cityName);
+    if (CITY_ALIASES[norm]) return CITY_ALIASES[norm];
+
+    // جرب بدون "ال" التعريف
+    const noAl = norm.replace(/^ال/, '');
+    if (CITY_ALIASES[noAl]) return CITY_ALIASES[noAl];
+
+    return norm;
+}
+
+/**
+ * دالة دقيقة للتحقق من تطابق المدن
+ * تدعم القاموس التراكمي، التطابق التام، والتطابق المعياري
  */
 function matchesCityName(cityA, cityB) {
     if (!cityA || !cityB) return false;
     
-    // تطبيع الاسمين
+    const canonA = getCanonicalCityName(cityA);
+    const canonB = getCanonicalCityName(cityB);
+
+    if (canonA && canonB && canonA === canonB) {
+        return true;
+    }
+
     const normA = normalizeCityName(cityA);
     const normB = normalizeCityName(cityB);
     
-    if (!normA || !normB) return false;
-    
-    // تطابق تام
     if (normA === normB) return true;
     
-    // تطابق جزئي (للأسماء المركبة مثل "الخرطوم بحري" و "بحري")
-    const wordsA = normA.split(' ');
-    const wordsB = normB.split(' ');
+    // جرب مقارنة النصوص بدون "ال" التعريف
+    const strippedA = normA.replace(/^ال/, '');
+    const strippedB = normB.replace(/^ال/, '');
     
-    // التحقق من أن أي كلمة من المدينة A موجودة في B أو العكس
-    for (const wordA of wordsA) {
-        if (wordA.length < 2) continue;
-        for (const wordB of wordsB) {
-            if (wordB.length < 2) continue;
-            if (wordA === wordB || wordA.includes(wordB) || wordB.includes(wordA)) {
-                return true;
-            }
-        }
-    }
+    if (strippedA && strippedB && strippedA === strippedB) return true;
     
     return false;
 }
@@ -472,22 +541,10 @@ export default async function handler(req, res) {
 
             console.log(`📢 NEW_TRAVEL_REQUEST: fromCity="${fromCity}", toCity="${toCity}", rideId="${rideId}"`);
 
-            // 4.1 جلب جميع السائقين مع مواقعهم
+            // 4.1 جلب جميع السائقين المؤهلين مباشرة من جدول drivers (استخدام select('*') لتفادي الأخطاء إذا كانت بعض الأعمدة اختيارية في schema)
             const { data: drivers, error: driversErr } = await db
                 .from('drivers')
-                .select(`
-                    id, 
-                    fcm_token, 
-                    city, 
-                    is_banned, 
-                    ban_until, 
-                    travel_notifications_enabled,
-                    driver_locations!left (
-                        lat,
-                        lng,
-                        updated_at
-                    )
-                `)
+                .select('*')
                 .not('fcm_token', 'is', null)
                 .neq('fcm_token', 'false')
                 .neq('fcm_token', '');
@@ -508,15 +565,40 @@ export default async function handler(req, res) {
                 });
             }
 
-            console.log(`🔍 Found ${drivers.length} drivers with FCM tokens`);
+            console.log(`🔍 [TravelPush] Ride #${rideId || 'N/A'}: Fetched ${drivers.length} drivers with tokens from DB`);
+            console.log(`📍 Origin City Raw: "${fromCity}" (Normalized: "${normalizeCityName(fromCity)}", Canonical: "${getCanonicalCityName(fromCity)}")`);
 
-            // 4.2 الحصول على إحداثيات مدينة الانطلاق
-            const cityCoords = CITY_COORDINATES[fromCity] || null;
-            console.log(`📍 City "${fromCity}" coordinates:`, cityCoords);
+            // 4.2 جلب المواقع الجغرافية الحديثة فقط للسائقين (خلال آخر 48 ساعة)
+            const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+            const { data: locationsData } = await db
+                .from('driver_locations')
+                .select('driver_id, lat, lng, updated_at')
+                .gte('updated_at', fortyEightHoursAgo)
+                .order('updated_at', { ascending: false });
 
-            // 4.3 تصفية السائقين المؤهلين
+            // تنظيم أحدث موقع لكل سائق
+            const driverLocationMap = {};
+            if (locationsData && locationsData.length > 0) {
+                for (const loc of locationsData) {
+                    if (!driverLocationMap[loc.driver_id]) {
+                        driverLocationMap[loc.driver_id] = loc;
+                    }
+                }
+            }
+
+            const cityCoords = CITY_COORDINATES[fromCity] || CITY_COORDINATES[normalizeCityName(fromCity)] || null;
+
+            // 4.3 تصفية السائقين المؤهلين مع إحصائيات الاستبعاد والتتبع
             let matchedDrivers = [];
-            let sentCount = 0;
+            let exclusionStats = {
+                banned: 0,
+                notificationsDisabled: 0,
+                invalidToken: 0
+            };
+            let matchStats = {
+                textCityMatch: 0,
+                gpsDistanceMatch: 0
+            };
 
             for (const driver of drivers) {
                 // التحقق من الحظر
@@ -524,116 +606,88 @@ export default async function handler(req, res) {
                                  driver.ban_until && 
                                  new Date(driver.ban_until) > new Date();
                 if (isBanned) {
-                    console.log(`🚫 Driver ${driver.id} is banned, skipping`);
+                    exclusionStats.banned++;
+                    console.log(`🚫 Excluded driver ${driver.id}: Banned until ${driver.ban_until}`);
                     continue;
                 }
 
                 // التحقق من تفعيل الإشعارات
                 if (driver.travel_notifications_enabled === false) {
-                    console.log(`🔕 Driver ${driver.id} has travel notifications disabled, skipping`);
+                    exclusionStats.notificationsDisabled++;
+                    console.log(`🔕 Excluded driver ${driver.id}: Travel notifications disabled`);
                     continue;
                 }
 
-                // التحقق من وجود توكن صالح
+                // التحقق من صحة التوكن
                 if (!driver.fcm_token || 
                     driver.fcm_token === 'false' || 
                     driver.fcm_token === 'null' || 
                     driver.fcm_token === '') {
-                    console.log(`⚠️ Driver ${driver.id} has invalid FCM token, skipping`);
+                    exclusionStats.invalidToken++;
+                    console.log(`⚠️ Excluded driver ${driver.id}: Invalid FCM token`);
                     continue;
-                }
-
-                // الحصول على آخر موقع معروف للسائق
-                let driverLat = null;
-                let driverLng = null;
-                let locationUpdatedAt = null;
-
-                if (driver.driver_locations && driver.driver_locations.length > 0) {
-                    // ترتيب المواقع حسب تاريخ التحديث (الأحدث أولاً)
-                    const sortedLocations = driver.driver_locations.sort((a, b) => 
-                        new Date(b.updated_at) - new Date(a.updated_at)
-                    );
-                    const latestLocation = sortedLocations[0];
-                    driverLat = parseFloat(latestLocation.lat);
-                    driverLng = parseFloat(latestLocation.lng);
-                    locationUpdatedAt = latestLocation.updated_at;
                 }
 
                 let matchesCity = false;
                 let matchReason = '';
 
-                // ====== طريقة المطابقة 1: مطابقة المدينة بالنص ======
-                if (driver.city && matchesCityName(driver.city, fromCity)) {
+                // الحصول على أي حقل نصي يمثل المدينة في السائق
+                const driverCityVal = driver.city || driver.current_city || driver.working_city || driver.address || null;
+
+                // ====== طريقة المطابقة 1: مطابقة اسم المدينة بالنص والقواميس ======
+                if (driverCityVal && matchesCityName(driverCityVal, fromCity)) {
                     matchesCity = true;
-                    matchReason = `matched by normalized city: "${driver.city}" ↔ "${fromCity}"`;
-                    console.log(`✅ Driver ${driver.id} ${matchReason}`);
+                    matchReason = `Matched by normalized city name: "${driverCityVal}" ↔ "${fromCity}"`;
+                    matchStats.textCityMatch++;
+                    console.log(`✅ Driver ${driver.id}: ${matchReason}`);
                 }
 
-                // ====== طريقة المطابقة 2: مطابقة الموقع الجغرافي ======
-                if (!matchesCity && cityCoords && 
-                    driverLat !== null && driverLng !== null && 
-                    !isNaN(driverLat) && !isNaN(driverLng) && 
-                    driverLat !== 0 && driverLng !== 0) {
-                    
-                    const dist = getHaversineDistance(
-                        cityCoords.lat,
-                        cityCoords.lng,
-                        driverLat,
-                        driverLng
-                    );
-                    
-                    // مسافة 80 كيلومتر كحد أقصى للمطابقة
-                    if (dist <= 80) {
-                        matchesCity = true;
-                        matchReason = `matched by location (${dist.toFixed(1)} km from ${fromCity})`;
-                        console.log(`📍 Driver ${driver.id} ${matchReason}`);
-                    } else {
-                        console.log(`📍 Driver ${driver.id} is ${dist.toFixed(1)} km away, too far (limit 80km)`);
-                    }
-                }
-
-                // ====== طريقة المطابقة 3: المطابقة بالولاية/المنطقة ======
-                if (!matchesCity) {
-                    const fromCityNorm = normalizeCityName(fromCity);
-                    const driverCityNorm = driver.city ? normalizeCityName(driver.city) : '';
-                    
-                    if (driverCityNorm && fromCityNorm) {
-                        // استخراج الكلمات الرئيسية
-                        const fromWords = fromCityNorm.split(' ');
-                        const driverWords = driverCityNorm.split(' ');
-                        
-                        for (const fWord of fromWords) {
-                            if (fWord.length < 2) continue;
-                            for (const dWord of driverWords) {
-                                if (dWord.length < 2) continue;
-                                if (fWord === dWord) {
-                                    matchesCity = true;
-                                    matchReason = `matched by keyword: "${dWord}"`;
-                                    console.log(`✅ Driver ${driver.id} ${matchReason}`);
-                                    break;
-                                }
-                            }
-                            if (matchesCity) break;
+                // ====== طريقة المطابقة 2: مطابقة الموقع الجغرافي (توسيع الحساب حتى 200 كم لضمان تغطية ولايات السودان والمدن المجاورة) ======
+                const loc = driverLocationMap[driver.id];
+                if (!matchesCity && cityCoords && loc && loc.lat && loc.lng) {
+                    const dLat = parseFloat(loc.lat);
+                    const dLng = parseFloat(loc.lng);
+                    if (!isNaN(dLat) && !isNaN(dLng) && dLat !== 0 && dLng !== 0) {
+                        const dist = getHaversineDistance(cityCoords.lat, cityCoords.lng, dLat, dLng);
+                        // نطاق 200 كم يشمل بورتسودان والمدن المحيطة بها في البحر الأحمر
+                        if (dist <= 200) {
+                            matchesCity = true;
+                            matchReason = `Matched by GPS location (${dist.toFixed(1)} km from ${fromCity})`;
+                            matchStats.gpsDistanceMatch++;
+                            console.log(`📍 Driver ${driver.id}: ${matchReason}`);
+                        } else {
+                            console.log(`📍 Driver ${driver.id}: GPS distance is ${dist.toFixed(1)} km (> 200km limit)`);
                         }
                     }
                 }
 
-                // ====== إذا تطابق المدينة، أضف السائق ======
+                // ====== طريقة المطابقة 3: إذا لم يكن هناك عمود مدينة مسجل في قاعدة البيانات لجميع السائقين وليس لديهم GPS محدث، شمل جميع السائقين أصحاب الحسابات النشطة بفرض أنهم بانتظار الرحلات ======
+                if (!matchesCity && !driverCityVal && !loc) {
+                    matchesCity = true;
+                    matchReason = `Matched as fallback active driver (no registered city column & no GPS lock)`;
+                    matchStats.textCityMatch++;
+                    console.log(`ℹ️ Driver ${driver.id}: ${matchReason}`);
+                }
+
                 if (matchesCity) {
                     matchedDrivers.push({
                         id: driver.id,
                         fcm_token: driver.fcm_token,
                         city: driver.city,
-                        lat: driverLat,
-                        lng: driverLng,
                         match_reason: matchReason
                     });
+                } else {
+                    console.log(`❌ Driver ${driver.id} excluded: Registered city "${driver.city || 'N/A'}" does not match "${fromCity}" and no nearby GPS location`);
                 }
             }
 
-            console.log(`📊 Matched ${matchedDrivers.length} drivers out of ${drivers.length} total drivers`);
+            console.log(`📊 [Matching Summary] Total drivers: ${drivers.length} | Excluded (Banned: ${exclusionStats.banned}, Notifications Off: ${exclusionStats.notificationsDisabled}, Bad Token: ${exclusionStats.invalidToken}) | Matched: ${matchedDrivers.length} (Text Match: ${matchStats.textCityMatch}, GPS Match: ${matchStats.gpsDistanceMatch})`);
 
-            // 4.4 إرسال الإشعارات للسائقين المتطابقين
+            // 4.4 إرسال الإشعارات بشكل مستقل وآمن لكل سائق
+            let sentCount = 0;
+            let failedCount = 0;
+            let errorTypeCounts = {};
+
             for (const driver of matchedDrivers) {
                 try {
                     const result = await sendQuietPush(
@@ -651,22 +705,32 @@ export default async function handler(req, res) {
                     
                     if (result.sent) {
                         sentCount++;
-                        console.log(`✅ Push sent to driver ${driver.id} (${driver.match_reason})`);
+                        console.log(`✅ FCM push delivered to driver ${driver.id}`);
                     } else {
-                        console.log(`❌ Push failed for driver ${driver.id}: ${result.error || 'unknown error'}`);
+                        failedCount++;
+                        const errReason = result.error || result.reason || 'Unknown error';
+                        errorTypeCounts[errReason] = (errorTypeCounts[errReason] || 0) + 1;
+                        console.log(`❌ FCM push failed for driver ${driver.id}: ${errReason}`);
                     }
                 } catch (pushErr) {
-                    console.error(`❌ Push failed for driver ${driver.id}:`, pushErr.message);
+                    failedCount++;
+                    const errMsg = pushErr.message || 'Exception thrown';
+                    errorTypeCounts[errMsg] = (errorTypeCounts[errMsg] || 0) + 1;
+                    console.error(`❌ FCM push exception for driver ${driver.id}:`, errMsg);
                 }
             }
 
-            console.log(`📊 NEW_TRAVEL_REQUEST summary: ${matchedDrivers.length} matched, ${sentCount} notifications sent`);
+            console.log(`📊 [FCM Dispatch Summary] Matched: ${matchedDrivers.length} | Sent successfully: ${sentCount} | Failed: ${failedCount} | Errors breakdown:`, JSON.stringify(errorTypeCounts));
 
             return res.status(200).json({ 
                 success: true, 
                 sentCount, 
+                failedCount,
                 matchedCount: matchedDrivers.length,
                 totalDrivers: drivers.length,
+                exclusionStats,
+                matchStats,
+                errorTypeCounts,
                 matchedDriverIds: matchedDrivers.map(d => d.id)
             });
         }
