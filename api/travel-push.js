@@ -541,10 +541,10 @@ export default async function handler(req, res) {
 
             console.log(`📢 NEW_TRAVEL_REQUEST: fromCity="${fromCity}", toCity="${toCity}", rideId="${rideId}"`);
 
-            // 4.1 جلب جميع السائقين المؤهلين مباشرة من جدول drivers لتجنب تضخم الـ joins والحد الأقصى للنتائج
+            // 4.1 جلب جميع السائقين المؤهلين مباشرة من جدول drivers (استخدام select('*') لتفادي الأخطاء إذا كانت بعض الأعمدة اختيارية في schema)
             const { data: drivers, error: driversErr } = await db
                 .from('drivers')
-                .select('id, fcm_token, city, is_banned, ban_until, travel_notifications_enabled')
+                .select('*')
                 .not('fcm_token', 'is', null)
                 .neq('fcm_token', 'false')
                 .neq('fcm_token', '');
@@ -631,30 +631,42 @@ export default async function handler(req, res) {
                 let matchesCity = false;
                 let matchReason = '';
 
+                // الحصول على أي حقل نصي يمثل المدينة في السائق
+                const driverCityVal = driver.city || driver.current_city || driver.working_city || driver.address || null;
+
                 // ====== طريقة المطابقة 1: مطابقة اسم المدينة بالنص والقواميس ======
-                if (driver.city && matchesCityName(driver.city, fromCity)) {
+                if (driverCityVal && matchesCityName(driverCityVal, fromCity)) {
                     matchesCity = true;
-                    matchReason = `Matched by normalized city name: "${driver.city}" ↔ "${fromCity}"`;
+                    matchReason = `Matched by normalized city name: "${driverCityVal}" ↔ "${fromCity}"`;
                     matchStats.textCityMatch++;
                     console.log(`✅ Driver ${driver.id}: ${matchReason}`);
                 }
 
-                // ====== طريقة المطابقة 2: مطابقة الموقع الجغرافي الحديث ======
+                // ====== طريقة المطابقة 2: مطابقة الموقع الجغرافي (توسيع الحساب حتى 200 كم لضمان تغطية ولايات السودان والمدن المجاورة) ======
                 const loc = driverLocationMap[driver.id];
                 if (!matchesCity && cityCoords && loc && loc.lat && loc.lng) {
                     const dLat = parseFloat(loc.lat);
                     const dLng = parseFloat(loc.lng);
                     if (!isNaN(dLat) && !isNaN(dLng) && dLat !== 0 && dLng !== 0) {
                         const dist = getHaversineDistance(cityCoords.lat, cityCoords.lng, dLat, dLng);
-                        if (dist <= 80) {
+                        // نطاق 200 كم يشمل بورتسودان والمدن المحيطة بها في البحر الأحمر
+                        if (dist <= 200) {
                             matchesCity = true;
                             matchReason = `Matched by GPS location (${dist.toFixed(1)} km from ${fromCity})`;
                             matchStats.gpsDistanceMatch++;
                             console.log(`📍 Driver ${driver.id}: ${matchReason}`);
                         } else {
-                            console.log(`📍 Driver ${driver.id}: GPS distance is ${dist.toFixed(1)} km (> 80km limit)`);
+                            console.log(`📍 Driver ${driver.id}: GPS distance is ${dist.toFixed(1)} km (> 200km limit)`);
                         }
                     }
+                }
+
+                // ====== طريقة المطابقة 3: إذا لم يكن هناك عمود مدينة مسجل في قاعدة البيانات لجميع السائقين وليس لديهم GPS محدث، شمل جميع السائقين أصحاب الحسابات النشطة بفرض أنهم بانتظار الرحلات ======
+                if (!matchesCity && !driverCityVal && !loc) {
+                    matchesCity = true;
+                    matchReason = `Matched as fallback active driver (no registered city column & no GPS lock)`;
+                    matchStats.textCityMatch++;
+                    console.log(`ℹ️ Driver ${driver.id}: ${matchReason}`);
                 }
 
                 if (matchesCity) {
