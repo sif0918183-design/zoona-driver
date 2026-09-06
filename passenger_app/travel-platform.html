@@ -2430,7 +2430,47 @@ async function syncPassengerIdFromWhatsApp(rideId, whatsappNumber) {
 // ============================================
 // PASSENGER RIDES
 // ============================================
+async function check24hTravelReminder() {
+    if (!currentUser || !currentUser.id) return;
+    try {
+        const { data: trips } = await travelSupabase
+            .from('travel_trips')
+            .select('from_city, to_city, departure_time, status')
+            .eq('passenger_id', currentUser.id)
+            .in('status', ['driver_selected', 'in_progress', 'commission_reserved', 'final_active'])
+            .order('departure_time', { ascending: true })
+            .limit(1);
+
+        const banner = document.getElementById('passenger-24h-reminder');
+        const textEl = document.getElementById('passenger-24h-reminder-text');
+
+        if (trips && trips.length > 0) {
+            const trip = trips[0];
+            if (trip.departure_time) {
+                const depDate = new Date(trip.departure_time);
+                const diffHours = (depDate.getTime() - Date.now()) / (1000 * 60 * 60);
+
+                if (diffHours > 0 && diffHours <= 24) {
+                    const dateStr = depDate.toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' });
+                    const timeStr = depDate.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+                    const text = `لديك رحلة سفرية يوم (${dateStr}) الساعة (${timeStr}) من (${trip.from_city || '—'}) إلى (${trip.to_city || '—'})، يرجى الاستعداد.`;
+
+                    if (banner && textEl) {
+                        textEl.textContent = text;
+                        banner.classList.remove('hidden');
+                    }
+                    return;
+                }
+            }
+        }
+        if (banner) banner.classList.add('hidden');
+    } catch(e) {
+        console.error('Error checking 24h reminder in travel platform:', e);
+    }
+}
+
 async function loadPassengerRides() {
+    await check24hTravelReminder();
     try {
         const {data:requests, error} = await travelSupabase
             .from('ride_requests')
@@ -2441,6 +2481,39 @@ async function loadPassengerRides() {
         const combined = [];
         if (!error && requests) {
             for (const req of requests) {
+                // Auto-evaluate 10-hour window for selected driver
+                if (['driver_selected', 'confirmed'].includes(req.status)) {
+                    try {
+                        const token = localStorage.getItem('session_token');
+                        const res = await fetch('/api/travel-platform', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': token ? `Bearer ${token}` : ''
+                            },
+                            body: JSON.stringify({
+                                action: 'process_10h_commission',
+                                rideId: req.id
+                            })
+                        });
+                        const commData = await res.json();
+                        if (commData.success) {
+                            if (commData.result === 'commission_held' || commData.contactsRevealed) {
+                                req.commission_status = 'held';
+                                req.contact_revealed = true;
+                                await checkForActiveTripOnLoad();
+                            } else if (commData.result === 'driver_stripped') {
+                                req.status = 'pending';
+                                req.driver_id = null;
+                                req.driver_name = null;
+                                showNotification('السائق المختار لم يقم بتغذية رصيده في المهلة المحددة، تم فتح الطلب مجدداً لاختيار سائق بديل.', 'warning');
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error auto-evaluating 10h commission for passenger:', e);
+                    }
+                }
+
                 const {data:acceptances} = await travelSupabase
                     .from('ride_driver_acceptances')
                     .select('id,driver_id,status,accepted_at')
