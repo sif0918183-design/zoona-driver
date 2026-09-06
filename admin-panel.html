@@ -1247,8 +1247,8 @@
                                         <label class="form-label">نوع التقييد</label>
                                         <select class="form-control form-select" id="reliability-restriction-type" required>
                                             <option value="none">بدون تقييد (نشط)</option>
-                                            <option value="temporary_restriction">تقييد مؤقت (3 أيام)</option>
-                                            <option value="travel_suspended">تعليق الرحلات السفرية بالكامل</option>
+                                            <option value="restricted_3days">تقييد مؤقت (3 أيام)</option>
+                                            <option value="travel_banned">تعليق الرحلات السفرية بالكامل</option>
                                         </select>
                                     </div>
                                     <div class="form-group">
@@ -4203,29 +4203,29 @@
 
         async function handlePassengerRestrictionSubmit(event) {
             event.preventDefault();
-            const customerId = document.getElementById('reliability-customer-select').value;
+            const passengerId = document.getElementById('reliability-customer-select').value;
             const restrictionType = document.getElementById('reliability-restriction-type').value;
             const reason = document.getElementById('reliability-reason').value;
 
-            if (!customerId) {
+            if (!passengerId) {
                 showNotification('الرجاء اختيار راكب', 'warning');
                 return;
             }
 
             try {
                 let restrictionUntil = null;
-                if (restrictionType === 'temporary_restriction') {
+                if (restrictionType === 'restricted_3days') {
                     const untilDate = new Date();
                     untilDate.setDate(untilDate.getDate() + 3);
                     restrictionUntil = untilDate.toISOString();
-                } else if (restrictionType === 'travel_suspended') {
+                } else if (restrictionType === 'travel_banned') {
                     const untilDate = new Date();
                     untilDate.setFullYear(untilDate.getFullYear() + 10);
                     restrictionUntil = untilDate.toISOString();
                 }
 
                 await adminApiCall('update_passenger_restriction', {
-                    customerId,
+                    passengerId,
                     restrictionType,
                     restrictionUntil,
                     reason
@@ -4248,12 +4248,12 @@
                 const res = await adminApiCall('get_travel_settings');
                 if (res.success && res.settings) {
                     const s = res.settings;
-                    if (document.getElementById('ts-advance-days')) document.getElementById('ts-advance-days').value = s.advance_booking_days || 7;
-                    if (document.getElementById('ts-max-drivers')) document.getElementById('ts-max-drivers').value = s.max_accepted_drivers || 10;
-                    if (document.getElementById('ts-comm-rate')) document.getElementById('ts-comm-rate').value = s.commission_rate || 5;
+                    if (document.getElementById('ts-advance-days')) document.getElementById('ts-advance-days').value = s.max_advance_creation_days || 7;
+                    if (document.getElementById('ts-max-drivers')) document.getElementById('ts-max-drivers').value = s.max_drivers_accepting || 10;
+                    if (document.getElementById('ts-comm-rate')) document.getElementById('ts-comm-rate').value = s.travel_commission_rate || 5;
                     if (document.getElementById('ts-grace-mins')) document.getElementById('ts-grace-mins').value = s.grace_period_minutes || 30;
-                    if (document.getElementById('ts-cancel-thresh')) document.getElementById('ts-cancel-thresh').value = s.cancel_threshold || 4;
-                    if (document.getElementById('ts-restrict-days')) document.getElementById('ts-restrict-days').value = s.restriction_days || 3;
+                    if (document.getElementById('ts-cancel-thresh')) document.getElementById('ts-cancel-thresh').value = s.high_impact_cancel_limit || 4;
+                    if (document.getElementById('ts-restrict-days')) document.getElementById('ts-restrict-days').value = s.restriction_duration_days || 3;
                 }
             } catch (err) {
                 console.error('Error loading travel settings:', err);
@@ -4269,23 +4269,17 @@
             const cancelThresh = document.getElementById('ts-cancel-thresh').value;
             const restrictDays = document.getElementById('ts-restrict-days').value;
 
-            const travelSettingsObj = {
-                advance_booking_days: parseInt(advanceDays) || 7,
-                max_accepted_drivers: parseInt(maxDrivers) || 10,
-                commission_rate: parseFloat(commRate) || 5,
-                grace_period_minutes: parseInt(graceMins) || 30,
-                cancel_threshold: parseInt(cancelThresh) || 4,
-                restriction_days: parseInt(restrictDays) || 3
-            };
+            const settingsArray = [
+                { key: 'max_advance_creation_days', value: String(advanceDays) },
+                { key: 'max_drivers_accepting', value: String(maxDrivers) },
+                { key: 'travel_commission_rate', value: String(commRate) },
+                { key: 'grace_period_minutes', value: String(graceMins) },
+                { key: 'high_impact_cancel_limit', value: String(cancelThresh) },
+                { key: 'restriction_duration_days', value: String(restrictDays) }
+            ];
 
             try {
-                await adminApiCall('save_settings', {
-                    settings: [{
-                        key: 'travel_platform_controls',
-                        value: JSON.stringify(travelSettingsObj)
-                    }]
-                });
-
+                await adminApiCall('save_settings', { settings: settingsArray });
                 showNotification('تم حفظ ضوابط وإعدادات الرحلات السفرية بنجاح', 'success');
             } catch (err) {
                 console.error('Error saving travel settings:', err);

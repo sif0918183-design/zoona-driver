@@ -324,20 +324,20 @@ export default async function handler(req, res) {
                 }
             }
 
-            // Check max accepted drivers (max 10)
+            // Atomic Check: Get existing acceptances
             const { data: acceptances, error: accErr } = await supabase
                 .from('ride_driver_acceptances')
                 .select('id, driver_id')
                 .eq('ride_id', rideId)
                 .eq('status', 'accepted');
 
-            if ((acceptances || []).length >= settings.max_drivers_accepting) {
-                return res.status(400).json({ success: false, error: `وصل الطلب للحد الأقصى المسموح به من السائقين (${settings.max_drivers_accepting} سائقين).` });
-            }
-
             const already = (acceptances || []).find(a => a.driver_id === driverId);
             if (already) {
                 return res.status(200).json({ success: true, message: 'تم قبول الرحلة مسبقاً' });
+            }
+
+            if ((acceptances || []).length >= settings.max_drivers_accepting) {
+                return res.status(400).json({ success: false, error: `وصل الطلب للحد الأقصى المسموح به من السائقين (${settings.max_drivers_accepting} سائقين).` });
             }
 
             // Insert acceptance
@@ -352,7 +352,12 @@ export default async function handler(req, res) {
                 .select()
                 .single();
 
-            if (insErr) throw insErr;
+            if (insErr) {
+                if (insErr.code === '23505') { // Unique constraint violation
+                    return res.status(200).json({ success: true, message: 'تم قبول الرحلة مسبقاً' });
+                }
+                throw insErr;
+            }
 
             return res.status(200).json({ success: true, acceptance: newAcceptance, currentAcceptedCount: (acceptances || []).length + 1 });
         }
@@ -403,6 +408,11 @@ export default async function handler(req, res) {
 
             if (!ride) {
                 return res.status(400).json({ success: false, error: 'طلب الرحلة غير موجود' });
+            }
+
+            // Idempotency / State Guard: Check if a driver is already selected
+            if (ride.status === 'driver_selected' && ride.driver_id && ride.driver_id !== driverId) {
+                return res.status(400).json({ success: false, error: 'تم اختيار سائق آخر لهذه الرحلة بالفعل.' });
             }
 
             // 1. Update ride_requests
@@ -813,6 +823,17 @@ export default async function handler(req, res) {
 
             if (!tripId || !driverId || !finalPrice) {
                 return res.status(400).json({ success: false, error: 'tripId, driverId, and finalPrice are required' });
+            }
+
+            // Idempotency check: Don't charge penalty twice
+            const { data: existingTrip } = await supabase
+                .from('travel_trips')
+                .select('status, commission_deducted')
+                .eq('id', tripId)
+                .single();
+
+            if (existingTrip && existingTrip.status === 'cancelled') {
+                return res.status(200).json({ success: true, message: 'الرحلة ملغاة بالفعل' });
             }
 
             const penalty = Math.round(finalPrice * settings.travel_commission_rate / 100);

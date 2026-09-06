@@ -174,14 +174,15 @@ export default async function handler(req, res) {
 
         // --- UPDATE PASSENGER RESTRICTION ---
         if (action === 'update_passenger_restriction') {
-            const { passengerId, restrictionType, restrictionDays, reason } = req.body;
+            const { passengerId, customerId, restrictionType, restrictionDays, restrictionUntil: reqUntil, reason } = req.body;
+            const targetId = passengerId || customerId;
 
-            if (!passengerId) {
-                return res.status(400).json({ success: false, error: 'passengerId is required' });
+            if (!targetId) {
+                return res.status(400).json({ success: false, error: 'passengerId or customerId is required' });
             }
 
-            let restrictionUntil = null;
-            if (restrictionType === 'restricted_3days') {
+            let restrictionUntil = reqUntil || null;
+            if (!restrictionUntil && restrictionType === 'restricted_3days') {
                 const days = parseInt(restrictionDays) || 3;
                 restrictionUntil = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
             }
@@ -193,7 +194,7 @@ export default async function handler(req, res) {
                     travel_restriction_until: restrictionUntil,
                     travel_restriction_reason: reason || null
                 })
-                .eq('id', passengerId);
+                .eq('id', targetId);
 
             if (error) throw error;
             return res.status(200).json({ success: true });
