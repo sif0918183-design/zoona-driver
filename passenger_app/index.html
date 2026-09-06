@@ -1848,6 +1848,12 @@
         
     <!-- Home Screen (After Login) - Matching Driver App Dashboard -->
     <section id="home-screen" class="screen hidden">
+        <!-- 24 Hours Pre-Trip Reminder Banner -->
+        <div id="index-24h-reminder" class="hidden" style="background:linear-gradient(135deg, #10b981, #059669); color:white; padding:0.85rem 1.25rem; border-radius:12px; margin-bottom:12px; font-weight:700; display:flex; align-items:center; gap:0.75rem; box-shadow:0 4px 15px rgba(16,185,129,0.3);">
+            <i class="ph-bold ph-bell-ringing" style="font-size:1.5rem; flex-shrink:0;"></i>
+            <div id="index-24h-reminder-text" style="font-size:0.85rem; line-height:1.5;"></div>
+        </div>
+
         <div class="card">
             <div class="user-profile">
                 <div class="user-avatar" id="user-avatar">?</div>
@@ -3136,6 +3142,44 @@ function updateUserProfile() {
     
     if (currentUser.is_verified) {
         document.getElementById('verification-status').classList.remove('hidden');
+    }
+
+    check24hTravelReminder();
+}
+
+async function check24hTravelReminder() {
+    if (!currentUser || !currentUser.id) return;
+    try {
+        const { data: trips } = await tarhalDB
+            .from('travel_trips')
+            .select('from_city, to_city, departure_time, status')
+            .eq('passenger_id', currentUser.id)
+            .in('status', ['driver_selected', 'in_progress', 'commission_reserved', 'final_active'])
+            .order('departure_time', { ascending: true })
+            .limit(1);
+
+        if (trips && trips.length > 0) {
+            const trip = trips[0];
+            if (trip.departure_time) {
+                const depDate = new Date(trip.departure_time);
+                const diffHours = (depDate.getTime() - Date.now()) / (1000 * 60 * 60);
+
+                if (diffHours > 0 && diffHours <= 24) {
+                    const dateStr = depDate.toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' });
+                    const timeStr = depDate.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+                    const text = `لديك رحلة سفرية يوم (${dateStr}) الساعة (${timeStr}) من (${trip.from_city || '—'}) إلى (${trip.to_city || '—'})، يرجى الاستعداد.`;
+
+                    const bannerIndex = document.getElementById('index-24h-reminder');
+                    const textIndex = document.getElementById('index-24h-reminder-text');
+                    if (bannerIndex && textIndex) {
+                        textIndex.textContent = text;
+                        bannerIndex.classList.remove('hidden');
+                    }
+                }
+            }
+        }
+    } catch(e) {
+        console.error('Error checking 24h reminder:', e);
     }
 }
 

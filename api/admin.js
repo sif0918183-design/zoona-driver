@@ -135,11 +135,93 @@ export default async function handler(req, res) {
         if (action === 'list_customers') {
             const { data, error } = await supabase
                 .from('customers')
-                .select('id, full_name, phone, phone2, is_verified, created_at')
+                .select('id, full_name, phone, phone2, is_verified, travel_restriction_type, travel_restriction_until, travel_restriction_reason, reliability_score, created_at')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
             return res.status(200).json({ success: true, customers: data });
+        }
+
+        // --- LIST RIDER RELIABILITY LOGS ---
+        if (action === 'list_rider_reliability_logs') {
+            const { data, error } = await supabase
+                .from('rider_reliability_logs')
+                .select(`
+                    id,
+                    passenger_id,
+                    ride_id,
+                    cancelled_at,
+                    departure_time,
+                    hours_before_departure,
+                    status_at_cancellation,
+                    driver_selected,
+                    contact_revealed,
+                    commission_held,
+                    cancellation_reason,
+                    cancelled_by,
+                    impact_level,
+                    customers (
+                        full_name,
+                        phone
+                    )
+                `)
+                .order('cancelled_at', { ascending: false })
+                .limit(100);
+
+            if (error) throw error;
+            return res.status(200).json({ success: true, logs: data || [] });
+        }
+
+        // --- UPDATE PASSENGER RESTRICTION ---
+        if (action === 'update_passenger_restriction') {
+            const { passengerId, restrictionType, restrictionDays, reason } = req.body;
+
+            if (!passengerId) {
+                return res.status(400).json({ success: false, error: 'passengerId is required' });
+            }
+
+            let restrictionUntil = null;
+            if (restrictionType === 'restricted_3days') {
+                const days = parseInt(restrictionDays) || 3;
+                restrictionUntil = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+            }
+
+            const { error } = await supabase
+                .from('customers')
+                .update({
+                    travel_restriction_type: restrictionType || 'none',
+                    travel_restriction_until: restrictionUntil,
+                    travel_restriction_reason: reason || null
+                })
+                .eq('id', passengerId);
+
+            if (error) throw error;
+            return res.status(200).json({ success: true });
+        }
+
+        // --- GET TRAVEL SETTINGS ---
+        if (action === 'get_travel_settings') {
+            const { data, error } = await supabase
+                .from('system_settings')
+                .select('key, value');
+
+            if (error) throw error;
+
+            const settingsMap = {
+                max_advance_creation_days: '7',
+                max_drivers_accepting: '10',
+                commission_hold_hours: '10',
+                driver_lock_hours: '3',
+                high_impact_cancel_limit: '3',
+                restriction_duration_days: '3',
+                travel_commission_rate: '5'
+            };
+
+            (data || []).forEach(item => {
+                settingsMap[item.key] = item.value;
+            });
+
+            return res.status(200).json({ success: true, settings: settingsMap });
         }
 
         // --- LIST DRIVERS ---

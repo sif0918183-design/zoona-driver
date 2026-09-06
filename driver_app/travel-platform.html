@@ -867,6 +867,29 @@
                 </button>
             </div>
 
+            <!-- Driver 3-Hour Lock Banner -->
+            <div id="driver-3h-lock-banner" class="hidden" style="background:linear-gradient(135deg, #f59e0b, #d97706); color:white; padding:1.25rem; border-radius:16px; margin-bottom:1.5rem; box-shadow:0 8px 25px rgba(245,158,11,0.3); text-align:center;">
+                <i class="ph-bold ph-clock-counter-clockwise" style="font-size:2.2rem; margin-bottom:0.5rem; display:block;"></i>
+                <div id="driver-3h-lock-title" style="font-size:1.15rem; font-weight:800; margin-bottom:0.5rem;">عليك الاستعداد لرحلتك السفرية</div>
+                <div id="driver-3h-lock-text" style="font-size:0.95rem; line-height:1.6; opacity:0.95;"></div>
+            </div>
+
+            <!-- Driver Selection Fixed Notice -->
+            <div id="driver-selection-notice" class="hidden" style="background:#f0fdf4; border:2px solid #10b981; padding:1.25rem; border-radius:16px; margin-bottom:1.5rem; color:#065f46; font-size:0.95rem; line-height:1.6; text-align:right;">
+                <div style="font-weight:800; font-size:1.1rem; color:#047857; margin-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
+                    <i class="ph-bold ph-check-circle" style="font-size:1.4rem;"></i> تم اختيارك لرحلة سفرية!
+                </div>
+                <div id="driver-selection-notice-text"></div>
+            </div>
+
+            <!-- 30-Minute Grace Period Timer Notice -->
+            <div id="driver-grace-notice" class="hidden" style="background:#fef2f2; border:2px solid #ef4444; padding:1.25rem; border-radius:16px; margin-bottom:1.5rem; color:#991b1b; text-align:center;">
+                <i class="ph-bold ph-warning-circle" style="font-size:2rem; margin-bottom:0.5rem;"></i>
+                <div style="font-weight:800; font-size:1.1rem; margin-bottom:0.25rem;">تحذير: رصيدك غير كافٍ للرحلة</div>
+                <div style="font-size:0.9rem; margin-bottom:0.75rem;">يرجى شحن رصيدك بالعمولة المطلوبة خلال المهلة حتى لا يتم سحب الرحلة وإعطاؤها لسائق بديل:</div>
+                <div id="driver-grace-timer" style="font-size:1.8rem; font-weight:900; letter-spacing:2px; direction:ltr; color:#dc2626;">30:00</div>
+            </div>
+
             <div class="tabs-container">
                 <button class="tab active" onclick="showTab('available-rides',this)">الرحلات المتاحة</button>
                 <button class="tab" onclick="showTab('accepted-rides',this)">رحلات قبلتها</button>
@@ -2554,7 +2577,7 @@ async function showDriverOffers(rideId) {
         const {data:rideRequest} = await travelSupabase.from('ride_requests').select('status,driver_id').eq('id',rideId).single();
         const {data:acceptances, error} = await travelSupabase
             .from('ride_driver_acceptances')
-            .select(`id,driver_id,status,accepted_at,drivers(id,full_name,car_type,car_model,rating)`)
+            .select(`id,driver_id,status,accepted_at,drivers(id,full_name,car_type,car_model,car_color,rating)`)
             .eq('ride_id', rideId)
             .in('status', ['accepted','selected'])
             .order('accepted_at', {ascending:true});
@@ -2572,6 +2595,7 @@ async function showDriverOffers(rideId) {
                 const driver = acc.drivers || {};
                 const isFinal = (rideRequest?.status === 'driver_selected') && rideRequest.driver_id === acc.driver_id;
                 const label = isFinal ? (driver.full_name || 'سائق تراكا') : `سائق تراكا (${idx++})`;
+                const carColorStr = driver.car_color ? ` | لون السيارة: ${driver.car_color}` : '';
 
                 const card = document.createElement('div');
                 card.className = 'ride-card';
@@ -2584,7 +2608,7 @@ async function showDriverOffers(rideId) {
                         <div class="ride-price" style="font-size:1.1rem;">${driver.rating ? driver.rating.toFixed(1)+' ⭐' : 'جديد'}</div>
                     </div>
                     <div class="ride-details">
-                        <div class="ride-detail"><i class="ph-light ph-car"></i><span>${driver.car_type||'غير محدد'} — ${driver.car_model||''}</span></div>
+                        <div class="ride-detail"><i class="ph-light ph-car"></i><span>${driver.car_type||'غير محدد'} — ${driver.car_model||''}${carColorStr}</span></div>
                         <div class="ride-detail"><i class="ph-light ph-clock"></i><span>قبل في: ${formatTime(acc.accepted_at)}</span></div>
                         <div class="ride-detail"><i class="ph-light ph-shield-check"></i><span style="color:var(--success);">سائق معتمد</span></div>
                     </div>
@@ -2982,7 +3006,96 @@ async function driverAcceptsRide(rideId) {
 // ============================================
 // DRIVER ACCEPTED RIDES
 // ============================================
+async function checkDriverTravelNotices() {
+    if (userType !== 'driver' || !currentUser) return;
+    try {
+        // Query ride_requests where driver is selected or in progress
+        const { data: rides } = await travelSupabase
+            .from('ride_requests')
+            .select('*')
+            .eq('driver_id', currentUser.id)
+            .in('status', ['driver_selected', 'confirmed', 'in_progress', 'awaiting_driver_acceptance']);
+
+        const selectionNotice = document.getElementById('driver-selection-notice');
+        const selectionText = document.getElementById('driver-selection-notice-text');
+        const graceNotice = document.getElementById('driver-grace-notice');
+        const graceTimer = document.getElementById('driver-grace-timer');
+        const lockBanner = document.getElementById('driver-3h-lock-banner');
+        const lockText = document.getElementById('driver-3h-lock-text');
+
+        if (!rides || rides.length === 0) {
+            if (selectionNotice) selectionNotice.classList.add('hidden');
+            if (graceNotice) graceNotice.classList.add('hidden');
+            if (lockBanner) lockBanner.classList.add('hidden');
+            return;
+        }
+
+        const now = new Date();
+        let foundSelection = false;
+        let foundGrace = false;
+        let foundLock = false;
+
+        for (const ride of rides) {
+            const parsedNotes = parseRideNotes(ride.notes) || {};
+            const depISO = ride.departure_time || (parsedNotes.day ? `${parsedNotes.year || '2026'}-${String(parsedNotes.month).padStart(2,'0')}-${String(parsedNotes.day).padStart(2,'0')}T${String(parsedNotes.period === 'مساءً' && parseInt(parsedNotes.hour) < 12 ? parseInt(parsedNotes.hour) + 12 : parsedNotes.hour).padStart(2,'0')}:${String(parsedNotes.minute||'00').padStart(2,'0')}:00` : null);
+
+            let departureTime = depISO ? new Date(depISO) : null;
+            if (departureTime && !isNaN(departureTime.getTime())) {
+                const diffMs = departureTime - now;
+                const diffHours = diffMs / (1000 * 60 * 60);
+
+                // 1. Selection notice
+                if (!foundSelection && ['driver_selected', 'confirmed', 'in_progress'].includes(ride.status)) {
+                    foundSelection = true;
+                    const commAmount = Math.round((ride.estimated_price || 0) * 0.05);
+                    const tenHoursBefore = new Date(departureTime.getTime() - (10 * 60 * 60 * 1000));
+                    const commTimeStr = `${tenHoursBefore.toLocaleTimeString('ar-SA', {hour:'2-digit', minute:'2-digit'})} يوم ${tenHoursBefore.toLocaleDateString('ar-SA')}`;
+                    const depTimeStr = `${departureTime.toLocaleTimeString('ar-SA', {hour:'2-digit', minute:'2-digit'})}`;
+                    const depDateStr = `${departureTime.toLocaleDateString('ar-SA')}`;
+
+                    if (selectionText) {
+                        selectionText.textContent = `لديك رحلة سفرية تم اختيارك لها من ${ride.from_city} إلى ${ride.to_city} بتاريخ ${depDateStr} الساعة ${depTimeStr}. يجب عليك أن تكون متواجداً في مدينة الانطلاق في الزمن المحدد، وحتى لا تفقد الرحلة يجب أن يكون رصيدك (${commAmount.toLocaleString('en-SA')} ج) أو أكثر بحلول الساعة ${commTimeStr}.`;
+                    }
+                    if (selectionNotice) selectionNotice.classList.remove('hidden');
+                }
+
+                // 2. Grace notice (30 minutes)
+                if (!foundGrace && ride.commission_status === 'grace_period' && ride.commission_grace_until) {
+                    const graceUntil = new Date(ride.commission_grace_until);
+                    const remainingSec = Math.max(0, Math.floor((graceUntil - now) / 1000));
+                    if (remainingSec > 0) {
+                        foundGrace = true;
+                        const mins = Math.floor(remainingSec / 60);
+                        const secs = remainingSec % 60;
+                        if (graceTimer) graceTimer.textContent = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+                        if (graceNotice) graceNotice.classList.remove('hidden');
+                    }
+                }
+
+                // 3. 3-Hour Lock Banner
+                if (!foundLock && diffHours > 0 && diffHours <= 3) {
+                    foundLock = true;
+                    const hoursLeft = Math.floor(diffHours);
+                    const minsLeft = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                    if (lockText) {
+                        lockText.textContent = `عليك الاستعداد لرحلتك السفرية من ${ride.from_city} إلى ${ride.to_city}. تبقى على الرحلة ${hoursLeft} ساعة و ${minsLeft} دقيقة.`;
+                    }
+                    if (lockBanner) lockBanner.classList.remove('hidden');
+                }
+            }
+        }
+
+        if (!foundSelection && selectionNotice) selectionNotice.classList.add('hidden');
+        if (!foundGrace && graceNotice) graceNotice.classList.add('hidden');
+        if (!foundLock && lockBanner) lockBanner.classList.add('hidden');
+
+    } catch(err) {
+        console.error('Error checking driver travel notices:', err);
+    }
+}
+
 async function loadDriverAcceptedRides() {
+    await checkDriverTravelNotices();
     try {
         const {data:acceptances} = await travelSupabase
             .from('ride_driver_acceptances')
