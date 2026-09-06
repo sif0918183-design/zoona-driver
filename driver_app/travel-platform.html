@@ -1910,10 +1910,16 @@ async function driverArrivedAtPassenger(tripId) {
 }
 
 async function driverCompletedTrip(tripId) {
-    if (!confirm('هل تأكد وصولك للوجهة النهائية؟ سيتم خصم عمولة 5% من رصيدك.')) return;
+    const isHeld = activeTripData?.commission_status === 'held';
+    const confirmMsg = isHeld
+        ? 'هل تؤكد الوصول للوجهة النهائية وإنهاء الرحلة؟'
+        : 'هل تأكد وصولك للوجهة النهائية؟ سيتم خصم عمولة 5% من رصيدك.';
+
+    if (!confirm(confirmMsg)) return;
 
     try {
-        const price = activeTripData.final_price || 0;
+        const price = activeTripData?.final_price || 0;
+        const rideReqId = activeTripData?.ride_request_id;
         const token = localStorage.getItem('session_token');
         const response = await fetch('/api/travel-platform', {
             method: 'POST',
@@ -1924,6 +1930,7 @@ async function driverCompletedTrip(tripId) {
             body: JSON.stringify({
                 action: 'complete_trip',
                 tripId,
+                rideId: rideReqId,
                 driverId: currentUser.id,
                 finalPrice: price
             })
@@ -1937,7 +1944,8 @@ async function driverCompletedTrip(tripId) {
         localStorage.removeItem('tarhal_active_trip_id');
         closeActiveTripModal();
 
-        showNotification(`تم اكتمال الرحلة! تم خصم عمولة ${resData.commission.toLocaleString()} ج`, 'success');
+        const commText = resData.commission && resData.commission > 0 ? `تم خصم عمولة ${resData.commission.toLocaleString()} ج` : 'تم تأكيد اكتمال الرحلة';
+        showNotification(`تم إكمال الرحلة بنجاح! ${commText}`, 'success');
         updateDriverBalanceDisplay();
         await loadDriverRides();
 

@@ -987,70 +987,100 @@ export default async function handler(req, res) {
 
         // --- 9. COMPLETE TRIP ---
         if (action === 'complete_trip') {
-            const { tripId, driverId, finalPrice } = req.body;
+            const { tripId, rideId, driverId, finalPrice } = req.body;
 
-            if (!tripId || !driverId) {
-                return res.status(400).json({ success: false, error: 'tripId and driverId are required' });
+            if (!tripId && !rideId) {
+                return res.status(400).json({ success: false, error: 'tripId or rideId is required' });
             }
 
-            const { data: trip, error: tErr } = await supabase
-                .from('travel_trips')
-                .select('*')
-                .eq('id', tripId)
-                .single();
+            let trip = null;
+            if (tripId) {
+                const { data: tData } = await supabase
+                    .from('travel_trips')
+                    .select('*')
+                    .eq('id', tripId)
+                    .maybeSingle();
+                trip = tData;
+            }
 
-            if (tErr || !trip) {
+            const targetRideId = rideId || trip?.ride_request_id;
+            if (!trip && targetRideId) {
+                const { data: tData } = await supabase
+                    .from('travel_trips')
+                    .select('*')
+                    .eq('ride_request_id', targetRideId)
+                    .maybeSingle();
+                trip = tData;
+            }
+
+            let rideReq = null;
+            if (targetRideId) {
+                const { data: rData } = await supabase
+                    .from('ride_requests')
+                    .select('*')
+                    .eq('id', targetRideId)
+                    .maybeSingle();
+                rideReq = rData;
+            }
+
+            if (!trip && !rideReq) {
                 return res.status(400).json({ success: false, error: 'الرحلة غير موجودة' });
             }
 
-            if (trip.status === 'completed') {
+            const activeDriverId = driverId || trip?.driver_id || rideReq?.driver_id;
+
+            if (trip?.status === 'completed' || rideReq?.status === 'completed') {
                 return res.status(200).json({ success: true, message: 'الرحلة مكتملة بالفعل', commission: 0 });
             }
 
-            const price = finalPrice || trip.final_price || 0;
+            const price = finalPrice || trip?.final_price || rideReq?.estimated_price || 0;
             const commission = Math.round(price * settings.travel_commission_rate / 100);
 
+            const currentCommStatus = trip?.commission_status || rideReq?.commission_status;
+
             // Deduct commission ONLY if it was not already held/deducted during the 10-hour window
-            if (trip.commission_status !== 'held') {
+            if (currentCommStatus !== 'held' && activeDriverId) {
                 const { data: driver } = await supabase
                     .from('drivers')
                     .select('balance')
-                    .eq('id', driverId)
+                    .eq('id', activeDriverId)
                     .single();
 
                 const currentBal = driver?.balance || 0;
                 const newBal = currentBal - commission;
 
-                await supabase.from('drivers').update({ balance: newBal }).eq('id', driverId);
+                await supabase.from('drivers').update({ balance: newBal }).eq('id', activeDriverId);
                 await supabase.from('balance_transactions').insert([{
-                    driver_id: driverId,
+                    driver_id: activeDriverId,
                     amount: -commission,
                     type: 'commission',
-                    description: `خصم عمولة منصة السفر بعد إكمال الرحلة رقم ${tripId}`
+                    description: `خصم عمولة منصة السفر بعد إكمال الرحلة رقم ${targetRideId || tripId}`
                 }]);
             }
 
-            await supabase
-                .from('travel_trips')
-                .update({
-                    status: 'completed',
-                    commission_status: 'held',
-                    completed_at: serverTime.toISOString(),
-                    updated_at: serverTime.toISOString()
-                })
-                .eq('id', tripId);
+            if (trip) {
+                await supabase
+                    .from('travel_trips')
+                    .update({
+                        status: 'completed',
+                        commission_status: 'held',
+                        completed_at: serverTime.toISOString(),
+                        updated_at: serverTime.toISOString()
+                    })
+                    .eq('id', trip.id);
+            }
 
-            if (trip.ride_request_id) {
+            if (targetRideId) {
                 await supabase
                     .from('ride_requests')
                     .update({
                         status: 'completed',
                         commission_status: 'held'
                     })
-                    .eq('id', trip.ride_request_id);
+                    .eq('id', targetRideId);
             }
 
-            return res.status(200).json({ success: true, commission });
+            return res.status(200).json({ success: true, commission: currentCommStatus === 'held' ? 0 : commission });
         }
 
         // --- 10. GET TRIP PASSENGER DETAILS (RESTRICTED CONTACT REVEAL) ---
