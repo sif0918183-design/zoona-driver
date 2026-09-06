@@ -1171,6 +1171,78 @@ let rideStatusSubscription = null;
 let passengerRefreshInterval = null;
 let driverRefreshInterval = null;
 let currentTab = '';
+let activeCountdownInterval = null;
+
+function isTripInFinalActivePhase(trip) {
+    if (!trip) return false;
+    if (trip.status === 'in_progress') return true;
+    if (trip.status === 'completed' || trip.status === 'cancelled') return false;
+
+    if (trip.status === 'driver_selected' && (trip.commission_status === 'held' || trip.contact_revealed === true)) {
+        if (trip.departure_time) {
+            const dep = new Date(trip.departure_time).getTime();
+            const now = Date.now();
+            const diffHours = (dep - now) / (1000 * 60 * 60);
+            return diffHours <= 10.5; // Final 10-hour window margin
+        }
+        return true;
+    }
+    return false;
+}
+
+function startTripCountdownTimer(departureTimeISO) {
+    if (activeCountdownInterval) {
+        clearInterval(activeCountdownInterval);
+        activeCountdownInterval = null;
+    }
+
+    const timerEl = document.getElementById('atp-countdown-timer');
+    const boxEl = document.getElementById('atp-countdown-box');
+    if (!timerEl) return;
+
+    if (!departureTimeISO) {
+        if (boxEl) boxEl.style.display = 'none';
+        return;
+    }
+
+    const depDate = new Date(departureTimeISO);
+    if (isNaN(depDate.getTime())) {
+        if (boxEl) boxEl.style.display = 'none';
+        return;
+    }
+
+    if (boxEl) boxEl.style.display = 'block';
+
+    const updateCountdown = () => {
+        const now = new Date();
+        const diffMs = depDate.getTime() - now.getTime();
+
+        if (diffMs <= 0) {
+            timerEl.textContent = '00 : 00 : 00 : 00';
+            if (activeCountdownInterval) {
+                clearInterval(activeCountdownInterval);
+                activeCountdownInterval = null;
+            }
+            return;
+        }
+
+        const totalSecs = Math.floor(diffMs / 1000);
+        const days = Math.floor(totalSecs / (24 * 3600));
+        const hours = Math.floor((totalSecs % (24 * 3600)) / 3600);
+        const mins = Math.floor((totalSecs % 3600) / 60);
+        const secs = totalSecs % 60;
+
+        const pad = n => String(n).padStart(2, '0');
+        if (days > 0) {
+            timerEl.textContent = `${days} يوم  ${pad(hours)} : ${pad(mins)} : ${pad(secs)}`;
+        } else {
+            timerEl.textContent = `${pad(hours)} : ${pad(mins)} : ${pad(secs)}`;
+        }
+    };
+
+    updateCountdown();
+    activeCountdownInterval = setInterval(updateCountdown, 1000);
+}
 
 const MAX_DRIVERS_PER_RIDE = 10;
 const COMMISSION_RATE = 5;
@@ -1384,14 +1456,12 @@ function updateUserInterface() {
 // ============================================
 async function checkForActiveTripOnLoad() {
     try {
-        // Check localStorage first
         const savedTripId = localStorage.getItem('tarhal_active_trip_id');
         if (!savedTripId) {
-            // Also check DB for any active trip
             await fetchAndShowActiveTripFromDB();
             return;
         }
-        // Verify the trip is still active
+
         const {data:trip, error} = await travelSupabase
             .from('travel_trips')
             .select('*')
@@ -1404,11 +1474,11 @@ async function checkForActiveTripOnLoad() {
             return;
         }
 
-        const activeStatuses = ['driver_selected', 'in_progress'];
-        if (activeStatuses.includes(trip.status)) {
+        if (isTripInFinalActivePhase(trip)) {
             await showActiveTripModal(trip);
         } else {
             localStorage.removeItem('tarhal_active_trip_id');
+            closeActiveTripModal();
         }
     } catch(err) {
         console.error('Error checking active trip on load:', err);
@@ -1422,9 +1492,11 @@ async function fetchAndShowActiveTripFromDB() {
         else query = query.eq('driver_id', currentUser.id);
 
         const {data:trips} = await query.order('created_at', {ascending:false}).limit(1);
-        if (trips && trips.length > 0) {
+        if (trips && trips.length > 0 && isTripInFinalActivePhase(trips[0])) {
             localStorage.setItem('tarhal_active_trip_id', trips[0].id);
             await showActiveTripModal(trips[0]);
+        } else {
+            closeActiveTripModal();
         }
     } catch(err) {
         console.error('Error fetching active trip from DB:', err);
@@ -1580,6 +1652,9 @@ async function showActiveTripModal(trip) {
 
     // Progress bar
     updateProgressBar(trip.status);
+
+    // Start server-time countdown timer
+    startTripCountdownTimer(trip.departure_time);
 
     // Show the modal
     document.getElementById('active-trip-modal').classList.remove('hidden');
@@ -1828,6 +1903,10 @@ async function driverCancelsTrip(tripId, reason) {
 function closeActiveTripModal() {
     document.getElementById('active-trip-modal').classList.add('hidden');
     activeTripData = null;
+    if (activeCountdownInterval) {
+        clearInterval(activeCountdownInterval);
+        activeCountdownInterval = null;
+    }
     if (activeTripSubscription) {
         activeTripSubscription.unsubscribe();
         activeTripSubscription = null;
@@ -2233,7 +2312,8 @@ document.getElementById('ride-request-form')?.addEventListener('submit', async f
 
     const travelDay = document.getElementById('travel-day').value;
     const travelMonth = document.getElementById('travel-month').value;
-    const travelYear = document.getElementById('travel-year').value || '2026';
+    const travelYearEl = document.getElementById('travel-year');
+    const travelYear = travelYearEl ? travelYearEl.value : '2026';
     const travelHour = document.getElementById('travel-hour').value;
     const travelMinute = document.getElementById('travel-minute').value;
     const travelPeriodEl = document.querySelector('input[name="travel-period"]:checked');
@@ -2434,11 +2514,20 @@ function displayPassengerRides() {
 
         let activeActions = '';
         if (isActive) {
-            activeActions = `
-                <button class="btn btn-primary btn-block" style="margin-top:0.75rem;" onclick="reopenActiveTripModal()">
-                    <i class="ph-light ph-car"></i> فتح نافذة الرحلة الجارية
-                </button>
-            `;
+            if (isTripInFinalActivePhase(ride)) {
+                activeActions = `
+                    <button class="btn btn-primary btn-block" style="margin-top:0.75rem;" onclick="reopenActiveTripModal()">
+                        <i class="ph-light ph-car"></i> فتح نافذة الرحلة الجارية
+                    </button>
+                `;
+            } else {
+                activeActions = `
+                    <div style="margin-top:0.75rem; background:#ecfdf5; border:1px solid #10b981; color:#065f46; padding:0.75rem; border-radius:var(--radius); font-size:0.85rem; font-weight:700; text-align:center;">
+                        <i class="ph-bold ph-check-circle" style="vertical-align:middle; font-size:1.1rem; color:#059669;"></i>
+                        تم تثبيت اختيار السائق — ستفتح نافذة الرحلة وتظهر أرقام التواصل قبل 10 ساعات من موعد انطلاق الرحلة
+                    </div>
+                `;
+            }
         }
 
         const el = document.createElement('div');
@@ -2618,15 +2707,8 @@ async function passengerSelectsDriver(rideId, driverId) {
         });
 
         closeDriverOffers();
-        showNotification(`تم اختيار السائق ${driverInfo.full_name} بنجاح! تواصلا بأمان.`, 'success');
+        showNotification(`تم تثبيت اختيار السائق ${driverInfo.full_name} بنجاح! ستظهر لك نافذة الرحلة وبيانات التواصل قبل 10 ساعات من موعد الرحلة.`, 'success');
 
-        // Show the permanent active trip modal
-        const tripToShow = newTrip || {
-            id: 'temp', ride_request_id: rideId, passenger_id: currentUser.id, driver_id: driverId,
-            from_city: rideReq.from_city, to_city: rideReq.to_city, vehicle_category: rideReq.vehicle_category,
-            final_price: rideReq.estimated_price, status: 'driver_selected'
-        };
-        await showActiveTripModal(tripToShow);
         await loadPassengerRides();
 
     } catch(err) {
