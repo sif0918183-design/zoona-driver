@@ -980,6 +980,9 @@
                 <span id="atp-to"></span>
             </div>
             <div style="font-size:1rem;color:var(--gray-500);margin-top:0.25rem;" id="atp-category"></div>
+            <div style="font-size:0.95rem;font-weight:700;color:var(--Tracka-primary);margin-top:0.5rem;padding-top:0.5rem;border-top:1px dashed var(--gray-300);" id="atp-departure-datetime">
+                <i class="ph-bold ph-calendar-blank"></i> <span id="atp-departure-text">جاري التحميل...</span>
+            </div>
         </div>
 
         <!-- Trip Info Grid -->
@@ -1579,6 +1582,28 @@ async function showActiveTripModal(trip) {
     document.getElementById('atp-category').textContent = trip.vehicle_category || '';
     document.getElementById('atp-price').textContent = `${Math.floor(trip.final_price||0).toLocaleString('en-SA')} ج`;
     document.getElementById('atp-status').textContent = statusLabels[trip.status] || trip.status;
+
+    // Departure Date & Time Display
+    let depDateObj = null;
+    if (trip.departure_time) depDateObj = new Date(trip.departure_time);
+    else if (rideReq?.departure_time) depDateObj = new Date(rideReq.departure_time);
+    else if (rideReq?.notes) {
+        const parsedN = parseRideNotes(rideReq.notes);
+        if (parsedN?.day && parsedN?.month) {
+            depDateObj = new Date(`${parsedN.year||'2026'}-${String(parsedN.month).padStart(2,'0')}-${String(parsedN.day).padStart(2,'0')}T${String(parsedN.hour||'00').padStart(2,'0')}:${String(parsedN.minute||'00').padStart(2,'0')}:00`);
+        }
+    }
+
+    const depTextEl = document.getElementById('atp-departure-text');
+    if (depTextEl) {
+        if (depDateObj && !isNaN(depDateObj.getTime())) {
+            const dateStr = depDateObj.toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const timeStr = depDateObj.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+            depTextEl.textContent = `موعد الانطلاق: ${dateStr} - الساعة ${timeStr}`;
+        } else {
+            depTextEl.textContent = `موعد الانطلاق: حسب الموعد المتفق عليه مع الراكب`;
+        }
+    }
 
     // Contact info based on user type
     const phonesContainer = document.getElementById('atp-contact-phones-list');

@@ -411,8 +411,24 @@ export default async function handler(req, res) {
             }
 
             // Idempotency / State Guard: Check if a driver is already selected
-            if (ride.status === 'driver_selected' && ride.driver_id && ride.driver_id !== driverId) {
-                return res.status(400).json({ success: false, error: 'تم اختيار سائق آخر لهذه الرحلة بالفعل.' });
+            if (ride.status === 'driver_selected' && ride.driver_id) {
+                if (ride.driver_id !== driverId) {
+                    return res.status(400).json({ success: false, error: 'تم اختيار سائق آخر لهذه الرحلة بالفعل.' });
+                }
+                // Already selected the same driver -> return existing trip
+                const { data: existingTrip } = await supabase
+                    .from('travel_trips')
+                    .select('*')
+                    .eq('ride_request_id', rideId)
+                    .maybeSingle();
+
+                return res.status(200).json({
+                    success: true,
+                    trip: existingTrip,
+                    commissionStatus: ride.commission_status || 'pending',
+                    graceUntil: ride.commission_grace_until || null,
+                    contactsRevealed: ride.contact_revealed || false
+                });
             }
 
             // 1. Update ride_requests
@@ -969,7 +985,75 @@ export default async function handler(req, res) {
             return res.status(200).json({ success: true, penalty });
         }
 
-        // --- 9. GET TRIP PASSENGER DETAILS (RESTRICTED CONTACT REVEAL) ---
+        // --- 9. COMPLETE TRIP ---
+        if (action === 'complete_trip') {
+            const { tripId, driverId, finalPrice } = req.body;
+
+            if (!tripId || !driverId) {
+                return res.status(400).json({ success: false, error: 'tripId and driverId are required' });
+            }
+
+            const { data: trip, error: tErr } = await supabase
+                .from('travel_trips')
+                .select('*')
+                .eq('id', tripId)
+                .single();
+
+            if (tErr || !trip) {
+                return res.status(400).json({ success: false, error: 'الرحلة غير موجودة' });
+            }
+
+            if (trip.status === 'completed') {
+                return res.status(200).json({ success: true, message: 'الرحلة مكتملة بالفعل', commission: 0 });
+            }
+
+            const price = finalPrice || trip.final_price || 0;
+            const commission = Math.round(price * settings.travel_commission_rate / 100);
+
+            // Deduct commission ONLY if it was not already held/deducted during the 10-hour window
+            if (trip.commission_status !== 'held') {
+                const { data: driver } = await supabase
+                    .from('drivers')
+                    .select('balance')
+                    .eq('id', driverId)
+                    .single();
+
+                const currentBal = driver?.balance || 0;
+                const newBal = currentBal - commission;
+
+                await supabase.from('drivers').update({ balance: newBal }).eq('id', driverId);
+                await supabase.from('balance_transactions').insert([{
+                    driver_id: driverId,
+                    amount: -commission,
+                    type: 'commission',
+                    description: `خصم عمولة منصة السفر بعد إكمال الرحلة رقم ${tripId}`
+                }]);
+            }
+
+            await supabase
+                .from('travel_trips')
+                .update({
+                    status: 'completed',
+                    commission_status: 'held',
+                    completed_at: serverTime.toISOString(),
+                    updated_at: serverTime.toISOString()
+                })
+                .eq('id', tripId);
+
+            if (trip.ride_request_id) {
+                await supabase
+                    .from('ride_requests')
+                    .update({
+                        status: 'completed',
+                        commission_status: 'held'
+                    })
+                    .eq('id', trip.ride_request_id);
+            }
+
+            return res.status(200).json({ success: true, commission });
+        }
+
+        // --- 10. GET TRIP PASSENGER DETAILS (RESTRICTED CONTACT REVEAL) ---
         if (action === 'get_trip_passenger_details') {
             const { tripId } = req.body;
 
