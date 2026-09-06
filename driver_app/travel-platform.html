@@ -3230,6 +3230,7 @@ function displayDriverAcceptedRides(acceptances, chatsWithPassengerMsgs = new Se
         const isFinal = acc.status === 'selected' || ride.status === 'driver_selected' || ride.status === 'confirmed' || ride.status === 'in_progress';
         const hasPassengerMsg = chatsWithPassengerMsgs.has(ride.id);
         const showChatButton = isFinal || hasPassengerMsg;
+        const canWithdraw = acc.status === 'accepted' && ride.status === 'pending';
 
         const el = document.createElement('div');
         el.className = 'ride-card';
@@ -3257,16 +3258,53 @@ function displayDriverAcceptedRides(acceptances, chatsWithPassengerMsgs = new Se
                     }
                 })()}
             </div>
-            ${showChatButton ? `
-                <div style="margin-top:0.75rem;">
-                    <button class="btn btn-outline btn-sm btn-block" onclick="event.stopPropagation(); openDriverChat('${ride.id}', '${escapeHtml(isFinal ? (ride.passenger_name || 'راكب تراكا') : 'راكب تراكا').replace(/'/g, "\\'")}', '${ride.customer_id || ''}', ${isFinal})">
+            <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
+                ${showChatButton ? `
+                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="event.stopPropagation(); openDriverChat('${ride.id}', '${escapeHtml(isFinal ? (ride.passenger_name || 'راكب تراكا') : 'راكب تراكا').replace(/'/g, "\\'")}', '${ride.customer_id || ''}', ${isFinal})">
                         <i class="ph-light ph-chat-centered-dots"></i> محادثة
                     </button>
-                </div>
-            ` : ''}
+                ` : ''}
+                ${canWithdraw ? `
+                    <button class="btn btn-outline-danger btn-sm" style="flex:1;" onclick="event.stopPropagation(); driverWithdrawAcceptance('${ride.id}')">
+                        <i class="ph-light ph-arrow-u-up-left"></i> سحب القبول المبدئي
+                    </button>
+                ` : ''}
+            </div>
         `;
         container.appendChild(el);
     });
+}
+
+async function driverWithdrawAcceptance(rideId) {
+    if (!confirm('هل أنت متأكد من سحب قبولك المبدئي لهذه الرحلة؟ يمكنك سحب القبول المبدئي مجاناً ودون أي غرامة طالما لم يتم اختيارك نهائياً.')) return;
+
+    try {
+        const token = localStorage.getItem('session_token');
+        const response = await fetch('/api/travel-platform', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': token ? `Bearer ${token}` : ''
+            },
+            body: JSON.stringify({
+                action: 'driver_withdraw',
+                rideId,
+                driverId: currentUser.id
+            })
+        });
+
+        const resData = await response.json();
+        if (!response.ok || !resData.success) {
+            throw new Error(resData.error || 'فشل سحب القبول المبدئي');
+        }
+
+        showNotification('تم سحب قبولك المبدئي بنجاح (بدون أي غرامة).', 'success');
+        await loadDriverAcceptedRides();
+        await loadAvailableRides();
+
+    } catch (err) {
+        showNotification('خطأ في سحب القبول: ' + err.message, 'error');
+    }
 }
 
 // ============================================
