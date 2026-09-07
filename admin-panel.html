@@ -1132,6 +1132,11 @@
                     <i class="ph-light ph-users-three"></i>
                     <span>الركاب</span>
                 </a>
+
+                <a class="nav-item" onclick="showSection('reliability')">
+                    <i class="ph-light ph-shield-check"></i>
+                    <span>موثوقية الركاب</span>
+                </a>
                 
                 <a class="nav-item" onclick="showSection('reports')">
                     <i class="ph-light ph-chart-bar"></i>
@@ -1215,6 +1220,83 @@
                                     <i class="ph-light ph-sign-in"></i> دخول إلى لوحة التحكم
                                 </button>
                             </form>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Rider Reliability Section -->
+                <section id="reliability-section" class="section">
+                    <!-- Manage Restriction Modal / Form -->
+                    <div class="tables-container" style="margin-bottom: 2rem;">
+                        <div class="table-header">
+                            <h3 class="table-title">
+                                <i class="ph-light ph-user-gear"></i>
+                                إدارة تقييدات وسلوك الراكب
+                            </h3>
+                        </div>
+                        <div style="padding: 1.5rem;">
+                            <form id="rider-restriction-form" onsubmit="handlePassengerRestrictionSubmit(event)">
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+                                    <div class="form-group">
+                                        <label class="form-label">اختر الراكب</label>
+                                        <select class="form-control form-select" id="reliability-customer-select" required>
+                                            <option value="">اختر الراكب</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">نوع التقييد</label>
+                                        <select class="form-control form-select" id="reliability-restriction-type" required>
+                                            <option value="none">بدون تقييد (نشط)</option>
+                                            <option value="restricted_3days">تقييد مؤقت (3 أيام)</option>
+                                            <option value="travel_banned">تعليق الرحلات السفرية بالكامل</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">السبب</label>
+                                        <input type="text" class="form-control" id="reliability-reason" placeholder="سبب الإجراء...">
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary" style="margin-top: 0.5rem;">
+                                    <i class="ph-light ph-floppy-disk"></i> حفظ التقييد
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Reliability Logs Table -->
+                    <div class="tables-container">
+                        <div class="table-header">
+                            <h3 class="table-title">
+                                <i class="ph-light ph-shield-check"></i>
+                                سجل موثوقية وإلغاءات الركاب
+                            </h3>
+                            <div class="table-actions">
+                                <button class="btn btn-outline btn-sm" onclick="loadRiderReliabilityLogs()">
+                                    <i class="ph-light ph-arrows-clockwise"></i> تحديث السجل
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="table-content">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>الراكب</th>
+                                        <th>الرحلة</th>
+                                        <th>مرحلة الإلغاء</th>
+                                        <th>مستوى التأثير</th>
+                                        <th>السائق المختار</th>
+                                        <th>الوقت المتبقي</th>
+                                        <th>خصم العمولة</th>
+                                        <th>المصدر</th>
+                                        <th>السبب</th>
+                                        <th>التاريخ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reliability-logs-table">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </section>
@@ -1802,6 +1884,47 @@
                 </section>
                 <section id="settings-section" class="section">
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem;">
+                        <!-- Travel Platform Settings -->
+                        <div class="tables-container">
+                            <div class="table-header">
+                                <h3 class="table-title">
+                                    <i class="ph-light ph-sliders-horizontal"></i>
+                                    ضوابط وإعدادات الرحلات السفرية
+                                </h3>
+                            </div>
+                            <div style="padding: 1.5rem;">
+                                <form id="travel-settings-form" onsubmit="handleTravelSettingsSubmit(event)">
+                                    <div class="form-group">
+                                        <label class="form-label">فترة إمكانية الإنشاء قبل الموعد (أيام)</label>
+                                        <input type="number" class="form-control" name="advance_booking_days" id="ts-advance-days" min="1" max="30" value="7">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">الحد الأقصى للقبول المبدئي للسائقين</label>
+                                        <input type="number" class="form-control" name="max_accepted_drivers" id="ts-max-drivers" min="1" max="20" value="10">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">نسبة العمولة للرحلات السفرية (%)</label>
+                                        <input type="number" class="form-control" name="commission_rate" id="ts-comm-rate" min="0" max="50" step="0.5" value="5">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">مهلة تغذية الرصيد عند نقص العمولة (دقيقة)</label>
+                                        <input type="number" class="form-control" name="grace_period_minutes" id="ts-grace-mins" min="5" max="120" value="30">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">حد الإلغاءات عالية التأثير للتطبيق التلقائي</label>
+                                        <input type="number" class="form-control" name="cancel_threshold" id="ts-cancel-thresh" min="1" max="10" value="4">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">مدة تقييد الراكب التلقائية (أيام)</label>
+                                        <input type="number" class="form-control" name="restriction_days" id="ts-restrict-days" min="1" max="30" value="3">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="ph-light ph-floppy-disk"></i> حفظ ضوابط السفر
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
                         <!-- Platform Settings -->
                         <div class="tables-container">
                             <div class="table-header">
@@ -2227,6 +2350,7 @@
                 'prices': 'أسعار الرحلات',
                 'drivers': 'السائقون',
                 'passengers': 'الركاب',
+                'reliability': 'موثوقية الركاب',
                 'reports': 'التقارير',
                 'balance': 'الرصيد والعمولات',
                 'settings': 'الإعدادات'
@@ -2238,6 +2362,7 @@
                 'prices': 'ph-tag',
                 'drivers': 'ph-steering-wheel',
                 'passengers': 'ph-users-three',
+                'reliability': 'ph-shield-check',
                 'reports': 'ph-chart-bar',
                 'balance': 'ph-wallet',
                 'settings': 'ph-gear'
@@ -2261,6 +2386,10 @@
                     break;
                 case 'passengers':
                     displayPassengersTable();
+                    break;
+                case 'reliability':
+                    loadRiderReliabilityLogs();
+                    populateReliabilityCustomerSelect();
                     break;
                 case 'reports':
                     loadReports();
@@ -4003,8 +4132,165 @@
         // ============================================
         // SETTINGS MANAGEMENT
         // ============================================
+        // ============================================
+        // RIDER RELIABILITY FUNCTIONS
+        // ============================================
+        async function loadRiderReliabilityLogs() {
+            try {
+                const res = await adminApiCall('list_rider_reliability_logs');
+                if (res.success && res.logs) {
+                    displayRiderReliabilityLogs(res.logs);
+                }
+            } catch (err) {
+                console.error('Error loading rider reliability logs:', err);
+                showNotification('خطأ في تحميل سجل الموثوقية: ' + err.message, 'error');
+            }
+        }
+
+        function displayRiderReliabilityLogs(logs) {
+            const container = document.getElementById('reliability-logs-table');
+            if (!container) return;
+
+            if (!logs || logs.length === 0) {
+                container.innerHTML = `
+                    <tr>
+                        <td colspan="10" style="text-align:center; padding:2rem; color:var(--gray-500);">
+                            لا توجد سجلات إلغاء أو قيود موثوقية مسجلة حالياً
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            container.innerHTML = '';
+            logs.forEach(log => {
+                const impactBadge = log.impact_level === 'high'
+                    ? '<span class="badge badge-danger">عالي التأثير (آخر 10س)</span>'
+                    : (log.impact_level === 'medium' ? '<span class="badge badge-warning">متوسط التأثير</span>' : '<span class="badge badge-info">عادي</span>');
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><b>${log.customers?.full_name || 'راكب ' + (log.customer_id ? log.customer_id.substring(0,6) : '')}</b></td>
+                    <td>TR-${log.ride_id ? log.ride_id.substring(0,8) : '—'}</td>
+                    <td>${log.cancel_stage || 'إلغاء'}</td>
+                    <td>${impactBadge}</td>
+                    <td>${log.had_selected_driver ? '<span class="badge badge-warning">نعم</span>' : 'لا'}</td>
+                    <td>${log.time_before_departure_minutes ? Math.round(log.time_before_departure_minutes / 60) + ' ساعة' : '—'}</td>
+                    <td>${log.commission_reserved ? '<span class="badge badge-danger">نعم (محجوزة)</span>' : 'لا'}</td>
+                    <td><span class="badge badge-primary">${log.cancelled_by || 'rider'}</span></td>
+                    <td>${log.reason || '—'}</td>
+                    <td>${formatDateShort(log.created_at)}</td>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        async function populateReliabilityCustomerSelect() {
+            const select = document.getElementById('reliability-customer-select');
+            if (!select) return;
+            select.innerHTML = '<option value="">اختر الراكب</option>';
+            allPassengers.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                let restrictionText = '';
+                if (p.travel_restriction_type && p.travel_restriction_type !== 'none') {
+                    restrictionText = ` [مقيّد: ${p.travel_restriction_type}]`;
+                }
+                opt.textContent = `${p.full_name} (${p.phone})${restrictionText}`;
+                select.appendChild(opt);
+            });
+        }
+
+        async function handlePassengerRestrictionSubmit(event) {
+            event.preventDefault();
+            const passengerId = document.getElementById('reliability-customer-select').value;
+            const restrictionType = document.getElementById('reliability-restriction-type').value;
+            const reason = document.getElementById('reliability-reason').value;
+
+            if (!passengerId) {
+                showNotification('الرجاء اختيار راكب', 'warning');
+                return;
+            }
+
+            try {
+                let restrictionUntil = null;
+                if (restrictionType === 'restricted_3days') {
+                    const untilDate = new Date();
+                    untilDate.setDate(untilDate.getDate() + 3);
+                    restrictionUntil = untilDate.toISOString();
+                } else if (restrictionType === 'travel_banned') {
+                    const untilDate = new Date();
+                    untilDate.setFullYear(untilDate.getFullYear() + 10);
+                    restrictionUntil = untilDate.toISOString();
+                }
+
+                await adminApiCall('update_passenger_restriction', {
+                    passengerId,
+                    restrictionType,
+                    restrictionUntil,
+                    reason
+                });
+
+                showNotification('تم تحديث حالة/تقييد الراكب بنجاح', 'success');
+                await loadAllData();
+                populateReliabilityCustomerSelect();
+            } catch (err) {
+                console.error('Error updating restriction:', err);
+                showNotification('خطأ في التحديث: ' + err.message, 'error');
+            }
+        }
+
+        // ============================================
+        // TRAVEL SETTINGS FUNCTIONS
+        // ============================================
+        async function loadTravelSettings() {
+            try {
+                const res = await adminApiCall('get_travel_settings');
+                if (res.success && res.settings) {
+                    const s = res.settings;
+                    if (document.getElementById('ts-advance-days')) document.getElementById('ts-advance-days').value = s.max_advance_creation_days || 7;
+                    if (document.getElementById('ts-max-drivers')) document.getElementById('ts-max-drivers').value = s.max_drivers_accepting || 10;
+                    if (document.getElementById('ts-comm-rate')) document.getElementById('ts-comm-rate').value = s.travel_commission_rate || 5;
+                    if (document.getElementById('ts-grace-mins')) document.getElementById('ts-grace-mins').value = s.grace_period_minutes || 30;
+                    if (document.getElementById('ts-cancel-thresh')) document.getElementById('ts-cancel-thresh').value = s.high_impact_cancel_limit || 4;
+                    if (document.getElementById('ts-restrict-days')) document.getElementById('ts-restrict-days').value = s.restriction_duration_days || 3;
+                }
+            } catch (err) {
+                console.error('Error loading travel settings:', err);
+            }
+        }
+
+        async function handleTravelSettingsSubmit(event) {
+            event.preventDefault();
+            const advanceDays = document.getElementById('ts-advance-days').value;
+            const maxDrivers = document.getElementById('ts-max-drivers').value;
+            const commRate = document.getElementById('ts-comm-rate').value;
+            const graceMins = document.getElementById('ts-grace-mins').value;
+            const cancelThresh = document.getElementById('ts-cancel-thresh').value;
+            const restrictDays = document.getElementById('ts-restrict-days').value;
+
+            const settingsArray = [
+                { key: 'max_advance_creation_days', value: String(advanceDays) },
+                { key: 'max_drivers_accepting', value: String(maxDrivers) },
+                { key: 'travel_commission_rate', value: String(commRate) },
+                { key: 'grace_period_minutes', value: String(graceMins) },
+                { key: 'high_impact_cancel_limit', value: String(cancelThresh) },
+                { key: 'restriction_duration_days', value: String(restrictDays) }
+            ];
+
+            try {
+                await adminApiCall('save_settings', { settings: settingsArray });
+                showNotification('تم حفظ ضوابط وإعدادات الرحلات السفرية بنجاح', 'success');
+            } catch (err) {
+                console.error('Error saving travel settings:', err);
+                showNotification('خطأ في حفظ الضوابط: ' + err.message, 'error');
+            }
+        }
+
         async function loadSettings() {
             try {
+                await loadTravelSettings();
+
                 const { data, error } = await adminSupabase
                     .from('system_settings')
                     .select('*');

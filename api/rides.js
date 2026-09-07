@@ -148,6 +148,30 @@ export default async function handler(req, res) {
                 return res.status(403).json({ success: false, error: 'حساب السائق غير مفعل' });
             }
 
+            // Check 3-Hour Driver Travel Lockout
+            const serverTime = new Date();
+            const { data: driverTravelTrips } = await supabase
+                .from('travel_trips')
+                .select('from_city, to_city, departure_time, status')
+                .eq('driver_id', driverId)
+                .in('status', ['driver_selected', 'in_progress', 'commission_reserved', 'final_active']);
+
+            if (driverTravelTrips && driverTravelTrips.length > 0) {
+                for (const trip of driverTravelTrips) {
+                    if (trip.status === 'in_progress') {
+                        return res.status(403).json({ success: false, error: `عليك الاستعداد لرحلتك السفرية من (${trip.from_city || '—'}) إلى (${trip.to_city || '—'}). لا يمكنك استقبال رحلات داخلية أثناء وجود رحلة سفرية جارية.` });
+                    }
+                    if (trip.departure_time) {
+                        const depTime = new Date(trip.departure_time).getTime();
+                        const hoursUntilDep = (depTime - serverTime.getTime()) / (1000 * 60 * 60);
+
+                        if (hoursUntilDep <= 3 && hoursUntilDep >= -12) {
+                            return res.status(403).json({ success: false, error: `عليك الاستعداد لرحلتك السفرية من (${trip.from_city || '—'}) إلى (${trip.to_city || '—'}). يمنع استقبال أي طلب جديد خلال الـ 3 ساعات السابقة للرحلة.` });
+                        }
+                    }
+                }
+            }
+
             const { data, error } = await supabase.rpc('accept_immediate_ride', {
                 p_ride_id: rideId,
                 p_driver_id: driverId

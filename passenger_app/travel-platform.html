@@ -722,6 +722,12 @@
 
         <!-- Passenger Interface -->
         <div id="passenger-interface" class="hidden">
+            <!-- 24 Hours Pre-Trip Reminder Banner -->
+            <div id="passenger-24h-reminder" class="hidden" style="background:linear-gradient(135deg, #10b981, #059669); color:white; padding:0.85rem 1.25rem; border-radius:12px; margin-bottom:1.25rem; font-weight:700; display:flex; align-items:center; gap:0.75rem; box-shadow:0 4px 15px rgba(16,185,129,0.3);">
+                <i class="ph-bold ph-bell-ringing" style="font-size:1.5rem; flex-shrink:0;"></i>
+                <div id="passenger-24h-reminder-text" style="font-size:0.95rem; line-height:1.5;"></div>
+            </div>
+
             <div class="tabs-container">
                 <button class="tab active" onclick="showTab('new-ride',this)">طلب رحلة جديدة</button>
                 <button class="tab" onclick="showTab('my-rides',this)">رحلاتي</button>
@@ -960,6 +966,12 @@
             </div>
         </div>
 
+        <!-- Departure Countdown Timer -->
+        <div id="atp-countdown-box" style="text-align:center; background:#ecfdf5; border:1.5px solid #10b981; border-radius:12px; padding:0.75rem; margin-bottom:1rem; color:#065f46; font-weight:800;">
+            <div style="font-size:0.8rem; opacity:0.8; margin-bottom:0.25rem;">الوقت المتبقي حتى انطلاق الرحلة</div>
+            <div id="atp-countdown-timer" style="font-size:1.4rem; letter-spacing:1px; direction:ltr;">--:--:--</div>
+        </div>
+
         <!-- Route -->
         <div style="text-align:center;margin:1rem 0;padding:1rem;background:var(--gray-50);border-radius:var(--radius-lg);">
             <div style="font-size:1.5rem;font-weight:800;color:var(--primary);">
@@ -968,6 +980,9 @@
                 <span id="atp-to"></span>
             </div>
             <div style="font-size:1rem;color:var(--gray-500);margin-top:0.25rem;" id="atp-category"></div>
+            <div style="font-size:0.95rem;font-weight:700;color:var(--Tracka-primary);margin-top:0.5rem;padding-top:0.5rem;border-top:1px dashed var(--gray-300);" id="atp-departure-datetime">
+                <i class="ph-bold ph-calendar-blank"></i> <span id="atp-departure-text">جاري التحميل...</span>
+            </div>
         </div>
 
         <!-- Trip Info Grid -->
@@ -1159,6 +1174,78 @@ let rideStatusSubscription = null;
 let passengerRefreshInterval = null;
 let driverRefreshInterval = null;
 let currentTab = '';
+let activeCountdownInterval = null;
+
+function isTripInFinalActivePhase(trip) {
+    if (!trip) return false;
+    if (trip.status === 'in_progress') return true;
+    if (trip.status === 'completed' || trip.status === 'cancelled') return false;
+
+    if (trip.status === 'driver_selected' && (trip.commission_status === 'held' || trip.contact_revealed === true)) {
+        if (trip.departure_time) {
+            const dep = new Date(trip.departure_time).getTime();
+            const now = Date.now();
+            const diffHours = (dep - now) / (1000 * 60 * 60);
+            return diffHours <= 10.5; // Final 10-hour window margin
+        }
+        return true;
+    }
+    return false;
+}
+
+function startTripCountdownTimer(departureTimeISO) {
+    if (activeCountdownInterval) {
+        clearInterval(activeCountdownInterval);
+        activeCountdownInterval = null;
+    }
+
+    const timerEl = document.getElementById('atp-countdown-timer');
+    const boxEl = document.getElementById('atp-countdown-box');
+    if (!timerEl) return;
+
+    if (!departureTimeISO) {
+        if (boxEl) boxEl.style.display = 'none';
+        return;
+    }
+
+    const depDate = new Date(departureTimeISO);
+    if (isNaN(depDate.getTime())) {
+        if (boxEl) boxEl.style.display = 'none';
+        return;
+    }
+
+    if (boxEl) boxEl.style.display = 'block';
+
+    const updateCountdown = () => {
+        const now = new Date();
+        const diffMs = depDate.getTime() - now.getTime();
+
+        if (diffMs <= 0) {
+            timerEl.textContent = '00 : 00 : 00 : 00';
+            if (activeCountdownInterval) {
+                clearInterval(activeCountdownInterval);
+                activeCountdownInterval = null;
+            }
+            return;
+        }
+
+        const totalSecs = Math.floor(diffMs / 1000);
+        const days = Math.floor(totalSecs / (24 * 3600));
+        const hours = Math.floor((totalSecs % (24 * 3600)) / 3600);
+        const mins = Math.floor((totalSecs % 3600) / 60);
+        const secs = totalSecs % 60;
+
+        const pad = n => String(n).padStart(2, '0');
+        if (days > 0) {
+            timerEl.textContent = `${days} يوم  ${pad(hours)} : ${pad(mins)} : ${pad(secs)}`;
+        } else {
+            timerEl.textContent = `${pad(hours)} : ${pad(mins)} : ${pad(secs)}`;
+        }
+    };
+
+    updateCountdown();
+    activeCountdownInterval = setInterval(updateCountdown, 1000);
+}
 
 const MAX_DRIVERS_PER_RIDE = 10;
 const COMMISSION_RATE = 5;
@@ -1372,14 +1459,12 @@ function updateUserInterface() {
 // ============================================
 async function checkForActiveTripOnLoad() {
     try {
-        // Check localStorage first
         const savedTripId = localStorage.getItem('tarhal_active_trip_id');
         if (!savedTripId) {
-            // Also check DB for any active trip
             await fetchAndShowActiveTripFromDB();
             return;
         }
-        // Verify the trip is still active
+
         const {data:trip, error} = await travelSupabase
             .from('travel_trips')
             .select('*')
@@ -1392,11 +1477,11 @@ async function checkForActiveTripOnLoad() {
             return;
         }
 
-        const activeStatuses = ['driver_selected', 'in_progress'];
-        if (activeStatuses.includes(trip.status)) {
+        if (isTripInFinalActivePhase(trip)) {
             await showActiveTripModal(trip);
         } else {
             localStorage.removeItem('tarhal_active_trip_id');
+            closeActiveTripModal();
         }
     } catch(err) {
         console.error('Error checking active trip on load:', err);
@@ -1410,9 +1495,11 @@ async function fetchAndShowActiveTripFromDB() {
         else query = query.eq('driver_id', currentUser.id);
 
         const {data:trips} = await query.order('created_at', {ascending:false}).limit(1);
-        if (trips && trips.length > 0) {
+        if (trips && trips.length > 0 && isTripInFinalActivePhase(trips[0])) {
             localStorage.setItem('tarhal_active_trip_id', trips[0].id);
             await showActiveTripModal(trips[0]);
+        } else {
+            closeActiveTripModal();
         }
     } catch(err) {
         console.error('Error fetching active trip from DB:', err);
@@ -1432,6 +1519,11 @@ function toggleCancelDetails(show) {
 }
 
 async function showActiveTripModal(trip) {
+    if (!trip || trip.status === 'completed' || trip.status === 'cancelled') {
+        localStorage.removeItem('tarhal_active_trip_id');
+        closeActiveTripModal();
+        return;
+    }
     activeTripData = trip;
     localStorage.setItem('tarhal_active_trip_id', trip.id);
 
@@ -1495,6 +1587,28 @@ async function showActiveTripModal(trip) {
     document.getElementById('atp-category').textContent = trip.vehicle_category || '';
     document.getElementById('atp-price').textContent = `${Math.floor(trip.final_price||0).toLocaleString('en-SA')} ج`;
     document.getElementById('atp-status').textContent = statusLabels[trip.status] || trip.status;
+
+    // Departure Date & Time Display
+    let depDateObj = null;
+    if (trip.departure_time) depDateObj = new Date(trip.departure_time);
+    else if (rideReq?.departure_time) depDateObj = new Date(rideReq.departure_time);
+    else if (rideReq?.notes) {
+        const parsedN = parseRideNotes(rideReq.notes);
+        if (parsedN?.day && parsedN?.month) {
+            depDateObj = new Date(`${parsedN.year||'2026'}-${String(parsedN.month).padStart(2,'0')}-${String(parsedN.day).padStart(2,'0')}T${String(parsedN.hour||'00').padStart(2,'0')}:${String(parsedN.minute||'00').padStart(2,'0')}:00`);
+        }
+    }
+
+    const depTextEl = document.getElementById('atp-departure-text');
+    if (depTextEl) {
+        if (depDateObj && !isNaN(depDateObj.getTime())) {
+            const dateStr = depDateObj.toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const timeStr = depDateObj.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+            depTextEl.textContent = `موعد الانطلاق: ${dateStr} - الساعة ${timeStr}`;
+        } else {
+            depTextEl.textContent = `موعد الانطلاق: حسب الموعد المتفق عليه مع الراكب`;
+        }
+    }
 
     // Contact info based on user type
     const phonesContainer = document.getElementById('atp-contact-phones-list');
@@ -1568,6 +1682,9 @@ async function showActiveTripModal(trip) {
 
     // Progress bar
     updateProgressBar(trip.status);
+
+    // Start server-time countdown timer
+    startTripCountdownTimer(trip.departure_time);
 
     // Show the modal
     document.getElementById('active-trip-modal').classList.remove('hidden');
@@ -1816,6 +1933,10 @@ async function driverCancelsTrip(tripId, reason) {
 function closeActiveTripModal() {
     document.getElementById('active-trip-modal').classList.add('hidden');
     activeTripData = null;
+    if (activeCountdownInterval) {
+        clearInterval(activeCountdownInterval);
+        activeCountdownInterval = null;
+    }
     if (activeTripSubscription) {
         activeTripSubscription.unsubscribe();
         activeTripSubscription = null;
@@ -2221,6 +2342,8 @@ document.getElementById('ride-request-form')?.addEventListener('submit', async f
 
     const travelDay = document.getElementById('travel-day').value;
     const travelMonth = document.getElementById('travel-month').value;
+    const travelYearEl = document.getElementById('travel-year');
+    const travelYear = travelYearEl ? travelYearEl.value : '2026';
     const travelHour = document.getElementById('travel-hour').value;
     const travelMinute = document.getElementById('travel-minute').value;
     const travelPeriodEl = document.querySelector('input[name="travel-period"]:checked');
@@ -2241,6 +2364,14 @@ document.getElementById('ride-request-form')?.addEventListener('submit', async f
         return;
     }
 
+    // Construct departure_time ISO string
+    let hour24 = parseInt(travelHour);
+    if (travelPeriod === 'مساءً' && hour24 < 12) hour24 += 12;
+    if (travelPeriod === 'صباحاً' && hour24 === 12) hour24 = 0;
+
+    const pad = n => String(n).padStart(2, '0');
+    const departureISO = `${travelYear}-${pad(travelMonth)}-${pad(travelDay)}T${pad(hour24)}:${pad(travelMinute)}:00+02:00`;
+
     const finalPrice = Math.round((route.base_price_eco || 30000) * cat.price_multiplier);
     const btn = document.getElementById('submit-ride-btn');
     btn.disabled = true;
@@ -2250,7 +2381,7 @@ document.getElementById('ride-request-form')?.addEventListener('submit', async f
         const notesObj = {
             day: travelDay,
             month: travelMonth,
-            year: '2026',
+            year: travelYear,
             hour: travelHour,
             minute: travelMinute,
             period: travelPeriod,
@@ -2258,24 +2389,32 @@ document.getElementById('ride-request-form')?.addEventListener('submit', async f
             luggage: travelLuggage,
             additional_notes: notes
         };
-        const notesJson = JSON.stringify(notesObj);
 
-        const rideData = {
-            customer_id: currentUser.id,
-            passenger_name: currentUser.full_name,
-            passenger_phone: currentUser.phone,
-            from_city: fromCity,
-            to_city: toCity,
-            vehicle_category: cat.name_ar || cat.name,
-            estimated_price: finalPrice,
-            notes: notesJson,
-            status: 'pending',
-            created_at: new Date().toISOString()
-        };
+        const token = localStorage.getItem('session_token');
+        const res = await fetch('/api/travel-platform', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': token ? `Bearer ${token}` : ''
+            },
+            body: JSON.stringify({
+                action: 'create_ride_request',
+                passengerId: currentUser.id,
+                fromCity,
+                toCity,
+                vehicleCategory: cat.name_ar || cat.name,
+                estimatedPrice: finalPrice,
+                notes: notesObj,
+                departureTime: departureISO
+            })
+        });
 
-        const {data, error} = await travelSupabase.from('ride_requests').insert([rideData]).select().single();
-        if (error) throw error;
+        const resData = await res.json();
+        if (!res.ok || !resData.success) {
+            throw new Error(resData.error || 'فشل إنشاء طلب الرحلة');
+        }
 
+        const data = resData.ride;
         if (data?.id) await syncPassengerIdFromWhatsApp(data.id, currentUser.phone);
 
         sendTravelPush({
@@ -2295,7 +2434,7 @@ document.getElementById('ride-request-form')?.addEventListener('submit', async f
         if (myRidesTab) myRidesTab.click();
     } catch(err) {
         console.error('Error creating ride:', err);
-        showNotification('خطأ في نشر طلب الرحلة: ' + err.message, 'error');
+        showNotification(err.message, 'error');
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="ph-light ph-paper-plane-tilt"></i> نشر طلب الرحلة';
@@ -2321,7 +2460,47 @@ async function syncPassengerIdFromWhatsApp(rideId, whatsappNumber) {
 // ============================================
 // PASSENGER RIDES
 // ============================================
+async function check24hTravelReminder() {
+    if (!currentUser || !currentUser.id) return;
+    try {
+        const { data: trips } = await travelSupabase
+            .from('travel_trips')
+            .select('from_city, to_city, departure_time, status')
+            .eq('passenger_id', currentUser.id)
+            .in('status', ['driver_selected', 'in_progress', 'commission_reserved', 'final_active'])
+            .order('departure_time', { ascending: true })
+            .limit(1);
+
+        const banner = document.getElementById('passenger-24h-reminder');
+        const textEl = document.getElementById('passenger-24h-reminder-text');
+
+        if (trips && trips.length > 0) {
+            const trip = trips[0];
+            if (trip.departure_time) {
+                const depDate = new Date(trip.departure_time);
+                const diffHours = (depDate.getTime() - Date.now()) / (1000 * 60 * 60);
+
+                if (diffHours > 0 && diffHours <= 24) {
+                    const dateStr = depDate.toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' });
+                    const timeStr = depDate.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+                    const text = `لديك رحلة سفرية يوم (${dateStr}) الساعة (${timeStr}) من (${trip.from_city || '—'}) إلى (${trip.to_city || '—'})، يرجى الاستعداد.`;
+
+                    if (banner && textEl) {
+                        textEl.textContent = text;
+                        banner.classList.remove('hidden');
+                    }
+                    return;
+                }
+            }
+        }
+        if (banner) banner.classList.add('hidden');
+    } catch(e) {
+        console.error('Error checking 24h reminder in travel platform:', e);
+    }
+}
+
 async function loadPassengerRides() {
+    await check24hTravelReminder();
     try {
         const {data:requests, error} = await travelSupabase
             .from('ride_requests')
@@ -2332,6 +2511,38 @@ async function loadPassengerRides() {
         const combined = [];
         if (!error && requests) {
             for (const req of requests) {
+                // Auto-evaluate 10-hour window for selected driver
+                if (['driver_selected', 'confirmed'].includes(req.status)) {
+                    try {
+                        const token = localStorage.getItem('session_token');
+                        const res = await fetch('/api/travel-platform', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': token ? `Bearer ${token}` : ''
+                            },
+                            body: JSON.stringify({
+                                action: 'process_10h_commission',
+                                rideId: req.id
+                            })
+                        });
+                        const commData = await res.json();
+                        if (commData.success) {
+                            if (commData.result === 'commission_held' || commData.contactsRevealed) {
+                                req.commission_status = 'held';
+                                req.contact_revealed = true;
+                            } else if (commData.result === 'driver_stripped') {
+                                req.status = 'pending';
+                                req.driver_id = null;
+                                req.driver_name = null;
+                                showNotification('السائق المختار لم يقم بتغذية رصيده في المهلة المحددة، تم فتح الطلب مجدداً لاختيار سائق بديل.', 'warning');
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error auto-evaluating 10h commission for passenger:', e);
+                    }
+                }
+
                 const {data:acceptances} = await travelSupabase
                     .from('ride_driver_acceptances')
                     .select('id,driver_id,status,accepted_at')
@@ -2405,11 +2616,20 @@ function displayPassengerRides() {
 
         let activeActions = '';
         if (isActive) {
-            activeActions = `
-                <button class="btn btn-primary btn-block" style="margin-top:0.75rem;" onclick="reopenActiveTripModal()">
-                    <i class="ph-light ph-car"></i> فتح نافذة الرحلة الجارية
-                </button>
-            `;
+            if (isTripInFinalActivePhase(ride)) {
+                activeActions = `
+                    <button class="btn btn-primary btn-block" style="margin-top:0.75rem;" onclick="reopenActiveTripModal()">
+                        <i class="ph-light ph-car"></i> فتح نافذة الرحلة الجارية
+                    </button>
+                `;
+            } else {
+                activeActions = `
+                    <div style="margin-top:0.75rem; background:#ecfdf5; border:1px solid #10b981; color:#065f46; padding:0.75rem; border-radius:var(--radius); font-size:0.85rem; font-weight:700; text-align:center;">
+                        <i class="ph-bold ph-check-circle" style="vertical-align:middle; font-size:1.1rem; color:#059669;"></i>
+                        تم تثبيت اختيار السائق — ستفتح نافذة الرحلة وتظهر أرقام التواصل قبل 10 ساعات من موعد انطلاق الرحلة
+                    </div>
+                `;
+            }
         }
 
         const el = document.createElement('div');
@@ -2442,8 +2662,11 @@ function displayPassengerRides() {
             <div class="ride-status ${statusClass}"><i class="ph-light ph-circle"></i> ${statusText}</div>
             ${driversSection}
             ${activeActions}
-            <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--gray-light);display:flex;gap:0.5rem;">
+            <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--gray-light);">
                 ${!isActive && ride.status !== 'completed' && ride.status !== 'cancelled' ? `
+                    <div style="font-size:0.8rem;color:var(--gray-600);background:var(--gray-50);padding:0.6rem;border-radius:var(--radius);margin-bottom:0.75rem;border:1px solid var(--gray-200);line-height:1.5;text-align:right;">
+                        يمكن قبول رحلتك مبدئياً حتى 10 سائقين، وبمجرد اختيارك لأحدهم سيتم إغلاق القبول، ستظهر لك أرقام التواصل مع السائق المختار قبل 10 ساعات من موعد الرحلة
+                    </div>
                     <button class="btn btn-danger btn-sm" onclick="cancelRide('${ride.id}')">
                         <i class="ph-light ph-x"></i> إلغاء
                     </button>
@@ -2586,15 +2809,8 @@ async function passengerSelectsDriver(rideId, driverId) {
         });
 
         closeDriverOffers();
-        showNotification(`تم اختيار السائق ${driverInfo.full_name} بنجاح! تواصلا بأمان.`, 'success');
+        showNotification(`تم تثبيت اختيار السائق ${driverInfo.full_name} بنجاح! ستظهر لك نافذة الرحلة وبيانات التواصل قبل 10 ساعات من موعد الرحلة.`, 'success');
 
-        // Show the permanent active trip modal
-        const tripToShow = newTrip || {
-            id: 'temp', ride_request_id: rideId, passenger_id: currentUser.id, driver_id: driverId,
-            from_city: rideReq.from_city, to_city: rideReq.to_city, vehicle_category: rideReq.vehicle_category,
-            final_price: rideReq.estimated_price, status: 'driver_selected'
-        };
-        await showActiveTripModal(tripToShow);
         await loadPassengerRides();
 
     } catch(err) {
