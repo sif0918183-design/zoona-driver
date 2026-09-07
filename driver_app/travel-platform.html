@@ -1026,7 +1026,7 @@
             </div>
             <div class="commission-row" id="atp-comm-status-row">
                 <span id="atp-comm-status-label">حالة العمولة:</span>
-                <span id="atp-comm-status-val" style="font-weight:800;color:#10b981;">تم خصم العمولة بنجاح</span>
+                <span id="atp-comm-status-val" style="font-weight:800;color:#10b981;">تم حجز العمولة بنجاح</span>
             </div>
             <div class="commission-row" style="border-top:1px dashed #f59e0b;padding-top:0.5rem;margin-top:0.5rem;">
                 <span id="atp-comm-balance-label">رصيدك المتبقي الحالي:</span>
@@ -1292,6 +1292,7 @@ function getCategoryRank(categoryName) {
 // INIT
 // ============================================
 document.addEventListener('DOMContentLoaded', async function() {
+    checkForActiveTripOnLoad();
     await initializeUser();
     await handleHashRouting();
     window.addEventListener('hashchange', handleHashRouting);
@@ -1795,7 +1796,7 @@ async function showActiveTripModal(trip) {
         const statusValEl = document.getElementById('atp-comm-status-val');
         if (statusValEl) {
             if (trip.commission_status === 'held' || rideReq?.commission_status === 'held') {
-                statusValEl.textContent = 'تم خصم العمولة بنجاح';
+                statusValEl.textContent = 'تم حجز العمولة بنجاح';
                 statusValEl.style.color = '#10b981';
             } else if (trip.commission_status === 'grace_period' || rideReq?.commission_status === 'grace_period') {
                 statusValEl.textContent = 'في انتظار تغذية الرصيد (مهلة 30 دقيقة)';

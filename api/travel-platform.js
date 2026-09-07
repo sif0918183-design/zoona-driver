@@ -860,7 +860,41 @@ export default async function handler(req, res) {
                 impactLevel = 'high';
             }
 
-            // 1. Update trip & ride request statuses
+            // 1. Refund commission to driver if it was held/deducted
+            const targetDriverId = trip?.driver_id;
+            let commissionRefunded = false;
+            let refundAmount = 0;
+
+            if (isCommissionHeld && targetDriverId) {
+                refundAmount = trip?.commission_amount || 0;
+                if (!refundAmount) {
+                    const price = trip?.final_price || 0;
+                    refundAmount = Math.round(price * settings.travel_commission_rate / 100);
+                }
+
+                if (refundAmount > 0) {
+                    const { data: driver } = await supabase
+                        .from('drivers')
+                        .select('balance')
+                        .eq('id', targetDriverId)
+                        .single();
+
+                    const currentBal = driver?.balance || 0;
+                    const newBal = currentBal + refundAmount;
+
+                    await supabase.from('drivers').update({ balance: newBal }).eq('id', targetDriverId);
+                    await supabase.from('balance_transactions').insert([{
+                        driver_id: targetDriverId,
+                        amount: refundAmount,
+                        type: 'commission_refund',
+                        description: `إرجاع عمولة منصة السفر بسبب إلغاء الراكب للرحلة رقم ${tripId}`
+                    }]);
+
+                    commissionRefunded = true;
+                }
+            }
+
+            // 2. Update trip & ride request statuses
             if (trip) {
                 await supabase
                     .from('travel_trips')
@@ -869,6 +903,7 @@ export default async function handler(req, res) {
                         cancelled_by: 'passenger',
                         cancelled_at: serverTime.toISOString(),
                         cancellation_reason: reason || 'إلغاء من الراكب',
+                        commission_status: commissionRefunded ? 'refunded' : trip.commission_status,
                         updated_at: serverTime.toISOString()
                     })
                     .eq('id', tripId);
@@ -878,6 +913,7 @@ export default async function handler(req, res) {
                 .from('ride_requests')
                 .update({
                     status: 'cancelled',
+                    commission_status: commissionRefunded ? 'refunded' : undefined,
                     updated_at: serverTime.toISOString()
                 })
                 .eq('id', rideReqId);

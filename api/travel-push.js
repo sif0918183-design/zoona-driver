@@ -842,15 +842,18 @@ export default async function handler(req, res) {
                 });
             }
 
-            const routeText = (fromCity && toCity) ? `(${fromCity} → ${toCity})` : '';
+            const fromStr = fromCity || 'المدينة';
+            const toStr = toCity || 'الجهة';
+            const bodyMessage = `تم إلغاء الرحلة من (${fromStr}) إلى (${toStr}) بواسطة الراكب، تم إرجاع العمولة إلى رصيدك`;
+
             const result = await sendQuietPush(
                 driver.fcm_token,
-                '❌ إلغاء رحلة سفرية - تراكا',
-                `قام الراكب بإلغاء الرحلة السفرية ${routeText}`,
+                '❌ تم إلغاء الرحلة السفرية بواسطة الراكب',
+                bodyMessage,
                 {
                     type: 'TRIP_CANCELLED',
                     ride_id: String(rideId || ''),
-                    url: '/driver_app/travel-platform.html#my-trips'
+                    url: '/driver_app/travel-platform.html#accepted-rides'
                 }
             );
             

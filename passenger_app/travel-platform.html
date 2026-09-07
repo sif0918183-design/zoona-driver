@@ -1297,6 +1297,7 @@ function getCategoryRank(categoryName) {
 // INIT
 // ============================================
 document.addEventListener('DOMContentLoaded', async function() {
+    checkForActiveTripOnLoad();
     await initializeUser();
     await handleHashRouting();
     window.addEventListener('hashchange', handleHashRouting);
@@ -1955,13 +1956,13 @@ function setupTripRealtimeListener(tripId) {
 
         if (updated.status === 'cancelled') {
             const cancelledBy = updated.cancelled_by;
-            const isOtherParty = (userType === 'passenger' && cancelledBy === 'driver') ||
-                                 (userType === 'driver' && cancelledBy === 'passenger');
+            localStorage.removeItem('tarhal_active_trip_id');
+            closeActiveTripModal();
 
-            if (isOtherParty || userType === 'passenger') {
-                localStorage.removeItem('tarhal_active_trip_id');
-                closeActiveTripModal();
-                showCancellationAlert(cancelledBy || 'driver');
+            if (userType === 'passenger' && cancelledBy === 'driver') {
+                showCancellationAlert('driver');
+            } else if (userType === 'driver' && cancelledBy === 'passenger') {
+                showCancellationAlert('passenger');
             }
         } else if (updated.status === 'in_progress' && userType === 'passenger') {
             renderPassengerTripActions(updated);
