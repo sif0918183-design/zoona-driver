@@ -2498,8 +2498,8 @@ async function check24hTravelReminder() {
                     const diffHours = (depDate.getTime() - now.getTime()) / (1000 * 60 * 60);
 
                     if (diffHours > 0 && diffHours <= 24) {
-                        const dateStr = depDate.toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' });
-                        const timeStr = depDate.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+                        const dateStr = depDate.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
+                        const timeStr = depDate.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
                         const text = `لديك رحلة سفرية يوم (${dateStr}) الساعة (${timeStr}) من (${item.from_city || '—'}) إلى (${item.to_city || '—'})، يرجى الاستعداد.`;
 
                         if (banner && textEl) {
