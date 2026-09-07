@@ -1024,13 +1024,13 @@
                 <span>العمولة (5%):</span>
                 <span id="atp-comm-amount" style="color:#d97706;">—</span>
             </div>
-            <div class="commission-row">
-                <span>رصيدك الحالي:</span>
-                <span id="atp-comm-balance">—</span>
+            <div class="commission-row" id="atp-comm-status-row">
+                <span id="atp-comm-status-label">حالة العمولة:</span>
+                <span id="atp-comm-status-val" style="font-weight:800;color:#10b981;">تم خصم العمولة بنجاح</span>
             </div>
-            <div class="commission-row" style="border-top:1px solid #f59e0b;padding-top:0.5rem;margin-top:0.5rem;">
-                <span>الرصيد بعد الخصم:</span>
-                <span id="atp-comm-after" style="color:var(--success);"></span>
+            <div class="commission-row" style="border-top:1px dashed #f59e0b;padding-top:0.5rem;margin-top:0.5rem;">
+                <span id="atp-comm-balance-label">رصيدك المتبقي الحالي:</span>
+                <span id="atp-comm-balance" style="font-weight:800;color:var(--primary);">—</span>
             </div>
         </div>
 
@@ -1642,6 +1642,11 @@ async function fetchAndShowActiveTripFromDB() {
 }
 
 async function showActiveTripModal(trip) {
+    if (!trip || trip.status === 'completed' || trip.status === 'cancelled') {
+        localStorage.removeItem('tarhal_active_trip_id');
+        closeActiveTripModal();
+        return;
+    }
     activeTripData = trip;
     localStorage.setItem('tarhal_active_trip_id', trip.id);
 
@@ -1787,10 +1792,18 @@ async function showActiveTripModal(trip) {
         document.getElementById('atp-comm-amount').textContent = `${Math.floor(commission).toLocaleString('en-SA')} ج`;
         document.getElementById('atp-comm-balance').textContent = `${Math.floor(balance).toLocaleString('en-SA')} ج`;
 
-        if (trip.commission_status === 'held' || rideReq?.commission_status === 'held') {
-            document.getElementById('atp-comm-after').innerHTML = `<span style="color:#10b981;font-weight:800;">تم خصم العمولة بنجاح</span>`;
-        } else {
-            document.getElementById('atp-comm-after').textContent = `${Math.floor(balance - commission).toLocaleString('en-SA')} ج`;
+        const statusValEl = document.getElementById('atp-comm-status-val');
+        if (statusValEl) {
+            if (trip.commission_status === 'held' || rideReq?.commission_status === 'held') {
+                statusValEl.textContent = 'تم خصم العمولة بنجاح';
+                statusValEl.style.color = '#10b981';
+            } else if (trip.commission_status === 'grace_period' || rideReq?.commission_status === 'grace_period') {
+                statusValEl.textContent = 'في انتظار تغذية الرصيد (مهلة 30 دقيقة)';
+                statusValEl.style.color = '#ef4444';
+            } else {
+                statusValEl.textContent = 'قيد الانتظار';
+                statusValEl.style.color = '#f59e0b';
+            }
         }
         document.getElementById('atp-commission-box').style.display = 'block';
         renderDriverTripActions(trip);
@@ -3184,7 +3197,6 @@ async function checkDriverTravelNotices() {
                             if (commData.result === 'commission_held' || commData.contactsRevealed) {
                                 ride.commission_status = 'held';
                                 ride.contact_revealed = true;
-                                await checkForActiveTripOnLoad();
                             } else if (commData.result === 'grace_period_started' || commData.result === 'in_grace_period') {
                                 ride.commission_status = 'grace_period';
                                 ride.commission_grace_until = commData.graceUntil || ride.commission_grace_until;

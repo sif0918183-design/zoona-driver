@@ -1519,6 +1519,11 @@ function toggleCancelDetails(show) {
 }
 
 async function showActiveTripModal(trip) {
+    if (!trip || trip.status === 'completed' || trip.status === 'cancelled') {
+        localStorage.removeItem('tarhal_active_trip_id');
+        closeActiveTripModal();
+        return;
+    }
     activeTripData = trip;
     localStorage.setItem('tarhal_active_trip_id', trip.id);
 
@@ -2526,7 +2531,6 @@ async function loadPassengerRides() {
                             if (commData.result === 'commission_held' || commData.contactsRevealed) {
                                 req.commission_status = 'held';
                                 req.contact_revealed = true;
-                                await checkForActiveTripOnLoad();
                             } else if (commData.result === 'driver_stripped') {
                                 req.status = 'pending';
                                 req.driver_id = null;

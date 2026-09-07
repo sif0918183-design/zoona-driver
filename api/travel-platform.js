@@ -1029,16 +1029,48 @@ export default async function handler(req, res) {
 
             const activeDriverId = driverId || trip?.driver_id || rideReq?.driver_id;
 
-            if (trip?.status === 'completed' || rideReq?.status === 'completed') {
-                return res.status(200).json({ success: true, message: 'الرحلة مكتملة بالفعل', commission: 0 });
+            // Always update both travel_trips and ride_requests to 'completed'
+            if (trip) {
+                await supabase
+                    .from('travel_trips')
+                    .update({
+                        status: 'completed',
+                        commission_status: 'held',
+                        completed_at: serverTime.toISOString(),
+                        updated_at: serverTime.toISOString()
+                    })
+                    .eq('id', trip.id);
+            } else if (targetRideId && activeDriverId) {
+                // If travel_trips row didn't exist, create it as completed
+                await supabase.from('travel_trips').insert([{
+                    ride_request_id: targetRideId,
+                    driver_id: activeDriverId,
+                    passenger_id: rideReq?.customer_id,
+                    from_city: rideReq?.from_city,
+                    to_city: rideReq?.to_city,
+                    final_price: finalPrice || rideReq?.estimated_price,
+                    status: 'completed',
+                    commission_status: 'held',
+                    completed_at: serverTime.toISOString(),
+                    created_at: serverTime.toISOString()
+                }]);
+            }
+
+            if (targetRideId) {
+                await supabase
+                    .from('ride_requests')
+                    .update({
+                        status: 'completed',
+                        commission_status: 'held'
+                    })
+                    .eq('id', targetRideId);
             }
 
             const price = finalPrice || trip?.final_price || rideReq?.estimated_price || 0;
             const commission = Math.round(price * settings.travel_commission_rate / 100);
-
             const currentCommStatus = trip?.commission_status || rideReq?.commission_status;
 
-            // Deduct commission ONLY if it was not already held/deducted during the 10-hour window
+            // Deduct commission ONLY if it was not already held/deducted
             if (currentCommStatus !== 'held' && activeDriverId) {
                 const { data: driver } = await supabase
                     .from('drivers')
@@ -1056,28 +1088,6 @@ export default async function handler(req, res) {
                     type: 'commission',
                     description: `خصم عمولة منصة السفر بعد إكمال الرحلة رقم ${targetRideId || tripId}`
                 }]);
-            }
-
-            if (trip) {
-                await supabase
-                    .from('travel_trips')
-                    .update({
-                        status: 'completed',
-                        commission_status: 'held',
-                        completed_at: serverTime.toISOString(),
-                        updated_at: serverTime.toISOString()
-                    })
-                    .eq('id', trip.id);
-            }
-
-            if (targetRideId) {
-                await supabase
-                    .from('ride_requests')
-                    .update({
-                        status: 'completed',
-                        commission_status: 'held'
-                    })
-                    .eq('id', targetRideId);
             }
 
             return res.status(200).json({ success: true, commission: currentCommStatus === 'held' ? 0 : commission });
