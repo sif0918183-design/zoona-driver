@@ -867,6 +867,29 @@
                 </button>
             </div>
 
+            <!-- Driver 3-Hour Lock Banner -->
+            <div id="driver-3h-lock-banner" class="hidden" style="background:linear-gradient(135deg, #f59e0b, #d97706); color:white; padding:1.25rem; border-radius:16px; margin-bottom:1.5rem; box-shadow:0 8px 25px rgba(245,158,11,0.3); text-align:center;">
+                <i class="ph-bold ph-clock-counter-clockwise" style="font-size:2.2rem; margin-bottom:0.5rem; display:block;"></i>
+                <div id="driver-3h-lock-title" style="font-size:1.15rem; font-weight:800; margin-bottom:0.5rem;">عليك الاستعداد لرحلتك السفرية</div>
+                <div id="driver-3h-lock-text" style="font-size:0.95rem; line-height:1.6; opacity:0.95;"></div>
+            </div>
+
+            <!-- Driver Selection Fixed Notice -->
+            <div id="driver-selection-notice" class="hidden" style="background:#f0fdf4; border:2px solid #10b981; padding:1.25rem; border-radius:16px; margin-bottom:1.5rem; color:#065f46; font-size:0.95rem; line-height:1.6; text-align:right;">
+                <div style="font-weight:800; font-size:1.1rem; color:#047857; margin-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
+                    <i class="ph-bold ph-check-circle" style="font-size:1.4rem;"></i> تم اختيارك لرحلة سفرية!
+                </div>
+                <div id="driver-selection-notice-text"></div>
+            </div>
+
+            <!-- 30-Minute Grace Period Timer Notice -->
+            <div id="driver-grace-notice" class="hidden" style="background:#fef2f2; border:2px solid #ef4444; padding:1.25rem; border-radius:16px; margin-bottom:1.5rem; color:#991b1b; text-align:center;">
+                <i class="ph-bold ph-warning-circle" style="font-size:2rem; margin-bottom:0.5rem;"></i>
+                <div style="font-weight:800; font-size:1.1rem; margin-bottom:0.25rem;">تحذير: رصيدك غير كافٍ للرحلة</div>
+                <div style="font-size:0.9rem; margin-bottom:0.75rem;">يرجى شحن رصيدك بالعمولة المطلوبة خلال المهلة حتى لا يتم سحب الرحلة وإعطاؤها لسائق بديل:</div>
+                <div id="driver-grace-timer" style="font-size:1.8rem; font-weight:900; letter-spacing:2px; direction:ltr; color:#dc2626;">30:00</div>
+            </div>
+
             <div class="tabs-container">
                 <button class="tab active" onclick="showTab('available-rides',this)">الرحلات المتاحة</button>
                 <button class="tab" onclick="showTab('accepted-rides',this)">رحلات قبلتها</button>
@@ -960,6 +983,9 @@
                 <span id="atp-to"></span>
             </div>
             <div style="font-size:1rem;color:var(--gray-500);margin-top:0.25rem;" id="atp-category"></div>
+            <div style="font-size:0.95rem;font-weight:700;color:var(--Tracka-primary);margin-top:0.5rem;padding-top:0.5rem;border-top:1px dashed var(--gray-300);" id="atp-departure-datetime">
+                <i class="ph-bold ph-calendar-blank"></i> <span id="atp-departure-text">جاري التحميل...</span>
+            </div>
         </div>
 
         <!-- Trip Info Grid -->
@@ -998,13 +1024,13 @@
                 <span>العمولة (5%):</span>
                 <span id="atp-comm-amount" style="color:#d97706;">—</span>
             </div>
-            <div class="commission-row">
-                <span>رصيدك الحالي:</span>
-                <span id="atp-comm-balance">—</span>
+            <div class="commission-row" id="atp-comm-status-row">
+                <span id="atp-comm-status-label">حالة العمولة:</span>
+                <span id="atp-comm-status-val" style="font-weight:800;color:#10b981;">تم خصم العمولة بنجاح</span>
             </div>
-            <div class="commission-row" style="border-top:1px solid #f59e0b;padding-top:0.5rem;margin-top:0.5rem;">
-                <span>الرصيد بعد الخصم:</span>
-                <span id="atp-comm-after" style="color:var(--success);"></span>
+            <div class="commission-row" style="border-top:1px dashed #f59e0b;padding-top:0.5rem;margin-top:0.5rem;">
+                <span id="atp-comm-balance-label">رصيدك المتبقي الحالي:</span>
+                <span id="atp-comm-balance" style="font-weight:800;color:var(--primary);">—</span>
             </div>
         </div>
 
@@ -1131,6 +1157,78 @@ let rideStatusSubscription = null;
 let passengerRefreshInterval = null;
 let driverRefreshInterval = null;
 let currentTab = '';
+let activeCountdownInterval = null;
+
+function isTripInFinalActivePhase(trip) {
+    if (!trip) return false;
+    if (trip.status === 'in_progress') return true;
+    if (trip.status === 'completed' || trip.status === 'cancelled') return false;
+
+    if (trip.status === 'driver_selected' && (trip.commission_status === 'held' || trip.contact_revealed === true)) {
+        if (trip.departure_time) {
+            const dep = new Date(trip.departure_time).getTime();
+            const now = Date.now();
+            const diffHours = (dep - now) / (1000 * 60 * 60);
+            return diffHours <= 10.5; // Final 10-hour window margin
+        }
+        return true;
+    }
+    return false;
+}
+
+function startTripCountdownTimer(departureTimeISO) {
+    if (activeCountdownInterval) {
+        clearInterval(activeCountdownInterval);
+        activeCountdownInterval = null;
+    }
+
+    const timerEl = document.getElementById('atp-countdown-timer');
+    const boxEl = document.getElementById('atp-countdown-box');
+    if (!timerEl) return;
+
+    if (!departureTimeISO) {
+        if (boxEl) boxEl.style.display = 'none';
+        return;
+    }
+
+    const depDate = new Date(departureTimeISO);
+    if (isNaN(depDate.getTime())) {
+        if (boxEl) boxEl.style.display = 'none';
+        return;
+    }
+
+    if (boxEl) boxEl.style.display = 'block';
+
+    const updateCountdown = () => {
+        const now = new Date();
+        const diffMs = depDate.getTime() - now.getTime();
+
+        if (diffMs <= 0) {
+            timerEl.textContent = '00 : 00 : 00 : 00';
+            if (activeCountdownInterval) {
+                clearInterval(activeCountdownInterval);
+                activeCountdownInterval = null;
+            }
+            return;
+        }
+
+        const totalSecs = Math.floor(diffMs / 1000);
+        const days = Math.floor(totalSecs / (24 * 3600));
+        const hours = Math.floor((totalSecs % (24 * 3600)) / 3600);
+        const mins = Math.floor((totalSecs % 3600) / 60);
+        const secs = totalSecs % 60;
+
+        const pad = n => String(n).padStart(2, '0');
+        if (days > 0) {
+            timerEl.textContent = `${days} يوم  ${pad(hours)} : ${pad(mins)} : ${pad(secs)}`;
+        } else {
+            timerEl.textContent = `${pad(hours)} : ${pad(mins)} : ${pad(secs)}`;
+        }
+    };
+
+    updateCountdown();
+    activeCountdownInterval = setInterval(updateCountdown, 1000);
+}
 
 const MAX_DRIVERS_PER_RIDE = 10;
 const COMMISSION_RATE = 5;
@@ -1496,14 +1594,12 @@ function updateUserInterface() {
 // ============================================
 async function checkForActiveTripOnLoad() {
     try {
-        // Check localStorage first
         const savedTripId = localStorage.getItem('tarhal_active_trip_id');
         if (!savedTripId) {
-            // Also check DB for any active trip
             await fetchAndShowActiveTripFromDB();
             return;
         }
-        // Verify the trip is still active
+
         const {data:trip, error} = await travelSupabase
             .from('travel_trips')
             .select('*')
@@ -1516,11 +1612,11 @@ async function checkForActiveTripOnLoad() {
             return;
         }
 
-        const activeStatuses = ['driver_selected', 'in_progress'];
-        if (activeStatuses.includes(trip.status)) {
+        if (isTripInFinalActivePhase(trip)) {
             await showActiveTripModal(trip);
         } else {
             localStorage.removeItem('tarhal_active_trip_id');
+            closeActiveTripModal();
         }
     } catch(err) {
         console.error('Error checking active trip on load:', err);
@@ -1534,9 +1630,11 @@ async function fetchAndShowActiveTripFromDB() {
         else query = query.eq('driver_id', currentUser.id);
 
         const {data:trips} = await query.order('created_at', {ascending:false}).limit(1);
-        if (trips && trips.length > 0) {
+        if (trips && trips.length > 0 && isTripInFinalActivePhase(trips[0])) {
             localStorage.setItem('tarhal_active_trip_id', trips[0].id);
             await showActiveTripModal(trips[0]);
+        } else {
+            closeActiveTripModal();
         }
     } catch(err) {
         console.error('Error fetching active trip from DB:', err);
@@ -1544,6 +1642,11 @@ async function fetchAndShowActiveTripFromDB() {
 }
 
 async function showActiveTripModal(trip) {
+    if (!trip || trip.status === 'completed' || trip.status === 'cancelled') {
+        localStorage.removeItem('tarhal_active_trip_id');
+        closeActiveTripModal();
+        return;
+    }
     activeTripData = trip;
     localStorage.setItem('tarhal_active_trip_id', trip.id);
 
@@ -1600,6 +1703,28 @@ async function showActiveTripModal(trip) {
     document.getElementById('atp-category').textContent = trip.vehicle_category || '';
     document.getElementById('atp-price').textContent = `${Math.floor(trip.final_price||0).toLocaleString('en-SA')} ج`;
     document.getElementById('atp-status').textContent = statusLabels[trip.status] || trip.status;
+
+    // Departure Date & Time Display
+    let depDateObj = null;
+    if (trip.departure_time) depDateObj = new Date(trip.departure_time);
+    else if (rideReq?.departure_time) depDateObj = new Date(rideReq.departure_time);
+    else if (rideReq?.notes) {
+        const parsedN = parseRideNotes(rideReq.notes);
+        if (parsedN?.day && parsedN?.month) {
+            depDateObj = new Date(`${parsedN.year||'2026'}-${String(parsedN.month).padStart(2,'0')}-${String(parsedN.day).padStart(2,'0')}T${String(parsedN.hour||'00').padStart(2,'0')}:${String(parsedN.minute||'00').padStart(2,'0')}:00`);
+        }
+    }
+
+    const depTextEl = document.getElementById('atp-departure-text');
+    if (depTextEl) {
+        if (depDateObj && !isNaN(depDateObj.getTime())) {
+            const dateStr = depDateObj.toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const timeStr = depDateObj.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+            depTextEl.textContent = `موعد الانطلاق: ${dateStr} - الساعة ${timeStr}`;
+        } else {
+            depTextEl.textContent = `موعد الانطلاق: حسب الموعد المتفق عليه مع الراكب`;
+        }
+    }
 
     // Contact info based on user type
     const phonesContainer = document.getElementById('atp-contact-phones-list');
@@ -1666,13 +1791,29 @@ async function showActiveTripModal(trip) {
         document.getElementById('atp-comm-price').textContent = `${Math.floor(price).toLocaleString('en-SA')} ج`;
         document.getElementById('atp-comm-amount').textContent = `${Math.floor(commission).toLocaleString('en-SA')} ج`;
         document.getElementById('atp-comm-balance').textContent = `${Math.floor(balance).toLocaleString('en-SA')} ج`;
-        document.getElementById('atp-comm-after').textContent = `${Math.floor(balance - commission).toLocaleString('en-SA')} ج`;
+
+        const statusValEl = document.getElementById('atp-comm-status-val');
+        if (statusValEl) {
+            if (trip.commission_status === 'held' || rideReq?.commission_status === 'held') {
+                statusValEl.textContent = 'تم خصم العمولة بنجاح';
+                statusValEl.style.color = '#10b981';
+            } else if (trip.commission_status === 'grace_period' || rideReq?.commission_status === 'grace_period') {
+                statusValEl.textContent = 'في انتظار تغذية الرصيد (مهلة 30 دقيقة)';
+                statusValEl.style.color = '#ef4444';
+            } else {
+                statusValEl.textContent = 'قيد الانتظار';
+                statusValEl.style.color = '#f59e0b';
+            }
+        }
         document.getElementById('atp-commission-box').style.display = 'block';
         renderDriverTripActions(trip);
     }
 
     // Progress bar
     updateProgressBar(trip.status);
+
+    // Start server-time countdown timer
+    startTripCountdownTimer(trip.departure_time);
 
     // Show the modal
     document.getElementById('active-trip-modal').classList.remove('hidden');
@@ -1782,10 +1923,16 @@ async function driverArrivedAtPassenger(tripId) {
 }
 
 async function driverCompletedTrip(tripId) {
-    if (!confirm('هل تأكد وصولك للوجهة النهائية؟ سيتم خصم عمولة 5% من رصيدك.')) return;
+    const isHeld = activeTripData?.commission_status === 'held';
+    const confirmMsg = isHeld
+        ? 'هل تؤكد الوصول للوجهة النهائية وإنهاء الرحلة؟'
+        : 'هل تأكد وصولك للوجهة النهائية؟ سيتم خصم عمولة 5% من رصيدك.';
+
+    if (!confirm(confirmMsg)) return;
 
     try {
-        const price = activeTripData.final_price || 0;
+        const price = activeTripData?.final_price || 0;
+        const rideReqId = activeTripData?.ride_request_id;
         const token = localStorage.getItem('session_token');
         const response = await fetch('/api/travel-platform', {
             method: 'POST',
@@ -1796,6 +1943,7 @@ async function driverCompletedTrip(tripId) {
             body: JSON.stringify({
                 action: 'complete_trip',
                 tripId,
+                rideId: rideReqId,
                 driverId: currentUser.id,
                 finalPrice: price
             })
@@ -1809,9 +1957,11 @@ async function driverCompletedTrip(tripId) {
         localStorage.removeItem('tarhal_active_trip_id');
         closeActiveTripModal();
 
-        showNotification(`تم اكتمال الرحلة! تم خصم عمولة ${resData.commission.toLocaleString()} ج`, 'success');
+        const commText = resData.commission && resData.commission > 0 ? `تم خصم عمولة ${resData.commission.toLocaleString()} ج` : 'تم تأكيد اكتمال الرحلة';
+        showNotification(`تم إكمال الرحلة بنجاح! ${commText}`, 'success');
         updateDriverBalanceDisplay();
         await loadDriverRides();
+        await loadAvailableRides();
 
     } catch(err) {
         showNotification('خطأ في إكمال الرحلة: ' + err.message, 'error');
@@ -1907,6 +2057,10 @@ async function driverCancelsTrip(tripId, reason) {
 function closeActiveTripModal() {
     document.getElementById('active-trip-modal').classList.add('hidden');
     activeTripData = null;
+    if (activeCountdownInterval) {
+        clearInterval(activeCountdownInterval);
+        activeCountdownInterval = null;
+    }
     if (activeTripSubscription) {
         activeTripSubscription.unsubscribe();
         activeTripSubscription = null;
@@ -2216,6 +2370,7 @@ function stopPassengerAutoRefresh() {
 function startDriverAutoRefresh() {
     if (!driverRefreshInterval) {
         driverRefreshInterval = setInterval(async () => {
+            await checkDriverTravelNotices();
             const active = document.querySelector('#driver-interface .tab-content.active');
             if (active?.id === 'available-rides') await loadAvailableRides();
             else if (active?.id === 'driver-chats') await loadDriverChats();
@@ -2313,6 +2468,8 @@ document.getElementById('ride-request-form')?.addEventListener('submit', async f
 
     const travelDay = document.getElementById('travel-day').value;
     const travelMonth = document.getElementById('travel-month').value;
+    const travelYearEl = document.getElementById('travel-year');
+    const travelYear = travelYearEl ? travelYearEl.value : '2026';
     const travelHour = document.getElementById('travel-hour').value;
     const travelMinute = document.getElementById('travel-minute').value;
     const travelPeriodEl = document.querySelector('input[name="travel-period"]:checked');
@@ -2554,7 +2711,7 @@ async function showDriverOffers(rideId) {
         const {data:rideRequest} = await travelSupabase.from('ride_requests').select('status,driver_id').eq('id',rideId).single();
         const {data:acceptances, error} = await travelSupabase
             .from('ride_driver_acceptances')
-            .select(`id,driver_id,status,accepted_at,drivers(id,full_name,car_type,car_model,rating)`)
+            .select(`id,driver_id,status,accepted_at,drivers(id,full_name,car_type,car_model,car_color,rating)`)
             .eq('ride_id', rideId)
             .in('status', ['accepted','selected'])
             .order('accepted_at', {ascending:true});
@@ -2572,6 +2729,7 @@ async function showDriverOffers(rideId) {
                 const driver = acc.drivers || {};
                 const isFinal = (rideRequest?.status === 'driver_selected') && rideRequest.driver_id === acc.driver_id;
                 const label = isFinal ? (driver.full_name || 'سائق تراكا') : `سائق تراكا (${idx++})`;
+                const carColorStr = driver.car_color ? ` | لون السيارة: ${driver.car_color}` : '';
 
                 const card = document.createElement('div');
                 card.className = 'ride-card';
@@ -2584,7 +2742,7 @@ async function showDriverOffers(rideId) {
                         <div class="ride-price" style="font-size:1.1rem;">${driver.rating ? driver.rating.toFixed(1)+' ⭐' : 'جديد'}</div>
                     </div>
                     <div class="ride-details">
-                        <div class="ride-detail"><i class="ph-light ph-car"></i><span>${driver.car_type||'غير محدد'} — ${driver.car_model||''}</span></div>
+                        <div class="ride-detail"><i class="ph-light ph-car"></i><span>${driver.car_type||'غير محدد'} — ${driver.car_model||''}${carColorStr}</span></div>
                         <div class="ride-detail"><i class="ph-light ph-clock"></i><span>قبل في: ${formatTime(acc.accepted_at)}</span></div>
                         <div class="ride-detail"><i class="ph-light ph-shield-check"></i><span style="color:var(--success);">سائق معتمد</span></div>
                     </div>
@@ -2809,12 +2967,21 @@ async function loadAvailableRides() {
         // First check if driver has an active trip in travel_trips
         const {data:activeTrips} = await travelSupabase
             .from('travel_trips')
-            .select('id')
+            .select('id, status')
             .eq('driver_id', currentUser.id)
             .in('status', ['driver_selected','in_progress'])
             .limit(1);
 
-        if (activeTrips && activeTrips.length > 0) {
+        const {data:activeReqs} = await travelSupabase
+            .from('ride_requests')
+            .select('id, status')
+            .eq('driver_id', currentUser.id)
+            .in('status', ['driver_selected','in_progress'])
+            .limit(1);
+
+        const hasActiveTrip = (activeTrips && activeTrips.length > 0) || (activeReqs && activeReqs.length > 0);
+
+        if (hasActiveTrip) {
             document.getElementById('available-rides-list').innerHTML = `
                 <div class="empty-state">
                     <div class="empty-icon">🚗</div>
@@ -2982,7 +3149,126 @@ async function driverAcceptsRide(rideId) {
 // ============================================
 // DRIVER ACCEPTED RIDES
 // ============================================
+async function checkDriverTravelNotices() {
+    if (userType !== 'driver' || !currentUser) return;
+    try {
+        // Query ride_requests where driver is selected or in progress
+        const { data: rides } = await travelSupabase
+            .from('ride_requests')
+            .select('*')
+            .eq('driver_id', currentUser.id)
+            .in('status', ['driver_selected', 'confirmed', 'in_progress', 'awaiting_driver_acceptance']);
+
+        const selectionNotice = document.getElementById('driver-selection-notice');
+        const selectionText = document.getElementById('driver-selection-notice-text');
+        const graceNotice = document.getElementById('driver-grace-notice');
+        const graceTimer = document.getElementById('driver-grace-timer');
+        const lockBanner = document.getElementById('driver-3h-lock-banner');
+        const lockText = document.getElementById('driver-3h-lock-text');
+
+        if (!rides || rides.length === 0) {
+            if (selectionNotice) selectionNotice.classList.add('hidden');
+            if (graceNotice) graceNotice.classList.add('hidden');
+            if (lockBanner) lockBanner.classList.add('hidden');
+            return;
+        }
+
+        const now = new Date();
+        let foundSelection = false;
+        let foundGrace = false;
+        let foundLock = false;
+
+        for (const ride of rides) {
+            const parsedNotes = parseRideNotes(ride.notes) || {};
+            const depISO = ride.departure_time || (parsedNotes.day ? `${parsedNotes.year || '2026'}-${String(parsedNotes.month).padStart(2,'0')}-${String(parsedNotes.day).padStart(2,'0')}T${String(parsedNotes.period === 'مساءً' && parseInt(parsedNotes.hour) < 12 ? parseInt(parsedNotes.hour) + 12 : parsedNotes.hour).padStart(2,'0')}:${String(parsedNotes.minute||'00').padStart(2,'0')}:00` : null);
+
+            let departureTime = depISO ? new Date(depISO) : null;
+            if (departureTime && !isNaN(departureTime.getTime())) {
+                const diffMs = departureTime - now;
+                const diffHours = diffMs / (1000 * 60 * 60);
+
+                // Auto-trigger 10-hour commission processing on backend if within 10.5 hours
+                if (diffHours <= 10.5 && ['driver_selected', 'confirmed'].includes(ride.status)) {
+                    try {
+                        const token = localStorage.getItem('session_token');
+                        const res = await fetch('/api/travel-platform', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': token ? `Bearer ${token}` : ''
+                            },
+                            body: JSON.stringify({
+                                action: 'process_10h_commission',
+                                rideId: ride.id
+                            })
+                        });
+                        const commData = await res.json();
+                        if (commData.success) {
+                            if (commData.result === 'commission_held' || commData.contactsRevealed) {
+                                ride.commission_status = 'held';
+                                ride.contact_revealed = true;
+                            } else if (commData.result === 'grace_period_started' || commData.result === 'in_grace_period') {
+                                ride.commission_status = 'grace_period';
+                                ride.commission_grace_until = commData.graceUntil || ride.commission_grace_until;
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Error running process_10h_commission:', err);
+                    }
+                }
+
+                // 1. Selection notice
+                if (!foundSelection && ['driver_selected', 'confirmed', 'in_progress'].includes(ride.status)) {
+                    foundSelection = true;
+                    const commAmount = Math.round((ride.estimated_price || 0) * 0.05);
+                    const tenHoursBefore = new Date(departureTime.getTime() - (10 * 60 * 60 * 1000));
+                    const commTimeStr = `${tenHoursBefore.toLocaleTimeString('ar-SA', {hour:'2-digit', minute:'2-digit'})} يوم ${tenHoursBefore.toLocaleDateString('ar-SA')}`;
+                    const depTimeStr = `${departureTime.toLocaleTimeString('ar-SA', {hour:'2-digit', minute:'2-digit'})}`;
+                    const depDateStr = `${departureTime.toLocaleDateString('ar-SA')}`;
+
+                    if (selectionText) {
+                        selectionText.textContent = `لديك رحلة سفرية تم اختيارك لها من ${ride.from_city} إلى ${ride.to_city} بتاريخ ${depDateStr} الساعة ${depTimeStr}. يجب عليك أن تكون متواجداً في مدينة الانطلاق في الزمن المحدد، وحتى لا تفقد الرحلة يجب أن يكون رصيدك (${commAmount.toLocaleString('en-SA')} ج) أو أكثر بحلول الساعة ${commTimeStr}.`;
+                    }
+                    if (selectionNotice) selectionNotice.classList.remove('hidden');
+                }
+
+                // 2. Grace notice (30 minutes)
+                if (!foundGrace && ride.commission_status === 'grace_period' && ride.commission_grace_until) {
+                    const graceUntil = new Date(ride.commission_grace_until);
+                    const remainingSec = Math.max(0, Math.floor((graceUntil - now) / 1000));
+                    if (remainingSec > 0) {
+                        foundGrace = true;
+                        const mins = Math.floor(remainingSec / 60);
+                        const secs = remainingSec % 60;
+                        if (graceTimer) graceTimer.textContent = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+                        if (graceNotice) graceNotice.classList.remove('hidden');
+                    }
+                }
+
+                // 3. 3-Hour Lock Banner
+                if (!foundLock && diffHours > 0 && diffHours <= 3) {
+                    foundLock = true;
+                    const hoursLeft = Math.floor(diffHours);
+                    const minsLeft = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                    if (lockText) {
+                        lockText.textContent = `عليك الاستعداد لرحلتك السفرية من ${ride.from_city} إلى ${ride.to_city}. تبقى على الرحلة ${hoursLeft} ساعة و ${minsLeft} دقيقة.`;
+                    }
+                    if (lockBanner) lockBanner.classList.remove('hidden');
+                }
+            }
+        }
+
+        if (!foundSelection && selectionNotice) selectionNotice.classList.add('hidden');
+        if (!foundGrace && graceNotice) graceNotice.classList.add('hidden');
+        if (!foundLock && lockBanner) lockBanner.classList.add('hidden');
+
+    } catch(err) {
+        console.error('Error checking driver travel notices:', err);
+    }
+}
+
 async function loadDriverAcceptedRides() {
+    await checkDriverTravelNotices();
     try {
         const {data:acceptances} = await travelSupabase
             .from('ride_driver_acceptances')
@@ -3036,6 +3322,7 @@ function displayDriverAcceptedRides(acceptances, chatsWithPassengerMsgs = new Se
         const isFinal = acc.status === 'selected' || ride.status === 'driver_selected' || ride.status === 'confirmed' || ride.status === 'in_progress';
         const hasPassengerMsg = chatsWithPassengerMsgs.has(ride.id);
         const showChatButton = isFinal || hasPassengerMsg;
+        const canWithdraw = acc.status === 'accepted' && ride.status === 'pending';
 
         const el = document.createElement('div');
         el.className = 'ride-card';
@@ -3063,16 +3350,53 @@ function displayDriverAcceptedRides(acceptances, chatsWithPassengerMsgs = new Se
                     }
                 })()}
             </div>
-            ${showChatButton ? `
-                <div style="margin-top:0.75rem;">
-                    <button class="btn btn-outline btn-sm btn-block" onclick="event.stopPropagation(); openDriverChat('${ride.id}', '${escapeHtml(isFinal ? (ride.passenger_name || 'راكب تراكا') : 'راكب تراكا').replace(/'/g, "\\'")}', '${ride.customer_id || ''}', ${isFinal})">
+            <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
+                ${showChatButton ? `
+                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="event.stopPropagation(); openDriverChat('${ride.id}', '${escapeHtml(isFinal ? (ride.passenger_name || 'راكب تراكا') : 'راكب تراكا').replace(/'/g, "\\'")}', '${ride.customer_id || ''}', ${isFinal})">
                         <i class="ph-light ph-chat-centered-dots"></i> محادثة
                     </button>
-                </div>
-            ` : ''}
+                ` : ''}
+                ${canWithdraw ? `
+                    <button class="btn btn-outline-danger btn-sm" style="flex:1;" onclick="event.stopPropagation(); driverWithdrawAcceptance('${ride.id}')">
+                        <i class="ph-light ph-arrow-u-up-left"></i> سحب القبول المبدئي
+                    </button>
+                ` : ''}
+            </div>
         `;
         container.appendChild(el);
     });
+}
+
+async function driverWithdrawAcceptance(rideId) {
+    if (!confirm('هل أنت متأكد من سحب قبولك المبدئي لهذه الرحلة؟ يمكنك سحب القبول المبدئي مجاناً ودون أي غرامة طالما لم يتم اختيارك نهائياً.')) return;
+
+    try {
+        const token = localStorage.getItem('session_token');
+        const response = await fetch('/api/travel-platform', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': token ? `Bearer ${token}` : ''
+            },
+            body: JSON.stringify({
+                action: 'driver_withdraw',
+                rideId,
+                driverId: currentUser.id
+            })
+        });
+
+        const resData = await response.json();
+        if (!response.ok || !resData.success) {
+            throw new Error(resData.error || 'فشل سحب القبول المبدئي');
+        }
+
+        showNotification('تم سحب قبولك المبدئي بنجاح (بدون أي غرامة).', 'success');
+        await loadDriverAcceptedRides();
+        await loadAvailableRides();
+
+    } catch (err) {
+        showNotification('خطأ في سحب القبول: ' + err.message, 'error');
+    }
 }
 
 // ============================================
@@ -3146,6 +3470,24 @@ function displayDriverRides(rides) {
     container.innerHTML = '';
     rides.forEach(ride => {
         const isActive = ['driver_selected','in_progress'].includes(ride.status);
+        let activeActions = '';
+        if (isActive) {
+            if (isTripInFinalActivePhase(ride)) {
+                activeActions = `
+                    <button class="btn btn-primary btn-block btn-sm" style="margin-top:0.75rem;" onclick="reopenActiveTripModal()">
+                        <i class="ph-light ph-car"></i> فتح نافذة الرحلة الجارية
+                    </button>
+                `;
+            } else {
+                activeActions = `
+                    <div style="margin-top:0.75rem; background:#f0fdf4; border:1px solid #10b981; color:#065f46; padding:0.75rem; border-radius:var(--radius); font-size:0.85rem; font-weight:700; text-align:center;">
+                        <i class="ph-bold ph-check-circle" style="vertical-align:middle; font-size:1.1rem; color:#059669;"></i>
+                        تم اختيارك لهذه الرحلة — ستفتح النافذة وتظهر أرقام التواصل قبل 10 ساعات من موعد انطلاق الرحلة
+                    </div>
+                `;
+            }
+        }
+
         const el = document.createElement('div');
         el.className = 'ride-card';
         el.style.borderRight = isActive ? '4px solid var(--primary)' : '';
@@ -3159,11 +3501,7 @@ function displayDriverRides(rides) {
                 <div class="ride-detail"><i class="ph-light ph-calendar"></i><span>${formatDate(ride.created_at)}</span></div>
             </div>
             <div class="ride-status ${getStatusClass(ride.status)}"><i class="ph-light ph-circle"></i> ${getStatusText(ride.status)}</div>
-            ${isActive ? `
-                <button class="btn btn-primary btn-block btn-sm" style="margin-top:0.75rem;" onclick="reopenActiveTripModal()">
-                    <i class="ph-light ph-car"></i> فتح نافذة الرحلة الجارية
-                </button>
-            ` : ''}
+            ${activeActions}
         `;
         container.appendChild(el);
     });
@@ -3673,6 +4011,8 @@ function getStatusClass(status) {
 
 function parseRideNotes(notesStr) {
     if (!notesStr) return null;
+    if (typeof notesStr === 'object') return notesStr;
+    if (typeof notesStr !== 'string') return null;
     const trimmed = notesStr.trim();
     if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
         try {
