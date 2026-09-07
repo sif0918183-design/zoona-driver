@@ -3152,32 +3152,53 @@ async function check24hTravelReminder() {
     try {
         const { data: trips } = await tarhalDB
             .from('travel_trips')
-            .select('from_city, to_city, departure_time, status')
+            .select('from_city, to_city, departure_time, status, ride_request_id')
             .eq('passenger_id', currentUser.id)
             .in('status', ['driver_selected', 'in_progress', 'commission_reserved', 'final_active'])
-            .order('departure_time', { ascending: true })
-            .limit(1);
+            .order('departure_time', { ascending: true });
 
-        if (trips && trips.length > 0) {
-            const trip = trips[0];
-            if (trip.departure_time) {
-                const depDate = new Date(trip.departure_time);
-                const diffHours = (depDate.getTime() - Date.now()) / (1000 * 60 * 60);
+        const { data: reqs } = await tarhalDB
+            .from('ride_requests')
+            .select('from_city, to_city, departure_time, status, notes')
+            .eq('customer_id', currentUser.id)
+            .in('status', ['driver_selected', 'confirmed', 'in_progress']);
 
-                if (diffHours > 0 && diffHours <= 24) {
-                    const dateStr = depDate.toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' });
-                    const timeStr = depDate.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
-                    const text = `لديك رحلة سفرية يوم (${dateStr}) الساعة (${timeStr}) من (${trip.from_city || '—'}) إلى (${trip.to_city || '—'})، يرجى الاستعداد.`;
+        const combined = [...(trips || []), ...(reqs || [])];
+        const bannerIndex = document.getElementById('index-24h-reminder');
+        const textIndex = document.getElementById('index-24h-reminder-text');
 
-                    const bannerIndex = document.getElementById('index-24h-reminder');
-                    const textIndex = document.getElementById('index-24h-reminder-text');
-                    if (bannerIndex && textIndex) {
-                        textIndex.textContent = text;
-                        bannerIndex.classList.remove('hidden');
+        const now = new Date();
+        for (const item of combined) {
+            let depISO = item.departure_time;
+            if (!depISO && item.notes) {
+                try {
+                    const parsed = typeof item.notes === 'string' ? JSON.parse(item.notes) : item.notes;
+                    if (parsed?.day) {
+                        depISO = `${parsed.year || '2026'}-${String(parsed.month).padStart(2,'0')}-${String(parsed.day).padStart(2,'0')}T${String(parsed.period === 'مساءً' && parseInt(parsed.hour) < 12 ? parseInt(parsed.hour) + 12 : parsed.hour).padStart(2,'0')}:${String(parsed.minute||'00').padStart(2,'0')}:00`;
+                    }
+                } catch(e) {}
+            }
+
+            if (depISO) {
+                const depDate = new Date(depISO);
+                if (!isNaN(depDate.getTime())) {
+                    const diffHours = (depDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+                    if (diffHours > 0 && diffHours <= 24) {
+                        const dateStr = depDate.toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' });
+                        const timeStr = depDate.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+                        const text = `لديك رحلة سفرية يوم (${dateStr}) الساعة (${timeStr}) من (${item.from_city || '—'}) إلى (${item.to_city || '—'})، يرجى الاستعداد.`;
+
+                        if (bannerIndex && textIndex) {
+                            textIndex.textContent = text;
+                            bannerIndex.classList.remove('hidden');
+                        }
+                        return;
                     }
                 }
             }
         }
+        if (bannerIndex) bannerIndex.classList.add('hidden');
     } catch(e) {
         console.error('Error checking 24h reminder:', e);
     }
