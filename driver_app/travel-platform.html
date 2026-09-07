@@ -1961,6 +1961,7 @@ async function driverCompletedTrip(tripId) {
         showNotification(`تم إكمال الرحلة بنجاح! ${commText}`, 'success');
         updateDriverBalanceDisplay();
         await loadDriverRides();
+        await loadAvailableRides();
 
     } catch(err) {
         showNotification('خطأ في إكمال الرحلة: ' + err.message, 'error');
@@ -2072,44 +2073,49 @@ function setupTripRealtimeListener(tripId) {
         activeTripSubscription = null;
     }
 
-    activeTripSubscription = travelSupabase
-        .channel(`trip-${tripId}`)
-        .on('postgres_changes', {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'travel_trips',
-            filter: `id=eq.${tripId}`
-        }, async (payload) => {
-            const updated = payload.new;
-            activeTripData = updated;
+    const handleUpdate = async (updated) => {
+        if (!updated) return;
+        activeTripData = updated;
 
-            if (updated.status === 'cancelled') {
-                const cancelledBy = updated.cancelled_by;
-                const isOtherParty = (userType === 'passenger' && cancelledBy === 'driver') ||
-                                     (userType === 'driver' && cancelledBy === 'passenger') ||
-                                     (!cancelledBy);
+        if (updated.status === 'cancelled') {
+            const cancelledBy = updated.cancelled_by;
+            const isOtherParty = (userType === 'passenger' && cancelledBy === 'driver') ||
+                                 (userType === 'driver' && cancelledBy === 'passenger') ||
+                                 (!cancelledBy);
 
-                if (isOtherParty || userType === 'driver') {
-                    localStorage.removeItem('tarhal_active_trip_id');
-                    closeActiveTripModal();
-                    showCancellationAlert(cancelledBy || 'passenger');
-                    loadAvailableRides();
-                    loadDriverRides();
-                }
-            } else if (updated.status === 'in_progress' && userType === 'passenger') {
-                // Driver arrived - update passenger view
-                renderPassengerTripActions(updated);
-                updateProgressBar('in_progress');
-                document.getElementById('atp-status').textContent = 'الرحلة جارية';
-                showNotification('وصل السائق وبدأت الرحلة!', 'success');
-            } else if (updated.status === 'completed') {
+            if (isOtherParty || userType === 'driver') {
                 localStorage.removeItem('tarhal_active_trip_id');
                 closeActiveTripModal();
-                showNotification('اكتملت الرحلة بنجاح!', 'success');
-                if (userType === 'passenger') await loadPassengerRides();
-                else await loadDriverRides();
+                showCancellationAlert(cancelledBy || 'passenger');
+                await loadAvailableRides();
+                await loadDriverRides();
             }
-        })
+        } else if (updated.status === 'in_progress' && userType === 'passenger') {
+            renderPassengerTripActions(updated);
+            updateProgressBar('in_progress');
+            document.getElementById('atp-status').textContent = 'الرحلة جارية';
+            showNotification('وصل السائق وبدأت الرحلة!', 'success');
+        } else if (updated.status === 'completed') {
+            localStorage.removeItem('tarhal_active_trip_id');
+            closeActiveTripModal();
+            showNotification('اكتملت الرحلة بنجاح!', 'success');
+            if (userType === 'passenger') {
+                await loadPassengerRides();
+            } else {
+                await loadDriverRides();
+                await loadAvailableRides();
+            }
+        }
+    };
+
+    activeTripSubscription = travelSupabase
+        .channel(`trip-realtime-${tripId}`)
+        .on('postgres_changes', {
+            event: 'UPDATE', schema: 'public', table: 'travel_trips', filter: `id=eq.${tripId}`
+        }, payload => handleUpdate(payload.new))
+        .on('postgres_changes', {
+            event: 'UPDATE', schema: 'public', table: 'ride_requests', filter: `driver_id=eq.${currentUser.id}`
+        }, payload => handleUpdate(payload.new))
         .subscribe();
 }
 
@@ -2966,12 +2972,21 @@ async function loadAvailableRides() {
         // First check if driver has an active trip in travel_trips
         const {data:activeTrips} = await travelSupabase
             .from('travel_trips')
-            .select('id')
+            .select('id, status')
             .eq('driver_id', currentUser.id)
             .in('status', ['driver_selected','in_progress'])
             .limit(1);
 
-        if (activeTrips && activeTrips.length > 0) {
+        const {data:activeReqs} = await travelSupabase
+            .from('ride_requests')
+            .select('id, status')
+            .eq('driver_id', currentUser.id)
+            .in('status', ['driver_selected','in_progress'])
+            .limit(1);
+
+        const hasActiveTrip = (activeTrips && activeTrips.length > 0) || (activeReqs && activeReqs.length > 0);
+
+        if (hasActiveTrip) {
             document.getElementById('available-rides-list').innerHTML = `
                 <div class="empty-state">
                     <div class="empty-icon">🚗</div>

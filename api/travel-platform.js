@@ -1029,41 +1029,57 @@ export default async function handler(req, res) {
 
             const activeDriverId = driverId || trip?.driver_id || rideReq?.driver_id;
 
-            // Always update both travel_trips and ride_requests to 'completed'
-            if (trip) {
+            // Comprehensively update travel_trips
+            if (trip?.id) {
                 await supabase
                     .from('travel_trips')
                     .update({
                         status: 'completed',
                         commission_status: 'held',
-                        completed_at: serverTime.toISOString(),
                         updated_at: serverTime.toISOString()
                     })
                     .eq('id', trip.id);
-            } else if (targetRideId && activeDriverId) {
-                // If travel_trips row didn't exist, create it as completed
-                await supabase.from('travel_trips').insert([{
-                    ride_request_id: targetRideId,
-                    driver_id: activeDriverId,
-                    passenger_id: rideReq?.customer_id,
-                    from_city: rideReq?.from_city,
-                    to_city: rideReq?.to_city,
-                    final_price: finalPrice || rideReq?.estimated_price,
-                    status: 'completed',
-                    commission_status: 'held',
-                    completed_at: serverTime.toISOString(),
-                    created_at: serverTime.toISOString()
-                }]);
             }
 
             if (targetRideId) {
+                await supabase
+                    .from('travel_trips')
+                    .update({
+                        status: 'completed',
+                        commission_status: 'held',
+                        updated_at: serverTime.toISOString()
+                    })
+                    .eq('ride_request_id', targetRideId);
+
+                await supabase
+                    .from('ride_requests')
+                    .update({
+                        status: 'completed',
+                        commission_status: 'held',
+                        updated_at: serverTime.toISOString()
+                    })
+                    .eq('id', targetRideId);
+            }
+
+            if (activeDriverId) {
+                await supabase
+                    .from('travel_trips')
+                    .update({
+                        status: 'completed',
+                        commission_status: 'held',
+                        updated_at: serverTime.toISOString()
+                    })
+                    .eq('driver_id', activeDriverId)
+                    .in('status', ['driver_selected', 'in_progress']);
+
                 await supabase
                     .from('ride_requests')
                     .update({
                         status: 'completed',
                         commission_status: 'held'
                     })
-                    .eq('id', targetRideId);
+                    .eq('driver_id', activeDriverId)
+                    .in('status', ['driver_selected', 'in_progress']);
             }
 
             const price = finalPrice || trip?.final_price || rideReq?.estimated_price || 0;
