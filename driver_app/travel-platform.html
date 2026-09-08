@@ -975,6 +975,12 @@
             </div>
         </div>
 
+        <!-- Departure Countdown Timer -->
+        <div id="atp-countdown-box" style="text-align:center; background:#ecfdf5; border:1.5px solid #10b981; border-radius:12px; padding:0.75rem; margin-bottom:1rem; color:#065f46; font-weight:800;">
+            <div style="font-size:0.8rem; opacity:0.8; margin-bottom:0.25rem;">الوقت المتبقي حتى انطلاق الرحلة</div>
+            <div id="atp-countdown-timer" style="font-size:1.4rem; letter-spacing:1px; direction:ltr;">--:--:--</div>
+        </div>
+
         <!-- Route -->
         <div style="text-align:center;margin:1rem 0;padding:1rem;background:var(--gray-50);border-radius:var(--radius-lg);">
             <div style="font-size:1.5rem;font-weight:800;color:var(--primary);">
@@ -1309,7 +1315,15 @@ async function handleHashRouting() {
         return;
     }
 
-    if (hash === '#chats') {
+    if (hash === '#accepted-rides') {
+        const chatModal = document.getElementById('chat-modal');
+        if (chatModal && !chatModal.classList.contains('hidden')) {
+            chatModal.classList.add('hidden');
+            currentChat = null;
+        }
+        const button = document.querySelector(`.tab[onclick*="accepted-rides"]`);
+        if (button) await showTab('accepted-rides', button);
+    } else if (hash === '#chats') {
         const chatModal = document.getElementById('chat-modal');
         if (chatModal && !chatModal.classList.contains('hidden')) {
             chatModal.classList.add('hidden');
@@ -2079,18 +2093,13 @@ function setupTripRealtimeListener(tripId) {
         activeTripData = updated;
 
         if (updated.status === 'cancelled') {
-            const cancelledBy = updated.cancelled_by;
-            const isOtherParty = (userType === 'passenger' && cancelledBy === 'driver') ||
-                                 (userType === 'driver' && cancelledBy === 'passenger') ||
-                                 (!cancelledBy);
-
-            if (isOtherParty || userType === 'driver') {
-                localStorage.removeItem('tarhal_active_trip_id');
-                closeActiveTripModal();
-                showCancellationAlert(cancelledBy || 'passenger');
-                await loadAvailableRides();
-                await loadDriverRides();
-            }
+            const cancelledBy = updated.cancelled_by || 'passenger';
+            localStorage.removeItem('tarhal_active_trip_id');
+            closeActiveTripModal();
+            showCancellationAlert(cancelledBy);
+            await loadAvailableRides();
+            await loadDriverRides();
+            await loadDriverAcceptedRides();
         } else if (updated.status === 'in_progress' && userType === 'passenger') {
             renderPassengerTripActions(updated);
             updateProgressBar('in_progress');
@@ -2113,6 +2122,9 @@ function setupTripRealtimeListener(tripId) {
         .channel(`trip-realtime-${tripId}`)
         .on('postgres_changes', {
             event: 'UPDATE', schema: 'public', table: 'travel_trips', filter: `id=eq.${tripId}`
+        }, payload => handleUpdate(payload.new))
+        .on('postgres_changes', {
+            event: 'UPDATE', schema: 'public', table: 'travel_trips', filter: `driver_id=eq.${currentUser.id}`
         }, payload => handleUpdate(payload.new))
         .on('postgres_changes', {
             event: 'UPDATE', schema: 'public', table: 'ride_requests', filter: `driver_id=eq.${currentUser.id}`

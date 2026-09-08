@@ -973,7 +973,14 @@ export default async function handler(req, res) {
                 }
             }
 
-            return res.status(200).json({ success: true, impactLevel });
+            return res.status(200).json({
+                success: true,
+                impactLevel,
+                driverId: targetDriverId,
+                rideReqId: rideReqId,
+                fromCity: trip?.from_city,
+                toCity: trip?.to_city
+            });
         }
 
         // --- 8. DRIVER CANCEL TRIP WITH PENALTY ---
