@@ -961,6 +961,29 @@
                 </div>
             </div>
 
+            <!-- Driver Selection Fixed Notice -->
+            <div id="driver-selection-notice" class="hidden" style="background:#f0fdf4; border:1.5px solid #10b981; padding:0.75rem 1rem; border-radius:12px; margin-bottom:0.75rem; color:#065f46; font-size:0.85rem; line-height:1.4; text-align:right;">
+                <div style="font-weight:800; font-size:0.95rem; color:#047857; margin-bottom:0.35rem; display:flex; align-items:center; gap:0.4rem;">
+                    <i class="ph-bold ph-check-circle" style="font-size:1.1rem;"></i> تم اختيارك لرحلة سفرية!
+                </div>
+                <div id="driver-selection-notice-text"></div>
+            </div>
+
+            <!-- 30-Minute Grace Period Timer Notice -->
+            <div id="driver-grace-notice" class="hidden" style="background:#fef2f2; border:1.5px solid #ef4444; padding:0.75rem 1rem; border-radius:12px; margin-bottom:0.75rem; color:#991b1b; text-align:center;">
+                <i class="ph-bold ph-warning-circle" style="font-size:1.4rem; margin-bottom:0.2rem; display:inline-block;"></i>
+                <div style="font-weight:800; font-size:0.95rem; margin-bottom:0.2rem;">تحذير: رصيدك غير كافٍ للرحلة</div>
+                <div style="font-size:0.82rem; margin-bottom:0.4rem;">يرجى شحن رصيدك بالعمولة المطلوبة خلال المهلة حتى لا يتم سحب الرحلة وإعطاؤها لسائق بديل:</div>
+                <div id="driver-grace-timer" style="font-size:1.3rem; font-weight:900; letter-spacing:1px; direction:ltr; color:#dc2626;">30:00</div>
+            </div>
+
+            <!-- 3-Hour Lock Banner on Dashboard -->
+            <div id="driver-3h-lock-banner" class="hidden" style="background:linear-gradient(135deg, #f59e0b, #d97706); color:white; padding:0.75rem 1rem; border-radius:12px; margin-bottom:0.75rem; box-shadow:0 4px 15px rgba(245,158,11,0.25); text-align:center;">
+                <i class="ph-bold ph-clock-counter-clockwise" style="font-size:1.4rem; margin-bottom:0.2rem; display:inline-block;"></i>
+                <div style="font-size:0.95rem; font-weight:800; margin-bottom:0.2rem;">عليك الاستعداد لرحلتك السفرية</div>
+                <div id="driver-3h-lock-text" style="font-size:0.82rem; line-height:1.4; opacity:0.95;"></div>
+            </div>
+
             <div class="driver-status">
                 <div id="driver-status-indicator" class="status-indicator status-offline">
                     <span class="status-dot"></span>
@@ -2124,6 +2147,129 @@
     }
 
     // Driver Dashboard
+    async function checkDriverUpcomingTravelRide() {
+        if (!currentDriver) return false;
+        try {
+            const { data: rides } = await tarhalDB
+                .from('ride_requests')
+                .select('*')
+                .eq('driver_id', currentDriver.id)
+                .in('status', ['driver_selected', 'confirmed', 'in_progress', 'awaiting_driver_acceptance']);
+
+            const selectionNotice = document.getElementById('driver-selection-notice');
+            const selectionText = document.getElementById('driver-selection-notice-text');
+            const graceNotice = document.getElementById('driver-grace-notice');
+            const graceTimer = document.getElementById('driver-grace-timer');
+            const banner = document.getElementById('driver-3h-lock-banner');
+            const bannerText = document.getElementById('driver-3h-lock-text');
+
+            if (!rides || rides.length === 0) {
+                if (selectionNotice) selectionNotice.classList.add('hidden');
+                if (graceNotice) graceNotice.classList.add('hidden');
+                if (banner) banner.classList.add('hidden');
+                return false;
+            }
+
+            const now = new Date();
+            let isLockedOut = false;
+            let foundSelection = false;
+            let foundGrace = false;
+
+            for (const ride of rides) {
+                let depISO = ride.departure_time;
+                if (!depISO && ride.notes) {
+                    try {
+                        const parsed = typeof ride.notes === 'string' ? JSON.parse(ride.notes) : ride.notes;
+                        if (parsed?.day) {
+                            depISO = `${parsed.year || '2026'}-${String(parsed.month).padStart(2,'0')}-${String(parsed.day).padStart(2,'0')}T${String(parsed.period === 'مساءً' && parseInt(parsed.hour) < 12 ? parseInt(parsed.hour) + 12 : parsed.hour).padStart(2,'0')}:${String(parsed.minute||'00').padStart(2,'0')}:00`;
+                        }
+                    } catch(e) {}
+                }
+
+                if (depISO) {
+                    const depTime = new Date(depISO);
+                    if (!isNaN(depTime.getTime())) {
+                        const diffMs = depTime - now;
+                        const diffHours = diffMs / (1000 * 60 * 60);
+
+                        // Auto-process 10h commission if within 10.5 hours
+                        if (diffHours <= 10.5 && ['driver_selected', 'confirmed'].includes(ride.status)) {
+                            try {
+                                const token = localStorage.getItem('session_token');
+                                const res = await fetch('/api/travel-platform', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': token ? `Bearer ${token}` : ''
+                                    },
+                                    body: JSON.stringify({
+                                        action: 'process_10h_commission',
+                                        rideId: ride.id
+                                    })
+                                });
+                                const commData = await res.json();
+                                if (commData.success) {
+                                    if (commData.result === 'grace_period_started' || commData.result === 'in_grace_period') {
+                                        ride.commission_status = 'grace_period';
+                                        ride.commission_grace_until = commData.graceUntil || ride.commission_grace_until;
+                                    }
+                                }
+                            } catch(e) {}
+                        }
+
+                        // 1. Fixed Selection Notice (from selection until departure time)
+                        if (!foundSelection && ['driver_selected', 'confirmed', 'in_progress'].includes(ride.status) && diffHours > 0) {
+                            foundSelection = true;
+                            const commAmount = Math.round((ride.estimated_price || 0) * 0.05);
+                            const tenHoursBefore = new Date(depTime.getTime() - (10 * 60 * 60 * 1000));
+                            const commTimeStr = `${tenHoursBefore.toLocaleTimeString('ar-SA', {hour:'2-digit', minute:'2-digit'})} يوم ${tenHoursBefore.toLocaleDateString('ar-SA')}`;
+                            const depTimeStr = `${depTime.toLocaleTimeString('ar-SA', {hour:'2-digit', minute:'2-digit'})}`;
+                            const depDateStr = `${depTime.toLocaleDateString('ar-SA')}`;
+
+                            if (selectionText) {
+                                selectionText.textContent = `لديك رحلة سفرية تم اختيارك لها من ${ride.from_city} إلى ${ride.to_city} بتاريخ ${depDateStr} الساعة ${depTimeStr}. يجب عليك أن تكون متواجداً في مدينة الانطلاق في الزمن المحدد، وحتى لا تفقد الرحلة يجب أن يكون رصيدك (${commAmount.toLocaleString('en-SA')} ج) أو أكثر بحلول الساعة ${commTimeStr}.`;
+                            }
+                            if (selectionNotice) selectionNotice.classList.remove('hidden');
+                        }
+
+                        // 2. 30-Minute Grace Timer Warning Notice
+                        if (!foundGrace && ride.commission_status === 'grace_period' && ride.commission_grace_until) {
+                            const graceUntil = new Date(ride.commission_grace_until);
+                            const remainingSec = Math.max(0, Math.floor((graceUntil - now) / 1000));
+                            if (remainingSec > 0) {
+                                foundGrace = true;
+                                const mins = Math.floor(remainingSec / 60);
+                                const secs = remainingSec % 60;
+                                if (graceTimer) graceTimer.textContent = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+                                if (graceNotice) graceNotice.classList.remove('hidden');
+                            }
+                        }
+
+                        // 3. 3-Hour Lockout Banner
+                        if (diffHours > 0 && diffHours <= 3) {
+                            isLockedOut = true;
+                            const hoursLeft = Math.floor(diffHours);
+                            const minsLeft = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                            if (bannerText) {
+                                bannerText.textContent = `عليك الاستعداد لرحلتك السفرية من ${ride.from_city} إلى ${ride.to_city}. تبقى على الرحلة ${hoursLeft} ساعة و ${minsLeft} دقيقة.`;
+                            }
+                            if (banner) banner.classList.remove('hidden');
+                        }
+                    }
+                }
+            }
+
+            if (!foundSelection && selectionNotice) selectionNotice.classList.add('hidden');
+            if (!foundGrace && graceNotice) graceNotice.classList.add('hidden');
+            if (!isLockedOut && banner) banner.classList.add('hidden');
+
+            return isLockedOut;
+        } catch (e) {
+            console.error('Error checking upcoming travel ride:', e);
+            return false;
+        }
+    }
+
     async function updateDriverDashboard() {
         if (!currentDriver) return;
 
@@ -2145,6 +2291,8 @@
             if (!totalError && totalRides) {
                 document.getElementById('total-trips').textContent = totalRides.length;
             }
+
+            await checkDriverUpcomingTravelRide();
 
         } catch (error) {
             console.error('Error fetching driver stats:', error);

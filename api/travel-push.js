@@ -736,7 +736,72 @@ export default async function handler(req, res) {
         }
 
         // ============================================
-        // 5. TRIP_CANCELLED / RIDE_CANCELLED → إشعار للسائق
+        // 5. COMMISSION_WARNING → تحذير نقص الرصيد قبل 10 ساعات
+        // ============================================
+        if (type === 'COMMISSION_WARNING') {
+            if (!driverId) return res.status(400).json({ error: 'driverId required' });
+            const driver = await getDriverFcm(driverId);
+            if (!driver?.fcm_token) return res.status(200).json({ success: false, reason: 'no_driver_token' });
+
+            const result = await sendQuietPush(
+                driver.fcm_token,
+                '⚠️ تنبيه رصيد غير كافٍ - تراكا',
+                `دخلت الرحلة في آخر 10 ساعات ورصيدك غير كافٍ لخصم العمولة. لديك 30 دقيقة لشحن الرصيد حتى لا تُسحب الرحلة.`,
+                {
+                    type: 'COMMISSION_WARNING',
+                    ride_id: String(rideId || ''),
+                    url: '/driver_app/travel-platform.html'
+                }
+            );
+            return res.status(200).json({ success: true, ...result });
+        }
+
+        // ============================================
+        // 6. DRIVER_STRIPPED → إشعار للراكب بسحب السائق واختيار بديل
+        // ============================================
+        if (type === 'DRIVER_STRIPPED') {
+            const { passengerId } = req.body;
+            if (!passengerId) return res.status(400).json({ error: 'passengerId required' });
+            const passenger = await getPassengerFcm(passengerId);
+            if (!passenger?.fcm_token) return res.status(200).json({ success: false, reason: 'no_passenger_token' });
+
+            const result = await sendQuietPush(
+                passenger.fcm_token,
+                'ℹ️ السائق غير متاح حالياً - تراكا',
+                'السائق الذي اخترته لرحلتك السفرية غير متاح حالياً. يرجى الدخول واختيار سائق بديل.',
+                {
+                    type: 'DRIVER_STRIPPED',
+                    ride_id: String(rideId || ''),
+                    url: '/passenger_app/travel-platform.html#my-rides'
+                }
+            );
+            return res.status(200).json({ success: true, ...result });
+        }
+
+        // ============================================
+        // 7. 3H_REMINDER → تذكير السائق بالاستعداد قبل 3 ساعات
+        // ============================================
+        if (type === '3H_REMINDER') {
+            if (!driverId) return res.status(400).json({ error: 'driverId required' });
+            const driver = await getDriverFcm(driverId);
+            if (!driver?.fcm_token) return res.status(200).json({ success: false, reason: 'no_driver_token' });
+
+            const routeText = (fromCity && toCity) ? `من ${fromCity} إلى ${toCity}` : 'السفرية';
+            const result = await sendQuietPush(
+                driver.fcm_token,
+                '⏰ تذكير موعد الرحلة السفرية - تراكا',
+                `تبقى 3 ساعات على موعد رحلتك السفرية ${routeText}. عليك الاستعداد والتواجد في مدينة الانطلاق.`,
+                {
+                    type: '3H_REMINDER',
+                    ride_id: String(rideId || ''),
+                    url: '/driver_app/travel-platform.html'
+                }
+            );
+            return res.status(200).json({ success: true, ...result });
+        }
+
+        // ============================================
+        // 8. TRIP_CANCELLED / RIDE_CANCELLED → إشعار للسائق
         // ============================================
         if (type === 'TRIP_CANCELLED' || type === 'RIDE_CANCELLED') {
             let targetDriverId = driverId;
@@ -777,15 +842,18 @@ export default async function handler(req, res) {
                 });
             }
 
-            const routeText = (fromCity && toCity) ? `(${fromCity} → ${toCity})` : '';
+            const fromStr = fromCity || 'المدينة';
+            const toStr = toCity || 'الجهة';
+            const bodyMessage = `تم إلغاء الرحلة من (${fromStr}) إلى (${toStr}) بواسطة الراكب، تم إرجاع العمولة إلى رصيدك`;
+
             const result = await sendQuietPush(
                 driver.fcm_token,
-                '❌ إلغاء رحلة سفرية - تراكا',
-                `قام الراكب بإلغاء الرحلة السفرية ${routeText}`,
+                '❌ تم إلغاء الرحلة السفرية بواسطة الراكب',
+                bodyMessage,
                 {
                     type: 'TRIP_CANCELLED',
                     ride_id: String(rideId || ''),
-                    url: '/driver_app/travel-platform.html#my-trips'
+                    url: '/driver_app/travel-platform.html#accepted-rides'
                 }
             );
             

@@ -1848,6 +1848,12 @@
         
     <!-- Home Screen (After Login) - Matching Driver App Dashboard -->
     <section id="home-screen" class="screen hidden">
+        <!-- 24 Hours Pre-Trip Reminder Banner -->
+        <div id="index-24h-reminder" class="hidden" style="background:linear-gradient(135deg, #10b981, #059669); color:white; padding:0.85rem 1.25rem; border-radius:12px; margin-bottom:12px; font-weight:700; display:flex; align-items:center; gap:0.75rem; box-shadow:0 4px 15px rgba(16,185,129,0.3);">
+            <i class="ph-bold ph-bell-ringing" style="font-size:1.5rem; flex-shrink:0;"></i>
+            <div id="index-24h-reminder-text" style="font-size:0.85rem; line-height:1.5;"></div>
+        </div>
+
         <div class="card">
             <div class="user-profile">
                 <div class="user-avatar" id="user-avatar">?</div>
@@ -3136,6 +3142,65 @@ function updateUserProfile() {
     
     if (currentUser.is_verified) {
         document.getElementById('verification-status').classList.remove('hidden');
+    }
+
+    check24hTravelReminder();
+}
+
+async function check24hTravelReminder() {
+    if (!currentUser || !currentUser.id) return;
+    try {
+        const { data: trips } = await tarhalDB
+            .from('travel_trips')
+            .select('from_city, to_city, departure_time, status, ride_request_id')
+            .eq('passenger_id', currentUser.id)
+            .in('status', ['driver_selected', 'in_progress', 'commission_reserved', 'final_active'])
+            .order('departure_time', { ascending: true });
+
+        const { data: reqs } = await tarhalDB
+            .from('ride_requests')
+            .select('from_city, to_city, departure_time, status, notes')
+            .eq('customer_id', currentUser.id)
+            .in('status', ['driver_selected', 'confirmed', 'in_progress']);
+
+        const combined = [...(trips || []), ...(reqs || [])];
+        const bannerIndex = document.getElementById('index-24h-reminder');
+        const textIndex = document.getElementById('index-24h-reminder-text');
+
+        const now = new Date();
+        for (const item of combined) {
+            let depISO = item.departure_time;
+            if (!depISO && item.notes) {
+                try {
+                    const parsed = typeof item.notes === 'string' ? JSON.parse(item.notes) : item.notes;
+                    if (parsed?.day) {
+                        depISO = `${parsed.year || '2026'}-${String(parsed.month).padStart(2,'0')}-${String(parsed.day).padStart(2,'0')}T${String(parsed.period === 'مساءً' && parseInt(parsed.hour) < 12 ? parseInt(parsed.hour) + 12 : parsed.hour).padStart(2,'0')}:${String(parsed.minute||'00').padStart(2,'0')}:00`;
+                    }
+                } catch(e) {}
+            }
+
+            if (depISO) {
+                const depDate = new Date(depISO);
+                if (!isNaN(depDate.getTime())) {
+                    const diffHours = (depDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+                    if (diffHours > 0 && diffHours <= 24) {
+                        const dateStr = depDate.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
+                        const timeStr = depDate.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+                        const text = `لديك رحلة سفرية يوم (${dateStr}) الساعة (${timeStr}) من (${item.from_city || '—'}) إلى (${item.to_city || '—'})، يرجى الاستعداد.`;
+
+                        if (bannerIndex && textIndex) {
+                            textIndex.textContent = text;
+                            bannerIndex.classList.remove('hidden');
+                        }
+                        return;
+                    }
+                }
+            }
+        }
+        if (bannerIndex) bannerIndex.classList.add('hidden');
+    } catch(e) {
+        console.error('Error checking 24h reminder:', e);
     }
 }
 
