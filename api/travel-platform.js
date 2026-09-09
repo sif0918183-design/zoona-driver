@@ -145,7 +145,7 @@ async function checkPassengerRestrictions(passengerId, departureTimeISO, fromCit
     if (customer.travel_restriction_type === 'restricted_3days' && customer.travel_restriction_until) {
         const untilDate = new Date(customer.travel_restriction_until);
         if (untilDate > serverTime) {
-            const formattedTime = untilDate.toLocaleString('ar-SA', {
+            const formattedTime = untilDate.toLocaleString('ar-EG', {
                 year: 'numeric', month: 'long', day: 'numeric',
                 hour: '2-digit', minute: '2-digit'
             });

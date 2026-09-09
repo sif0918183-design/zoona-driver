@@ -1298,10 +1298,20 @@ function getCategoryRank(categoryName) {
 // ============================================
 document.addEventListener('DOMContentLoaded', async function() {
     checkForActiveTripOnLoad();
+    initBackgroundActiveTripChecker();
     await initializeUser();
     await handleHashRouting();
     window.addEventListener('hashchange', handleHashRouting);
 });
+
+function initBackgroundActiveTripChecker() {
+    setInterval(async () => {
+        const modal = document.getElementById('active-trip-modal');
+        if (modal && modal.classList.contains('hidden')) {
+            await checkForActiveTripOnLoad();
+        }
+    }, 10000);
+}
 
 async function handleHashRouting() {
     const hash = window.location.hash;
@@ -1603,8 +1613,8 @@ async function showActiveTripModal(trip) {
     const depTextEl = document.getElementById('atp-departure-text');
     if (depTextEl) {
         if (depDateObj && !isNaN(depDateObj.getTime())) {
-            const dateStr = depDateObj.toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            const timeStr = depDateObj.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+            const dateStr = depDateObj.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const timeStr = depDateObj.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
             depTextEl.textContent = `موعد الانطلاق: ${dateStr} - الساعة ${timeStr}`;
         } else {
             depTextEl.textContent = `موعد الانطلاق: حسب الموعد المتفق عليه مع الراكب`;
@@ -3666,7 +3676,7 @@ async function sendMessage() {
         const container = document.getElementById('chat-messages');
         const el = document.createElement('div');
         el.className = 'message message-outgoing';
-        el.innerHTML = `<div class="message-content">${escapeHtml(message)}</div><div class="message-time">${new Date().toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'})}</div>`;
+        el.innerHTML = `<div class="message-content">${escapeHtml(message)}</div><div class="message-time">${new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})}</div>`;
         container.appendChild(el);
         input.value = '';
         container.scrollTop = container.scrollHeight;
@@ -3914,13 +3924,13 @@ function formatPublishDateTime(dateString) {
 
 function formatDate(dateString) {
     try {
-        return new Date(dateString).toLocaleDateString('ar-SA', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
+        return new Date(dateString).toLocaleDateString('ar-EG', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
     } catch(e) { return 'تاريخ غير معروف'; }
 }
 
 function formatTime(dateString) {
     try {
-        return new Date(dateString).toLocaleTimeString('ar-SA', {hour:'2-digit',minute:'2-digit'});
+        return new Date(dateString).toLocaleTimeString('ar-EG', {hour:'2-digit',minute:'2-digit'});
     } catch(e) { return '--:--'; }
 }
 
