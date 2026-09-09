@@ -2016,10 +2016,23 @@ async function passengerCancelsTrip(tripId, reason) {
             throw new Error(resData.error || 'فشل إلغاء الرحلة من خلال الخادم');
         }
 
+        // Send push notification to driver
+        sendTravelPush({
+            type: 'TRIP_CANCELLED',
+            target: 'driver',
+            rideId: resData.rideReqId || activeTripData?.ride_request_id || tripId,
+            driverId: resData.driverId || activeTripData?.driver_id,
+            fromCity: resData.fromCity || activeTripData?.from_city,
+            toCity: resData.toCity || activeTripData?.to_city
+        });
+
         localStorage.removeItem('tarhal_active_trip_id');
         closeActiveTripModal();
-        showNotification('تم إلغاء الرحلة', 'success');
-        await loadPassengerRides();
+        showNotification('تم إلغاء الرحلة بنجاح', 'success');
+        updateDriverBalanceDisplay();
+        await loadAvailableRides();
+        await loadDriverRides();
+        await loadDriverAcceptedRides();
     } catch(err) {
         showNotification('خطأ في الإلغاء: ' + err.message, 'error');
     }
@@ -2028,7 +2041,7 @@ async function passengerCancelsTrip(tripId, reason) {
 async function driverCancelsTrip(tripId, reason) {
     if (!confirm('هل أنت متأكد من إلغاء الرحلة؟ سيتم خصم غرامة تعادل قيمة العمولة من رصيدك.')) return;
     try {
-        const price = activeTripData.final_price || 0;
+        const price = activeTripData?.final_price || 0;
         const token = localStorage.getItem('session_token');
         const response = await fetch('/api/travel-platform', {
             method: 'POST',
@@ -2049,6 +2062,16 @@ async function driverCancelsTrip(tripId, reason) {
             throw new Error(resData.error || 'فشل إلغاء الرحلة من خلال الخادم');
         }
 
+        // Send push notification to passenger
+        sendTravelPush({
+            type: 'TRIP_CANCELLED',
+            target: 'passenger',
+            rideId: resData.rideReqId || activeTripData?.ride_request_id || tripId,
+            passengerId: resData.passengerId || activeTripData?.passenger_id,
+            fromCity: resData.fromCity || activeTripData?.from_city,
+            toCity: resData.toCity || activeTripData?.to_city
+        });
+
         // Log violation
         try {
             await travelSupabase.from('driver_violations').insert([{
@@ -2061,13 +2084,17 @@ async function driverCancelsTrip(tripId, reason) {
 
         localStorage.removeItem('tarhal_active_trip_id');
         closeActiveTripModal();
-        showNotification('تم إلغاء الرحلة وخصم غرامة. إذا لم تكن مستعداً للرحلة، يرجى عدم قبولها من البداية.', 'warning');
+        showNotification('تم إلغاء الرحلة وخصم غرامة.', 'warning');
         updateDriverBalanceDisplay();
+        await loadAvailableRides();
         await loadDriverRides();
+        await loadDriverAcceptedRides();
     } catch(err) {
         showNotification('خطأ في الإلغاء: ' + err.message, 'error');
     }
 }
+
+let activeTripPollInterval = null;
 
 function closeActiveTripModal() {
     document.getElementById('active-trip-modal').classList.add('hidden');
@@ -2075,6 +2102,10 @@ function closeActiveTripModal() {
     if (activeCountdownInterval) {
         clearInterval(activeCountdownInterval);
         activeCountdownInterval = null;
+    }
+    if (activeTripPollInterval) {
+        clearInterval(activeTripPollInterval);
+        activeTripPollInterval = null;
     }
     if (activeTripSubscription) {
         activeTripSubscription.unsubscribe();
@@ -2087,6 +2118,10 @@ function setupTripRealtimeListener(tripId) {
         activeTripSubscription.unsubscribe();
         activeTripSubscription = null;
     }
+    if (activeTripPollInterval) {
+        clearInterval(activeTripPollInterval);
+        activeTripPollInterval = null;
+    }
 
     const handleUpdate = async (updated) => {
         if (!updated) return;
@@ -2097,6 +2132,7 @@ function setupTripRealtimeListener(tripId) {
             localStorage.removeItem('tarhal_active_trip_id');
             closeActiveTripModal();
             showCancellationAlert(cancelledBy);
+            updateDriverBalanceDisplay();
             await loadAvailableRides();
             await loadDriverRides();
             await loadDriverAcceptedRides();
@@ -2130,6 +2166,53 @@ function setupTripRealtimeListener(tripId) {
             event: 'UPDATE', schema: 'public', table: 'ride_requests', filter: `driver_id=eq.${currentUser.id}`
         }, payload => handleUpdate(payload.new))
         .subscribe();
+
+    // High-frequency polling fallback every 3 seconds to ensure instant close on cancellation
+    activeTripPollInterval = setInterval(async () => {
+        const modal = document.getElementById('active-trip-modal');
+        if (!modal || modal.classList.contains('hidden')) {
+            clearInterval(activeTripPollInterval);
+            activeTripPollInterval = null;
+            return;
+        }
+
+        try {
+            const { data: latestTrip } = await travelSupabase
+                .from('travel_trips')
+                .select('status, cancelled_by')
+                .eq('id', tripId)
+                .maybeSingle();
+
+            if (latestTrip && latestTrip.status === 'cancelled') {
+                clearInterval(activeTripPollInterval);
+                activeTripPollInterval = null;
+                localStorage.removeItem('tarhal_active_trip_id');
+                closeActiveTripModal();
+                showCancellationAlert(latestTrip.cancelled_by || 'passenger');
+                updateDriverBalanceDisplay();
+                await loadAvailableRides();
+                await loadDriverRides();
+                await loadDriverAcceptedRides();
+            } else if (!latestTrip) {
+                const { data: latestReq } = await travelSupabase
+                    .from('ride_requests')
+                    .select('status')
+                    .eq('id', tripId)
+                    .maybeSingle();
+                if (latestReq && latestReq.status === 'cancelled') {
+                    clearInterval(activeTripPollInterval);
+                    activeTripPollInterval = null;
+                    localStorage.removeItem('tarhal_active_trip_id');
+                    closeActiveTripModal();
+                    showCancellationAlert('passenger');
+                    updateDriverBalanceDisplay();
+                    await loadAvailableRides();
+                    await loadDriverRides();
+                    await loadDriverAcceptedRides();
+                }
+            }
+        } catch(e) {}
+    }, 3000);
 }
 
 function showCancellationAlert(cancelledBy) {

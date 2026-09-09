@@ -801,63 +801,115 @@ export default async function handler(req, res) {
         }
 
         // ============================================
-        // 8. TRIP_CANCELLED / RIDE_CANCELLED → إشعار للسائق
+        // 8. TRIP_CANCELLED / RIDE_CANCELLED → إشعار إلغاء للراكب أو السائق
         // ============================================
         if (type === 'TRIP_CANCELLED' || type === 'RIDE_CANCELLED') {
-            let targetDriverId = driverId;
-
-            if (!targetDriverId && rideId) {
-                const { data: ride } = await db.from('ride_requests')
-                    .select('driver_id')
-                    .eq('id', rideId)
-                    .single();
-
-                targetDriverId = ride?.driver_id;
-
-                // إذا لم يتم اختيار سائق بعد، جلب آخر سائق قبل الرحلة
-                if (!targetDriverId) {
-                    const { data: acc } = await db.from('ride_driver_acceptances')
-                        .select('driver_id')
-                        .eq('ride_id', rideId)
-                        .eq('status', 'accepted')
-                        .order('accepted_at', { ascending: false })
-                        .limit(1)
-                        .single();
-                    targetDriverId = acc?.driver_id;
-                }
-            }
-
-            if (!targetDriverId) {
-                return res.status(200).json({ 
-                    success: false, 
-                    reason: 'no_driver_id' 
-                });
-            }
-
-            const driver = await getDriverFcm(targetDriverId);
-            if (!driver?.fcm_token) {
-                return res.status(200).json({ 
-                    success: false, 
-                    reason: 'no_driver_token' 
-                });
-            }
+            const { target, cancelledBy, passengerId } = req.body;
+            const isTargetPassenger = target === 'passenger' || cancelledBy === 'driver' || (passengerId && !driverId && target !== 'driver');
 
             const fromStr = fromCity || 'المدينة';
             const toStr = toCity || 'الجهة';
-            const bodyMessage = `تم إلغاء الرحلة من (${fromStr}) إلى (${toStr}) بواسطة الراكب، تم إرجاع العمولة إلى رصيدك`;
 
-            const result = await sendQuietPush(
-                driver.fcm_token,
-                '❌ تم إلغاء الرحلة السفرية بواسطة الراكب',
-                bodyMessage,
-                {
-                    type: 'TRIP_CANCELLED',
-                    ride_id: String(rideId || ''),
-                    url: '/driver_app/travel-platform.html#accepted-rides'
+            if (isTargetPassenger) {
+                // --- إشعار موجه للراكب عند إلغاء السائق للرحلة ---
+                let targetPassengerId = passengerId;
+
+                if (!targetPassengerId && rideId) {
+                    const { data: ride } = await db.from('ride_requests')
+                        .select('customer_id')
+                        .eq('id', rideId)
+                        .maybeSingle();
+                    targetPassengerId = ride?.customer_id;
+
+                    if (!targetPassengerId) {
+                        const { data: trip } = await db.from('travel_trips')
+                            .select('passenger_id')
+                            .eq('id', rideId)
+                            .maybeSingle();
+                        targetPassengerId = trip?.passenger_id;
+                    }
                 }
-            );
-            
-            return res.status(200).json({ success: true, ...result });
+
+                if (!targetPassengerId) {
+                    return res.status(200).json({ success: false, reason: 'no_passenger_id' });
+                }
+
+                const passenger = await getPassengerFcm(targetPassengerId);
+                if (!passenger?.fcm_token) {
+                    return res.status(200).json({ success: false, reason: 'no_passenger_token' });
+                }
+
+                const bodyMessage = `قام السائق بإلغاء الرحلة من (${fromStr}) إلى (${toStr}). يمكنك اختيار سائق آخر أو طلب رحلة جديدة.`;
+
+                const result = await sendQuietPush(
+                    passenger.fcm_token,
+                    '❌ تم إلغاء الرحلة بواسطة السائق',
+                    bodyMessage,
+                    {
+                        type: 'TRIP_CANCELLED',
+                        ride_id: String(rideId || ''),
+                        url: '/passenger_app/travel-platform.html#my-rides'
+                    }
+                );
+
+                return res.status(200).json({ success: true, ...result });
+
+            } else {
+                // --- إشعار موجه للسائق عند إلغاء الراكب للرحلة ---
+                let targetDriverId = driverId;
+
+                if (!targetDriverId && rideId) {
+                    const { data: ride } = await db.from('ride_requests')
+                        .select('driver_id')
+                        .eq('id', rideId)
+                        .maybeSingle();
+
+                    targetDriverId = ride?.driver_id;
+
+                    if (!targetDriverId) {
+                        const { data: trip } = await db.from('travel_trips')
+                            .select('driver_id')
+                            .eq('id', rideId)
+                            .maybeSingle();
+                        targetDriverId = trip?.driver_id;
+                    }
+
+                    if (!targetDriverId) {
+                        const { data: acc } = await db.from('ride_driver_acceptances')
+                            .select('driver_id')
+                            .eq('ride_id', rideId)
+                            .eq('status', 'accepted')
+                            .order('accepted_at', { ascending: false })
+                            .limit(1)
+                            .maybeSingle();
+                        targetDriverId = acc?.driver_id;
+                    }
+                }
+
+                if (!targetDriverId) {
+                    return res.status(200).json({ success: false, reason: 'no_driver_id' });
+                }
+
+                const driver = await getDriverFcm(targetDriverId);
+                if (!driver?.fcm_token) {
+                    return res.status(200).json({ success: false, reason: 'no_driver_token' });
+                }
+
+                const bodyMessage = `قام الراكب بإلغاء الرحلة من (${fromStr}) إلى (${toStr})، وتم إرجاع العمولة المحجوزة إلى رصيدك.`;
+
+                const result = await sendQuietPush(
+                    driver.fcm_token,
+                    '❌ تم إلغاء الرحلة بواسطة الراكب',
+                    bodyMessage,
+                    {
+                        type: 'TRIP_CANCELLED',
+                        ride_id: String(rideId || ''),
+                        url: '/driver_app/travel-platform.html#accepted-rides'
+                    }
+                );
+
+                return res.status(200).json({ success: true, ...result });
+            }
         }
 
         // ============================================

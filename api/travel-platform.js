@@ -817,36 +817,42 @@ export default async function handler(req, res) {
                 return res.status(400).json({ success: false, error: 'tripId is required' });
             }
 
-            // Fetch trip details
-            const { data: trip } = await supabase
+            // 1. Thorough trip lookup across travel_trips and ride_requests
+            let trip = null;
+            const { data: tripById } = await supabase
                 .from('travel_trips')
                 .select('*')
                 .eq('id', tripId)
                 .maybeSingle();
 
-            let passengerId = trip?.passenger_id;
-            let departureTime = trip?.departure_time ? new Date(trip.departure_time) : null;
-            let isDriverSelected = !!(trip?.driver_id);
-            let isContactRevealed = !!(trip?.contact_revealed);
-            let isCommissionHeld = trip?.commission_status === 'held';
-
-            let rideReqId = trip?.ride_request_id || tripId;
-
-            if (!passengerId) {
-                const { data: reqData } = await supabase
-                    .from('ride_requests')
+            if (tripById) {
+                trip = tripById;
+            } else {
+                const { data: tripByRideId } = await supabase
+                    .from('travel_trips')
                     .select('*')
-                    .eq('id', rideReqId)
-                    .single();
-
-                if (reqData) {
-                    passengerId = reqData.customer_id;
-                    departureTime = reqData.departure_time ? new Date(reqData.departure_time) : null;
-                    isDriverSelected = !!(reqData.driver_id);
-                    isContactRevealed = !!(reqData.contact_revealed);
-                    isCommissionHeld = reqData.commission_status === 'held';
-                }
+                    .eq('ride_request_id', tripId)
+                    .maybeSingle();
+                if (tripByRideId) trip = tripByRideId;
             }
+
+            const rideReqId = trip?.ride_request_id || tripId;
+
+            const { data: reqData } = await supabase
+                .from('ride_requests')
+                .select('*')
+                .eq('id', rideReqId)
+                .maybeSingle();
+
+            const passengerId = trip?.passenger_id || reqData?.customer_id;
+            const targetDriverId = trip?.driver_id || reqData?.driver_id;
+            const departureTime = trip?.departure_time
+                ? new Date(trip.departure_time)
+                : (reqData?.departure_time ? new Date(reqData.departure_time) : null);
+
+            const isDriverSelected = !!targetDriverId;
+            const isContactRevealed = !!(trip?.contact_revealed || reqData?.contact_revealed);
+            const isCommissionHeld = trip?.commission_status === 'held' || reqData?.commission_status === 'held';
 
             const hoursBeforeDeparture = departureTime
                 ? (departureTime.getTime() - serverTime.getTime()) / (1000 * 60 * 60)
@@ -860,15 +866,14 @@ export default async function handler(req, res) {
                 impactLevel = 'high';
             }
 
-            // 1. Refund commission to driver if it was held/deducted
-            const targetDriverId = trip?.driver_id;
+            // 2. Refund commission to driver if it was held/deducted
             let commissionRefunded = false;
             let refundAmount = 0;
 
             if (isCommissionHeld && targetDriverId) {
                 refundAmount = trip?.commission_amount || 0;
                 if (!refundAmount) {
-                    const price = trip?.final_price || 0;
+                    const price = trip?.final_price || reqData?.estimated_price || 0;
                     refundAmount = Math.round(price * settings.travel_commission_rate / 100);
                 }
 
@@ -887,14 +892,14 @@ export default async function handler(req, res) {
                         driver_id: targetDriverId,
                         amount: refundAmount,
                         type: 'commission_refund',
-                        description: `إرجاع عمولة منصة السفر بسبب إلغاء الراكب للرحلة رقم ${tripId}`
+                        description: `إرجاع عمولة منصة السفر بسبب إلغاء الراكب للرحلة رقم ${rideReqId}`
                     }]);
 
                     commissionRefunded = true;
                 }
             }
 
-            // 2. Update trip & ride request statuses
+            // 3. Update trip & ride request statuses in DB
             if (trip) {
                 await supabase
                     .from('travel_trips')
@@ -906,14 +911,14 @@ export default async function handler(req, res) {
                         commission_status: commissionRefunded ? 'refunded' : trip.commission_status,
                         updated_at: serverTime.toISOString()
                     })
-                    .eq('id', tripId);
+                    .eq('id', trip.id);
             }
 
             await supabase
                 .from('ride_requests')
                 .update({
                     status: 'cancelled',
-                    commission_status: commissionRefunded ? 'refunded' : undefined,
+                    commission_status: commissionRefunded ? 'refunded' : (reqData?.commission_status || 'pending'),
                     updated_at: serverTime.toISOString()
                 })
                 .eq('id', rideReqId);
@@ -978,8 +983,9 @@ export default async function handler(req, res) {
                 impactLevel,
                 driverId: targetDriverId,
                 rideReqId: rideReqId,
-                fromCity: trip?.from_city,
-                toCity: trip?.to_city
+                fromCity: trip?.from_city || reqData?.from_city,
+                toCity: trip?.to_city || reqData?.to_city,
+                commissionRefunded
             });
         }
 
@@ -1066,7 +1072,14 @@ export default async function handler(req, res) {
                     description: `إلغاء رحلة السفر رقم ${tripId} بعد الموافقة عليها`
                 }]);
 
-            return res.status(200).json({ success: true, penalty });
+            return res.status(200).json({
+                success: true,
+                penalty,
+                passengerId: trip?.passenger_id,
+                rideReqId: trip?.ride_request_id || tripId,
+                fromCity: trip?.from_city,
+                toCity: trip?.to_city
+            });
         }
 
         // --- 9. COMPLETE TRIP ---
