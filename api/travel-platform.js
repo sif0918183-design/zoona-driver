@@ -37,6 +37,57 @@ function getSudanServerTime() {
     return new Date();
 }
 
+// Check if driver commission was already held/deducted for this ride
+async function isCommissionAlreadyDeducted(driverId, rideId, tripId) {
+    if (!driverId) return false;
+
+    // 1. Check statuses in travel_trips and ride_requests
+    if (tripId) {
+        const { data: trip } = await supabase
+            .from('travel_trips')
+            .select('commission_status')
+            .eq('id', tripId)
+            .maybeSingle();
+        if (trip?.commission_status === 'held' || trip?.commission_status === 'deducted') return true;
+    }
+
+    const targetRideId = rideId || tripId;
+    if (targetRideId) {
+        const { data: ride } = await supabase
+            .from('ride_requests')
+            .select('commission_status')
+            .eq('id', targetRideId)
+            .maybeSingle();
+        if (ride?.commission_status === 'held' || ride?.commission_status === 'deducted') return true;
+
+        const { data: tripByReq } = await supabase
+            .from('travel_trips')
+            .select('commission_status')
+            .eq('ride_request_id', targetRideId)
+            .maybeSingle();
+        if (tripByReq?.commission_status === 'held' || tripByReq?.commission_status === 'deducted') return true;
+    }
+
+    // 2. Double-check balance_transactions history for this driver & ride
+    if (targetRideId) {
+        const { data: txs } = await supabase
+            .from('balance_transactions')
+            .select('id, type, amount')
+            .eq('driver_id', driverId)
+            .or(`description.ilike.%${targetRideId}%,description.ilike.%${tripId || 'N/A'}%`);
+
+        if (txs && txs.length > 0) {
+            const hasHoldOrDeduct = txs.some(t => (t.type === 'commission_hold' || t.type === 'commission') && t.amount < 0);
+            const hasRefund = txs.some(t => t.type === 'commission_refund' && t.amount > 0);
+            if (hasHoldOrDeduct && !hasRefund) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 // Fetch travel configuration settings from system_settings
 async function getTravelSettings() {
     try {
@@ -468,7 +519,11 @@ export default async function handler(req, res) {
 
             // Check if already inside last 10 hours
             if (hoursUntilDeparture <= settings.commission_hold_hours) {
-                if ((driver.balance || 0) >= commissionAmount) {
+                const alreadyDeducted = await isCommissionAlreadyDeducted(driverId, rideId, null);
+                if (alreadyDeducted) {
+                    initialCommStatus = 'held';
+                    contactsRevealed = true;
+                } else if ((driver.balance || 0) >= commissionAmount) {
                     // Sufficient balance -> deduct/hold commission & reveal contacts immediately
                     const newBal = (driver.balance || 0) - commissionAmount;
                     await supabase.from('drivers').update({ balance: newBal }).eq('id', driverId);
@@ -624,6 +679,30 @@ export default async function handler(req, res) {
 
             const commStatus = trip?.commission_status || rideReq?.commission_status || 'pending';
             const commGraceUntil = trip?.commission_grace_until || rideReq?.commission_grace_until;
+
+            // Check if commission was already held or deducted for this trip
+            const alreadyDeducted = await isCommissionAlreadyDeducted(driverId, targetRideId, trip?.id);
+
+            if (alreadyDeducted) {
+                if (trip) {
+                    await supabase.from('travel_trips').update({
+                        commission_status: 'held',
+                        contact_revealed: true,
+                        commission_grace_until: null,
+                        updated_at: serverTime.toISOString()
+                    }).eq('id', trip.id);
+                }
+
+                if (targetRideId) {
+                    await supabase.from('ride_requests').update({
+                        commission_status: 'held',
+                        contact_revealed: true,
+                        commission_grace_until: null
+                    }).eq('id', targetRideId);
+                }
+
+                return res.status(200).json({ success: true, result: 'commission_held', contactsRevealed: true });
+            }
 
             // Case A: Grace Period Expiration Evaluation
             if (commStatus === 'grace_period') {
@@ -1181,10 +1260,12 @@ export default async function handler(req, res) {
 
             const price = finalPrice || trip?.final_price || rideReq?.estimated_price || 0;
             const commission = Math.round(price * settings.travel_commission_rate / 100);
-            const currentCommStatus = trip?.commission_status || rideReq?.commission_status;
 
-            // Deduct commission ONLY if it was not already held/deducted
-            if (currentCommStatus !== 'held' && activeDriverId) {
+            // Check if commission was ALREADY held or deducted during selection or 10-hour window
+            const alreadyDeducted = await isCommissionAlreadyDeducted(activeDriverId, targetRideId, trip?.id);
+
+            let deductedAmount = 0;
+            if (!alreadyDeducted && activeDriverId) {
                 const { data: driver } = await supabase
                     .from('drivers')
                     .select('balance')
@@ -1201,9 +1282,10 @@ export default async function handler(req, res) {
                     type: 'commission',
                     description: `خصم عمولة منصة السفر بعد إكمال الرحلة رقم ${targetRideId || tripId}`
                 }]);
+                deductedAmount = commission;
             }
 
-            return res.status(200).json({ success: true, commission: currentCommStatus === 'held' ? 0 : commission });
+            return res.status(200).json({ success: true, commission: deductedAmount });
         }
 
         // --- 10. GET TRIP PASSENGER DETAILS (RESTRICTED CONTACT REVEAL) ---
