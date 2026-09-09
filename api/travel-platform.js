@@ -1079,43 +1079,56 @@ export default async function handler(req, res) {
             // Idempotency check: Don't charge penalty twice
             const { data: existingTrip } = await supabase
                 .from('travel_trips')
-                .select('status, commission_deducted')
+                .select('id, status, commission_deducted, commission_status, ride_request_id, passenger_id, from_city, to_city')
                 .eq('id', tripId)
-                .single();
+                .maybeSingle();
 
             if (existingTrip && existingTrip.status === 'cancelled') {
                 return res.status(200).json({ success: true, message: 'الرحلة ملغاة بالفعل' });
             }
 
+            const targetRideReqId = existingTrip?.ride_request_id || tripId;
             const penalty = Math.round(finalPrice * settings.travel_commission_rate / 100);
 
-            // Deduct penalty from driver balance
-            const { data: driver, error: dErr } = await supabase
-                .from('drivers')
-                .select('balance')
-                .eq('id', driverId)
-                .single();
+            // Check if commission was ALREADY held/deducted from driver's balance
+            const commissionAlreadyHeld = await isCommissionAlreadyDeducted(driverId, targetRideReqId, tripId);
 
-            if (dErr || !driver) {
-                return res.status(400).json({ success: false, error: 'السائق غير مسجل' });
+            let penaltyCharged = 0;
+
+            if (!commissionAlreadyHeld) {
+                // Commission was not held yet -> deduct cancellation penalty now
+                const { data: driver, error: dErr } = await supabase
+                    .from('drivers')
+                    .select('balance')
+                    .eq('id', driverId)
+                    .single();
+
+                if (dErr || !driver) {
+                    return res.status(400).json({ success: false, error: 'السائق غير مسجل' });
+                }
+
+                const newBalance = (driver.balance || 0) - penalty;
+
+                await supabase
+                    .from('drivers')
+                    .update({ balance: newBalance })
+                    .eq('id', driverId);
+
+                // Log penalty transaction
+                await supabase
+                    .from('balance_transactions')
+                    .insert([{
+                        driver_id: driverId,
+                        amount: -penalty,
+                        type: 'cancellation_penalty',
+                        description: `خصم غرامة إلغاء رحلة سفر رقم ${targetRideReqId}`
+                    }]);
+
+                penaltyCharged = penalty;
+            } else {
+                // Commission was ALREADY held -> treat already-held commission as the cancellation penalty, DO NOT deduct again!
+                penaltyCharged = penalty;
             }
-
-            const newBalance = (driver.balance || 0) - penalty;
-
-            await supabase
-                .from('drivers')
-                .update({ balance: newBalance })
-                .eq('id', driverId);
-
-            // Log penalty transaction
-            await supabase
-                .from('balance_transactions')
-                .insert([{
-                    driver_id: driverId,
-                    amount: -penalty,
-                    type: 'cancellation_penalty',
-                    description: `خصم غرامة إلغاء رحلة سفر: ${tripId}`
-                }]);
 
             // Update travel trip
             const { data: trip, error: tripErr } = await supabase
@@ -1125,21 +1138,24 @@ export default async function handler(req, res) {
                     cancelled_by: 'driver',
                     cancelled_at: serverTime.toISOString(),
                     cancellation_reason: reason || 'إلغاء من السائق',
+                    commission_status: 'forfeited',
                     commission_deducted: true,
                     commission_amount: penalty,
                     updated_at: serverTime.toISOString()
                 })
                 .eq('id', tripId)
                 .select()
-                .single();
+                .maybeSingle();
 
-            if (tripErr) throw tripErr;
-
-            if (trip.ride_request_id) {
+            if (targetRideReqId) {
                 await supabase
                     .from('ride_requests')
-                    .update({ status: 'cancelled' })
-                    .eq('id', trip.ride_request_id);
+                    .update({
+                        status: 'cancelled',
+                        commission_status: 'forfeited',
+                        updated_at: serverTime.toISOString()
+                    })
+                    .eq('id', targetRideReqId);
             }
 
             // Log driver violation
@@ -1153,11 +1169,11 @@ export default async function handler(req, res) {
 
             return res.status(200).json({
                 success: true,
-                penalty,
-                passengerId: trip?.passenger_id,
-                rideReqId: trip?.ride_request_id || tripId,
-                fromCity: trip?.from_city,
-                toCity: trip?.to_city
+                penalty: penaltyCharged,
+                passengerId: trip?.passenger_id || existingTrip?.passenger_id,
+                rideReqId: targetRideReqId,
+                fromCity: trip?.from_city || existingTrip?.from_city,
+                toCity: trip?.to_city || existingTrip?.to_city
             });
         }
 

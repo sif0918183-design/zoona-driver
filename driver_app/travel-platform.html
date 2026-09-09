@@ -2221,11 +2221,11 @@ function showCancellationAlert(cancelledBy) {
     const message = document.getElementById('cancel-alert-message');
 
     if (cancelledBy === 'driver') {
-        title.textContent = 'تم إلغاء الرحلة بواسطة السائق';
-        message.textContent = 'قام السائق بإلغاء الرحلة. يمكنك طلب رحلة جديدة أو اختيار سائق آخر.';
+        title.textContent = 'تم إلغاء الرحلة';
+        message.textContent = 'تم إلغاء هذه الرحلة من قبلك. يرجى مراجعة قائمة رحلاتك والرحلات المتاحة.';
     } else if (cancelledBy === 'passenger') {
         title.textContent = 'تم إلغاء الرحلة بواسطة الراكب';
-        message.textContent = 'قام الراكب بإلغاء الرحلة. يمكنك العودة للرحلات المتاحة وقبول رحلة جديدة.';
+        message.textContent = 'قام الراكب بإلغاء الرحلة، وتم إرجاع العمولة المحجوزة إلى رصيدك. يمكنك العودة للرحلات المتاحة وقبول رحلة جديدة.';
     }
 
     overlay.classList.remove('hidden');
