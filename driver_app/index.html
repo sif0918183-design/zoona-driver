@@ -2222,9 +2222,9 @@
                             foundSelection = true;
                             const commAmount = Math.round((ride.estimated_price || 0) * 0.05);
                             const tenHoursBefore = new Date(depTime.getTime() - (10 * 60 * 60 * 1000));
-                            const commTimeStr = `${tenHoursBefore.toLocaleTimeString('ar-SA', {hour:'2-digit', minute:'2-digit'})} يوم ${tenHoursBefore.toLocaleDateString('ar-SA')}`;
-                            const depTimeStr = `${depTime.toLocaleTimeString('ar-SA', {hour:'2-digit', minute:'2-digit'})}`;
-                            const depDateStr = `${depTime.toLocaleDateString('ar-SA')}`;
+                            const commTimeStr = `${tenHoursBefore.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'})} يوم ${tenHoursBefore.toLocaleDateString('ar-EG')}`;
+                            const depTimeStr = `${depTime.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'})}`;
+                            const depDateStr = `${depTime.toLocaleDateString('ar-EG')}`;
 
                             if (selectionText) {
                                 selectionText.textContent = `لديك رحلة سفرية تم اختيارك لها من ${ride.from_city} إلى ${ride.to_city} بتاريخ ${depDateStr} الساعة ${depTimeStr}. يجب عليك أن تكون متواجداً في مدينة الانطلاق في الزمن المحدد، وحتى لا تفقد الرحلة يجب أن يكون رصيدك (${commAmount.toLocaleString('en-SA')} ج) أو أكثر بحلول الساعة ${commTimeStr}.`;
@@ -3263,7 +3263,7 @@
         const existing = document.getElementById('ban-banner');
         if (existing) existing.remove();
 
-        const formattedDate = new Date(banUntil).toLocaleString('ar-SA', {
+        const formattedDate = new Date(banUntil).toLocaleString('ar-EG', {
             year: 'numeric',
             month: 'long',
             day: 'numeric',

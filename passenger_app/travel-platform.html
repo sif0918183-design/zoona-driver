@@ -1298,10 +1298,20 @@ function getCategoryRank(categoryName) {
 // ============================================
 document.addEventListener('DOMContentLoaded', async function() {
     checkForActiveTripOnLoad();
+    initBackgroundActiveTripChecker();
     await initializeUser();
     await handleHashRouting();
     window.addEventListener('hashchange', handleHashRouting);
 });
+
+function initBackgroundActiveTripChecker() {
+    setInterval(async () => {
+        const modal = document.getElementById('active-trip-modal');
+        if (modal && modal.classList.contains('hidden')) {
+            await checkForActiveTripOnLoad();
+        }
+    }, 10000);
+}
 
 async function handleHashRouting() {
     const hash = window.location.hash;
@@ -1603,8 +1613,8 @@ async function showActiveTripModal(trip) {
     const depTextEl = document.getElementById('atp-departure-text');
     if (depTextEl) {
         if (depDateObj && !isNaN(depDateObj.getTime())) {
-            const dateStr = depDateObj.toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            const timeStr = depDateObj.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+            const dateStr = depDateObj.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const timeStr = depDateObj.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
             depTextEl.textContent = `موعد الانطلاق: ${dateStr} - الساعة ${timeStr}`;
         } else {
             depTextEl.textContent = `موعد الانطلاق: حسب الموعد المتفق عليه مع الراكب`;
@@ -1869,18 +1879,19 @@ async function passengerCancelsTrip(tripId, reason) {
             throw new Error(resData.error || 'فشل إلغاء الرحلة من خلال الخادم');
         }
 
-        // Notify driver via push notification
+        // Send push notification to driver
         sendTravelPush({
             type: 'TRIP_CANCELLED',
-            rideId: activeTripData?.ride_request_id || tripId,
-            driverId: activeTripData?.driver_id,
-            fromCity: activeTripData?.from_city,
-            toCity: activeTripData?.to_city
+            target: 'driver',
+            rideId: resData.rideReqId || activeTripData?.ride_request_id || tripId,
+            driverId: resData.driverId || activeTripData?.driver_id,
+            fromCity: resData.fromCity || activeTripData?.from_city,
+            toCity: resData.toCity || activeTripData?.to_city
         });
 
         localStorage.removeItem('tarhal_active_trip_id');
         closeActiveTripModal();
-        showNotification('تم إلغاء الرحلة', 'success');
+        showNotification('تم إلغاء الرحلة بنجاح', 'success');
         await loadPassengerRides();
     } catch(err) {
         showNotification('خطأ في الإلغاء: ' + err.message, 'error');
@@ -1890,7 +1901,7 @@ async function passengerCancelsTrip(tripId, reason) {
 async function driverCancelsTrip(tripId, reason) {
     if (!confirm('هل أنت متأكد من إلغاء الرحلة؟ سيتم خصم غرامة تعادل قيمة العمولة من رصيدك.')) return;
     try {
-        const price = activeTripData.final_price || 0;
+        const price = activeTripData?.final_price || 0;
         const token = localStorage.getItem('session_token');
         const response = await fetch('/api/travel-platform', {
             method: 'POST',
@@ -1911,6 +1922,16 @@ async function driverCancelsTrip(tripId, reason) {
             throw new Error(resData.error || 'فشل إلغاء الرحلة من خلال الخادم');
         }
 
+        // Send push notification to passenger
+        sendTravelPush({
+            type: 'TRIP_CANCELLED',
+            target: 'passenger',
+            rideId: resData.rideReqId || activeTripData?.ride_request_id || tripId,
+            passengerId: resData.passengerId || activeTripData?.passenger_id,
+            fromCity: resData.fromCity || activeTripData?.from_city,
+            toCity: resData.toCity || activeTripData?.to_city
+        });
+
         // Log violation
         try {
             await travelSupabase.from('driver_violations').insert([{
@@ -1923,7 +1944,7 @@ async function driverCancelsTrip(tripId, reason) {
 
         localStorage.removeItem('tarhal_active_trip_id');
         closeActiveTripModal();
-        showNotification('تم إلغاء الرحلة وخصم غرامة. إذا لم تكن مستعداً للرحلة، يرجى عدم قبولها من البداية.', 'warning');
+        showNotification('تم إلغاء الرحلة وخصم غرامة.', 'warning');
         updateDriverBalanceDisplay();
         await loadDriverRides();
     } catch(err) {
@@ -1931,12 +1952,18 @@ async function driverCancelsTrip(tripId, reason) {
     }
 }
 
+let activeTripPollInterval = null;
+
 function closeActiveTripModal() {
     document.getElementById('active-trip-modal').classList.add('hidden');
     activeTripData = null;
     if (activeCountdownInterval) {
         clearInterval(activeCountdownInterval);
         activeCountdownInterval = null;
+    }
+    if (activeTripPollInterval) {
+        clearInterval(activeTripPollInterval);
+        activeTripPollInterval = null;
     }
     if (activeTripSubscription) {
         activeTripSubscription.unsubscribe();
@@ -1949,21 +1976,22 @@ function setupTripRealtimeListener(tripId) {
         activeTripSubscription.unsubscribe();
         activeTripSubscription = null;
     }
+    if (activeTripPollInterval) {
+        clearInterval(activeTripPollInterval);
+        activeTripPollInterval = null;
+    }
 
     const handleUpdate = async (updated) => {
         if (!updated) return;
         activeTripData = updated;
 
         if (updated.status === 'cancelled') {
-            const cancelledBy = updated.cancelled_by;
+            const cancelledBy = updated.cancelled_by || 'driver';
             localStorage.removeItem('tarhal_active_trip_id');
             closeActiveTripModal();
 
-            if (userType === 'passenger' && cancelledBy === 'driver') {
-                showCancellationAlert('driver');
-            } else if (userType === 'driver' && cancelledBy === 'passenger') {
-                showCancellationAlert('passenger');
-            }
+            showCancellationAlert(cancelledBy);
+            await loadPassengerRides();
         } else if (updated.status === 'in_progress' && userType === 'passenger') {
             renderPassengerTripActions(updated);
             updateProgressBar('in_progress');
@@ -1986,6 +2014,47 @@ function setupTripRealtimeListener(tripId) {
             event: 'UPDATE', schema: 'public', table: 'ride_requests', filter: `customer_id=eq.${currentUser.id}`
         }, payload => handleUpdate(payload.new))
         .subscribe();
+
+    // High-frequency polling fallback every 3 seconds to ensure instant close on cancellation
+    activeTripPollInterval = setInterval(async () => {
+        const modal = document.getElementById('active-trip-modal');
+        if (!modal || modal.classList.contains('hidden')) {
+            clearInterval(activeTripPollInterval);
+            activeTripPollInterval = null;
+            return;
+        }
+
+        try {
+            const { data: latestTrip } = await travelSupabase
+                .from('travel_trips')
+                .select('status, cancelled_by')
+                .eq('id', tripId)
+                .maybeSingle();
+
+            if (latestTrip && latestTrip.status === 'cancelled') {
+                clearInterval(activeTripPollInterval);
+                activeTripPollInterval = null;
+                localStorage.removeItem('tarhal_active_trip_id');
+                closeActiveTripModal();
+                showCancellationAlert(latestTrip.cancelled_by || 'driver');
+                await loadPassengerRides();
+            } else if (!latestTrip) {
+                const { data: latestReq } = await travelSupabase
+                    .from('ride_requests')
+                    .select('status')
+                    .eq('id', tripId)
+                    .maybeSingle();
+                if (latestReq && latestReq.status === 'cancelled') {
+                    clearInterval(activeTripPollInterval);
+                    activeTripPollInterval = null;
+                    localStorage.removeItem('tarhal_active_trip_id');
+                    closeActiveTripModal();
+                    showCancellationAlert('driver');
+                    await loadPassengerRides();
+                }
+            }
+        } catch(e) {}
+    }, 3000);
 }
 
 function showCancellationAlert(cancelledBy) {
@@ -3607,7 +3676,7 @@ async function sendMessage() {
         const container = document.getElementById('chat-messages');
         const el = document.createElement('div');
         el.className = 'message message-outgoing';
-        el.innerHTML = `<div class="message-content">${escapeHtml(message)}</div><div class="message-time">${new Date().toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'})}</div>`;
+        el.innerHTML = `<div class="message-content">${escapeHtml(message)}</div><div class="message-time">${new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})}</div>`;
         container.appendChild(el);
         input.value = '';
         container.scrollTop = container.scrollHeight;
@@ -3855,13 +3924,13 @@ function formatPublishDateTime(dateString) {
 
 function formatDate(dateString) {
     try {
-        return new Date(dateString).toLocaleDateString('ar-SA', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
+        return new Date(dateString).toLocaleDateString('ar-EG', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
     } catch(e) { return 'تاريخ غير معروف'; }
 }
 
 function formatTime(dateString) {
     try {
-        return new Date(dateString).toLocaleTimeString('ar-SA', {hour:'2-digit',minute:'2-digit'});
+        return new Date(dateString).toLocaleTimeString('ar-EG', {hour:'2-digit',minute:'2-digit'});
     } catch(e) { return '--:--'; }
 }
 

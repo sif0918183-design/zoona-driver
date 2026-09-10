@@ -513,7 +513,7 @@ export default async function handler(req, res) {
                     if (banEndTime > now) {
                         return res.status(403).json({
                             success: false,
-                            error: `🚫 حسابك محظور حتى ${banEndTime.toLocaleDateString('ar-SA')}`
+                            error: `🚫 حسابك محظور حتى ${banEndTime.toLocaleDateString('ar-EG')}`
                         });
                     } else {
                         // Ban period expired, lift ban

@@ -1299,10 +1299,20 @@ function getCategoryRank(categoryName) {
 // ============================================
 document.addEventListener('DOMContentLoaded', async function() {
     checkForActiveTripOnLoad();
+    initBackgroundActiveTripChecker();
     await initializeUser();
     await handleHashRouting();
     window.addEventListener('hashchange', handleHashRouting);
 });
+
+function initBackgroundActiveTripChecker() {
+    setInterval(async () => {
+        const modal = document.getElementById('active-trip-modal');
+        if (modal && modal.classList.contains('hidden')) {
+            await checkForActiveTripOnLoad();
+        }
+    }, 10000);
+}
 
 async function handleHashRouting() {
     const hash = window.location.hash;
@@ -1413,7 +1423,7 @@ function showBanBanner(banUntil, banReason) {
     const existing = document.getElementById('ban-banner');
     if (existing) existing.remove();
 
-    const formattedDate = new Date(banUntil).toLocaleString('ar-SA', {
+    const formattedDate = new Date(banUntil).toLocaleString('ar-EG', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -1733,8 +1743,8 @@ async function showActiveTripModal(trip) {
     const depTextEl = document.getElementById('atp-departure-text');
     if (depTextEl) {
         if (depDateObj && !isNaN(depDateObj.getTime())) {
-            const dateStr = depDateObj.toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            const timeStr = depDateObj.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+            const dateStr = depDateObj.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const timeStr = depDateObj.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
             depTextEl.textContent = `موعد الانطلاق: ${dateStr} - الساعة ${timeStr}`;
         } else {
             depTextEl.textContent = `موعد الانطلاق: حسب الموعد المتفق عليه مع الراكب`;
@@ -2016,10 +2026,23 @@ async function passengerCancelsTrip(tripId, reason) {
             throw new Error(resData.error || 'فشل إلغاء الرحلة من خلال الخادم');
         }
 
+        // Send push notification to driver
+        sendTravelPush({
+            type: 'TRIP_CANCELLED',
+            target: 'driver',
+            rideId: resData.rideReqId || activeTripData?.ride_request_id || tripId,
+            driverId: resData.driverId || activeTripData?.driver_id,
+            fromCity: resData.fromCity || activeTripData?.from_city,
+            toCity: resData.toCity || activeTripData?.to_city
+        });
+
         localStorage.removeItem('tarhal_active_trip_id');
         closeActiveTripModal();
-        showNotification('تم إلغاء الرحلة', 'success');
-        await loadPassengerRides();
+        showNotification('تم إلغاء الرحلة بنجاح', 'success');
+        updateDriverBalanceDisplay();
+        await loadAvailableRides();
+        await loadDriverRides();
+        await loadDriverAcceptedRides();
     } catch(err) {
         showNotification('خطأ في الإلغاء: ' + err.message, 'error');
     }
@@ -2028,7 +2051,7 @@ async function passengerCancelsTrip(tripId, reason) {
 async function driverCancelsTrip(tripId, reason) {
     if (!confirm('هل أنت متأكد من إلغاء الرحلة؟ سيتم خصم غرامة تعادل قيمة العمولة من رصيدك.')) return;
     try {
-        const price = activeTripData.final_price || 0;
+        const price = activeTripData?.final_price || 0;
         const token = localStorage.getItem('session_token');
         const response = await fetch('/api/travel-platform', {
             method: 'POST',
@@ -2049,6 +2072,16 @@ async function driverCancelsTrip(tripId, reason) {
             throw new Error(resData.error || 'فشل إلغاء الرحلة من خلال الخادم');
         }
 
+        // Send push notification to passenger
+        sendTravelPush({
+            type: 'TRIP_CANCELLED',
+            target: 'passenger',
+            rideId: resData.rideReqId || activeTripData?.ride_request_id || tripId,
+            passengerId: resData.passengerId || activeTripData?.passenger_id,
+            fromCity: resData.fromCity || activeTripData?.from_city,
+            toCity: resData.toCity || activeTripData?.to_city
+        });
+
         // Log violation
         try {
             await travelSupabase.from('driver_violations').insert([{
@@ -2061,13 +2094,17 @@ async function driverCancelsTrip(tripId, reason) {
 
         localStorage.removeItem('tarhal_active_trip_id');
         closeActiveTripModal();
-        showNotification('تم إلغاء الرحلة وخصم غرامة. إذا لم تكن مستعداً للرحلة، يرجى عدم قبولها من البداية.', 'warning');
+        showNotification('تم إلغاء الرحلة وخصم غرامة.', 'warning');
         updateDriverBalanceDisplay();
+        await loadAvailableRides();
         await loadDriverRides();
+        await loadDriverAcceptedRides();
     } catch(err) {
         showNotification('خطأ في الإلغاء: ' + err.message, 'error');
     }
 }
+
+let activeTripPollInterval = null;
 
 function closeActiveTripModal() {
     document.getElementById('active-trip-modal').classList.add('hidden');
@@ -2075,6 +2112,10 @@ function closeActiveTripModal() {
     if (activeCountdownInterval) {
         clearInterval(activeCountdownInterval);
         activeCountdownInterval = null;
+    }
+    if (activeTripPollInterval) {
+        clearInterval(activeTripPollInterval);
+        activeTripPollInterval = null;
     }
     if (activeTripSubscription) {
         activeTripSubscription.unsubscribe();
@@ -2087,6 +2128,10 @@ function setupTripRealtimeListener(tripId) {
         activeTripSubscription.unsubscribe();
         activeTripSubscription = null;
     }
+    if (activeTripPollInterval) {
+        clearInterval(activeTripPollInterval);
+        activeTripPollInterval = null;
+    }
 
     const handleUpdate = async (updated) => {
         if (!updated) return;
@@ -2097,6 +2142,7 @@ function setupTripRealtimeListener(tripId) {
             localStorage.removeItem('tarhal_active_trip_id');
             closeActiveTripModal();
             showCancellationAlert(cancelledBy);
+            updateDriverBalanceDisplay();
             await loadAvailableRides();
             await loadDriverRides();
             await loadDriverAcceptedRides();
@@ -2130,6 +2176,53 @@ function setupTripRealtimeListener(tripId) {
             event: 'UPDATE', schema: 'public', table: 'ride_requests', filter: `driver_id=eq.${currentUser.id}`
         }, payload => handleUpdate(payload.new))
         .subscribe();
+
+    // High-frequency polling fallback every 3 seconds to ensure instant close on cancellation
+    activeTripPollInterval = setInterval(async () => {
+        const modal = document.getElementById('active-trip-modal');
+        if (!modal || modal.classList.contains('hidden')) {
+            clearInterval(activeTripPollInterval);
+            activeTripPollInterval = null;
+            return;
+        }
+
+        try {
+            const { data: latestTrip } = await travelSupabase
+                .from('travel_trips')
+                .select('status, cancelled_by')
+                .eq('id', tripId)
+                .maybeSingle();
+
+            if (latestTrip && latestTrip.status === 'cancelled') {
+                clearInterval(activeTripPollInterval);
+                activeTripPollInterval = null;
+                localStorage.removeItem('tarhal_active_trip_id');
+                closeActiveTripModal();
+                showCancellationAlert(latestTrip.cancelled_by || 'passenger');
+                updateDriverBalanceDisplay();
+                await loadAvailableRides();
+                await loadDriverRides();
+                await loadDriverAcceptedRides();
+            } else if (!latestTrip) {
+                const { data: latestReq } = await travelSupabase
+                    .from('ride_requests')
+                    .select('status')
+                    .eq('id', tripId)
+                    .maybeSingle();
+                if (latestReq && latestReq.status === 'cancelled') {
+                    clearInterval(activeTripPollInterval);
+                    activeTripPollInterval = null;
+                    localStorage.removeItem('tarhal_active_trip_id');
+                    closeActiveTripModal();
+                    showCancellationAlert('passenger');
+                    updateDriverBalanceDisplay();
+                    await loadAvailableRides();
+                    await loadDriverRides();
+                    await loadDriverAcceptedRides();
+                }
+            }
+        } catch(e) {}
+    }, 3000);
 }
 
 function showCancellationAlert(cancelledBy) {
@@ -2138,11 +2231,11 @@ function showCancellationAlert(cancelledBy) {
     const message = document.getElementById('cancel-alert-message');
 
     if (cancelledBy === 'driver') {
-        title.textContent = 'تم إلغاء الرحلة بواسطة السائق';
-        message.textContent = 'قام السائق بإلغاء الرحلة. يمكنك طلب رحلة جديدة أو اختيار سائق آخر.';
+        title.textContent = 'تم إلغاء الرحلة';
+        message.textContent = 'تم إلغاء هذه الرحلة من قبلك. يرجى مراجعة قائمة رحلاتك والرحلات المتاحة.';
     } else if (cancelledBy === 'passenger') {
         title.textContent = 'تم إلغاء الرحلة بواسطة الراكب';
-        message.textContent = 'قام الراكب بإلغاء الرحلة. يمكنك العودة للرحلات المتاحة وقبول رحلة جديدة.';
+        message.textContent = 'قام الراكب بإلغاء الرحلة، وتم إرجاع العمولة المحجوزة إلى رصيدك. يمكنك العودة للرحلات المتاحة وقبول رحلة جديدة.';
     }
 
     overlay.classList.remove('hidden');
@@ -2965,7 +3058,7 @@ async function loadAvailableRides() {
         // Block if driver is banned
         const isBanned = await checkDriverBanStatus();
         if (isBanned) {
-            const formattedDate = new Date(currentUser.ban_until).toLocaleString('ar-SA', {
+            const formattedDate = new Date(currentUser.ban_until).toLocaleString('ar-EG', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
@@ -3240,9 +3333,9 @@ async function checkDriverTravelNotices() {
                     foundSelection = true;
                     const commAmount = Math.round((ride.estimated_price || 0) * 0.05);
                     const tenHoursBefore = new Date(departureTime.getTime() - (10 * 60 * 60 * 1000));
-                    const commTimeStr = `${tenHoursBefore.toLocaleTimeString('ar-SA', {hour:'2-digit', minute:'2-digit'})} يوم ${tenHoursBefore.toLocaleDateString('ar-SA')}`;
-                    const depTimeStr = `${departureTime.toLocaleTimeString('ar-SA', {hour:'2-digit', minute:'2-digit'})}`;
-                    const depDateStr = `${departureTime.toLocaleDateString('ar-SA')}`;
+                    const commTimeStr = `${tenHoursBefore.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'})} يوم ${tenHoursBefore.toLocaleDateString('ar-EG')}`;
+                    const depTimeStr = `${departureTime.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'})}`;
+                    const depDateStr = `${departureTime.toLocaleDateString('ar-EG')}`;
 
                     if (selectionText) {
                         selectionText.textContent = `لديك رحلة سفرية تم اختيارك لها من ${ride.from_city} إلى ${ride.to_city} بتاريخ ${depDateStr} الساعة ${depTimeStr}. يجب عليك أن تكون متواجداً في مدينة الانطلاق في الزمن المحدد، وحتى لا تفقد الرحلة يجب أن يكون رصيدك (${commAmount.toLocaleString('en-SA')} ج) أو أكثر بحلول الساعة ${commTimeStr}.`;
@@ -3836,7 +3929,7 @@ async function sendMessage() {
         const container = document.getElementById('chat-messages');
         const el = document.createElement('div');
         el.className = 'message message-outgoing';
-        el.innerHTML = `<div class="message-content">${escapeHtml(message)}</div><div class="message-time">${new Date().toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'})}</div>`;
+        el.innerHTML = `<div class="message-content">${escapeHtml(message)}</div><div class="message-time">${new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})}</div>`;
         container.appendChild(el);
         input.value = '';
         container.scrollTop = container.scrollHeight;
@@ -4076,13 +4169,13 @@ function formatPublishDateTime(dateString) {
 
 function formatDate(dateString) {
     try {
-        return new Date(dateString).toLocaleDateString('ar-SA', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
+        return new Date(dateString).toLocaleDateString('ar-EG', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
     } catch(e) { return 'تاريخ غير معروف'; }
 }
 
 function formatTime(dateString) {
     try {
-        return new Date(dateString).toLocaleTimeString('ar-SA', {hour:'2-digit',minute:'2-digit'});
+        return new Date(dateString).toLocaleTimeString('ar-EG', {hour:'2-digit',minute:'2-digit'});
     } catch(e) { return '--:--'; }
 }
 
