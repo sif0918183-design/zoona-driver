@@ -3896,9 +3896,11 @@ function displayMessages(messages) {
 }
 
 function filterChatMessage(message) {
+    const numberRegex = /[0-9\u0660-\u0669\u06F0-\u06F9]/;
     const phoneRegex = /(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g;
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     let filtered = message, hasViolation = false;
+    if (numberRegex.test(message)) { hasViolation = true; }
     if (phoneRegex.test(message)) { filtered = filtered.replace(phoneRegex, '***'); hasViolation = true; }
     if (urlRegex.test(message)) { filtered = filtered.replace(urlRegex, '***'); hasViolation = true; }
     return {filtered, hasViolation};
@@ -3917,13 +3919,20 @@ async function sendMessage() {
     const message = input.value.trim();
     if (!message || !currentChat) { showNotification('الرجاء إدخال رسالة', 'warning'); return; }
 
-    if (userType === 'driver' && currentChat && !currentChat.show_full_name) {
-        if (!confirm('تنبيه: هوية الراكب مخفية حتى يختارك. هل تريد الإرسال؟')) return;
+    const isIdentityHidden = !currentChat.show_full_name;
+
+    if (isIdentityHidden && /[0-9\u0660-\u0669\u06F0-\u06F9]/.test(message)) {
+        showNotification('يُمنع إرسال أي أرقام سواء عربية أو إنجليزية في المحادثة طالما كانت الهوية مخفية', 'warning');
+        return;
+    }
+
+    if (userType === 'driver' && isIdentityHidden) {
+        if (!confirm('تنبيه: هوية الراكب مخفية حتى يتم حجز العمولة. هل تريد الإرسال؟')) return;
     }
 
     const {hasViolation} = filterChatMessage(message);
-    if (hasViolation) {
-        showNotification('يُمنع إرسال أرقام هواتف أو روابط في المحادثة قبل اختيار السائق', 'warning');
+    if (hasViolation && isIdentityHidden) {
+        showNotification('يُمنع إرسال أي أرقام سواء عربية أو إنجليزية في المحادثة طالما كانت الهوية مخفية', 'warning');
         return;
     }
 
