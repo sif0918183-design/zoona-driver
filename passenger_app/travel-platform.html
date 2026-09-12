@@ -3000,6 +3000,7 @@ function displayPassengerChats(chats) {
 }
 
 function startChatWithDriverFromCard(rideId, driverLabel, driverId) {
+    window.chatClosedByUser = false;
     currentChat = {id:rideId, other_user_name:driverLabel, ride_id:rideId, other_user_id:driverId};
     document.getElementById('chat-with-name').textContent = driverLabel;
     document.getElementById('chat-ride-info').textContent = '';
@@ -3114,6 +3115,7 @@ function displayAvailableRides() {
 }
 
 function startChatBeforeAccept(rideId, passengerName) {
+    window.chatClosedByUser = false;
     currentChat = {id:rideId, other_user_name:'راكب تراكا', ride_id:rideId, show_full_name:false};
     document.getElementById('chat-with-name').textContent = 'راكب تراكا';
     document.getElementById('chat-ride-info').textContent = '(هوية مخفية)';
@@ -3693,6 +3695,7 @@ function closeChat() {
 
     if (window.location.hash) {
         history.pushState('', document.title, window.location.pathname + window.location.search);
+        try { window.location.hash = ''; } catch(e) {}
     }
 
     // Reload chats list on closing chat modal to ensure badge is updated immediately

@@ -3042,6 +3042,7 @@ function displayPassengerChats(chats) {
 }
 
 function startChatWithDriverFromCard(rideId, driverLabel, driverId) {
+    window.chatClosedByUser = false;
     currentChat = {id:rideId, other_user_name:driverLabel, ride_id:rideId, other_user_id:driverId};
     document.getElementById('chat-with-name').textContent = driverLabel;
     document.getElementById('chat-ride-info').textContent = '';
@@ -3075,24 +3076,16 @@ async function loadAvailableRides() {
             return;
         }
 
-        // First check if driver has an active trip in travel_trips
+        // Check if driver has an active trip in the final 10-hour active phase
         const {data:activeTrips} = await travelSupabase
             .from('travel_trips')
-            .select('id, status')
+            .select('*')
             .eq('driver_id', currentUser.id)
-            .in('status', ['driver_selected','in_progress'])
-            .limit(1);
+            .in('status', ['driver_selected','in_progress']);
 
-        const {data:activeReqs} = await travelSupabase
-            .from('ride_requests')
-            .select('id, status')
-            .eq('driver_id', currentUser.id)
-            .in('status', ['driver_selected','in_progress'])
-            .limit(1);
+        const activeTripIn10hPhase = (activeTrips || []).find(t => isTripInFinalActivePhase(t));
 
-        const hasActiveTrip = (activeTrips && activeTrips.length > 0) || (activeReqs && activeReqs.length > 0);
-
-        if (hasActiveTrip) {
+        if (activeTripIn10hPhase) {
             document.getElementById('available-rides-list').innerHTML = `
                 <div class="empty-state">
                     <div class="empty-icon">🚗</div>
@@ -3185,6 +3178,7 @@ function displayAvailableRides() {
 }
 
 function startChatBeforeAccept(rideId, passengerName) {
+    window.chatClosedByUser = false;
     currentChat = {id:rideId, other_user_name:'راكب تراكا', ride_id:rideId, show_full_name:false};
     document.getElementById('chat-with-name').textContent = 'راكب تراكا';
     document.getElementById('chat-ride-info').textContent = '(هوية مخفية)';
@@ -3430,9 +3424,12 @@ function displayDriverAcceptedRides(acceptances, chatsWithPassengerMsgs = new Se
     container.innerHTML = '';
     acceptances.forEach(acc => {
         const ride = acc.ride_requests || {};
-        const isFinal = acc.status === 'selected' || ride.status === 'driver_selected' || ride.status === 'confirmed' || ride.status === 'in_progress';
+        const isCommissionHeld = (ride.commission_status === 'held' || ride.status === 'confirmed' || ride.status === 'in_progress') && (acc.status === 'selected' || ride.driver_id === currentUser.id);
+        const displayName = isCommissionHeld ? (ride.passenger_name || 'راكب تراكا') : 'راكب تراكا';
+        const isSelectedOrFinal = acc.status === 'selected' || ride.status === 'driver_selected' || ride.status === 'confirmed' || ride.status === 'in_progress';
         const hasPassengerMsg = chatsWithPassengerMsgs.has(ride.id);
-        const showChatButton = isFinal || hasPassengerMsg;
+        const isFinishedOrCancelled = ride.status === 'completed' || ride.status === 'cancelled' || acc.status === 'cancelled' || acc.status === 'rejected';
+        const showChatButton = (isSelectedOrFinal || hasPassengerMsg) && !isFinishedOrCancelled;
         const canWithdraw = acc.status === 'accepted' && ride.status === 'pending';
 
         const el = document.createElement('div');
@@ -3463,7 +3460,7 @@ function displayDriverAcceptedRides(acceptances, chatsWithPassengerMsgs = new Se
             </div>
             <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
                 ${showChatButton ? `
-                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="event.stopPropagation(); openDriverChat('${ride.id}', '${escapeHtml(isFinal ? (ride.passenger_name || 'راكب تراكا') : 'راكب تراكا').replace(/'/g, "\\'")}', '${ride.customer_id || ''}', ${isFinal})">
+                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="event.stopPropagation(); openDriverChat('${ride.id}', '${escapeHtml(displayName).replace(/'/g, "\\'")}', '${ride.customer_id || ''}', ${isCommissionHeld})">
                         <i class="ph-light ph-chat-centered-dots"></i> محادثة
                     </button>
                 ` : ''}
@@ -3645,8 +3642,8 @@ async function loadDriverChats() {
             const rideInfo = rideMap[rideId];
             if (!rideInfo) continue;
 
-            const isFinal = (rideInfo.status === 'driver_selected' || rideInfo.status === 'confirmed' || rideInfo.status === 'in_progress') && rideInfo.driver_id === currentUser.id;
-            const displayName = isFinal ? (rideInfo.passenger_name || 'راكب تراكا') : 'راكب تراكا';
+            const isCommissionHeld = (rideInfo.commission_status === 'held' || rideInfo.status === 'confirmed' || rideInfo.status === 'in_progress') && rideInfo.driver_id === currentUser.id;
+            const displayName = isCommissionHeld ? (rideInfo.passenger_name || 'راكب تراكا') : 'راكب تراكا';
 
             const {data:msgs} = await travelSupabase
                 .from('ride_chats').select('*').eq('ride_id',rideId).order('created_at',{ascending:false}).limit(1);
@@ -3661,7 +3658,7 @@ async function loadDriverChats() {
                 id: rideId, ride_id: rideId,
                 other_user_name: displayName,
                 actual_name: rideInfo.passenger_name,
-                show_full_name: isFinal,
+                show_full_name: isCommissionHeld,
                 other_user_id: rideInfo.customer_id,
                 last_message: last.message,
                 last_message_time: last.created_at,
@@ -3946,6 +3943,7 @@ function closeChat() {
 
     if (window.location.hash) {
         history.pushState('', document.title, window.location.pathname + window.location.search);
+        try { window.location.hash = ''; } catch(e) {}
     }
 
     // Reload chats list on closing chat modal to ensure badge is updated immediately
