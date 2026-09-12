@@ -2640,9 +2640,15 @@ async function loadPassengerRides() {
                 const driversInfo = [];
                 if (acceptances && acceptances.length > 0) {
                     for (const acc of acceptances) {
-                        const {data:d} = await travelSupabase.from('drivers').select('id,full_name,car_type,car_model,rating').eq('id',acc.driver_id).single();
+                        const {data:d} = await travelSupabase.from('drivers').select('id,full_name,car_type,car_model,car_color,rating').eq('id',acc.driver_id).single();
                         if (d) driversInfo.push({...d, driver_id:acc.driver_id});
                     }
+                }
+
+                let selectedDriverInfo = null;
+                if (req.driver_id) {
+                    const {data:sd} = await travelSupabase.from('drivers').select('id,full_name,car_type,car_model,car_color').eq('id', req.driver_id).single();
+                    if (sd) selectedDriverInfo = sd;
                 }
 
                 combined.push({
@@ -2659,7 +2665,8 @@ async function loadPassengerRides() {
                     driver_phone: req.driver_phone,
                     created_at: req.created_at,
                     accepted_drivers: driversInfo,
-                    accepted_count: acceptances?.length || 0
+                    accepted_count: acceptances?.length || 0,
+                    selected_driver_info: selectedDriverInfo
                 });
             }
         }
@@ -2702,24 +2709,40 @@ function displayPassengerRides() {
             `;
         }
 
+        const isFinalPhase = isTripInFinalActivePhase(ride);
         let activeActions = '';
         if (isActive) {
-            if (isTripInFinalActivePhase(ride)) {
+            if (isFinalPhase) {
                 activeActions = `
                     <button class="btn btn-primary btn-block" style="margin-top:0.75rem;" onclick="reopenActiveTripModal()">
                         <i class="ph-light ph-car"></i> فتح نافذة الرحلة الجارية
                     </button>
                 `;
             } else {
+                const driverCarModel = ride.selected_driver_info?.car_model || '';
                 activeActions = `
                     <div style="margin-top:0.75rem; background:#ecfdf5; border:1px solid #10b981; color:#065f46; padding:0.75rem; border-radius:var(--radius); font-size:0.85rem; font-weight:700; text-align:center;">
                         <i class="ph-bold ph-check-circle" style="vertical-align:middle; font-size:1.1rem; color:#059669;"></i>
                         تم تثبيت اختيار السائق — ستفتح نافذة الرحلة وتظهر أرقام التواصل قبل 10 ساعات من موعد انطلاق الرحلة
                     </div>
-                    <button class="btn btn-outline-danger btn-sm btn-block" style="margin-top:0.75rem;" onclick="cancelRide('${ride.id}')">
+                    <button class="btn btn-outline btn-sm btn-block" style="margin-top:0.75rem;" onclick="openChatSimple('${ride.id}', 'سائق تراكا${driverCarModel ? ' (' + escapeHtml(driverCarModel) + ')' : ''}', '${ride.id}', false)">
+                        <i class="ph-light ph-chat-centered-dots"></i> محادثة السائق
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm btn-block" style="margin-top:0.5rem;" onclick="cancelRide('${ride.id}')">
                         <i class="ph-light ph-x"></i> إلغاء الرحلة
                     </button>
                 `;
+            }
+        }
+
+        let driverLabelText = '';
+        if (isActive && ride.driver_id) {
+            if (isFinalPhase) {
+                driverLabelText = `السائق: ${escapeHtml(ride.driver_name || 'سائق تراكا')}`;
+            } else {
+                const sd = ride.selected_driver_info;
+                const carDetails = [sd?.car_type, sd?.car_model, sd?.car_color].filter(Boolean).join(' ') || 'غير محدد';
+                driverLabelText = `السائق: سائق تراكا (${escapeHtml(carDetails)})`;
             }
         }
 
@@ -2734,7 +2757,7 @@ function displayPassengerRides() {
             <div class="ride-details">
                 <div class="ride-detail"><i class="ph-light ph-car"></i><span>${ride.vehicle_category||'غير محدد'}</span></div>
                 <div class="ride-detail"><i class="ph-light ph-calendar-blank"></i><span>${formatDate(ride.created_at)}</span></div>
-                ${ride.driver_name && isActive ? `<div class="ride-detail"><i class="ph-light ph-user-circle"></i><span>السائق: ${escapeHtml(ride.driver_name)}</span></div>` : ''}
+                ${driverLabelText ? `<div class="ride-detail"><i class="ph-light ph-user-circle"></i><span>${driverLabelText}</span></div>` : ''}
 
                 ${(() => {
                     const parsed = parseRideNotes(ride.notes);
