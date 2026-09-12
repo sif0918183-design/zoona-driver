@@ -3112,13 +3112,17 @@ async function loadAvailableRides() {
             if (rideRank > driverRank) continue;
 
             const {data:acceptances} = await travelSupabase
-                .from('ride_driver_acceptances').select('id,driver_id').eq('ride_id',req.id).eq('status','accepted');
+                .from('ride_driver_acceptances').select('id,driver_id,status').eq('ride_id',req.id);
 
-            const alreadyAccepted = acceptances?.some(a => a.driver_id === currentUser.id);
+            const myAcceptance = acceptances?.find(a => a.driver_id === currentUser.id);
+            const alreadyAccepted = myAcceptance && myAcceptance.status === 'accepted';
+            const hasWithdrawn = myAcceptance && myAcceptance.status === 'withdrawn';
             const isSelected = req.driver_id === currentUser.id;
 
-            if (!alreadyAccepted && !isSelected && (acceptances?.length || 0) < MAX_DRIVERS_PER_RIDE) {
-                filtered.push({...req, accepted_count: acceptances?.length || 0});
+            const activeAcceptedCount = acceptances?.filter(a => a.status === 'accepted').length || 0;
+
+            if (!alreadyAccepted && !hasWithdrawn && !isSelected && activeAcceptedCount < MAX_DRIVERS_PER_RIDE) {
+                filtered.push({...req, accepted_count: activeAcceptedCount});
             }
         }
 
@@ -3428,7 +3432,7 @@ function displayDriverAcceptedRides(acceptances, chatsWithPassengerMsgs = new Se
         const displayName = isCommissionHeld ? (ride.passenger_name || 'راكب تراكا') : 'راكب تراكا';
         const isSelectedOrFinal = acc.status === 'selected' || ride.status === 'driver_selected' || ride.status === 'confirmed' || ride.status === 'in_progress';
         const hasPassengerMsg = chatsWithPassengerMsgs.has(ride.id);
-        const isFinishedOrCancelled = ride.status === 'completed' || ride.status === 'cancelled' || acc.status === 'cancelled' || acc.status === 'rejected';
+        const isFinishedOrCancelled = ride.status === 'completed' || ride.status === 'cancelled' || acc.status === 'cancelled' || acc.status === 'rejected' || acc.status === 'withdrawn';
         const showChatButton = (isSelectedOrFinal || hasPassengerMsg) && !isFinishedOrCancelled;
         const canWithdraw = (acc.status === 'accepted' || acc.status === 'selected' || ride.driver_id === currentUser.id) && !isCommissionHeld && ride.status !== 'completed' && ride.status !== 'cancelled';
 

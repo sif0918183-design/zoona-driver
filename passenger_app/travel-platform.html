@@ -2819,7 +2819,7 @@ async function showDriverOffers(rideId) {
                         <div class="ride-detail"><i class="ph-light ph-shield-check"></i><span style="color:var(--success);">سائق معتمد</span></div>
                     </div>
                     <div style="display:flex;gap:0.5rem;margin-top:1rem;">
-                        <button class="btn btn-outline btn-sm" style="flex:1;" onclick="startChatWithDriverFromCard('${rideId}','${label.replace(/'/g,"\\'")}','${acc.driver_id}')">
+                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="startChatWithDriverFromCard('${rideId}','${label.replace(/'/g,"\\'")}','${acc.driver_id}','${(driver.car_model||'').replace(/'/g,"\\'")}')">
                             <i class="ph-light ph-chat-centered-dots"></i> محادثة
                         </button>
                         ${!isFinal ? `
@@ -2836,6 +2836,24 @@ async function showDriverOffers(rideId) {
     } catch(err) {
         showNotification('خطأ في تحميل عروض السائقين', 'error');
     }
+}
+
+function startChatWithDriverFromCard(rideId, driverLabel, driverId, carModel = '') {
+    window.chatClosedByUser = false;
+    currentChat = {id:rideId, other_user_name:'سائق تراكا', ride_id:rideId, other_user_id:driverId, show_full_name:false};
+    const headerTitle = carModel ? `سائق تراكا (${carModel})` : 'سائق تراكا';
+    const titleEl = document.getElementById('chat-with-name');
+    if (titleEl) {
+        titleEl.innerHTML = `${headerTitle} <span style="font-size:0.8rem;color:var(--gray-500);">(هوية مخفية)</span>`;
+    }
+    document.getElementById('chat-ride-info').textContent = '';
+    document.getElementById('chat-modal').classList.remove('hidden');
+
+    updateChatBannerRideDetails(rideId);
+    if (window.location.hash !== '#chat-' + rideId) {
+        window.location.hash = '#chat-' + rideId;
+    }
+    loadChatMessages(rideId);
 }
 
 function closeDriverOffers() {
@@ -2931,8 +2949,8 @@ async function loadPassengerChats() {
             const hasMyMsg = msgs.some(m => m.sender_id === currentUser.id);
             if (!hasMyMsg && req.status === 'pending') continue;
 
-            const isFinal = ['driver_selected','confirmed','in_progress'].includes(req.status);
-            const displayName = isFinal ? (req.driver_name || 'سائق تراكا') : 'سائق تراكا';
+            // Never expose real driver name to passenger in chats window
+            const displayName = 'سائق تراكا';
             const last = msgs[0];
 
             // Get unread count using user_message_reads
@@ -3555,10 +3573,11 @@ async function checkDriverBalance() {
 // ============================================
 // CHAT FUNCTIONS
 // ============================================
-function openChatSimple(chatId, userName, rideId, showFullName = false) {
+async function openChatSimple(chatId, userName, rideId, showFullName = false) {
     window.chatClosedByUser = false;
     const defaultLabel = userType === 'passenger' ? 'سائق تراكا' : 'راكب تراكا';
-    const finalName = showFullName ? (userName || defaultLabel) : defaultLabel;
+    // Driver real name is never revealed to passenger in chat window
+    const finalName = (userType === 'passenger') ? 'سائق تراكا' : (showFullName ? (userName || defaultLabel) : defaultLabel);
     currentChat = {id:chatId, other_user_name:finalName, ride_id:rideId, show_full_name:showFullName};
     const title = document.getElementById('chat-with-name');
     if (title) {
@@ -3568,6 +3587,26 @@ function openChatSimple(chatId, userName, rideId, showFullName = false) {
     document.getElementById('chat-modal').classList.remove('hidden');
 
     const rideIdForChat = rideId || chatId;
+
+    // Fetch car model if identity is hidden for passenger
+    if (userType === 'passenger' && !showFullName && rideIdForChat) {
+        try {
+            const {data:ride} = await travelSupabase.from('ride_requests').select('driver_id').eq('id', rideIdForChat).single();
+            let carModel = '';
+            if (ride?.driver_id) {
+                const {data:d} = await travelSupabase.from('drivers').select('car_model').eq('id', ride.driver_id).single();
+                if (d?.car_model) carModel = d.car_model;
+            }
+            if (!carModel) {
+                const {data:acc} = await travelSupabase.from('ride_driver_acceptances').select('driver_id, drivers(car_model)').eq('ride_id', rideIdForChat).limit(1).single();
+                if (acc?.drivers?.car_model) carModel = acc.drivers.car_model;
+            }
+            if (carModel && title) {
+                title.innerHTML = `سائق تراكا (${carModel}) <span style="font-size:0.8rem;color:var(--gray-500);">(هوية مخفية)</span>`;
+            }
+        } catch(e) { console.error('Error fetching car model for chat:', e); }
+    }
+
     updateChatBannerRideDetails(rideIdForChat);
 
     if (window.location.hash !== '#chat-' + rideIdForChat) {
