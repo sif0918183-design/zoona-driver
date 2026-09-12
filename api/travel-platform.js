@@ -583,29 +583,62 @@ export default async function handler(req, res) {
             }
 
             // Create/Upsert travel_trips
-            const { data: trip, error: tErr } = await supabase
+            const { data: existingTrip } = await supabase
                 .from('travel_trips')
-                .insert([{
-                    ride_request_id: rideId,
-                    driver_id: driverId,
-                    passenger_id: passengerId,
-                    from_city: ride.from_city,
-                    to_city: ride.to_city,
-                    final_price: ride.estimated_price,
-                    status: 'driver_selected',
-                    car_type: driver.car_type,
-                    car_model: driver.car_model,
-                    departure_time: departureTime.toISOString(),
-                    commission_status: initialCommStatus,
-                    commission_amount: commissionAmount,
-                    commission_grace_until: graceUntil,
-                    contact_revealed: contactsRevealed,
-                    created_at: serverTime.toISOString()
-                }])
-                .select()
-                .single();
+                .select('id')
+                .eq('ride_request_id', rideId)
+                .maybeSingle();
 
-            if (tErr) throw tErr;
+            let trip = null;
+            if (existingTrip) {
+                const { data: updatedTrip, error: uErr } = await supabase
+                    .from('travel_trips')
+                    .update({
+                        driver_id: driverId,
+                        passenger_id: passengerId,
+                        from_city: ride.from_city,
+                        to_city: ride.to_city,
+                        final_price: ride.estimated_price,
+                        status: 'driver_selected',
+                        car_type: driver.car_type,
+                        car_model: driver.car_model,
+                        departure_time: departureTime.toISOString(),
+                        commission_status: initialCommStatus,
+                        commission_amount: commissionAmount,
+                        commission_grace_until: graceUntil,
+                        contact_revealed: contactsRevealed,
+                        updated_at: serverTime.toISOString()
+                    })
+                    .eq('id', existingTrip.id)
+                    .select()
+                    .single();
+                if (uErr) throw uErr;
+                trip = updatedTrip;
+            } else {
+                const { data: insertedTrip, error: tErr } = await supabase
+                    .from('travel_trips')
+                    .insert([{
+                        ride_request_id: rideId,
+                        driver_id: driverId,
+                        passenger_id: passengerId,
+                        from_city: ride.from_city,
+                        to_city: ride.to_city,
+                        final_price: ride.estimated_price,
+                        status: 'driver_selected',
+                        car_type: driver.car_type,
+                        car_model: driver.car_model,
+                        departure_time: departureTime.toISOString(),
+                        commission_status: initialCommStatus,
+                        commission_amount: commissionAmount,
+                        commission_grace_until: graceUntil,
+                        contact_revealed: contactsRevealed,
+                        created_at: serverTime.toISOString()
+                    }])
+                    .select()
+                    .single();
+                if (tErr) throw tErr;
+                trip = insertedTrip;
+            }
 
             // Update contact_revealed on ride_requests
             await supabase

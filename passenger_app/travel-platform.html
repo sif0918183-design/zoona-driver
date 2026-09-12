@@ -2887,61 +2887,51 @@ function closeDriverOffers() {
 // SELECT DRIVER (creates travel_trips record)
 // ============================================
 async function passengerSelectsDriver(rideId, driverId) {
-    if (!confirm('هل أنت متأكد من اختيار هذا السائق؟ ستظهر بياناتك الكاملة لبعضكما فوراً.')) return;
+    if (!confirm('هل أنت متأكد من اختيار هذا السائق؟')) return;
 
     const btn = event?.target;
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-inline"></span>'; }
 
     try {
-        // Get driver info
-        const {data:driverInfo} = await travelSupabase.from('drivers').select('full_name,phone,car_type,car_model,rating').eq('id',driverId).single();
-        if (!driverInfo) throw new Error('لم يتم العثور على معلومات السائق');
+        const token = localStorage.getItem('tarhal_session_token') || btoa(JSON.stringify({id: currentUser.id, exp: Date.now() + 86400000}));
+        const response = await fetch('/api/travel-platform', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                action: 'select_driver',
+                rideId,
+                driverId,
+                passengerId: currentUser.id
+            })
+        });
 
-        // Get ride request details
-        const {data:rideReq} = await travelSupabase.from('ride_requests').select('*').eq('id',rideId).single();
-        if (!rideReq) throw new Error('لم يتم العثور على طلب الرحلة');
+        const resData = await response.json();
+        if (!response.ok || !resData.success) {
+            throw new Error(resData.error || 'فشل اختيار السائق');
+        }
 
-        // 1. Update ride_requests
-        await travelSupabase.from('ride_requests').update({
-            status: 'driver_selected',
-            driver_id: driverId,
-            driver_name: driverInfo.full_name,
-            driver_phone: driverInfo.phone
-        }).eq('id', rideId);
-
-        // 2. Update acceptances - reject others
-        await travelSupabase.from('ride_driver_acceptances').update({status:'rejected'}).eq('ride_id',rideId).neq('driver_id',driverId);
-        await travelSupabase.from('ride_driver_acceptances').update({status:'selected'}).eq('ride_id',rideId).eq('driver_id',driverId);
-
-        // 3. Create travel_trips record
-        const {data:newTrip, error:tripErr} = await travelSupabase.from('travel_trips').insert([{
-            ride_request_id: rideId,
-            passenger_id: currentUser.id,
-            driver_id: driverId,
-            from_city: rideReq.from_city,
-            to_city: rideReq.to_city,
-            vehicle_category: rideReq.vehicle_category,
-            final_price: rideReq.estimated_price,
-            status: 'driver_selected',
-            created_at: new Date().toISOString()
-        }]).select().single();
-
-        if (tripErr) {
-            console.warn('Could not create travel_trips record:', tripErr);
-        } else if (newTrip) {
-            localStorage.setItem('tarhal_active_trip_id', newTrip.id);
+        const trip = resData.trip;
+        if (trip) {
+            localStorage.setItem('tarhal_active_trip_id', trip.id);
         }
 
         sendTravelPush({
             type: 'DRIVER_SELECTED',
             driverId: driverId,
             rideId: rideId,
-            fromCity: rideReq.from_city,
-            toCity: rideReq.to_city
+            fromCity: trip?.from_city,
+            toCity: trip?.to_city
         });
 
         closeDriverOffers();
-        showNotification(`تم تثبيت اختيار السائق ${driverInfo.full_name} بنجاح! ستظهر لك نافذة الرحلة وبيانات التواصل قبل 10 ساعات من موعد الرحلة.`, 'success');
+        showNotification('تم تثبيت اختيار السائق بنجاح!', 'success');
+
+        if (resData.contactsRevealed || resData.commissionStatus === 'held' || (trip && isTripInFinalActivePhase(trip))) {
+            await checkForActiveTripOnLoad();
+        }
 
         await loadPassengerRides();
 
