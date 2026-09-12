@@ -1364,14 +1364,14 @@ async function handleHashRouting() {
         try {
             const {data:ride} = await travelSupabase.from('ride_requests').select('*').eq('id', rideId).single();
             if (ride) {
+                const isCommissionHeld = ride.commission_status === 'held' || ride.status === 'confirmed' || ride.status === 'in_progress';
                 if (userType === 'passenger') {
-                    const isFinal = ['driver_selected','confirmed','in_progress'].includes(ride.status);
-                    const displayName = isFinal ? (ride.driver_name || 'سائق تراكا') : 'سائق تراكا';
-                    openChatSimple(rideId, displayName, rideId);
+                    const displayName = isCommissionHeld ? (ride.driver_name || 'سائق تراكا') : 'سائق تراكا';
+                    openChatSimple(rideId, displayName, rideId, isCommissionHeld);
                 } else {
-                    const isFinal = (ride.status === 'driver_selected' || ride.status === 'confirmed' || ride.status === 'in_progress') && ride.driver_id === currentUser.id;
-                    const displayName = isFinal ? (ride.passenger_name || 'راكب تراكا') : 'راكب تراكا';
-                    openDriverChat(rideId, displayName, ride.customer_id, isFinal);
+                    const isPassengerNameVisible = isCommissionHeld && ride.driver_id === currentUser.id;
+                    const displayName = isPassengerNameVisible ? (ride.passenger_name || 'راكب تراكا') : 'راكب تراكا';
+                    openDriverChat(rideId, displayName, ride.customer_id, isPassengerNameVisible);
                 }
             }
         } catch (err) {
@@ -3430,7 +3430,7 @@ function displayDriverAcceptedRides(acceptances, chatsWithPassengerMsgs = new Se
         const hasPassengerMsg = chatsWithPassengerMsgs.has(ride.id);
         const isFinishedOrCancelled = ride.status === 'completed' || ride.status === 'cancelled' || acc.status === 'cancelled' || acc.status === 'rejected';
         const showChatButton = (isSelectedOrFinal || hasPassengerMsg) && !isFinishedOrCancelled;
-        const canWithdraw = acc.status === 'accepted' && ride.status === 'pending';
+        const canWithdraw = (acc.status === 'accepted' || acc.status === 'selected' || ride.driver_id === currentUser.id) && !isCommissionHeld && ride.status !== 'completed' && ride.status !== 'cancelled';
 
         const el = document.createElement('div');
         el.className = 'ride-card';
@@ -3476,7 +3476,7 @@ function displayDriverAcceptedRides(acceptances, chatsWithPassengerMsgs = new Se
 }
 
 async function driverWithdrawAcceptance(rideId) {
-    if (!confirm('هل أنت متأكد من سحب قبولك المبدئي لهذه الرحلة؟ يمكنك سحب القبول المبدئي مجاناً ودون أي غرامة طالما لم يتم اختيارك نهائياً.')) return;
+    if (!confirm('هل أنت متأكد من سحب قبولك لهذه الرحلة؟')) return;
 
     try {
         const token = localStorage.getItem('session_token');
@@ -3495,10 +3495,23 @@ async function driverWithdrawAcceptance(rideId) {
 
         const resData = await response.json();
         if (!response.ok || !resData.success) {
-            throw new Error(resData.error || 'فشل سحب القبول المبدئي');
+            throw new Error(resData.error || 'فشل سحب القبول');
         }
 
-        showNotification('تم سحب قبولك المبدئي بنجاح (بدون أي غرامة).', 'success');
+        if (resData.wasSelected) {
+            sendTravelPush({
+                type: 'TRIP_CANCELLED',
+                target: 'passenger',
+                passengerId: resData.passengerId,
+                rideId: rideId,
+                fromCity: resData.fromCity,
+                toCity: resData.toCity,
+                title: 'انسحاب السائق المختار',
+                message: `السائق الذي اخترته لرحلة (${resData.fromCity || ''}) إلى (${resData.toCity || ''}) انسحب من الرحلة، الرجاء اختيار سائق آخر.`
+            });
+        }
+
+        showNotification('تم سحب قبولك للرحلة بنجاح.', 'success');
         await loadDriverAcceptedRides();
         await loadAvailableRides();
 
@@ -3740,9 +3753,13 @@ async function updateChatBannerRideDetails(rideId) {
 }
 
 function openDriverChat(rideId, passengerName, passengerId, showFullName = false) {
-    currentChat = {id:rideId, other_user_name:passengerName, other_user_id:passengerId, ride_id:rideId, show_full_name:showFullName};
+    window.chatClosedByUser = false;
+    const finalName = showFullName ? (passengerName || 'راكب تراكا') : 'راكب تراكا';
+    currentChat = {id:rideId, other_user_name:finalName, other_user_id:passengerId, ride_id:rideId, show_full_name:showFullName};
     const title = document.getElementById('chat-with-name');
-    title.innerHTML = `${passengerName} ${showFullName ? '<i class="ph-light ph-user-check" style="color:var(--success);"></i>' : '<i class="ph-light ph-user-circle" style="color:var(--gray-400);"></i>'}`;
+    if (title) {
+        title.innerHTML = `${finalName} ${showFullName ? '<i class="ph-light ph-user-check" style="color:var(--success);"></i>' : '<span style="font-size:0.8rem;color:var(--gray-500);">(هوية مخفية)</span>'}`;
+    }
     document.getElementById('chat-modal').classList.remove('hidden');
 
     updateChatBannerRideDetails(rideId);
@@ -3796,9 +3813,15 @@ async function checkDriverBalance() {
 // ============================================
 // CHAT FUNCTIONS
 // ============================================
-function openChatSimple(chatId, userName, rideId) {
-    currentChat = {id:chatId, other_user_name:userName, ride_id:rideId};
-    document.getElementById('chat-with-name').textContent = userName;
+function openChatSimple(chatId, userName, rideId, showFullName = false) {
+    window.chatClosedByUser = false;
+    const defaultLabel = userType === 'passenger' ? 'سائق تراكا' : 'راكب تراكا';
+    const finalName = showFullName ? (userName || defaultLabel) : defaultLabel;
+    currentChat = {id:chatId, other_user_name:finalName, ride_id:rideId, show_full_name:showFullName};
+    const title = document.getElementById('chat-with-name');
+    if (title) {
+        title.innerHTML = `${finalName} ${showFullName ? '<i class="ph-light ph-user-check" style="color:var(--success);"></i>' : '<span style="font-size:0.8rem;color:var(--gray-500);">(هوية مخفية)</span>'}`;
+    }
     document.getElementById('chat-ride-info').textContent = '';
     document.getElementById('chat-modal').classList.remove('hidden');
 

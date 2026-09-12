@@ -421,14 +421,52 @@ export default async function handler(req, res) {
                 return res.status(400).json({ success: false, error: 'rideId and driverId are required' });
             }
 
+            // Get ride request details
+            const { data: rideReq } = await supabase
+                .from('ride_requests')
+                .select('*')
+                .eq('id', rideId)
+                .single();
+
+            // Check if commission is already held or trip in progress
+            if (rideReq?.commission_status === 'held' || rideReq?.status === 'in_progress' || rideReq?.status === 'confirmed') {
+                return res.status(400).json({ success: false, error: 'لا يمكنك الانسحاب بعد دخول مرحلة الـ 10 ساعات وحجز العمولة' });
+            }
+
             await supabase
                 .from('ride_driver_acceptances')
                 .update({ status: 'withdrawn', updated_at: serverTime.toISOString() })
                 .eq('ride_id', rideId)
-                .eq('driver_id', driverId)
-                .eq('status', 'accepted');
+                .eq('driver_id', driverId);
 
-            return res.status(200).json({ success: true });
+            const wasSelected = rideReq?.driver_id === driverId || rideReq?.status === 'driver_selected';
+            if (wasSelected) {
+                await supabase
+                    .from('ride_requests')
+                    .update({
+                        status: 'pending',
+                        driver_id: null,
+                        driver_name: null,
+                        driver_phone: null,
+                        updated_at: serverTime.toISOString()
+                    })
+                    .eq('id', rideId);
+
+                await supabase
+                    .from('travel_trips')
+                    .update({ status: 'cancelled', cancellation_reason: 'انسحاب السائق قبل الـ 10 ساعات' })
+                    .eq('ride_request_id', rideId)
+                    .eq('driver_id', driverId)
+                    .eq('status', 'driver_selected');
+            }
+
+            return res.status(200).json({
+                success: true,
+                wasSelected,
+                passengerId: rideReq?.customer_id,
+                fromCity: rideReq?.from_city,
+                toCity: rideReq?.to_city
+            });
         }
 
         // --- 5. PASSENGER SELECTS FINAL DRIVER ---
