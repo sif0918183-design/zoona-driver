@@ -848,46 +848,9 @@ export default async function handler(req, res) {
 
                     return res.status(200).json({ success: true, result: 'commission_held', contactsRevealed: true });
                 } else {
-                    // Insufficient balance -> Grant 30 min grace timer starting strictly from the 10-hour mark
-                    const tenHoursBeforeDep = new Date(departureTime.getTime() - (settings.commission_hold_hours * 60 * 60 * 1000));
-                    let graceUntilDate = new Date(tenHoursBeforeDep.getTime() + 30 * 60 * 1000);
-
-                    // If driver was selected LESS than 10 hours before departure, grace timer starts at selection time + 30 mins
-                    if (graceUntilDate < serverTime) {
-                        graceUntilDate = new Date(serverTime.getTime() + 30 * 60 * 1000);
-                    }
-
+                    // Insufficient balance -> Grant 30 min grace timer starting strictly from current evaluation time
+                    const graceUntilDate = new Date(serverTime.getTime() + 30 * 60 * 1000);
                     const graceUntilISO = graceUntilDate.toISOString();
-
-                    // If serverTime has ALREADY passed graceUntilDate and driver has no balance -> strip immediately!
-                    if (serverTime >= graceUntilDate) {
-                        if (trip) {
-                            await supabase.from('travel_trips').update({
-                                status: 'cancelled',
-                                cancelled_by: 'system',
-                                cancellation_reason: 'انتهاء مهلة الشحن دون توفر رصيد العمولة',
-                                commission_status: 'failed',
-                                updated_at: serverTime.toISOString()
-                            }).eq('id', trip.id);
-                        }
-
-                        if (targetRideId) {
-                            await supabase.from('ride_requests').update({
-                                status: 'pending',
-                                driver_id: null,
-                                driver_name: null,
-                                driver_phone: null,
-                                commission_status: 'failed',
-                                contact_revealed: false
-                            }).eq('id', targetRideId);
-                        }
-
-                        return res.status(200).json({
-                            success: true,
-                            result: 'driver_stripped',
-                            message: 'تم سحب الرحلة من السائق لعدم توفر الرصيد بعد انتهاء المهلة.'
-                        });
-                    }
 
                     if (trip) {
                         await supabase.from('travel_trips').update({
@@ -906,13 +869,11 @@ export default async function handler(req, res) {
                         }).eq('id', targetRideId);
                     }
 
-                    const remSecs = Math.max(0, Math.round((graceUntilDate.getTime() - serverTime.getTime()) / 1000));
-
                     return res.status(200).json({
                         success: true,
                         result: 'grace_period_started',
                         graceUntil: graceUntilISO,
-                        remainingSeconds: remSecs,
+                        remainingSeconds: 1800,
                         contactsRevealed: false
                     });
                 }
