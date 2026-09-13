@@ -1070,19 +1070,19 @@ export default async function handler(req, res) {
                             .eq('id', passengerId)
                             .single();
 
-                        if (customer?.travel_restriction_type === 'restricted_3days') {
-                            // Escalation to travel_banned
+                        if (customer?.travel_restriction_type === 'restricted_2days' || customer?.travel_restriction_type === 'restricted_3days') {
+                            // Escalation to permanent travel ban upon recurrence
                             await supabase.from('customers').update({
                                 travel_restriction_type: 'travel_banned',
-                                travel_restriction_reason: 'تعليق حساب إنشاء الرحلات السفرية لتكرار الإلغاء في أوقات متأخرة'
+                                travel_restriction_reason: 'حظر نهائي لتكرار إلغاء الرحلات السفرية بعد دخول مرحلة العشرة ساعات'
                             }).eq('id', passengerId);
                         } else {
-                            // Apply 3-day restriction
-                            const restrictUntil = new Date(serverTime.getTime() + settings.restriction_duration_days * 24 * 60 * 60 * 1000).toISOString();
+                            // Apply 2-day restriction
+                            const restrictUntil = new Date(serverTime.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString();
                             await supabase.from('customers').update({
-                                travel_restriction_type: 'restricted_3days',
+                                travel_restriction_type: 'restricted_2days',
                                 travel_restriction_until: restrictUntil,
-                                travel_restriction_reason: 'تقييد 3 أيام لتكرار إلغاء الرحلات في آخر 10 ساعات'
+                                travel_restriction_reason: 'تعليق حساب لمدة يومين بسبب الإلغاء في أوقات متأخرة 4 مرات خلال الشهر'
                             }).eq('id', passengerId);
                         }
                     }

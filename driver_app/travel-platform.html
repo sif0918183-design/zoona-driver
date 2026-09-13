@@ -3197,9 +3197,11 @@ async function driverAcceptsRide(rideId) {
     try {
         // Check for active trip in travel_trips first
         const {data:activeTrips} = await travelSupabase
-            .from('travel_trips').select('id').eq('driver_id',currentUser.id).in('status',['driver_selected','in_progress']).limit(1);
+            .from('travel_trips').select('*').eq('driver_id',currentUser.id).in('status',['driver_selected','in_progress']);
 
-        if (activeTrips && activeTrips.length > 0) {
+        const activeTripIn10hPhase = (activeTrips || []).find(t => isTripInFinalActivePhase(t));
+
+        if (activeTripIn10hPhase) {
             showNotification('لديك رحلة سارية، يجب إكمالها أولاً', 'warning');
             await checkForActiveTripOnLoad();
             return;
