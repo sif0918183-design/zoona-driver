@@ -208,6 +208,16 @@ function getCanonicalCityName(cityName) {
     return norm;
 }
 
+function getCategoryRank(categoryName) {
+    if (!categoryName) return 1;
+    const n = categoryName.toLowerCase().trim();
+    if (n.includes('tuktuk')) return 0;
+    if (n.includes('اقتصادي') || n.includes('economy')) return 1;
+    if (n.includes('مريح') || n.includes('comfort')) return 2;
+    if (n.includes('عالي') || n.includes('suv') || n.includes('vip')) return 3;
+    return 1;
+}
+
 /**
  * دالة دقيقة للتحقق من تطابق المدن
  * تدعم القاموس التراكمي، التطابق التام، والتطابق المعياري
@@ -600,7 +610,17 @@ export default async function handler(req, res) {
                 gpsDistanceMatch: 0
             };
 
+            const reqVehicleCategory = req.body.vehicleCategory || req.body.vehicle_category || '';
+            const requestRank = getCategoryRank(reqVehicleCategory);
+
             for (const driver of drivers) {
+                // التحقق من رتبة نوع السيارة (عدم إرسال الإشعار لسيارة أدنى من المطلوب)
+                const driverRank = getCategoryRank(driver.car_type);
+                if (driverRank < requestRank) {
+                    console.log(`🚗 Excluded driver ${driver.id}: car_type "${driver.car_type}" (rank ${driverRank}) is lower than requested rank ${requestRank}`);
+                    continue;
+                }
+
                 // التحقق من الحظر
                 const isBanned = driver.is_banned && 
                                  driver.ban_until && 

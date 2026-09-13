@@ -192,7 +192,7 @@
             <div style="display: flex; justify-content: center; gap: 30px; margin-bottom: 25px; direction: rtl;">
                 <label style="display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: bold; cursor: pointer; color: #374151;">
                     <input type="radio" name="driver-requested" value="yes" style="width: 20px; height: 20px; accent-color: var(--primary);">
-                    <span>نعم (تعليق السائق)</span>
+                    <span>نعم</span>
                 </label>
                 <label style="display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: bold; cursor: pointer; color: #374151;">
                     <input type="radio" name="driver-requested" value="no" checked style="width: 20px; height: 20px; accent-color: var(--primary);">
@@ -1290,23 +1290,41 @@
         // ==============================================
         async function banDriver(driverId) {
             try {
-                const banEndTime = new Date();
-                banEndTime.setHours(banEndTime.getHours() + 24);
-
                 const db = supabaseAdmin || tarhalDB;
-                await db
-                    .from('drivers')
-                    .update({
-                        is_banned: true,
-                        ban_reason: 'طلب من الراكب إلغاء الرحلة',
-                        ban_until: banEndTime.toISOString()
-                    })
-                    .eq('id', driverId);
 
-                alert('🚫 تم حظر السائق لمدة 24 ساعة');
-                console.log('✅ تم حظر السائق:', driverId);
+                // Get current driver record to check previous cancellation report count
+                const { data: driver } = await db.from('drivers').select('cancel_report_count').eq('id', driverId).single();
+                const currentCount = (driver?.cancel_report_count || 0) + 1;
+
+                if (currentCount >= 2) {
+                    const banEndTime = new Date();
+                    banEndTime.setHours(banEndTime.getHours() + 24);
+
+                    await db
+                        .from('drivers')
+                        .update({
+                            is_banned: true,
+                            ban_reason: 'طلب من الراكب إلغاء الرحلة أكثر من مرة',
+                            ban_until: banEndTime.toISOString(),
+                            cancel_report_count: currentCount
+                        })
+                        .eq('id', driverId);
+
+                    alert('🚫 تم تعليق حساب السائق لمدة 24 ساعة لتكرار طلب الإلغاء');
+                    console.log('✅ تم تعليق حساب السائق (التكرار الثاني):', driverId);
+                } else {
+                    await db
+                        .from('drivers')
+                        .update({
+                            cancel_report_count: currentCount
+                        })
+                        .eq('id', driverId);
+
+                    alert('⚠️ تم تسجيل البلاغ، ولن يتم تعليق السائق إلا عند تكرار طلب الإلغاء للمرة الثانية.');
+                    console.log('⚠️ تم تسجيل البلاغ الأول للسائق بدون تعليق:', driverId);
+                }
             } catch (error) {
-                console.error('خطأ في حظر السائق:', error);
+                console.error('خطأ في تسجيل البلاغ أو تعليق السائق:', error);
             }
         }
 

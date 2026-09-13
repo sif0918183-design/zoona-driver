@@ -421,14 +421,52 @@ export default async function handler(req, res) {
                 return res.status(400).json({ success: false, error: 'rideId and driverId are required' });
             }
 
+            // Get ride request details
+            const { data: rideReq } = await supabase
+                .from('ride_requests')
+                .select('*')
+                .eq('id', rideId)
+                .single();
+
+            // Check if commission is already held or trip in progress
+            if (rideReq?.commission_status === 'held' || rideReq?.status === 'in_progress' || rideReq?.status === 'confirmed') {
+                return res.status(400).json({ success: false, error: 'لا يمكنك الانسحاب بعد دخول مرحلة الـ 10 ساعات وحجز العمولة' });
+            }
+
             await supabase
                 .from('ride_driver_acceptances')
                 .update({ status: 'withdrawn', updated_at: serverTime.toISOString() })
                 .eq('ride_id', rideId)
-                .eq('driver_id', driverId)
-                .eq('status', 'accepted');
+                .eq('driver_id', driverId);
 
-            return res.status(200).json({ success: true });
+            const wasSelected = rideReq?.driver_id === driverId || rideReq?.status === 'driver_selected';
+            if (wasSelected) {
+                await supabase
+                    .from('ride_requests')
+                    .update({
+                        status: 'pending',
+                        driver_id: null,
+                        driver_name: null,
+                        driver_phone: null,
+                        updated_at: serverTime.toISOString()
+                    })
+                    .eq('id', rideId);
+
+                await supabase
+                    .from('travel_trips')
+                    .update({ status: 'cancelled', cancellation_reason: 'انسحاب السائق قبل الـ 10 ساعات' })
+                    .eq('ride_request_id', rideId)
+                    .eq('driver_id', driverId)
+                    .eq('status', 'driver_selected');
+            }
+
+            return res.status(200).json({
+                success: true,
+                wasSelected,
+                passengerId: rideReq?.customer_id,
+                fromCity: rideReq?.from_city,
+                toCity: rideReq?.to_city
+            });
         }
 
         // --- 5. PASSENGER SELECTS FINAL DRIVER ---
@@ -545,29 +583,62 @@ export default async function handler(req, res) {
             }
 
             // Create/Upsert travel_trips
-            const { data: trip, error: tErr } = await supabase
+            const { data: existingTrip } = await supabase
                 .from('travel_trips')
-                .insert([{
-                    ride_request_id: rideId,
-                    driver_id: driverId,
-                    passenger_id: passengerId,
-                    from_city: ride.from_city,
-                    to_city: ride.to_city,
-                    final_price: ride.estimated_price,
-                    status: 'driver_selected',
-                    car_type: driver.car_type,
-                    car_model: driver.car_model,
-                    departure_time: departureTime.toISOString(),
-                    commission_status: initialCommStatus,
-                    commission_amount: commissionAmount,
-                    commission_grace_until: graceUntil,
-                    contact_revealed: contactsRevealed,
-                    created_at: serverTime.toISOString()
-                }])
-                .select()
-                .single();
+                .select('id')
+                .eq('ride_request_id', rideId)
+                .maybeSingle();
 
-            if (tErr) throw tErr;
+            let trip = null;
+            if (existingTrip) {
+                const { data: updatedTrip, error: uErr } = await supabase
+                    .from('travel_trips')
+                    .update({
+                        driver_id: driverId,
+                        passenger_id: passengerId,
+                        from_city: ride.from_city,
+                        to_city: ride.to_city,
+                        final_price: ride.estimated_price,
+                        status: 'driver_selected',
+                        car_type: driver.car_type,
+                        car_model: driver.car_model,
+                        departure_time: departureTime.toISOString(),
+                        commission_status: initialCommStatus,
+                        commission_amount: commissionAmount,
+                        commission_grace_until: graceUntil,
+                        contact_revealed: contactsRevealed,
+                        updated_at: serverTime.toISOString()
+                    })
+                    .eq('id', existingTrip.id)
+                    .select()
+                    .single();
+                if (uErr) throw uErr;
+                trip = updatedTrip;
+            } else {
+                const { data: insertedTrip, error: tErr } = await supabase
+                    .from('travel_trips')
+                    .insert([{
+                        ride_request_id: rideId,
+                        driver_id: driverId,
+                        passenger_id: passengerId,
+                        from_city: ride.from_city,
+                        to_city: ride.to_city,
+                        final_price: ride.estimated_price,
+                        status: 'driver_selected',
+                        car_type: driver.car_type,
+                        car_model: driver.car_model,
+                        departure_time: departureTime.toISOString(),
+                        commission_status: initialCommStatus,
+                        commission_amount: commissionAmount,
+                        commission_grace_until: graceUntil,
+                        contact_revealed: contactsRevealed,
+                        created_at: serverTime.toISOString()
+                    }])
+                    .select()
+                    .single();
+                if (tErr) throw tErr;
+                trip = insertedTrip;
+            }
 
             // Update contact_revealed on ride_requests
             await supabase
@@ -810,46 +881,9 @@ export default async function handler(req, res) {
 
                     return res.status(200).json({ success: true, result: 'commission_held', contactsRevealed: true });
                 } else {
-                    // Insufficient balance -> Grant 30 min grace timer starting strictly from the 10-hour mark
-                    const tenHoursBeforeDep = new Date(departureTime.getTime() - (settings.commission_hold_hours * 60 * 60 * 1000));
-                    let graceUntilDate = new Date(tenHoursBeforeDep.getTime() + 30 * 60 * 1000);
-
-                    // If driver was selected LESS than 10 hours before departure, grace timer starts at selection time + 30 mins
-                    if (graceUntilDate < serverTime) {
-                        graceUntilDate = new Date(serverTime.getTime() + 30 * 60 * 1000);
-                    }
-
+                    // Insufficient balance -> Grant 30 min grace timer starting strictly from current evaluation time
+                    const graceUntilDate = new Date(serverTime.getTime() + 30 * 60 * 1000);
                     const graceUntilISO = graceUntilDate.toISOString();
-
-                    // If serverTime has ALREADY passed graceUntilDate and driver has no balance -> strip immediately!
-                    if (serverTime >= graceUntilDate) {
-                        if (trip) {
-                            await supabase.from('travel_trips').update({
-                                status: 'cancelled',
-                                cancelled_by: 'system',
-                                cancellation_reason: 'انتهاء مهلة الشحن دون توفر رصيد العمولة',
-                                commission_status: 'failed',
-                                updated_at: serverTime.toISOString()
-                            }).eq('id', trip.id);
-                        }
-
-                        if (targetRideId) {
-                            await supabase.from('ride_requests').update({
-                                status: 'pending',
-                                driver_id: null,
-                                driver_name: null,
-                                driver_phone: null,
-                                commission_status: 'failed',
-                                contact_revealed: false
-                            }).eq('id', targetRideId);
-                        }
-
-                        return res.status(200).json({
-                            success: true,
-                            result: 'driver_stripped',
-                            message: 'تم سحب الرحلة من السائق لعدم توفر الرصيد بعد انتهاء المهلة.'
-                        });
-                    }
 
                     if (trip) {
                         await supabase.from('travel_trips').update({
@@ -868,13 +902,11 @@ export default async function handler(req, res) {
                         }).eq('id', targetRideId);
                     }
 
-                    const remSecs = Math.max(0, Math.round((graceUntilDate.getTime() - serverTime.getTime()) / 1000));
-
                     return res.status(200).json({
                         success: true,
                         result: 'grace_period_started',
                         graceUntil: graceUntilISO,
-                        remainingSeconds: remSecs,
+                        remainingSeconds: 1800,
                         contactsRevealed: false
                     });
                 }
@@ -1038,19 +1070,19 @@ export default async function handler(req, res) {
                             .eq('id', passengerId)
                             .single();
 
-                        if (customer?.travel_restriction_type === 'restricted_3days') {
-                            // Escalation to travel_banned
+                        if (customer?.travel_restriction_type === 'restricted_2days' || customer?.travel_restriction_type === 'restricted_3days') {
+                            // Escalation to permanent travel ban upon recurrence
                             await supabase.from('customers').update({
                                 travel_restriction_type: 'travel_banned',
-                                travel_restriction_reason: 'تعليق حساب إنشاء الرحلات السفرية لتكرار الإلغاء في أوقات متأخرة'
+                                travel_restriction_reason: 'حظر نهائي لتكرار إلغاء الرحلات السفرية بعد دخول مرحلة العشرة ساعات'
                             }).eq('id', passengerId);
                         } else {
-                            // Apply 3-day restriction
-                            const restrictUntil = new Date(serverTime.getTime() + settings.restriction_duration_days * 24 * 60 * 60 * 1000).toISOString();
+                            // Apply 2-day restriction
+                            const restrictUntil = new Date(serverTime.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString();
                             await supabase.from('customers').update({
-                                travel_restriction_type: 'restricted_3days',
+                                travel_restriction_type: 'restricted_2days',
                                 travel_restriction_until: restrictUntil,
-                                travel_restriction_reason: 'تقييد 3 أيام لتكرار إلغاء الرحلات في آخر 10 ساعات'
+                                travel_restriction_reason: 'تعليق حساب لمدة يومين بسبب الإلغاء في أوقات متأخرة 4 مرات خلال الشهر'
                             }).eq('id', passengerId);
                         }
                     }

@@ -12,6 +12,7 @@ ALTER TABLE rides ADD COLUMN IF NOT EXISTS cancellation_reason TEXT;
 ALTER TABLE drivers ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT false;
 ALTER TABLE drivers ADD COLUMN IF NOT EXISTS ban_reason TEXT;
 ALTER TABLE drivers ADD COLUMN IF NOT EXISTS ban_until TIMESTAMPTZ;
+ALTER TABLE drivers ADD COLUMN IF NOT EXISTS cancel_report_count INT DEFAULT 0;
 
 -- Create balance_transactions table if not exists
 CREATE TABLE IF NOT EXISTS balance_transactions (

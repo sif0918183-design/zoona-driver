@@ -1355,14 +1355,14 @@ async function handleHashRouting() {
         try {
             const {data:ride} = await travelSupabase.from('ride_requests').select('*').eq('id', rideId).single();
             if (ride) {
+                const isCommissionHeld = ride.commission_status === 'held' || ride.status === 'confirmed' || ride.status === 'in_progress';
                 if (userType === 'passenger') {
-                    const isFinal = ['driver_selected','confirmed','in_progress'].includes(ride.status);
-                    const displayName = isFinal ? (ride.driver_name || 'سائق تراكا') : 'سائق تراكا';
-                    openChatSimple(rideId, displayName, rideId);
+                    const displayName = isCommissionHeld ? (ride.driver_name || 'سائق تراكا') : 'سائق تراكا';
+                    openChatSimple(rideId, displayName, rideId, isCommissionHeld);
                 } else {
-                    const isFinal = (ride.status === 'driver_selected' || ride.status === 'confirmed' || ride.status === 'in_progress') && ride.driver_id === currentUser.id;
-                    const displayName = isFinal ? (ride.passenger_name || 'راكب تراكا') : 'راكب تراكا';
-                    openDriverChat(rideId, displayName, ride.customer_id, isFinal);
+                    const isPassengerNameVisible = isCommissionHeld && ride.driver_id === currentUser.id;
+                    const displayName = isPassengerNameVisible ? (ride.passenger_name || 'راكب تراكا') : 'راكب تراكا';
+                    openDriverChat(rideId, displayName, ride.customer_id, isPassengerNameVisible);
                 }
             }
         } catch (err) {
@@ -2640,9 +2640,15 @@ async function loadPassengerRides() {
                 const driversInfo = [];
                 if (acceptances && acceptances.length > 0) {
                     for (const acc of acceptances) {
-                        const {data:d} = await travelSupabase.from('drivers').select('id,full_name,car_type,car_model,rating').eq('id',acc.driver_id).single();
+                        const {data:d} = await travelSupabase.from('drivers').select('id,full_name,car_type,car_model,car_color,rating').eq('id',acc.driver_id).single();
                         if (d) driversInfo.push({...d, driver_id:acc.driver_id});
                     }
+                }
+
+                let selectedDriverInfo = null;
+                if (req.driver_id) {
+                    const {data:sd} = await travelSupabase.from('drivers').select('id,full_name,car_type,car_model,car_color').eq('id', req.driver_id).single();
+                    if (sd) selectedDriverInfo = sd;
                 }
 
                 combined.push({
@@ -2659,7 +2665,8 @@ async function loadPassengerRides() {
                     driver_phone: req.driver_phone,
                     created_at: req.created_at,
                     accepted_drivers: driversInfo,
-                    accepted_count: acceptances?.length || 0
+                    accepted_count: acceptances?.length || 0,
+                    selected_driver_info: selectedDriverInfo
                 });
             }
         }
@@ -2702,21 +2709,40 @@ function displayPassengerRides() {
             `;
         }
 
+        const isFinalPhase = isTripInFinalActivePhase(ride);
         let activeActions = '';
         if (isActive) {
-            if (isTripInFinalActivePhase(ride)) {
+            if (isFinalPhase) {
                 activeActions = `
                     <button class="btn btn-primary btn-block" style="margin-top:0.75rem;" onclick="reopenActiveTripModal()">
                         <i class="ph-light ph-car"></i> فتح نافذة الرحلة الجارية
                     </button>
                 `;
             } else {
+                const driverCarModel = ride.selected_driver_info?.car_model || '';
                 activeActions = `
                     <div style="margin-top:0.75rem; background:#ecfdf5; border:1px solid #10b981; color:#065f46; padding:0.75rem; border-radius:var(--radius); font-size:0.85rem; font-weight:700; text-align:center;">
                         <i class="ph-bold ph-check-circle" style="vertical-align:middle; font-size:1.1rem; color:#059669;"></i>
                         تم تثبيت اختيار السائق — ستفتح نافذة الرحلة وتظهر أرقام التواصل قبل 10 ساعات من موعد انطلاق الرحلة
                     </div>
+                    <button class="btn btn-outline btn-sm btn-block" style="margin-top:0.75rem;" onclick="openChatSimple('${ride.id}', 'سائق تراكا${driverCarModel ? ' (' + escapeHtml(driverCarModel) + ')' : ''}', '${ride.id}', false)">
+                        <i class="ph-light ph-chat-centered-dots"></i> محادثة السائق
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm btn-block" style="margin-top:0.5rem;" onclick="cancelRide('${ride.id}')">
+                        <i class="ph-light ph-x"></i> إلغاء الرحلة
+                    </button>
                 `;
+            }
+        }
+
+        let driverLabelText = '';
+        if (isActive && ride.driver_id) {
+            if (isFinalPhase) {
+                driverLabelText = `السائق: ${escapeHtml(ride.driver_name || 'سائق تراكا')}`;
+            } else {
+                const sd = ride.selected_driver_info;
+                const carDetails = [sd?.car_type, sd?.car_model, sd?.car_color].filter(Boolean).join(' ') || 'غير محدد';
+                driverLabelText = `السائق: سائق تراكا (${escapeHtml(carDetails)})`;
             }
         }
 
@@ -2731,7 +2757,7 @@ function displayPassengerRides() {
             <div class="ride-details">
                 <div class="ride-detail"><i class="ph-light ph-car"></i><span>${ride.vehicle_category||'غير محدد'}</span></div>
                 <div class="ride-detail"><i class="ph-light ph-calendar-blank"></i><span>${formatDate(ride.created_at)}</span></div>
-                ${ride.driver_name && isActive ? `<div class="ride-detail"><i class="ph-light ph-user-circle"></i><span>السائق: ${escapeHtml(ride.driver_name)}</span></div>` : ''}
+                ${driverLabelText ? `<div class="ride-detail"><i class="ph-light ph-user-circle"></i><span>${driverLabelText}</span></div>` : ''}
 
                 ${(() => {
                     const parsed = parseRideNotes(ride.notes);
@@ -2816,7 +2842,7 @@ async function showDriverOffers(rideId) {
                         <div class="ride-detail"><i class="ph-light ph-shield-check"></i><span style="color:var(--success);">سائق معتمد</span></div>
                     </div>
                     <div style="display:flex;gap:0.5rem;margin-top:1rem;">
-                        <button class="btn btn-outline btn-sm" style="flex:1;" onclick="startChatWithDriverFromCard('${rideId}','${label.replace(/'/g,"\\'")}','${acc.driver_id}')">
+                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="startChatWithDriverFromCard('${rideId}','${label.replace(/'/g,"\\'")}','${acc.driver_id}','${(driver.car_model||'').replace(/'/g,"\\'")}')">
                             <i class="ph-light ph-chat-centered-dots"></i> محادثة
                         </button>
                         ${!isFinal ? `
@@ -2835,6 +2861,24 @@ async function showDriverOffers(rideId) {
     }
 }
 
+function startChatWithDriverFromCard(rideId, driverLabel, driverId, carModel = '') {
+    window.chatClosedByUser = false;
+    currentChat = {id:rideId, other_user_name:'سائق تراكا', ride_id:rideId, other_user_id:driverId, show_full_name:false};
+    const headerTitle = carModel ? `سائق تراكا (${carModel})` : 'سائق تراكا';
+    const titleEl = document.getElementById('chat-with-name');
+    if (titleEl) {
+        titleEl.innerHTML = `${headerTitle} <span style="font-size:0.8rem;color:var(--gray-500);">(هوية مخفية)</span>`;
+    }
+    document.getElementById('chat-ride-info').textContent = '';
+    document.getElementById('chat-modal').classList.remove('hidden');
+
+    updateChatBannerRideDetails(rideId);
+    if (window.location.hash !== '#chat-' + rideId) {
+        window.location.hash = '#chat-' + rideId;
+    }
+    loadChatMessages(rideId);
+}
+
 function closeDriverOffers() {
     document.getElementById('driver-offers-modal').classList.add('hidden');
 }
@@ -2843,61 +2887,51 @@ function closeDriverOffers() {
 // SELECT DRIVER (creates travel_trips record)
 // ============================================
 async function passengerSelectsDriver(rideId, driverId) {
-    if (!confirm('هل أنت متأكد من اختيار هذا السائق؟ ستظهر بياناتك الكاملة لبعضكما فوراً.')) return;
+    if (!confirm('هل أنت متأكد من اختيار هذا السائق؟')) return;
 
     const btn = event?.target;
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-inline"></span>'; }
 
     try {
-        // Get driver info
-        const {data:driverInfo} = await travelSupabase.from('drivers').select('full_name,phone,car_type,car_model,rating').eq('id',driverId).single();
-        if (!driverInfo) throw new Error('لم يتم العثور على معلومات السائق');
+        const token = localStorage.getItem('tarhal_session_token') || btoa(JSON.stringify({id: currentUser.id, exp: Date.now() + 86400000}));
+        const response = await fetch('/api/travel-platform', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                action: 'select_driver',
+                rideId,
+                driverId,
+                passengerId: currentUser.id
+            })
+        });
 
-        // Get ride request details
-        const {data:rideReq} = await travelSupabase.from('ride_requests').select('*').eq('id',rideId).single();
-        if (!rideReq) throw new Error('لم يتم العثور على طلب الرحلة');
+        const resData = await response.json();
+        if (!response.ok || !resData.success) {
+            throw new Error(resData.error || 'فشل اختيار السائق');
+        }
 
-        // 1. Update ride_requests
-        await travelSupabase.from('ride_requests').update({
-            status: 'driver_selected',
-            driver_id: driverId,
-            driver_name: driverInfo.full_name,
-            driver_phone: driverInfo.phone
-        }).eq('id', rideId);
-
-        // 2. Update acceptances - reject others
-        await travelSupabase.from('ride_driver_acceptances').update({status:'rejected'}).eq('ride_id',rideId).neq('driver_id',driverId);
-        await travelSupabase.from('ride_driver_acceptances').update({status:'selected'}).eq('ride_id',rideId).eq('driver_id',driverId);
-
-        // 3. Create travel_trips record
-        const {data:newTrip, error:tripErr} = await travelSupabase.from('travel_trips').insert([{
-            ride_request_id: rideId,
-            passenger_id: currentUser.id,
-            driver_id: driverId,
-            from_city: rideReq.from_city,
-            to_city: rideReq.to_city,
-            vehicle_category: rideReq.vehicle_category,
-            final_price: rideReq.estimated_price,
-            status: 'driver_selected',
-            created_at: new Date().toISOString()
-        }]).select().single();
-
-        if (tripErr) {
-            console.warn('Could not create travel_trips record:', tripErr);
-        } else if (newTrip) {
-            localStorage.setItem('tarhal_active_trip_id', newTrip.id);
+        const trip = resData.trip;
+        if (trip) {
+            localStorage.setItem('tarhal_active_trip_id', trip.id);
         }
 
         sendTravelPush({
             type: 'DRIVER_SELECTED',
             driverId: driverId,
             rideId: rideId,
-            fromCity: rideReq.from_city,
-            toCity: rideReq.to_city
+            fromCity: trip?.from_city,
+            toCity: trip?.to_city
         });
 
         closeDriverOffers();
-        showNotification(`تم تثبيت اختيار السائق ${driverInfo.full_name} بنجاح! ستظهر لك نافذة الرحلة وبيانات التواصل قبل 10 ساعات من موعد الرحلة.`, 'success');
+        showNotification('تم تثبيت اختيار السائق بنجاح!', 'success');
+
+        if (resData.contactsRevealed || resData.commissionStatus === 'held' || (trip && isTripInFinalActivePhase(trip))) {
+            await checkForActiveTripOnLoad();
+        }
 
         await loadPassengerRides();
 
@@ -2928,8 +2962,8 @@ async function loadPassengerChats() {
             const hasMyMsg = msgs.some(m => m.sender_id === currentUser.id);
             if (!hasMyMsg && req.status === 'pending') continue;
 
-            const isFinal = ['driver_selected','confirmed','in_progress'].includes(req.status);
-            const displayName = isFinal ? (req.driver_name || 'سائق تراكا') : 'سائق تراكا';
+            // Never expose real driver name to passenger in chats window
+            const displayName = 'سائق تراكا';
             const last = msgs[0];
 
             // Get unread count using user_message_reads
@@ -3000,6 +3034,7 @@ function displayPassengerChats(chats) {
 }
 
 function startChatWithDriverFromCard(rideId, driverLabel, driverId) {
+    window.chatClosedByUser = false;
     currentChat = {id:rideId, other_user_name:driverLabel, ride_id:rideId, other_user_id:driverId};
     document.getElementById('chat-with-name').textContent = driverLabel;
     document.getElementById('chat-ride-info').textContent = '';
@@ -3114,6 +3149,7 @@ function displayAvailableRides() {
 }
 
 function startChatBeforeAccept(rideId, passengerName) {
+    window.chatClosedByUser = false;
     currentChat = {id:rideId, other_user_name:'راكب تراكا', ride_id:rideId, show_full_name:false};
     document.getElementById('chat-with-name').textContent = 'راكب تراكا';
     document.getElementById('chat-ride-info').textContent = '(هوية مخفية)';
@@ -3494,9 +3530,13 @@ async function updateChatBannerRideDetails(rideId) {
 }
 
 function openDriverChat(rideId, passengerName, passengerId, showFullName = false) {
-    currentChat = {id:rideId, other_user_name:passengerName, other_user_id:passengerId, ride_id:rideId, show_full_name:showFullName};
+    window.chatClosedByUser = false;
+    const finalName = showFullName ? (passengerName || 'راكب تراكا') : 'راكب تراكا';
+    currentChat = {id:rideId, other_user_name:finalName, other_user_id:passengerId, ride_id:rideId, show_full_name:showFullName};
     const title = document.getElementById('chat-with-name');
-    title.innerHTML = `${passengerName} ${showFullName ? '<i class="ph-light ph-user-check" style="color:var(--success);"></i>' : '<i class="ph-light ph-user-circle" style="color:var(--gray-400);"></i>'}`;
+    if (title) {
+        title.innerHTML = `${finalName} ${showFullName ? '<i class="ph-light ph-user-check" style="color:var(--success);"></i>' : '<span style="font-size:0.8rem;color:var(--gray-500);">(هوية مخفية)</span>'}`;
+    }
     document.getElementById('chat-modal').classList.remove('hidden');
 
     updateChatBannerRideDetails(rideId);
@@ -3546,13 +3586,40 @@ async function checkDriverBalance() {
 // ============================================
 // CHAT FUNCTIONS
 // ============================================
-function openChatSimple(chatId, userName, rideId) {
-    currentChat = {id:chatId, other_user_name:userName, ride_id:rideId};
-    document.getElementById('chat-with-name').textContent = userName;
+async function openChatSimple(chatId, userName, rideId, showFullName = false) {
+    window.chatClosedByUser = false;
+    const defaultLabel = userType === 'passenger' ? 'سائق تراكا' : 'راكب تراكا';
+    // Driver real name is never revealed to passenger in chat window
+    const finalName = (userType === 'passenger') ? 'سائق تراكا' : (showFullName ? (userName || defaultLabel) : defaultLabel);
+    currentChat = {id:chatId, other_user_name:finalName, ride_id:rideId, show_full_name:showFullName};
+    const title = document.getElementById('chat-with-name');
+    if (title) {
+        title.innerHTML = `${finalName} ${showFullName ? '<i class="ph-light ph-user-check" style="color:var(--success);"></i>' : '<span style="font-size:0.8rem;color:var(--gray-500);">(هوية مخفية)</span>'}`;
+    }
     document.getElementById('chat-ride-info').textContent = '';
     document.getElementById('chat-modal').classList.remove('hidden');
 
     const rideIdForChat = rideId || chatId;
+
+    // Fetch car model if identity is hidden for passenger
+    if (userType === 'passenger' && !showFullName && rideIdForChat) {
+        try {
+            const {data:ride} = await travelSupabase.from('ride_requests').select('driver_id').eq('id', rideIdForChat).single();
+            let carModel = '';
+            if (ride?.driver_id) {
+                const {data:d} = await travelSupabase.from('drivers').select('car_model').eq('id', ride.driver_id).single();
+                if (d?.car_model) carModel = d.car_model;
+            }
+            if (!carModel) {
+                const {data:acc} = await travelSupabase.from('ride_driver_acceptances').select('driver_id, drivers(car_model)').eq('ride_id', rideIdForChat).limit(1).single();
+                if (acc?.drivers?.car_model) carModel = acc.drivers.car_model;
+            }
+            if (carModel && title) {
+                title.innerHTML = `سائق تراكا (${carModel}) <span style="font-size:0.8rem;color:var(--gray-500);">(هوية مخفية)</span>`;
+            }
+        } catch(e) { console.error('Error fetching car model for chat:', e); }
+    }
+
     updateChatBannerRideDetails(rideIdForChat);
 
     if (window.location.hash !== '#chat-' + rideIdForChat) {
@@ -3623,9 +3690,11 @@ function displayMessages(messages) {
 }
 
 function filterChatMessage(message) {
+    const numberRegex = /[0-9\u0660-\u0669\u06F0-\u06F9]/;
     const phoneRegex = /(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g;
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     let filtered = message, hasViolation = false;
+    if (numberRegex.test(message)) { hasViolation = true; }
     if (phoneRegex.test(message)) { filtered = filtered.replace(phoneRegex, '***'); hasViolation = true; }
     if (urlRegex.test(message)) { filtered = filtered.replace(urlRegex, '***'); hasViolation = true; }
     return {filtered, hasViolation};
@@ -3644,13 +3713,20 @@ async function sendMessage() {
     const message = input.value.trim();
     if (!message || !currentChat) { showNotification('الرجاء إدخال رسالة', 'warning'); return; }
 
-    if (userType === 'driver' && currentChat && !currentChat.show_full_name) {
-        if (!confirm('تنبيه: هوية الراكب مخفية حتى يختارك. هل تريد الإرسال؟')) return;
+    const isIdentityHidden = !currentChat.show_full_name;
+
+    if (isIdentityHidden && /[0-9\u0660-\u0669\u06F0-\u06F9]/.test(message)) {
+        showNotification('يُمنع إرسال أي أرقام سواء عربية أو إنجليزية في المحادثة طالما كانت الهوية مخفية', 'warning');
+        return;
+    }
+
+    if (userType === 'driver' && isIdentityHidden) {
+        if (!confirm('تنبيه: هوية الراكب مخفية حتى يتم حجز العمولة. هل تريد الإرسال؟')) return;
     }
 
     const {hasViolation} = filterChatMessage(message);
-    if (hasViolation) {
-        showNotification('يُمنع إرسال أرقام هواتف أو روابط في المحادثة قبل اختيار السائق', 'warning');
+    if (hasViolation && isIdentityHidden) {
+        showNotification('يُمنع إرسال أي أرقام سواء عربية أو إنجليزية في المحادثة طالما كانت الهوية مخفية', 'warning');
         return;
     }
 
@@ -3693,6 +3769,7 @@ function closeChat() {
 
     if (window.location.hash) {
         history.pushState('', document.title, window.location.pathname + window.location.search);
+        try { window.location.hash = ''; } catch(e) {}
     }
 
     // Reload chats list on closing chat modal to ensure badge is updated immediately
@@ -3788,21 +3865,36 @@ function updateChatBadge(chats) {
 async function cancelRide(rideId) {
     if (!confirm('هل أنت متأكد من إلغاء هذه الرحلة؟')) return;
     try {
-        const { data: ride } = await travelSupabase.from('ride_requests').select('from_city, to_city, driver_id').eq('id', rideId).single();
-        await travelSupabase.from('ride_requests').update({status:'cancelled'}).eq('id',rideId);
-
-        sendTravelPush({
-            type: 'TRIP_CANCELLED',
-            rideId: rideId,
-            driverId: ride?.driver_id,
-            fromCity: ride?.from_city,
-            toCity: ride?.to_city
+        const token = localStorage.getItem('tarhal_session_token') || btoa(JSON.stringify({id: currentUser.id, exp: Date.now() + 86400000}));
+        const response = await fetch('/api/travel-platform', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                action: 'passenger_cancel',
+                tripId: rideId,
+                reason: 'إلغاء من الراكب عبر قائمة الرحلات'
+            })
         });
 
-        showNotification('تم إلغاء الرحلة بنجاح', 'success');
+        const resData = await response.json();
+        if (!response.ok || !resData.success) {
+            throw new Error(resData.error || 'فشل إلغاء الرحلة');
+        }
+
+        const savedActiveId = localStorage.getItem('tarhal_active_trip_id');
+        if (savedActiveId === rideId) {
+            localStorage.removeItem('tarhal_active_trip_id');
+            closeActiveTripModal();
+        }
+
+        showNotification('تم إلغاء الرحلة بنجاح واسترداد أي عمولة للسائق.', 'success');
         await loadPassengerRides();
     } catch(err) {
-        showNotification('خطأ في إلغاء الرحلة', 'error');
+        console.error('Error cancelling ride:', err);
+        showNotification('خطأ في إلغاء الرحلة: ' + err.message, 'error');
     }
 }
 
