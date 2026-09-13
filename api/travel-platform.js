@@ -123,6 +123,237 @@ function parseCategoryRank(categoryName) {
     return 1;
 }
 
+// Helper: Evaluate 10h Commission logic atomically
+async function evaluateTrip10hCommission(tripId, rideId, settings, serverTime) {
+    let trip = null;
+    if (tripId) {
+        const { data: tData } = await supabase
+            .from('travel_trips')
+            .select('*')
+            .eq('id', tripId)
+            .maybeSingle();
+        trip = tData;
+    }
+
+    const targetRideId = rideId || trip?.ride_request_id;
+    let rideReq = null;
+    if (targetRideId) {
+        const { data: rData } = await supabase
+            .from('ride_requests')
+            .select('*')
+            .eq('id', targetRideId)
+            .maybeSingle();
+        rideReq = rData;
+    }
+
+    if (!trip && !rideReq) return { success: false, error: 'الرحلة غير موجودة' };
+
+    const driverId = trip?.driver_id || rideReq?.driver_id;
+    if (!driverId) return { success: true, message: 'لم يتم اختيار سائق بعد' };
+
+    if ((trip?.status === 'completed' || trip?.status === 'cancelled') ||
+        (rideReq?.status === 'completed' || rideReq?.status === 'cancelled')) {
+        return { success: true, trip, rideReq };
+    }
+
+    let departureTime = null;
+    if (trip?.departure_time) departureTime = new Date(trip.departure_time);
+    else if (rideReq?.departure_time) departureTime = new Date(rideReq.departure_time);
+    if (!departureTime) departureTime = new Date(serverTime.getTime() + 24 * 3600000);
+
+    const hoursUntilDeparture = (departureTime.getTime() - serverTime.getTime()) / (1000 * 60 * 60);
+
+    const { data: driver } = await supabase
+        .from('drivers')
+        .select('balance, full_name')
+        .eq('id', driverId)
+        .single();
+
+    const finalPrice = trip?.final_price || rideReq?.estimated_price || 0;
+    const commissionAmount = trip?.commission_amount || Math.round(finalPrice * settings.travel_commission_rate / 100);
+
+    const commStatus = trip?.commission_status || rideReq?.commission_status || 'pending';
+    const commGraceUntil = trip?.commission_grace_until || rideReq?.commission_grace_until;
+
+    const alreadyDeducted = await isCommissionAlreadyDeducted(driverId, targetRideId, trip?.id);
+
+    if (alreadyDeducted) {
+        if (trip) {
+            await supabase.from('travel_trips').update({
+                commission_status: 'held',
+                contact_revealed: true,
+                commission_grace_until: null,
+                updated_at: serverTime.toISOString()
+            }).eq('id', trip.id);
+        }
+        if (targetRideId) {
+            await supabase.from('ride_requests').update({
+                commission_status: 'held',
+                contact_revealed: true,
+                commission_grace_until: null
+            }).eq('id', targetRideId);
+        }
+        return { success: true, result: 'commission_held', contactsRevealed: true };
+    }
+
+    // Grace Period Expiration Evaluation
+    if (commStatus === 'grace_period') {
+        const graceUntil = commGraceUntil ? new Date(commGraceUntil) : serverTime;
+
+        if (serverTime >= graceUntil) {
+            if ((driver?.balance || 0) >= commissionAmount) {
+                const newBal = (driver.balance || 0) - commissionAmount;
+                await supabase.from('drivers').update({ balance: newBal }).eq('id', driverId);
+                await supabase.from('balance_transactions').insert([{
+                    driver_id: driverId,
+                    amount: -commissionAmount,
+                    type: 'commission_hold',
+                    description: `خصم عمولة منصة السفر للرحلة ${targetRideId}`
+                }]);
+
+                if (trip) {
+                    await supabase.from('travel_trips').update({
+                        commission_status: 'held',
+                        contact_revealed: true,
+                        commission_grace_until: null,
+                        updated_at: serverTime.toISOString()
+                    }).eq('id', trip.id);
+                }
+                if (targetRideId) {
+                    await supabase.from('ride_requests').update({
+                        commission_status: 'held',
+                        contact_revealed: true,
+                        commission_grace_until: null
+                    }).eq('id', targetRideId);
+                }
+                return { success: true, result: 'commission_held', contactsRevealed: true };
+            } else {
+                // Verify target assignment hasn't changed before stripping
+                const { data: freshReq } = await supabase
+                    .from('ride_requests')
+                    .select('driver_id')
+                    .eq('id', targetRideId)
+                    .maybeSingle();
+
+                if (freshReq && freshReq.driver_id !== driverId) {
+                    return { success: true, result: 'already_replaced' };
+                }
+
+                const currentPassengerId = trip?.passenger_id || rideReq?.customer_id;
+
+                if (trip) {
+                    await supabase.from('travel_trips').update({
+                        status: 'cancelled',
+                        cancelled_by: 'system',
+                        cancellation_reason: 'انتهاء مهلة الشحن دون توفر رصيد العمولة',
+                        commission_status: 'failed',
+                        updated_at: serverTime.toISOString()
+                    }).eq('id', trip.id);
+                }
+
+                if (targetRideId) {
+                    await supabase.from('ride_requests').update({
+                        status: 'pending',
+                        driver_id: null,
+                        driver_name: null,
+                        driver_phone: null,
+                        commission_status: 'failed',
+                        contact_revealed: false
+                    }).eq('id', targetRideId);
+                }
+
+                if (currentPassengerId) {
+                    try {
+                        const { data: pCustomer } = await supabase
+                            .from('customers')
+                            .select('fcm_token')
+                            .eq('id', currentPassengerId)
+                            .single();
+
+                        if (pCustomer?.fcm_token && pCustomer.fcm_token !== 'false') {
+                            const adminModule = await import('firebase-admin');
+                            const adminObj = adminModule.default || adminModule;
+                            if (adminObj.apps.length) {
+                                await adminObj.messaging().send({
+                                    token: pCustomer.fcm_token,
+                                    notification: {
+                                        title: 'ℹ️ السائق غير متاح حالياً - تراكا',
+                                        body: 'السائق الذي اخترته لرحلتك السفرية غير متاح حالياً. يرجى الدخول واختيار سائق بديل.'
+                                    },
+                                    data: {
+                                        type: 'DRIVER_STRIPPED',
+                                        ride_id: String(targetRideId || ''),
+                                        click_action: 'FLUTTER_NOTIFICATION_CLICK',
+                                        url: '/passenger_app/travel-platform.html#my-rides'
+                                    }
+                                });
+                            }
+                        }
+                    } catch (pushErr) {
+                        console.error('Failed to dispatch DRIVER_STRIPPED push directly:', pushErr);
+                    }
+                }
+
+                return { success: true, result: 'driver_stripped', message: 'تم سحب الرحلة من السائق لعدم توفر الرصيد بعد انتهاء المهلة.' };
+            }
+        } else {
+            const remainingSeconds = Math.max(0, Math.round((graceUntil.getTime() - serverTime.getTime()) / 1000));
+            return { success: true, result: 'in_grace_period', remainingSeconds, contactsRevealed: false };
+        }
+    }
+
+    // Entering 10h Window
+    if (hoursUntilDeparture <= settings.commission_hold_hours && commStatus === 'pending') {
+        if ((driver?.balance || 0) >= commissionAmount) {
+            const newBal = (driver.balance || 0) - commissionAmount;
+            await supabase.from('drivers').update({ balance: newBal }).eq('id', driverId);
+            await supabase.from('balance_transactions').insert([{
+                driver_id: driverId,
+                amount: -commissionAmount,
+                type: 'commission_hold',
+                description: `حجز عمولة منصة السفر للرحلة ${targetRideId}`
+            }]);
+
+            if (trip) {
+                await supabase.from('travel_trips').update({
+                    commission_status: 'held',
+                    contact_revealed: true,
+                    updated_at: serverTime.toISOString()
+                }).eq('id', trip.id);
+            }
+            if (targetRideId) {
+                await supabase.from('ride_requests').update({
+                    commission_status: 'held',
+                    contact_revealed: true
+                }).eq('id', targetRideId);
+            }
+            return { success: true, result: 'commission_held', contactsRevealed: true };
+        } else {
+            const graceUntilDate = new Date(serverTime.getTime() + 30 * 60 * 1000);
+            const graceUntilISO = graceUntilDate.toISOString();
+
+            if (trip) {
+                await supabase.from('travel_trips').update({
+                    commission_status: 'grace_period',
+                    commission_grace_until: graceUntilISO,
+                    contact_revealed: false,
+                    updated_at: serverTime.toISOString()
+                }).eq('id', trip.id);
+            }
+            if (targetRideId) {
+                await supabase.from('ride_requests').update({
+                    commission_status: 'grace_period',
+                    commission_grace_until: graceUntilISO,
+                    contact_revealed: false
+                }).eq('id', targetRideId);
+            }
+            return { success: true, result: 'grace_period_started', graceUntil: graceUntilISO, remainingSeconds: 1800, contactsRevealed: false };
+        }
+    }
+
+    return { success: true, result: commStatus === 'held' ? 'commission_held' : 'waiting_for_10h_window', hoursUntilDeparture: Math.round(hoursUntilDeparture * 10) / 10, contactsRevealed: (trip?.contact_revealed || rideReq?.contact_revealed) || false };
+}
+
 // Check passenger eligibility and behavioral constraints before creating a ride
 async function checkPassengerRestrictions(passengerId, departureTimeISO, fromCity, toCity, settings) {
     const serverTime = getSudanServerTime();
@@ -242,16 +473,29 @@ export default async function handler(req, res) {
     }
 
     try {
-        let session;
-        try {
-            session = verifyToken(req);
-        } catch (tokenErr) {
-            return res.status(401).json({ success: false, error: tokenErr.message });
-        }
-
-        const { action } = req.body;
+        const action = req.body?.action || req.query?.action;
         if (!action) {
             return res.status(400).json({ success: false, error: 'Action is required' });
+        }
+
+        let session = null;
+        if (action === 'cron_process_10h') {
+            const cronHeader = req.headers['x-vercel-cron'];
+            const authHeader = req.headers['authorization'];
+            const cronSecret = process.env.CRON_SECRET;
+
+            const isVercelCron = cronHeader === '1' || cronHeader === 'true';
+            const isAuthorizedSecret = cronSecret && authHeader === `Bearer ${cronSecret}`;
+
+            if (!isVercelCron && !isAuthorizedSecret) {
+                return res.status(401).json({ success: false, error: 'غير مصرح للتشغيل التلقائي' });
+            }
+        } else {
+            try {
+                session = verifyToken(req);
+            } catch (tokenErr) {
+                return res.status(401).json({ success: false, error: tokenErr.message });
+            }
         }
 
         const settings = await getTravelSettings();
@@ -659,265 +903,41 @@ export default async function handler(req, res) {
             });
         }
 
+        // --- CRON BATCH AUTOMATED 10-HOUR PROCESSING ---
+        if (action === 'cron_process_10h') {
+            const tenHoursPlusMargin = new Date(serverTime.getTime() + (settings.commission_hold_hours + 1) * 3600000).toISOString();
+
+            const { data: eligibleTrips } = await supabase
+                .from('travel_trips')
+                .select('id, ride_request_id, driver_id, status, commission_status')
+                .in('status', ['driver_selected', 'confirmed'])
+                .lte('departure_time', tenHoursPlusMargin);
+
+            let processedCount = 0;
+            for (const tItem of (eligibleTrips || [])) {
+                if (tItem.commission_status === 'held') continue;
+                try {
+                    // Process inline evaluation safely
+                    await evaluateTrip10hCommission(tItem.id, tItem.ride_request_id, settings, serverTime);
+                    processedCount++;
+                } catch (err) {
+                    console.error(`Cron processing error for trip ${tItem.id}:`, err);
+                }
+            }
+            return res.status(200).json({ success: true, processedCount });
+        }
+
         // --- 6. PROCESS 10-HOUR COMMISSION & GRACE TIMER EVALUATION ---
         if (action === 'process_10h_commission') {
             const { tripId, rideId } = req.body;
-
             if (!tripId && !rideId) {
                 return res.status(400).json({ success: false, error: 'tripId or rideId is required' });
             }
-
-            let trip = null;
-            if (tripId) {
-                const { data: tData } = await supabase
-                    .from('travel_trips')
-                    .select('*')
-                    .eq('id', tripId)
-                    .maybeSingle();
-                trip = tData;
+            const evalResult = await evaluateTrip10hCommission(tripId, rideId, settings, serverTime);
+            if (!evalResult.success && evalResult.error) {
+                return res.status(400).json(evalResult);
             }
-
-            if (!trip && rideId) {
-                const { data: tData } = await supabase
-                    .from('travel_trips')
-                    .select('*')
-                    .eq('ride_request_id', rideId)
-                    .maybeSingle();
-                trip = tData;
-            }
-
-            // Fetch ride_request as well for full info/fallback
-            let rideReq = null;
-            const targetRideId = rideId || trip?.ride_request_id;
-            if (targetRideId) {
-                const { data: rData } = await supabase
-                    .from('ride_requests')
-                    .select('*')
-                    .eq('id', targetRideId)
-                    .maybeSingle();
-                rideReq = rData;
-            }
-
-            if (!trip && !rideReq) {
-                return res.status(400).json({ success: false, error: 'الرحلة غير موجودة' });
-            }
-
-            const driverId = trip?.driver_id || rideReq?.driver_id;
-            if (!driverId) {
-                return res.status(200).json({ success: true, message: 'لم يتم اختيار سائق لهذه الرحلة بعد' });
-            }
-
-            if ((trip?.status === 'completed' || trip?.status === 'cancelled') ||
-                (rideReq?.status === 'completed' || rideReq?.status === 'cancelled')) {
-                return res.status(200).json({ success: true, trip, rideReq });
-            }
-
-            // Parse departure time accurately
-            let departureTime = null;
-            if (trip?.departure_time) departureTime = new Date(trip.departure_time);
-            else if (rideReq?.departure_time) departureTime = new Date(rideReq.departure_time);
-            else if (rideReq?.notes) {
-                try {
-                    const parsed = typeof rideReq.notes === 'string' ? JSON.parse(rideReq.notes) : rideReq.notes;
-                    if (parsed?.day && parsed?.month) {
-                        const year = parsed.year || '2026';
-                        let hour = parseInt(parsed.hour) || 0;
-                        const minute = parseInt(parsed.minute) || 0;
-                        if (parsed.period === 'مساءً' && hour < 12) hour += 12;
-                        if (parsed.period === 'صباحاً' && hour === 12) hour = 0;
-                        const dateStr = `${year}-${String(parsed.month).padStart(2, '0')}-${String(parsed.day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00+02:00`;
-                        const dep = new Date(dateStr);
-                        if (!isNaN(dep.getTime())) departureTime = dep;
-                    }
-                } catch(e) {}
-            }
-
-            if (!departureTime) {
-                departureTime = new Date(serverTime.getTime() + 24 * 3600000);
-            }
-
-            const hoursUntilDeparture = (departureTime.getTime() - serverTime.getTime()) / (1000 * 60 * 60);
-
-            // Fetch driver balance
-            const { data: driver } = await supabase
-                .from('drivers')
-                .select('balance, full_name')
-                .eq('id', driverId)
-                .single();
-
-            const finalPrice = trip?.final_price || rideReq?.estimated_price || 0;
-            const commissionAmount = trip?.commission_amount || Math.round(finalPrice * settings.travel_commission_rate / 100);
-
-            const commStatus = trip?.commission_status || rideReq?.commission_status || 'pending';
-            const commGraceUntil = trip?.commission_grace_until || rideReq?.commission_grace_until;
-
-            // Check if commission was already held or deducted for this trip
-            const alreadyDeducted = await isCommissionAlreadyDeducted(driverId, targetRideId, trip?.id);
-
-            if (alreadyDeducted) {
-                if (trip) {
-                    await supabase.from('travel_trips').update({
-                        commission_status: 'held',
-                        contact_revealed: true,
-                        commission_grace_until: null,
-                        updated_at: serverTime.toISOString()
-                    }).eq('id', trip.id);
-                }
-
-                if (targetRideId) {
-                    await supabase.from('ride_requests').update({
-                        commission_status: 'held',
-                        contact_revealed: true,
-                        commission_grace_until: null
-                    }).eq('id', targetRideId);
-                }
-
-                return res.status(200).json({ success: true, result: 'commission_held', contactsRevealed: true });
-            }
-
-            // Case A: Grace Period Expiration Evaluation
-            if (commStatus === 'grace_period') {
-                const graceUntil = commGraceUntil ? new Date(commGraceUntil) : serverTime;
-
-                if (serverTime >= graceUntil) {
-                    // Try deduction once more
-                    if ((driver?.balance || 0) >= commissionAmount) {
-                        // Success -> Deduct & Reveal Contacts
-                        const newBal = (driver.balance || 0) - commissionAmount;
-                        await supabase.from('drivers').update({ balance: newBal }).eq('id', driverId);
-                        await supabase.from('balance_transactions').insert([{
-                            driver_id: driverId,
-                            amount: -commissionAmount,
-                            type: 'commission_hold',
-                            description: `خصم عمولة منصة السفر للرحلة ${targetRideId}`
-                        }]);
-
-                        if (trip) {
-                            await supabase.from('travel_trips').update({
-                                commission_status: 'held',
-                                contact_revealed: true,
-                                commission_grace_until: null,
-                                updated_at: serverTime.toISOString()
-                            }).eq('id', trip.id);
-                        }
-
-                        if (targetRideId) {
-                            await supabase.from('ride_requests').update({
-                                commission_status: 'held',
-                                contact_revealed: true,
-                                commission_grace_until: null
-                            }).eq('id', targetRideId);
-                        }
-
-                        return res.status(200).json({ success: true, result: 'commission_held', contactsRevealed: true });
-                    } else {
-                        // Failed Grace Timer -> Strip driver & request replacement
-                        if (trip) {
-                            await supabase.from('travel_trips').update({
-                                status: 'cancelled',
-                                cancelled_by: 'system',
-                                cancellation_reason: 'انتهاء مهلة الشحن دون توفر رصيد العمولة',
-                                commission_status: 'failed',
-                                updated_at: serverTime.toISOString()
-                            }).eq('id', trip.id);
-                        }
-
-                        if (targetRideId) {
-                            await supabase.from('ride_requests').update({
-                                status: 'pending',
-                                driver_id: null,
-                                driver_name: null,
-                                driver_phone: null,
-                                commission_status: 'failed',
-                                contact_revealed: false
-                            }).eq('id', targetRideId);
-                        }
-
-                        return res.status(200).json({
-                            success: true,
-                            result: 'driver_stripped',
-                            message: 'تم سحب الرحلة من السائق لعدم توفر الرصيد بعد انتهاء المهلة.'
-                        });
-                    }
-                } else {
-                    // Grace timer still running
-                    const remainingSeconds = Math.max(0, Math.round((graceUntil.getTime() - serverTime.getTime()) / 1000));
-                    return res.status(200).json({
-                        success: true,
-                        result: 'in_grace_period',
-                        remainingSeconds,
-                        contactsRevealed: false
-                    });
-                }
-            }
-
-            // Case B: Entering 10-Hour Window
-            if (hoursUntilDeparture <= settings.commission_hold_hours && commStatus === 'pending') {
-                if ((driver?.balance || 0) >= commissionAmount) {
-                    // Sufficient balance -> Deduct/Hold
-                    const newBal = (driver.balance || 0) - commissionAmount;
-                    await supabase.from('drivers').update({ balance: newBal }).eq('id', driverId);
-                    await supabase.from('balance_transactions').insert([{
-                        driver_id: driverId,
-                        amount: -commissionAmount,
-                        type: 'commission_hold',
-                        description: `حجز عمولة منصة السفر للرحلة ${targetRideId}`
-                    }]);
-
-                    if (trip) {
-                        await supabase.from('travel_trips').update({
-                            commission_status: 'held',
-                            contact_revealed: true,
-                            updated_at: serverTime.toISOString()
-                        }).eq('id', trip.id);
-                    }
-
-                    if (targetRideId) {
-                        await supabase.from('ride_requests').update({
-                            commission_status: 'held',
-                            contact_revealed: true
-                        }).eq('id', targetRideId);
-                    }
-
-                    return res.status(200).json({ success: true, result: 'commission_held', contactsRevealed: true });
-                } else {
-                    // Insufficient balance -> Grant 30 min grace timer starting strictly from current evaluation time
-                    const graceUntilDate = new Date(serverTime.getTime() + 30 * 60 * 1000);
-                    const graceUntilISO = graceUntilDate.toISOString();
-
-                    if (trip) {
-                        await supabase.from('travel_trips').update({
-                            commission_status: 'grace_period',
-                            commission_grace_until: graceUntilISO,
-                            contact_revealed: false,
-                            updated_at: serverTime.toISOString()
-                        }).eq('id', trip.id);
-                    }
-
-                    if (targetRideId) {
-                        await supabase.from('ride_requests').update({
-                            commission_status: 'grace_period',
-                            commission_grace_until: graceUntilISO,
-                            contact_revealed: false
-                        }).eq('id', targetRideId);
-                    }
-
-                    return res.status(200).json({
-                        success: true,
-                        result: 'grace_period_started',
-                        graceUntil: graceUntilISO,
-                        remainingSeconds: 1800,
-                        contactsRevealed: false
-                    });
-                }
-            }
-
-            return res.status(200).json({
-                success: true,
-                result: commStatus === 'held' ? 'commission_held' : 'waiting_for_10h_window',
-                hoursUntilDeparture: Math.round(hoursUntilDeparture * 10) / 10,
-                contactsRevealed: (trip?.contact_revealed || rideReq?.contact_revealed) || false
-            });
+            return res.status(200).json(evalResult);
         }
 
         // --- 7. PASSENGER CANCEL TRIP WITH RELIABILITY LOGGING ---

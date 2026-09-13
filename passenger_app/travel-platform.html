@@ -1182,12 +1182,6 @@ function isTripInFinalActivePhase(trip) {
     if (trip.status === 'completed' || trip.status === 'cancelled') return false;
 
     if (trip.status === 'driver_selected' && (trip.commission_status === 'held' || trip.contact_revealed === true)) {
-        if (trip.departure_time) {
-            const dep = new Date(trip.departure_time).getTime();
-            const now = Date.now();
-            const diffHours = (dep - now) / (1000 * 60 * 60);
-            return diffHours <= 10.5; // Final 10-hour window margin
-        }
         return true;
     }
     return false;
