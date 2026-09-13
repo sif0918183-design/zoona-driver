@@ -123,7 +123,8 @@ function parseCategoryRank(categoryName) {
     return 1;
 }
 
-// Helper: Evaluate 10h Commission logic atomically
+
+// Helper: Evaluate 10h Commission logic atomically via RPC
 async function evaluateTrip10hCommission(tripId, rideId, settings, serverTime) {
     let trip = null;
     if (tripId) {
@@ -163,72 +164,26 @@ async function evaluateTrip10hCommission(tripId, rideId, settings, serverTime) {
 
     const hoursUntilDeparture = (departureTime.getTime() - serverTime.getTime()) / (1000 * 60 * 60);
 
-    const { data: driver } = await supabase
-        .from('drivers')
-        .select('balance, full_name')
-        .eq('id', driverId)
-        .single();
-
-    const finalPrice = trip?.final_price || rideReq?.estimated_price || 0;
-    const commissionAmount = trip?.commission_amount || Math.round(finalPrice * settings.travel_commission_rate / 100);
-
     const commStatus = trip?.commission_status || rideReq?.commission_status || 'pending';
     const commGraceUntil = trip?.commission_grace_until || rideReq?.commission_grace_until;
 
-    const alreadyDeducted = await isCommissionAlreadyDeducted(driverId, targetRideId, trip?.id);
-
-    if (alreadyDeducted) {
-        if (trip) {
-            await supabase.from('travel_trips').update({
-                commission_status: 'held',
-                contact_revealed: true,
-                commission_grace_until: null,
-                updated_at: serverTime.toISOString()
-            }).eq('id', trip.id);
-        }
-        if (targetRideId) {
-            await supabase.from('ride_requests').update({
-                commission_status: 'held',
-                contact_revealed: true,
-                commission_grace_until: null
-            }).eq('id', targetRideId);
-        }
-        return { success: true, result: 'commission_held', contactsRevealed: true };
-    }
-
-    // Grace Period Expiration Evaluation
+    // Grace Period Expiration Check
     if (commStatus === 'grace_period') {
         const graceUntil = commGraceUntil ? new Date(commGraceUntil) : serverTime;
 
         if (serverTime >= graceUntil) {
-            if ((driver?.balance || 0) >= commissionAmount) {
-                const newBal = (driver.balance || 0) - commissionAmount;
-                await supabase.from('drivers').update({ balance: newBal }).eq('id', driverId);
-                await supabase.from('balance_transactions').insert([{
-                    driver_id: driverId,
-                    amount: -commissionAmount,
-                    type: 'commission_hold',
-                    description: `خصم عمولة منصة السفر للرحلة ${targetRideId}`
-                }]);
+            // Attempt atomic hold transaction via RPC
+            const { data: rpcRes, error: rpcErr } = await supabase.rpc('process_travel_financial_transaction', {
+                p_action: 'HOLD_COMMISSION',
+                p_ride_id: targetRideId,
+                p_driver_id: driverId,
+                p_trip_id: trip?.id || null
+            });
 
-                if (trip) {
-                    await supabase.from('travel_trips').update({
-                        commission_status: 'held',
-                        contact_revealed: true,
-                        commission_grace_until: null,
-                        updated_at: serverTime.toISOString()
-                    }).eq('id', trip.id);
-                }
-                if (targetRideId) {
-                    await supabase.from('ride_requests').update({
-                        commission_status: 'held',
-                        contact_revealed: true,
-                        commission_grace_until: null
-                    }).eq('id', targetRideId);
-                }
+            if (!rpcErr && rpcRes && rpcRes.result === 'commission_held') {
                 return { success: true, result: 'commission_held', contactsRevealed: true };
             } else {
-                // Verify target assignment hasn't changed before stripping
+                // Verify driver assignment hasn't changed before stripping
                 const { data: freshReq } = await supabase
                     .from('ride_requests')
                     .select('driver_id')
@@ -304,50 +259,15 @@ async function evaluateTrip10hCommission(tripId, rideId, settings, serverTime) {
 
     // Entering 10h Window
     if (hoursUntilDeparture <= settings.commission_hold_hours && commStatus === 'pending') {
-        if ((driver?.balance || 0) >= commissionAmount) {
-            const newBal = (driver.balance || 0) - commissionAmount;
-            await supabase.from('drivers').update({ balance: newBal }).eq('id', driverId);
-            await supabase.from('balance_transactions').insert([{
-                driver_id: driverId,
-                amount: -commissionAmount,
-                type: 'commission_hold',
-                description: `حجز عمولة منصة السفر للرحلة ${targetRideId}`
-            }]);
+        const { data: rpcRes, error: rpcErr } = await supabase.rpc('process_travel_financial_transaction', {
+            p_action: 'HOLD_COMMISSION',
+            p_ride_id: targetRideId,
+            p_driver_id: driverId,
+            p_trip_id: trip?.id || null
+        });
 
-            if (trip) {
-                await supabase.from('travel_trips').update({
-                    commission_status: 'held',
-                    contact_revealed: true,
-                    updated_at: serverTime.toISOString()
-                }).eq('id', trip.id);
-            }
-            if (targetRideId) {
-                await supabase.from('ride_requests').update({
-                    commission_status: 'held',
-                    contact_revealed: true
-                }).eq('id', targetRideId);
-            }
-            return { success: true, result: 'commission_held', contactsRevealed: true };
-        } else {
-            const graceUntilDate = new Date(serverTime.getTime() + 30 * 60 * 1000);
-            const graceUntilISO = graceUntilDate.toISOString();
-
-            if (trip) {
-                await supabase.from('travel_trips').update({
-                    commission_status: 'grace_period',
-                    commission_grace_until: graceUntilISO,
-                    contact_revealed: false,
-                    updated_at: serverTime.toISOString()
-                }).eq('id', trip.id);
-            }
-            if (targetRideId) {
-                await supabase.from('ride_requests').update({
-                    commission_status: 'grace_period',
-                    commission_grace_until: graceUntilISO,
-                    contact_revealed: false
-                }).eq('id', targetRideId);
-            }
-            return { success: true, result: 'grace_period_started', graceUntil: graceUntilISO, remainingSeconds: 1800, contactsRevealed: false };
+        if (!rpcErr && rpcRes) {
+            return { success: true, ...rpcRes };
         }
     }
 
@@ -799,30 +719,24 @@ export default async function handler(req, res) {
 
             const commissionAmount = Math.round((ride.estimated_price || 0) * settings.travel_commission_rate / 100);
 
-            // Check if already inside last 10 hours
+            // Check if already inside last 10 hours -> Execute HOLD_COMMISSION via RPC
             if (hoursUntilDeparture <= settings.commission_hold_hours) {
-                const alreadyDeducted = await isCommissionAlreadyDeducted(driverId, rideId, null);
-                if (alreadyDeducted) {
-                    initialCommStatus = 'held';
-                    contactsRevealed = true;
-                } else if ((driver.balance || 0) >= commissionAmount) {
-                    // Sufficient balance -> deduct/hold commission & reveal contacts immediately
-                    const newBal = (driver.balance || 0) - commissionAmount;
-                    await supabase.from('drivers').update({ balance: newBal }).eq('id', driverId);
-                    await supabase.from('balance_transactions').insert([{
-                        driver_id: driverId,
-                        amount: -commissionAmount,
-                        type: 'commission_hold',
-                        description: `حجز عمولة منصة السفر للرحلة رقم ${rideId}`
-                    }]);
+                const { data: rpcRes, error: rpcErr } = await supabase.rpc('process_travel_financial_transaction', {
+                    p_action: 'HOLD_COMMISSION',
+                    p_ride_id: rideId,
+                    p_driver_id: driverId,
+                    p_trip_id: null
+                });
 
-                    initialCommStatus = 'held';
-                    contactsRevealed = true;
-                } else {
-                    // Insufficient balance -> grant 30-min top-up grace timer
-                    initialCommStatus = 'grace_period';
-                    graceUntil = new Date(serverTime.getTime() + 30 * 60 * 1000).toISOString();
-                    contactsRevealed = false;
+                if (!rpcErr && rpcRes) {
+                    if (rpcRes.result === 'commission_held') {
+                        initialCommStatus = 'held';
+                        contactsRevealed = true;
+                    } else if (rpcRes.result === 'grace_period_started') {
+                        initialCommStatus = 'grace_period';
+                        graceUntil = rpcRes.graceUntil;
+                        contactsRevealed = false;
+                    }
                 }
             }
 
@@ -1002,30 +916,14 @@ export default async function handler(req, res) {
             let refundAmount = 0;
 
             if (isCommissionHeld && targetDriverId) {
-                refundAmount = trip?.commission_amount || 0;
-                if (!refundAmount) {
-                    const price = trip?.final_price || reqData?.estimated_price || 0;
-                    refundAmount = Math.round(price * settings.travel_commission_rate / 100);
-                }
+                const { data: rpcRes, error: rpcErr } = await supabase.rpc('process_travel_financial_transaction', {
+                    p_action: 'REFUND_COMMISSION',
+                    p_ride_id: rideReqId,
+                    p_driver_id: targetDriverId,
+                    p_trip_id: trip?.id || null
+                });
 
-                if (refundAmount > 0) {
-                    const { data: driver } = await supabase
-                        .from('drivers')
-                        .select('balance')
-                        .eq('id', targetDriverId)
-                        .single();
-
-                    const currentBal = driver?.balance || 0;
-                    const newBal = currentBal + refundAmount;
-
-                    await supabase.from('drivers').update({ balance: newBal }).eq('id', targetDriverId);
-                    await supabase.from('balance_transactions').insert([{
-                        driver_id: targetDriverId,
-                        amount: refundAmount,
-                        type: 'commission_refund',
-                        description: `إرجاع عمولة منصة السفر بسبب إلغاء الراكب للرحلة رقم ${rideReqId}`
-                    }]);
-
+                if (!rpcErr && rpcRes && rpcRes.result === 'commission_refunded') {
                     commissionRefunded = true;
                 }
             }
@@ -1140,46 +1038,17 @@ export default async function handler(req, res) {
             }
 
             const targetRideReqId = existingTrip?.ride_request_id || tripId;
-            const penalty = Math.round(finalPrice * settings.travel_commission_rate / 100);
-
-            // Check if commission was ALREADY held/deducted from driver's balance
-            const commissionAlreadyHeld = await isCommissionAlreadyDeducted(driverId, targetRideReqId, tripId);
-
             let penaltyCharged = 0;
 
-            if (!commissionAlreadyHeld) {
-                // Commission was not held yet -> deduct cancellation penalty now
-                const { data: driver, error: dErr } = await supabase
-                    .from('drivers')
-                    .select('balance')
-                    .eq('id', driverId)
-                    .single();
+            const { data: rpcRes, error: rpcErr } = await supabase.rpc('process_travel_financial_transaction', {
+                p_action: 'CHARGE_PENALTY',
+                p_ride_id: targetRideReqId,
+                p_driver_id: driverId,
+                p_trip_id: tripId || null
+            });
 
-                if (dErr || !driver) {
-                    return res.status(400).json({ success: false, error: 'السائق غير مسجل' });
-                }
-
-                const newBalance = (driver.balance || 0) - penalty;
-
-                await supabase
-                    .from('drivers')
-                    .update({ balance: newBalance })
-                    .eq('id', driverId);
-
-                // Log penalty transaction
-                await supabase
-                    .from('balance_transactions')
-                    .insert([{
-                        driver_id: driverId,
-                        amount: -penalty,
-                        type: 'cancellation_penalty',
-                        description: `خصم غرامة إلغاء رحلة سفر رقم ${targetRideReqId}`
-                    }]);
-
-                penaltyCharged = penalty;
-            } else {
-                // Commission was ALREADY held -> treat already-held commission as the cancellation penalty, DO NOT deduct again!
-                penaltyCharged = penalty;
+            if (!rpcErr && rpcRes) {
+                penaltyCharged = rpcRes.amount || 0;
             }
 
             // Update travel trip
@@ -1334,23 +1203,15 @@ export default async function handler(req, res) {
 
             let deductedAmount = 0;
             if (!alreadyDeducted && activeDriverId) {
-                const { data: driver } = await supabase
-                    .from('drivers')
-                    .select('balance')
-                    .eq('id', activeDriverId)
-                    .single();
-
-                const currentBal = driver?.balance || 0;
-                const newBal = currentBal - commission;
-
-                await supabase.from('drivers').update({ balance: newBal }).eq('id', activeDriverId);
-                await supabase.from('balance_transactions').insert([{
-                    driver_id: activeDriverId,
-                    amount: -commission,
-                    type: 'commission',
-                    description: `خصم عمولة منصة السفر بعد إكمال الرحلة رقم ${targetRideId || tripId}`
-                }]);
-                deductedAmount = commission;
+                const { data: rpcRes, error: rpcErr } = await supabase.rpc('process_travel_financial_transaction', {
+                    p_action: 'HOLD_COMMISSION',
+                    p_ride_id: targetRideId,
+                    p_driver_id: activeDriverId,
+                    p_trip_id: trip?.id || null
+                });
+                if (!rpcErr && rpcRes && rpcRes.result === 'commission_held') {
+                    deductedAmount = rpcRes.amount || commission;
+                }
             }
 
             return res.status(200).json({ success: true, commission: deductedAmount });
