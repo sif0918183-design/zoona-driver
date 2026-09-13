@@ -3865,21 +3865,36 @@ function updateChatBadge(chats) {
 async function cancelRide(rideId) {
     if (!confirm('هل أنت متأكد من إلغاء هذه الرحلة؟')) return;
     try {
-        const { data: ride } = await travelSupabase.from('ride_requests').select('from_city, to_city, driver_id').eq('id', rideId).single();
-        await travelSupabase.from('ride_requests').update({status:'cancelled'}).eq('id',rideId);
-
-        sendTravelPush({
-            type: 'TRIP_CANCELLED',
-            rideId: rideId,
-            driverId: ride?.driver_id,
-            fromCity: ride?.from_city,
-            toCity: ride?.to_city
+        const token = localStorage.getItem('tarhal_session_token') || btoa(JSON.stringify({id: currentUser.id, exp: Date.now() + 86400000}));
+        const response = await fetch('/api/travel-platform', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                action: 'passenger_cancel',
+                tripId: rideId,
+                reason: 'إلغاء من الراكب عبر قائمة الرحلات'
+            })
         });
 
-        showNotification('تم إلغاء الرحلة بنجاح', 'success');
+        const resData = await response.json();
+        if (!response.ok || !resData.success) {
+            throw new Error(resData.error || 'فشل إلغاء الرحلة');
+        }
+
+        const savedActiveId = localStorage.getItem('tarhal_active_trip_id');
+        if (savedActiveId === rideId) {
+            localStorage.removeItem('tarhal_active_trip_id');
+            closeActiveTripModal();
+        }
+
+        showNotification('تم إلغاء الرحلة بنجاح واسترداد أي عمولة للسائق.', 'success');
         await loadPassengerRides();
     } catch(err) {
-        showNotification('خطأ في إلغاء الرحلة', 'error');
+        console.error('Error cancelling ride:', err);
+        showNotification('خطأ في إلغاء الرحلة: ' + err.message, 'error');
     }
 }
 
