@@ -1305,7 +1305,7 @@ function initBackgroundActiveTripChecker() {
         if (modal && modal.classList.contains('hidden')) {
             await checkForActiveTripOnLoad();
         }
-    }, 10000);
+    }, 3000);
 }
 
 async function handleHashRouting() {
@@ -2476,10 +2476,11 @@ function startDriverAutoRefresh() {
     if (!driverRefreshInterval) {
         driverRefreshInterval = setInterval(async () => {
             await checkDriverTravelNotices();
+            await checkForActiveTripOnLoad();
             const active = document.querySelector('#driver-interface .tab-content.active');
             if (active?.id === 'available-rides') await loadAvailableRides();
             else if (active?.id === 'driver-chats') await loadDriverChats();
-        }, 15000);
+        }, 5000);
     }
 }
 

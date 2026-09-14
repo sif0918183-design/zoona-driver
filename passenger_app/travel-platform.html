@@ -2924,7 +2924,11 @@ async function passengerSelectsDriver(rideId, driverId) {
         showNotification('تم تثبيت اختيار السائق بنجاح!', 'success');
 
         if (resData.contactsRevealed || resData.commissionStatus === 'held' || (trip && isTripInFinalActivePhase(trip))) {
-            await checkForActiveTripOnLoad();
+            if (trip) {
+                await showActiveTripModal(trip);
+            } else {
+                await checkForActiveTripOnLoad();
+            }
         }
 
         await loadPassengerRides();
