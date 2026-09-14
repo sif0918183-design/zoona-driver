@@ -4,12 +4,6 @@
       "maxDuration": 10
     }
   },
-  "crons": [
-    {
-      "path": "/api/travel-platform?action=cron_process_10h",
-      "schedule": "*/5 * * * *"
-    }
-  ],
   "headers": [
     {
       "source": "/api/(.*)",
