@@ -25,6 +25,10 @@ CREATE TABLE IF NOT EXISTS balance_transactions (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Unique Index to enforce exactly one travel_trips record per ride_request_id
+CREATE UNIQUE INDEX IF NOT EXISTS idx_travel_trips_ride_request_id_unique
+ON travel_trips (ride_request_id);
+
 -- Idempotency Unique Index for Travel Platform Financial Transactions
 CREATE UNIQUE INDEX IF NOT EXISTS idx_balance_tx_travel_idempotency
 ON balance_transactions (driver_id, ride_id, type)
@@ -92,24 +96,20 @@ BEGIN
         v_comm_rate := COALESCE(v_setting_val::NUMERIC, 5.0);
     END IF;
 
-    -- Calculate DB-sourced amounts safely
-    IF v_trip.id IS NOT NULL AND v_trip.commission_amount IS NOT NULL AND v_trip.commission_amount > 0 THEN
-        v_commission_amount := v_trip.commission_amount;
-    ELSE
-        v_commission_amount := ROUND(COALESCE(v_ride_req.estimated_price, 0) * v_comm_rate / 100.0);
-    END IF;
-
     ---------------------------------------------------------------------------
     -- ACTION: HOLD_COMMISSION
     ---------------------------------------------------------------------------
     IF p_action = 'HOLD_COMMISSION' THEN
-        -- Verify driver assignment guard
-        IF COALESCE(v_ride_req.driver_id, CASE WHEN v_trip.id IS NOT NULL THEN v_trip.driver_id ELSE NULL END) <> p_driver_id THEN
-            RETURN jsonb_build_object('success', false, 'error', 'السائق لم يعد مخصصاً لهذه الرحلة');
+        -- Strictly calculate HOLD commission from ride_requests.estimated_price * travel_commission_rate / 100.0
+        v_commission_amount := ROUND(COALESCE(v_ride_req.estimated_price, 0) * v_comm_rate / 100.0);
+
+        -- Strict Driver Ownership Guard for HOLD_COMMISSION
+        IF v_ride_req.driver_id IS NOT NULL AND v_ride_req.driver_id <> p_driver_id THEN
+            RETURN jsonb_build_object('success', false, 'error', 'السائق غير مرتبط بهذه الرحلة');
         END IF;
 
         -- Verify trip status guard
-        IF v_ride_req.status = 'cancelled' OR (v_trip.id IS NOT NULL AND v_trip.status = 'cancelled') THEN
+        IF v_ride_req.status = 'cancelled' THEN
             RETURN jsonb_build_object('success', false, 'error', 'الرحلة ملغاة مسبقاً');
         END IF;
 
@@ -142,7 +142,7 @@ BEGIN
             -- Update states
             UPDATE ride_requests SET commission_status = 'held', contact_revealed = true, commission_grace_until = NULL WHERE id = p_ride_id;
             IF v_trip.id IS NOT NULL THEN
-                UPDATE travel_trips SET commission_status = 'held', contact_revealed = true, commission_grace_until = NULL WHERE id = v_trip.id;
+                UPDATE travel_trips SET commission_status = 'held', contact_revealed = true, commission_grace_until = NULL, commission_amount = v_commission_amount WHERE id = v_trip.id;
             END IF;
 
             RETURN jsonb_build_object('success', true, 'result', 'commission_held', 'contactsRevealed', true, 'amount', v_commission_amount);
@@ -166,6 +166,18 @@ BEGIN
     -- ACTION: REFUND_COMMISSION
     ---------------------------------------------------------------------------
     ELSIF p_action = 'REFUND_COMMISSION' THEN
+        -- Strict Driver Ownership Guard for REFUND_COMMISSION
+        IF COALESCE(v_ride_req.driver_id, CASE WHEN v_trip.id IS NOT NULL THEN v_trip.driver_id ELSE NULL END) <> p_driver_id THEN
+            RETURN jsonb_build_object('success', false, 'error', 'السائق غير مرتبط بهذه الرحلة');
+        END IF;
+
+        -- Use actual held commission amount if available in travel_trips.commission_amount
+        IF v_trip.id IS NOT NULL AND v_trip.commission_amount IS NOT NULL AND v_trip.commission_amount > 0 THEN
+            v_commission_amount := v_trip.commission_amount;
+        ELSE
+            v_commission_amount := ROUND(COALESCE(v_ride_req.estimated_price, 0) * v_comm_rate / 100.0);
+        END IF;
+
         -- Check if refund transaction already logged
         SELECT id INTO v_already_tx
         FROM balance_transactions
@@ -196,7 +208,16 @@ BEGIN
     -- ACTION: CHARGE_PENALTY
     ---------------------------------------------------------------------------
     ELSIF p_action = 'CHARGE_PENALTY' THEN
-        v_penalty_amount := v_commission_amount;
+        -- Strict Driver Ownership Guard for CHARGE_PENALTY
+        IF COALESCE(v_ride_req.driver_id, CASE WHEN v_trip.id IS NOT NULL THEN v_trip.driver_id ELSE NULL END) <> p_driver_id THEN
+            RETURN jsonb_build_object('success', false, 'error', 'السائق غير مرتبط بهذه الرحلة');
+        END IF;
+
+        IF v_trip.id IS NOT NULL AND v_trip.commission_amount IS NOT NULL AND v_trip.commission_amount > 0 THEN
+            v_penalty_amount := v_trip.commission_amount;
+        ELSE
+            v_penalty_amount := ROUND(COALESCE(v_ride_req.estimated_price, 0) * v_comm_rate / 100.0);
+        END IF;
 
         -- Check if penalty already charged
         SELECT id INTO v_already_tx

@@ -167,90 +167,91 @@ async function evaluateTrip10hCommission(tripId, rideId, settings, serverTime) {
     const commStatus = trip?.commission_status || rideReq?.commission_status || 'pending';
     const commGraceUntil = trip?.commission_grace_until || rideReq?.commission_grace_until;
 
-    // Grace Period Expiration Check
+    // Grace Period Evaluation: Attempt HOLD_COMMISSION via RPC unconditionally to check if driver has topped up balance
     if (commStatus === 'grace_period') {
         const graceUntil = commGraceUntil ? new Date(commGraceUntil) : serverTime;
 
+        // Try RPC hold transaction first (succeeds immediately if driver has now funded balance)
+        const { data: rpcRes, error: rpcErr } = await supabase.rpc('process_travel_financial_transaction', {
+            p_action: 'HOLD_COMMISSION',
+            p_ride_id: targetRideId,
+            p_driver_id: driverId,
+            p_trip_id: trip?.id || null
+        });
+
+        if (!rpcErr && rpcRes && rpcRes.result === 'commission_held') {
+            return { success: true, result: 'commission_held', contactsRevealed: true };
+        }
+
+        // If balance is still insufficient and grace timer expired -> strip driver
         if (serverTime >= graceUntil) {
-            // Attempt atomic hold transaction via RPC
-            const { data: rpcRes, error: rpcErr } = await supabase.rpc('process_travel_financial_transaction', {
-                p_action: 'HOLD_COMMISSION',
-                p_ride_id: targetRideId,
-                p_driver_id: driverId,
-                p_trip_id: trip?.id || null
-            });
+            // Verify driver assignment hasn't changed before stripping
+            const { data: freshReq } = await supabase
+                .from('ride_requests')
+                .select('driver_id')
+                .eq('id', targetRideId)
+                .maybeSingle();
 
-            if (!rpcErr && rpcRes && rpcRes.result === 'commission_held') {
-                return { success: true, result: 'commission_held', contactsRevealed: true };
-            } else {
-                // Verify driver assignment hasn't changed before stripping
-                const { data: freshReq } = await supabase
-                    .from('ride_requests')
-                    .select('driver_id')
-                    .eq('id', targetRideId)
-                    .maybeSingle();
-
-                if (freshReq && freshReq.driver_id !== driverId) {
-                    return { success: true, result: 'already_replaced' };
-                }
-
-                const currentPassengerId = trip?.passenger_id || rideReq?.customer_id;
-
-                if (trip) {
-                    await supabase.from('travel_trips').update({
-                        status: 'cancelled',
-                        cancelled_by: 'system',
-                        cancellation_reason: 'انتهاء مهلة الشحن دون توفر رصيد العمولة',
-                        commission_status: 'failed',
-                        updated_at: serverTime.toISOString()
-                    }).eq('id', trip.id);
-                }
-
-                if (targetRideId) {
-                    await supabase.from('ride_requests').update({
-                        status: 'pending',
-                        driver_id: null,
-                        driver_name: null,
-                        driver_phone: null,
-                        commission_status: 'failed',
-                        contact_revealed: false
-                    }).eq('id', targetRideId);
-                }
-
-                if (currentPassengerId) {
-                    try {
-                        const { data: pCustomer } = await supabase
-                            .from('customers')
-                            .select('fcm_token')
-                            .eq('id', currentPassengerId)
-                            .single();
-
-                        if (pCustomer?.fcm_token && pCustomer.fcm_token !== 'false') {
-                            const adminModule = await import('firebase-admin');
-                            const adminObj = adminModule.default || adminModule;
-                            if (adminObj.apps.length) {
-                                await adminObj.messaging().send({
-                                    token: pCustomer.fcm_token,
-                                    notification: {
-                                        title: 'ℹ️ السائق غير متاح حالياً - تراكا',
-                                        body: 'السائق الذي اخترته لرحلتك السفرية غير متاح حالياً. يرجى الدخول واختيار سائق بديل.'
-                                    },
-                                    data: {
-                                        type: 'DRIVER_STRIPPED',
-                                        ride_id: String(targetRideId || ''),
-                                        click_action: 'FLUTTER_NOTIFICATION_CLICK',
-                                        url: '/passenger_app/travel-platform.html#my-rides'
-                                    }
-                                });
-                            }
-                        }
-                    } catch (pushErr) {
-                        console.error('Failed to dispatch DRIVER_STRIPPED push directly:', pushErr);
-                    }
-                }
-
-                return { success: true, result: 'driver_stripped', message: 'تم سحب الرحلة من السائق لعدم توفر الرصيد بعد انتهاء المهلة.' };
+            if (freshReq && freshReq.driver_id !== driverId) {
+                return { success: true, result: 'already_replaced' };
             }
+
+            const currentPassengerId = trip?.passenger_id || rideReq?.customer_id;
+
+            if (trip) {
+                await supabase.from('travel_trips').update({
+                    status: 'cancelled',
+                    cancelled_by: 'system',
+                    cancellation_reason: 'انتهاء مهلة الشحن دون توفر رصيد العمولة',
+                    commission_status: 'failed',
+                    updated_at: serverTime.toISOString()
+                }).eq('id', trip.id);
+            }
+
+            if (targetRideId) {
+                await supabase.from('ride_requests').update({
+                    status: 'pending',
+                    driver_id: null,
+                    driver_name: null,
+                    driver_phone: null,
+                    commission_status: 'failed',
+                    contact_revealed: false
+                }).eq('id', targetRideId);
+            }
+
+            if (currentPassengerId) {
+                try {
+                    const { data: pCustomer } = await supabase
+                        .from('customers')
+                        .select('fcm_token')
+                        .eq('id', currentPassengerId)
+                        .single();
+
+                    if (pCustomer?.fcm_token && pCustomer.fcm_token !== 'false') {
+                        const adminModule = await import('firebase-admin');
+                        const adminObj = adminModule.default || adminModule;
+                        if (adminObj.apps.length) {
+                            await adminObj.messaging().send({
+                                token: pCustomer.fcm_token,
+                                notification: {
+                                    title: 'ℹ️ السائق غير متاح حالياً - تراكا',
+                                    body: 'السائق الذي اخترته لرحلتك السفرية غير متاح حالياً. يرجى الدخول واختيار سائق بديل.'
+                                },
+                                data: {
+                                    type: 'DRIVER_STRIPPED',
+                                    ride_id: String(targetRideId || ''),
+                                    click_action: 'FLUTTER_NOTIFICATION_CLICK',
+                                    url: '/passenger_app/travel-platform.html#my-rides'
+                                }
+                            });
+                        }
+                    }
+                } catch (pushErr) {
+                    console.error('Failed to dispatch DRIVER_STRIPPED push directly:', pushErr);
+                }
+            }
+
+            return { success: true, result: 'driver_stripped', message: 'تم سحب الرحلة من السائق لعدم توفر الرصيد بعد انتهاء المهلة.' };
         } else {
             const remainingSeconds = Math.max(0, Math.round((graceUntil.getTime() - serverTime.getTime()) / 1000));
             return { success: true, result: 'in_grace_period', remainingSeconds, contactsRevealed: false };
@@ -740,62 +741,45 @@ export default async function handler(req, res) {
                 }
             }
 
-            // Create/Upsert travel_trips
-            const { data: existingTrip } = await supabase
+            // Upsert travel_trips with unique constraint fallback
+            let trip = null;
+            const tripPayload = {
+                ride_request_id: rideId,
+                driver_id: driverId,
+                passenger_id: passengerId,
+                from_city: ride.from_city,
+                to_city: ride.to_city,
+                final_price: ride.estimated_price,
+                status: 'driver_selected',
+                car_type: driver.car_type,
+                car_model: driver.car_model,
+                departure_time: departureTime.toISOString(),
+                commission_status: initialCommStatus,
+                commission_amount: commissionAmount,
+                commission_grace_until: graceUntil,
+                contact_revealed: contactsRevealed,
+                updated_at: serverTime.toISOString()
+            };
+
+            const { data: upsertedTrip, error: upsertErr } = await supabase
                 .from('travel_trips')
-                .select('id')
-                .eq('ride_request_id', rideId)
+                .upsert([tripPayload], { onConflict: 'ride_request_id' })
+                .select()
                 .maybeSingle();
 
-            let trip = null;
-            if (existingTrip) {
+            if (!upsertErr && upsertedTrip) {
+                trip = upsertedTrip;
+            } else {
+                // Fallback to update if unique constraint conflict or existing record
                 const { data: updatedTrip, error: uErr } = await supabase
                     .from('travel_trips')
-                    .update({
-                        driver_id: driverId,
-                        passenger_id: passengerId,
-                        from_city: ride.from_city,
-                        to_city: ride.to_city,
-                        final_price: ride.estimated_price,
-                        status: 'driver_selected',
-                        car_type: driver.car_type,
-                        car_model: driver.car_model,
-                        departure_time: departureTime.toISOString(),
-                        commission_status: initialCommStatus,
-                        commission_amount: commissionAmount,
-                        commission_grace_until: graceUntil,
-                        contact_revealed: contactsRevealed,
-                        updated_at: serverTime.toISOString()
-                    })
-                    .eq('id', existingTrip.id)
+                    .update(tripPayload)
+                    .eq('ride_request_id', rideId)
                     .select()
-                    .single();
+                    .maybeSingle();
+
                 if (uErr) throw uErr;
                 trip = updatedTrip;
-            } else {
-                const { data: insertedTrip, error: tErr } = await supabase
-                    .from('travel_trips')
-                    .insert([{
-                        ride_request_id: rideId,
-                        driver_id: driverId,
-                        passenger_id: passengerId,
-                        from_city: ride.from_city,
-                        to_city: ride.to_city,
-                        final_price: ride.estimated_price,
-                        status: 'driver_selected',
-                        car_type: driver.car_type,
-                        car_model: driver.car_model,
-                        departure_time: departureTime.toISOString(),
-                        commission_status: initialCommStatus,
-                        commission_amount: commissionAmount,
-                        commission_grace_until: graceUntil,
-                        contact_revealed: contactsRevealed,
-                        created_at: serverTime.toISOString()
-                    }])
-                    .select()
-                    .single();
-                if (tErr) throw tErr;
-                trip = insertedTrip;
             }
 
             // Update contact_revealed on ride_requests
