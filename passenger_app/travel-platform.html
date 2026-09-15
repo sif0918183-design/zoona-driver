@@ -1182,12 +1182,6 @@ function isTripInFinalActivePhase(trip) {
     if (trip.status === 'completed' || trip.status === 'cancelled') return false;
 
     if (trip.status === 'driver_selected' && (trip.commission_status === 'held' || trip.contact_revealed === true)) {
-        if (trip.departure_time) {
-            const dep = new Date(trip.departure_time).getTime();
-            const now = Date.now();
-            const diffHours = (dep - now) / (1000 * 60 * 60);
-            return diffHours <= 10.5; // Final 10-hour window margin
-        }
         return true;
     }
     return false;
@@ -1681,8 +1675,11 @@ async function showActiveTripModal(trip) {
         // Commission preview
         const price = trip.final_price || 0;
         const commission = Math.round(price * COMMISSION_RATE / 100);
-        const {data:driverBalance} = await travelSupabase.from('drivers').select('balance').eq('id',currentUser.id).single();
-        const balance = driverBalance?.balance || 0;
+        let balance = 0;
+        if (currentUser && currentUser.id) {
+            const {data:driverBalance} = await travelSupabase.from('drivers').select('balance').eq('id',currentUser.id).single();
+            balance = driverBalance?.balance || 0;
+        }
         document.getElementById('atp-comm-price').textContent = `${Math.floor(price).toLocaleString('en-SA')} ج`;
         document.getElementById('atp-comm-amount').textContent = `${Math.floor(commission).toLocaleString('en-SA')} ج`;
         document.getElementById('atp-comm-balance').textContent = `${Math.floor(balance).toLocaleString('en-SA')} ج`;
@@ -2929,7 +2926,13 @@ async function passengerSelectsDriver(rideId, driverId) {
         closeDriverOffers();
         showNotification('تم تثبيت اختيار السائق بنجاح!', 'success');
 
-        if (resData.contactsRevealed || resData.commissionStatus === 'held' || (trip && isTripInFinalActivePhase(trip))) {
+        if (trip) {
+            localStorage.setItem('tarhal_active_trip_id', trip.id);
+        }
+
+        if (trip && (resData.contactsRevealed || resData.commissionStatus === 'held' || isTripInFinalActivePhase(trip))) {
+            await showActiveTripModal(trip);
+        } else {
             await checkForActiveTripOnLoad();
         }
 

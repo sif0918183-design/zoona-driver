@@ -1171,12 +1171,6 @@ function isTripInFinalActivePhase(trip) {
     if (trip.status === 'completed' || trip.status === 'cancelled') return false;
 
     if (trip.status === 'driver_selected' && (trip.commission_status === 'held' || trip.contact_revealed === true)) {
-        if (trip.departure_time) {
-            const dep = new Date(trip.departure_time).getTime();
-            const now = Date.now();
-            const diffHours = (dep - now) / (1000 * 60 * 60);
-            return diffHours <= 10.5; // Final 10-hour window margin
-        }
         return true;
     }
     return false;
@@ -1311,7 +1305,7 @@ function initBackgroundActiveTripChecker() {
         if (modal && modal.classList.contains('hidden')) {
             await checkForActiveTripOnLoad();
         }
-    }, 10000);
+    }, 3000);
 }
 
 async function handleHashRouting() {
@@ -1650,17 +1644,46 @@ async function checkForActiveTripOnLoad() {
 
 async function fetchAndShowActiveTripFromDB() {
     try {
+        if (!currentUser || !currentUser.id) return;
         let query = travelSupabase.from('travel_trips').select('*').in('status', ['driver_selected','in_progress']);
         if (userType === 'passenger') query = query.eq('passenger_id', currentUser.id);
         else query = query.eq('driver_id', currentUser.id);
 
-        const {data:trips} = await query.order('created_at', {ascending:false}).limit(1);
-        if (trips && trips.length > 0 && isTripInFinalActivePhase(trips[0])) {
+        const {data:trips, error:tripsErr} = await query.order('created_at', {ascending:false}).limit(1);
+        if (!tripsErr && trips && trips.length > 0 && isTripInFinalActivePhase(trips[0])) {
             localStorage.setItem('tarhal_active_trip_id', trips[0].id);
             await showActiveTripModal(trips[0]);
-        } else {
-            closeActiveTripModal();
+            return;
         }
+
+        // Fallback: Check ride_requests directly if travel_trips query didn't return
+        if (userType === 'driver') {
+            const { data: activeRides } = await travelSupabase
+                .from('ride_requests')
+                .select('*')
+                .eq('driver_id', currentUser.id)
+                .in('status', ['driver_selected', 'in_progress'])
+                .eq('commission_status', 'held')
+                .order('created_at', { ascending: false })
+                .limit(1);
+
+            if (activeRides && activeRides.length > 0) {
+                const req = activeRides[0];
+                const { data: tripData } = await travelSupabase
+                    .from('travel_trips')
+                    .select('*')
+                    .eq('ride_request_id', req.id)
+                    .maybeSingle();
+
+                if (tripData && isTripInFinalActivePhase(tripData)) {
+                    localStorage.setItem('tarhal_active_trip_id', tripData.id);
+                    await showActiveTripModal(tripData);
+                    return;
+                }
+            }
+        }
+
+        closeActiveTripModal();
     } catch(err) {
         console.error('Error fetching active trip from DB:', err);
     }
@@ -1811,8 +1834,11 @@ async function showActiveTripModal(trip) {
         // Commission preview
         const price = trip.final_price || 0;
         const commission = Math.round(price * COMMISSION_RATE / 100);
-        const {data:driverBalance} = await travelSupabase.from('drivers').select('balance').eq('id',currentUser.id).single();
-        const balance = driverBalance?.balance || 0;
+        let balance = 0;
+        if (currentUser && currentUser.id) {
+            const {data:driverBalance} = await travelSupabase.from('drivers').select('balance').eq('id',currentUser.id).single();
+            balance = driverBalance?.balance || 0;
+        }
         document.getElementById('atp-comm-price').textContent = `${Math.floor(price).toLocaleString('en-SA')} ج`;
         document.getElementById('atp-comm-amount').textContent = `${Math.floor(commission).toLocaleString('en-SA')} ج`;
         document.getElementById('atp-comm-balance').textContent = `${Math.floor(balance).toLocaleString('en-SA')} ج`;
@@ -2482,10 +2508,11 @@ function startDriverAutoRefresh() {
     if (!driverRefreshInterval) {
         driverRefreshInterval = setInterval(async () => {
             await checkDriverTravelNotices();
+            await checkForActiveTripOnLoad();
             const active = document.querySelector('#driver-interface .tab-content.active');
             if (active?.id === 'available-rides') await loadAvailableRides();
             else if (active?.id === 'driver-chats') await loadDriverChats();
-        }, 15000);
+        }, 5000);
     }
 }
 
@@ -3263,6 +3290,9 @@ async function driverAcceptsRide(rideId) {
 async function checkDriverTravelNotices() {
     if (userType !== 'driver' || !currentUser) return;
     try {
+        // Automatically check and show active trip modal if active trip exists
+        await checkForActiveTripOnLoad();
+
         // Query ride_requests where driver is selected or in progress
         const { data: rides } = await travelSupabase
             .from('ride_requests')
