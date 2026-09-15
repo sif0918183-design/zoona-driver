@@ -1834,8 +1834,11 @@ async function showActiveTripModal(trip) {
         // Commission preview
         const price = trip.final_price || 0;
         const commission = Math.round(price * COMMISSION_RATE / 100);
-        const {data:driverBalance} = await travelSupabase.from('drivers').select('balance').eq('id',currentUser.id).single();
-        const balance = driverBalance?.balance || 0;
+        let balance = 0;
+        if (currentUser && currentUser.id) {
+            const {data:driverBalance} = await travelSupabase.from('drivers').select('balance').eq('id',currentUser.id).single();
+            balance = driverBalance?.balance || 0;
+        }
         document.getElementById('atp-comm-price').textContent = `${Math.floor(price).toLocaleString('en-SA')} ج`;
         document.getElementById('atp-comm-amount').textContent = `${Math.floor(commission).toLocaleString('en-SA')} ج`;
         document.getElementById('atp-comm-balance').textContent = `${Math.floor(balance).toLocaleString('en-SA')} ج`;
