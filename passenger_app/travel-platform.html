@@ -2923,12 +2923,14 @@ async function passengerSelectsDriver(rideId, driverId) {
         closeDriverOffers();
         showNotification('تم تثبيت اختيار السائق بنجاح!', 'success');
 
-        if (resData.contactsRevealed || resData.commissionStatus === 'held' || (trip && isTripInFinalActivePhase(trip))) {
-            if (trip) {
-                await showActiveTripModal(trip);
-            } else {
-                await checkForActiveTripOnLoad();
-            }
+        if (trip) {
+            localStorage.setItem('tarhal_active_trip_id', trip.id);
+        }
+
+        if (trip && (resData.contactsRevealed || resData.commissionStatus === 'held' || isTripInFinalActivePhase(trip))) {
+            await showActiveTripModal(trip);
+        } else {
+            await checkForActiveTripOnLoad();
         }
 
         await loadPassengerRides();
