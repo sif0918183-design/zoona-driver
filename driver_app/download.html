@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>تحميل تطبيق السائقين - تراكا للنقل</title>
+
+    <!-- PWA / Favicon -->
+    <meta name="theme-color" content="#008B5E">
+    <link rel="icon" href="../assets/branding/icon-192x192.png">
+    <link rel="apple-touch-icon" href="../assets/branding/icon-192x192.png">
+
+    <!-- Tajawal Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Global Tech Redesign Theme -->
+    <link rel="stylesheet" href="../shared/theme.css">
+
+    <style>
+        :root {
+            --primary: var(--Tracka-primary);
+            --primary-dark: var(--Tracka-primary-dark);
+            --primary-light: var(--Tracka-primary-light);
+            --bg-light: var(--tech-bg);
+            --card-bg: var(--tech-card);
+            --text-dark: var(--tech-text);
+            --border-color: var(--tech-border);
+            --radius-main: var(--radius-large);
+            --shadow-main: var(--tech-shadow);
+        }
+
+        body {
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+            font-family: 'Tajawal', sans-serif;
+            margin: 0;
+            padding-bottom: 40px;
+            direction: rtl;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .header-title-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-logo {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+        }
+
+        .download-container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 0 16px;
+        }
+
+        /* Hero Banner Card */
+        .hero-card {
+            background: var(--grad-emerald);
+            color: white;
+            border-radius: var(--radius-main);
+            padding: 30px 20px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 139, 94, 0.25);
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-logo {
+            width: 90px;
+            height: 90px;
+            margin-bottom: 16px;
+            animation: pulseLogo 3s ease-in-out infinite;
+        }
+
+        @keyframes pulseLogo {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .hero-title {
+            font-size: 1.8rem;
+            font-weight: 900;
+            margin-bottom: 10px;
+            line-height: 1.3;
+        }
+
+        .hero-subtitle {
+            font-size: 1.05rem;
+            font-weight: 500;
+            opacity: 0.95;
+            line-height: 1.6;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        .badge-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(8px);
+            padding: 6px 14px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* Feature Cards */
+        .feature-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-main);
+            padding: 22px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-main);
+            transition: transform 0.2s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .feature-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 12px;
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            background: var(--primary-light);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            flex-shrink: 0;
+        }
+
+        .feature-title {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: var(--text-dark);
+        }
+
+        .feature-desc {
+            color: #4b5563;
+            line-height: 1.7;
+            font-size: 0.98rem;
+        }
+
+        .trip-type-box {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-top: 10px;
+            border-right: 4px solid var(--primary);
+        }
+
+        .trip-type-title {
+            font-weight: 700;
+            color: var(--primary-dark);
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+
+        .gift-box {
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+            border: 1.5px solid #10b981;
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.12);
+        }
+
+        .gift-amount {
+            font-size: 2rem;
+            font-weight: 900;
+            color: #047857;
+            margin: 8px 0;
+            letter-spacing: -0.5px;
+        }
+
+        /* Instructions Card */
+        .instructions-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-main);
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-main);
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: var(--text-dark);
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title i {
+            color: var(--primary);
+            font-size: 1.5rem;
+        }
+
+        .safety-badge {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: #1e40af;
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.92rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .instruction-step {
+            display: flex;
+            gap: 14px;
+            margin-bottom: 16px;
+            align-items: flex-start;
+        }
+
+        .step-num {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .step-text h4 {
+            margin: 0 0 4px 0;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .step-text p {
+            margin: 0;
+            font-size: 0.92rem;
+            color: #6b7280;
+            line-height: 1.6;
+        }
+
+        .security-guarantee-box {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 12px;
+            padding: 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .security-guarantee-box i {
+            font-size: 2rem;
+            color: var(--primary);
+            flex-shrink: 0;
+        }
+
+        .security-guarantee-text {
+            font-size: 0.9rem;
+            color: #166534;
+            font-weight: 600;
+            line-height: 1.5;
+        }
+
+        /* Download Button Area */
+        .download-action-box {
+            margin-top: 24px;
+            margin-bottom: 10px;
+            padding: 0;
+        }
+
+        .btn-download-main {
+            background: var(--grad-emerald) !important;
+            color: white !important;
+            text-decoration: none;
+            border-radius: 16px;
+            padding: 18px 24px;
+            font-size: 1.25rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            box-shadow: 0 8px 25px rgba(0, 139, 94, 0.35);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .btn-download-main:active {
+            transform: scale(0.98);
+            box-shadow: 0 4px 15px rgba(0, 139, 94, 0.2);
+        }
+
+        .download-subtext {
+            text-align: center;
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin-top: 10px;
+            font-weight: 500;
+        }
+
+        .footer-text {
+            text-align: center;
+            font-size: 0.85rem;
+            color: #9ca3af;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header>
+        <div class="header-content">
+            <div class="header-title-box">
+                <img src="../assets/branding/icon-512x512.png" alt="تراكا للنقل" class="header-logo">
+                <h1 style="margin:0; font-size: 1.2rem; font-weight: 800; color: white;">تطبيق السائقين - تراكا</h1>
+            </div>
+            <a href="../landing.html" class="back-btn" title="الرئيسية">
+                <i class="ph-bold ph-house"></i>
+            </a>
+        </div>
+    </header>
+
+    <div class="download-container">
+
+        <!-- Hero Section -->
+        <div class="hero-card">
+            <div class="badge-tag">
+                <i class="ph-bold ph-sparkle"></i>
+                تطبيق السائق الرسمي (APK)
+            </div>
+            <img src="../assets/branding/icon-512x512.png" alt="شعار تراكا" class="hero-logo">
+            <h2 class="hero-title">انضم لكباتن تراكا واجْنِ أرباحاً عالية يومياً!</h2>
+            <p class="hero-subtitle">
+                تطبيق تراكا للنقل هو منصتك العالمية الفريدة لزيادة دخلك وتحقيق أعلى عوائد مالية بمرونة كاملة وسهولة تامة.
+            </p>
+        </div>
+
+        <!-- Marketing Features Cards -->
+        <div class="feature-card">
+            <div class="feature-header">
+                <div class="feature-icon">
+                    <i class="ph-bold ph-arrows-merge"></i>
+                </div>
+                <div>
+                    <div class="feature-title">نوعان من الرحلات لتضاعف أرباحك</div>
+                    <div style="font-size:0.85rem; color:#6b7280;">منظومة شاملة تلبي كافة احتياجات التنقل</div>
+                </div>
+            </div>
+
+            <div class="trip-type-box" style="margin-bottom: 8px;">
+                <div class="trip-type-title">
+                    <i class="ph-bold ph-car"></i>
+                    1. رحلات داخلية محلية
+                </div>
+                <div class="feature-desc">
+                    طلبات توصيل سريعة ومستمرة داخل نطاق المدن التي تقيم فيها لتضمن دخلاً يومياً ثابتاً ومستقراً.
+                </div>
+            </div>
+
+            <div class="trip-type-box">
+                <div class="trip-type-title" style="color: #008B5E;">
+                    <i class="ph-bold ph-path"></i>
+                    2. رحلات سفرية بين المدن
+                </div>
+                <div class="feature-desc">
+                    طلبات سفريات من مدينتك إلى أي مدينة أخرى داخل كافة الولايات، والتي تدّر عليك أرباحاً كبيرة وعوائد مجزية للغاية.
+                </div>
+            </div>
+        </div>
+
+        <!-- Welcome Gift Balance Banner -->
+        <div class="gift-box">
+            <div style="font-size: 1.8rem; color: #059669; margin-bottom: 4px;">
+                <i class="ph-bold ph-gift"></i>
+            </div>
+            <div style="font-weight: 800; font-size: 1.15rem; color: #065f46;">هدية ترحيبية فورية عند التسجيل</div>
+            <div class="gift-amount">10,000 جنيه سوداني</div>
+            <div style="font-size: 0.92rem; color: #047857; font-weight: 600; line-height: 1.5;">
+                بمجرد إنشاء حساب السائق الخاص بك داخل التطبيق، سيتم تنزيل رصيد هدية مجاني بقيمة 10,000 ج.س مباشرة في محفظتك لتتمكن من تنفيذ أذونات ورحلاتك الأولى بكل سهولة وبدون أي تكلفة إضافية!
+            </div>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-header">
+                <div class="feature-icon" style="background:#e0f2fe; color:#0284c7;">
+                    <i class="ph-bold ph-user-plus"></i>
+                </div>
+                <div>
+                    <div class="feature-title">تسجيل سريع وسهل</div>
+                    <div style="font-size:0.85rem; color:#6b7280;">ابدأ خلال دقائق معدودة</div>
+                </div>
+            </div>
+            <p class="feature-desc" style="margin:0;">
+                التسجيل لجميع السائقين يتم من داخل التطبيق بخطوات بسيطة ومباشرة فور تثبيته على هاتفك، دون الحاجة لإجراءات معقدة.
+            </p>
+        </div>
+
+        <!-- Instructions Card -->
+        <div class="instructions-card">
+            <div class="section-title">
+                <i class="ph-bold ph-gear"></i>
+                تعليمات التثبيت والضبط بعد التنزيل
+            </div>
+
+            <!-- Security Assurance Badge -->
+            <div class="safety-badge">
+                <i class="ph-bold ph-shield-check" style="font-size: 1.5rem;"></i>
+                <span>ملف التطبيق آمن ومحمي تماماً 100% ومفحوص ضد أي مخاطر.</span>
+            </div>
+
+            <div class="instruction-step">
+                <div class="step-num">1</div>
+                <div class="step-text">
+                    <h4>تثبيت الملف على هاتفك (APK)</h4>
+                    <p>بعد انتهاء التنزيل، افتح قائمة التنزيلات واضغط على ملف APK لتثبيته. (إذا ظهرت لك أية رسالة تنبيهية، اختر "السماح بالتثبيت من هذا المصدر").</p>
+                </div>
+            </div>
+
+            <div class="instruction-step">
+                <div class="step-num">2</div>
+                <div class="step-text">
+                    <h4>السماح بالوصول للموقع الجغرافي (GPS)</h4>
+                    <p>عند فتح التطبيق لأول مرة، يرجى الموافقة على منح إذن الموقع الجغرافي "أثناء استخدام التطبيق" أو "دائماً" لتحديد مكانك وعرض الطلبات القريبة منك.</p>
+                </div>
+            </div>
+
+            <div class="instruction-step">
+                <div class="step-num">3</div>
+                <div class="step-text">
+                    <h4>السماح بتقديم الإشعارات</h4>
+                    <p>وافق على إذن الإشعارات لتصلك تنبيهات الرحلات والطلبات الجديدة فور صدورها من الركاب مباشرة.</p>
+                </div>
+            </div>
+
+            <div class="instruction-step">
+                <div class="step-num">4</div>
+                <div class="step-text">
+                    <h4>تشغيل الموقع (GPS) على الجهاز</h4>
+                    <p>لاستقبال طلبات الرحلات في الوقت الفعلي، يجب أن يظل موقع الهاتف (GPS) مفعلاً ومتصلاً بالإنترنت.</p>
+                </div>
+            </div>
+
+            <div class="instruction-step">
+                <div class="step-num">5</div>
+                <div class="step-text">
+                    <h4>ضبط الهاتف على وضع الرنين (الصوت)</h4>
+                    <p>يرجى التأكد من ضبط وضع الهاتف على "الرنين" بدلاً من الصامت لتسمع صوت التنبيهات الفورية عند وصول طلب رحلة جديد.</p>
+                </div>
+            </div>
+
+            <!-- Driver Data Security Guarantee -->
+            <div class="security-guarantee-box">
+                <i class="ph-bold ph-lock-key"></i>
+                <div class="security-guarantee-text">
+                    تضمن إدارة "تراكا" الحفاظ التام على أمان وسرية بيانات السائق الشخصية والمستندات بأساليب تشفير حماية متقدمة.
+                </div>
+            </div>
+        </div>
+
+        <!-- Download Action Area (At bottom after instructions) -->
+        <div class="download-action-box">
+            <a href="https://gkvfznlpovlthgdkshld.supabase.co/storage/v1/object/public/apk-builds/Tirhal-App-build-37-20260909-091701.apk" class="btn-download-main" download target="_blank">
+                <i class="ph-bold ph-download-simple"></i>
+                <span>تنزيل تطبيق السائق (APK)</span>
+            </a>
+            <div class="download-subtext">
+                <i class="ph-bold ph-check-circle" style="color:var(--primary); vertical-align:middle;"></i>
+                ملف مباشر • تحكم كامل • جميع أجهزة أندرويد
+            </div>
+        </div>
+
+        <div class="footer-text">
+            &copy; 2026 تراكا للنقل. جميع الحقوق محفوظة.
+        </div>
+
+    </div>
+
+</body>
+</html>
