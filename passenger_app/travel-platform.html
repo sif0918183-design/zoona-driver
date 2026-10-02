@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <title>منصة سفريات تراكا</title>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
@@ -664,7 +664,7 @@
 
         @media (max-width:768px) {
             html { font-size:14px; }
-            .app-header { padding:0.75rem 1rem; }
+            .app-header { padding:calc(0.75rem + env(safe-area-inset-top, 0px)) 1rem 0.75rem 1rem; }
             .main-content { padding:1rem; }
             .vehicle-categories { grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); }
             .card { padding:1.25rem; }
