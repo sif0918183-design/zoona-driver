@@ -2,8 +2,8 @@ export default function handler(req, res) {
   res.setHeader('Content-Type', 'application/javascript');
   res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate');
 
-  const supabaseUrl = process.env.SUPABASE_URL || '';
-  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
+  const supabaseUrl = process.env.SUPABASE_URL || 'https://zsmlyiygjagmhnglrhoa.supabase.co';
+  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEzMjQ5NTUsImV4cCI6MjA1NjkwMDk1NX0.3iSvh3nL75f284sS6GkInlIny3e_1x8eH0p7J1vR9xQ';
 
   const firebaseConfig = {
     apiKey: process.env.FIREBASE_API_KEY || "",

@@ -2214,7 +2214,9 @@
 
 // Supabase Configuration (from shared config)
 const sessionToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_admin_token');
-const tarhalDB = supabase.createClient(window.SB_URL, window.SB_KEY, {
+const sbUrl = window.SB_URL || 'https://zsmlyiygjagmhnglrhoa.supabase.co';
+const sbKey = window.SB_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEzMjQ5NTUsImV4cCI6MjA1NjkwMDk1NX0.3iSvh3nL75f284sS6GkInlIny3e_1x8eH0p7J1vR9xQ';
+const tarhalDB = supabase.createClient(sbUrl, sbKey, {
     global: {
         headers: {
             'x-session-token': sessionToken || ''
@@ -2481,13 +2483,17 @@ function renderPassengerVehicleSelection() {
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🚀 تراكا للنقل - تطبيق الراكب');
     
-    // إخفاء Splash Screen
+    // إخفاء Splash Screen (Fail-safe)
     setTimeout(() => {
-        document.getElementById('splash-screen').classList.add('hide');
-    }, 1500);
+        const splash = document.getElementById('splash-screen');
+        if (splash) splash.classList.add('hide');
+    }, 1200);
     
-    // انتظار جاهزية التخزين (خاص بالـ WebView)
-    await FlutterBridge.waitForStorage();
+    try {
+        await FlutterBridge.waitForStorage();
+    } catch (e) {
+        console.warn('FlutterBridge.waitForStorage error:', e);
+    }
 
     const urlParams = new URLSearchParams(window.location.search);
 
