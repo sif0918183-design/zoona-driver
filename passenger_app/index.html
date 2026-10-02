@@ -87,7 +87,7 @@
             flex-shrink: 0;
             background: linear-gradient(135deg, var(--driver), var(--driver-dark));
             color: white;
-            padding: 8px 15px;
+            padding: calc(8px + env(safe-area-inset-top, 0px)) 15px 8px 15px;
             text-align: center;
             box-shadow: var(--shadow);
             border-bottom: 4px solid var(--driver-dark);

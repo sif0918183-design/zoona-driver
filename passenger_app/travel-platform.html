@@ -48,7 +48,7 @@
         html { font-size:16px; scroll-behavior:smooth; }
         body { font-family:'Tajawal',sans-serif; background:var(--tech-bg); color:var(--tech-text); line-height:1.6; min-height:100vh; overflow-x:hidden; }
         .app-container { max-width:100%; margin:0 auto; background:var(--tech-bg); min-height:100vh; }
-        .app-header { background:#fff; color:var(--tech-text); padding:1rem 1.5rem; display:flex; justify-content:space-between; align-items:center; box-shadow:var(--tech-shadow); position:sticky; top:0; z-index:100; min-height:70px; border-bottom:1px solid var(--tech-border); }
+        .app-header { background:#fff; color:var(--tech-text); padding: calc(1rem + env(safe-area-inset-top, 0px)) 1.5rem 1rem 1.5rem; display:flex; justify-content:space-between; align-items:center; box-shadow:var(--tech-shadow); position:sticky; top:0; z-index:100; min-height:70px; border-bottom:1px solid var(--tech-border); }
         .logo-container { display:flex; align-items:center; gap:1rem; }
         .logo-img { height:45px; width:45px; display:flex; align-items:center; justify-content:center; border-radius:12px; background:transparent; padding:0; box-shadow:0 0 15px var(--Tracka-emerald-glow); margin:0; object-fit:contain; }
         .app-title { font-size:1.25rem; font-weight:800; margin:0; }
