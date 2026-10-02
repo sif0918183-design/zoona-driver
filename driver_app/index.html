@@ -78,7 +78,7 @@
             flex-shrink: 0;
             background: linear-gradient(135deg, var(--driver), var(--driver-dark));
             color: white;
-            padding: 8px 15px;
+            padding: calc(8px + env(safe-area-inset-top, 0px)) 15px 8px 15px;
             text-align: center;
             box-shadow: var(--shadow);
             border-bottom: 4px solid var(--driver-dark);
@@ -1203,7 +1203,9 @@
 
     // Supabase Configuration
     const sessionToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_admin_token');
-    const tarhalDB = supabase.createClient(window.SB_URL, window.SB_KEY, {
+    const sbUrl = window.SB_URL || 'https://zsmlyiygjagmhnglrhoa.supabase.co';
+    const sbKey = window.SB_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbWx5aXlnamFnbWhuZ2xyaG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEzMjQ5NTUsImV4cCI6MjA1NjkwMDk1NX0.3iSvh3nL75f284sS6GkInlIny3e_1x8eH0p7J1vR9xQ';
+    const tarhalDB = supabase.createClient(sbUrl, sbKey, {
         global: {
             headers: {
                 'x-session-token': sessionToken || ''
@@ -1603,11 +1605,17 @@
     document.addEventListener('DOMContentLoaded', async function() {
         console.log(' تطبيق تراكا للنقل للسائقين');
         
-        await FlutterBridge.waitForStorage();
-
+        // Fail-safe splash screen hide
         setTimeout(() => {
-            document.getElementById('splash-screen').classList.add('hide');
-        }, 900);
+            const splash = document.getElementById('splash-screen');
+            if (splash) splash.classList.add('hide');
+        }, 1200);
+
+        try {
+            await FlutterBridge.waitForStorage();
+        } catch (e) {
+            console.warn('FlutterBridge.waitForStorage error:', e);
+        }
         
         // Gatekeeper
         const driverDataStr = localStorage.getItem('tarhal_driver');

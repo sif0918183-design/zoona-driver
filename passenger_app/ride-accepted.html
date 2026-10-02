@@ -37,7 +37,7 @@
 
         .app-header {
             background: linear-gradient(180deg, #008B5E 0%, #005F41 100%);
-            padding: 10px;
+            padding: calc(10px + env(safe-area-inset-top, 0px)) 10px 10px 10px;
             display: flex;
             justify-content: center;
             align-items: center;
