@@ -1023,6 +1023,11 @@
                 الشكاوى والمقترحات
             </button>
 
+            <button class="btn btn-driver mt-2" onclick="showSettings()">
+                <i class="ph-light ph-gear"></i>
+                إعدادات الحساب
+            </button>
+
             <button class="btn btn-driver mt-2" onclick="logoutDriver()">
                 <i class="ph-light ph-sign-out"></i>
                 تسجيل خروج السائق
@@ -1033,6 +1038,45 @@
 
 <!-- Notification Area -->
 <div id="notification-area"></div>
+
+<!-- Settings Modal -->
+<div id="settings-modal" class="overlay hidden">
+  <div class="modal agreement-modal" style="max-width: 450px; position: relative; z-index: 100001; max-height: none; padding: 0 !important; overflow: hidden; border-radius: 16px;">
+    <div class="agreement-header" style="background: var(--grad-emerald); color: white; padding: 20px; text-align: center;">
+      <i class="ph-light ph-gear" style="font-size: 40px; margin-bottom: 8px; display: block;"></i>
+      <h3 style="font-size: 20px; font-weight: 800; margin: 0; color: white;">إعدادات الحساب</h3>
+      <p class="modal-subtitle" style="font-size: 13px; margin-top: 4px; opacity: 0.9; color: rgba(255,255,255,0.9);">(تعديل بياناتك الشخصية)</p>
+    </div>
+
+    <div class="agreement-content" style="background: white; flex: none; padding: 20px;">
+        <div class="form-group" style="margin-bottom: 15px;">
+            <label class="form-label">الاسم الكامل</label>
+            <input type="text" id="settings-name" class="form-input" disabled style="background: #f9fafb; color: #6b7280; border-style: dashed;">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 15px;">
+            <label class="form-label">رقم الواتساب (رقم الحساب)</label>
+            <input type="text" id="settings-whatsapp" class="form-input" disabled style="background: #f9fafb; color: #6b7280; border-style: dashed;">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 5px;">
+            <label class="form-label">رقم الإتصال (قابل للتعديل)</label>
+            <input type="tel" id="settings-phone" class="form-input" placeholder="0XXXXXXXXX" maxlength="10" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/\D/g, '').substring(0, 10)" dir="ltr">
+        </div>
+    </div>
+
+    <div class="agreement-actions" style="display: flex; flex-direction: column; gap: 10px; padding: 0 20px 20px 20px; background: white;">
+      <button class="btn btn-driver" onclick="saveSettings()" style="width: 100%; margin-bottom: 0;">
+        <i class="ph-bold ph-floppy-disk"></i>
+        حفظ التعديلات
+      </button>
+      <button class="btn btn-secondary" onclick="closeSettings()" style="width: 100%; background: #6b7280; color: white; margin-bottom: 0;">
+        <i class="ph-bold ph-x"></i>
+        إغلاق
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- Incoming Ride Modal -->
 <div id="incoming-ride-modal" class="overlay hidden">
@@ -3292,6 +3336,86 @@
             container.insertBefore(banner, container.firstChild);
         } else {
             document.body.insertBefore(banner, document.body.firstChild);
+        }
+    }
+
+    // ============================================
+    //  إعدادات الحساب للسائق
+    // ============================================
+
+    function isValidDriverPhone(phone) {
+        const cleanPhone = phone.replace(/\D/g, '');
+        if (cleanPhone.length !== 10) {
+            return false;
+        }
+        return cleanPhone.startsWith('09') || cleanPhone.startsWith('01');
+    }
+
+    async function showSettings() {
+        if (!currentDriver) {
+            showNotification('يرجى تسجيل الدخول أولاً', 'error');
+            return;
+        }
+
+        try {
+            document.getElementById('settings-name').value = currentDriver.full_name || '';
+            document.getElementById('settings-whatsapp').value = currentDriver.whatsapp_number || currentDriver.phone || '';
+            document.getElementById('settings-phone').value = currentDriver.phone || '';
+
+            document.getElementById('settings-modal').classList.remove('hidden');
+
+            await initSupabaseAdmin();
+            const dbClient = supabaseAdmin || tarhalDB;
+            const { data, error } = await dbClient
+                .from('drivers')
+                .select('*')
+                .eq('id', currentDriver.id)
+                .single();
+
+            if (data && !error) {
+                currentDriver = data;
+                localStorage.setItem('tarhal_driver', JSON.stringify(currentDriver));
+                localStorage.setItem('user_data', JSON.stringify(currentDriver));
+                document.getElementById('settings-phone').value = currentDriver.phone || '';
+            }
+        } catch (err) {
+            console.error('Error fetching driver settings:', err);
+        }
+    }
+
+    function closeSettings() {
+        document.getElementById('settings-modal').classList.add('hidden');
+    }
+
+    async function saveSettings() {
+        const phone = document.getElementById('settings-phone').value.trim();
+
+        if (!currentDriver) return;
+
+        if (phone && !isValidDriverPhone(phone)) {
+            showNotification('رقم الإتصال يجب أن يبدأ بـ 09 أو 01 ومكون من 10 أرقام تماماً', 'error');
+            return;
+        }
+
+        try {
+            await initSupabaseAdmin();
+            const dbClient = supabaseAdmin || tarhalDB;
+            const { error } = await dbClient
+                .from('drivers')
+                .update({ phone: phone })
+                .eq('id', currentDriver.id);
+
+            if (error) throw error;
+
+            currentDriver.phone = phone;
+            localStorage.setItem('tarhal_driver', JSON.stringify(currentDriver));
+            localStorage.setItem('user_data', JSON.stringify(currentDriver));
+
+            showNotification('✅ تم حفظ التعديلات بنجاح', 'success');
+            closeSettings();
+        } catch (err) {
+            console.error('Error saving driver settings:', err);
+            showNotification('❌ فشل حفظ التعديلات. يرجى المحاولة مرة أخرى.', 'error');
         }
     }
 

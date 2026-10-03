@@ -2176,7 +2176,7 @@
 
         <div class="form-group">
             <label class="form-label">رقم الإتصال (قابل للتعديل)</label>
-            <input type="tel" id="settings-phone2" class="form-input" placeholder="أدخل رقم إضافي للإتصال" dir="ltr">
+            <input type="tel" id="settings-phone2" class="form-input" placeholder="0XXXXXXXXX" maxlength="10" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/\D/g, '').substring(0, 10)" dir="ltr">
         </div>
     </div>
 
@@ -4970,7 +4970,9 @@ async function showSettings() {
         document.getElementById('settings-modal').classList.remove('hidden');
 
         // تحديث البيانات من قاعدة البيانات لضمان دقتها
-        const { data, error } = await tarhalDB
+        await initSupabaseAdmin();
+        const dbClient = supabaseAdmin || tarhalDB;
+        const { data, error } = await dbClient
             .from('customers')
             .select('*')
             .eq('id', currentUser.id)
@@ -4980,6 +4982,7 @@ async function showSettings() {
             currentUser = data;
             localStorage.setItem('tarhal_passenger', JSON.stringify(currentUser));
             localStorage.setItem('tarhal_customer', JSON.stringify(currentUser));
+            localStorage.setItem('user_data', JSON.stringify(currentUser));
             document.getElementById('settings-phone2').value = currentUser.phone2 || '';
         }
     } catch (err) {
@@ -4996,8 +4999,15 @@ async function saveSettings() {
 
     if (!currentUser) return;
 
+    if (phone2 && !isValidPassengerPhone(phone2)) {
+        showNotification('رقم الإتصال يجب أن يبدأ بـ 09 أو 01 ومكون من 10 أرقام تماماً', 'error');
+        return;
+    }
+
     try {
-        const { error } = await tarhalDB
+        await initSupabaseAdmin();
+        const dbClient = supabaseAdmin || tarhalDB;
+        const { error } = await dbClient
             .from('customers')
             .update({ phone2: phone2 })
             .eq('id', currentUser.id);
@@ -5008,6 +5018,7 @@ async function saveSettings() {
         currentUser.phone2 = phone2;
         localStorage.setItem('tarhal_passenger', JSON.stringify(currentUser));
         localStorage.setItem('tarhal_customer', JSON.stringify(currentUser));
+        localStorage.setItem('user_data', JSON.stringify(currentUser));
 
         showNotification('✅ تم حفظ التعديلات بنجاح', 'success');
         closeSettings();
