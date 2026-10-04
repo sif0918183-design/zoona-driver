@@ -3133,8 +3133,19 @@ async function loadAvailableRides() {
 
         const filtered = [];
         const driverRank = getCategoryRank(currentUser.car_type);
+        const now = new Date();
 
         for (const req of (requests||[])) {
+            // Check if departure time has passed
+            const parsedNotes = parseRideNotes(req.notes) || {};
+            const depISO = req.departure_time || (parsedNotes.day ? `${parsedNotes.year || '2026'}-${String(parsedNotes.month).padStart(2,'0')}-${String(parsedNotes.day).padStart(2,'0')}T${String(parsedNotes.period === 'مساءً' && parseInt(parsedNotes.hour) < 12 ? parseInt(parsedNotes.hour) + 12 : parsedNotes.hour).padStart(2,'0')}:${String(parsedNotes.minute||'00').padStart(2,'0')}:00` : null);
+            if (depISO) {
+                const departureTime = new Date(depISO);
+                if (!isNaN(departureTime.getTime()) && departureTime < now) {
+                    continue; // Skip expired ride
+                }
+            }
+
             const rideRank = getCategoryRank(req.vehicle_category);
             if (rideRank > driverRank) continue;
 
