@@ -236,6 +236,7 @@
         .status-confirmed { background:#d1fae5; color:#065f46; }
         .status-completed { background:#d1fae5; color:#065f46; }
         .status-cancelled { background:#fee2e2; color:#991b1b; }
+        .status-expired { background:#f3f4f6; color:#6b7280; }
         .price-preview { background:rgba(255,255,255,0.3); border-radius:var(--radius-lg); padding:1.5rem; border:1.5px solid var(--gray-light); margin:1.5rem 0; }
         .price-item { display:flex; justify-content:space-between; padding:0.75rem 0; border-bottom:1px solid var(--gray-light); font-size:0.95rem; }
         .price-item:last-child { border-bottom:none; }
@@ -2685,13 +2686,27 @@ function displayPassengerRides() {
         return;
     }
     container.innerHTML = '';
+    const now = new Date();
     userRides.forEach(ride => {
-        const statusText = getStatusText(ride.status);
-        const statusClass = getStatusClass(ride.status);
         const isActive = ['driver_selected','in_progress'].includes(ride.status);
 
+        // Check if ride departure time has passed
+        const parsedNotes = parseRideNotes(ride.notes) || {};
+        const depISO = ride.departure_time || (parsedNotes.day ? `${parsedNotes.year || '2026'}-${String(parsedNotes.month).padStart(2,'0')}-${String(parsedNotes.day).padStart(2,'0')}T${String(parsedNotes.period === 'مساءً' && parseInt(parsedNotes.hour) < 12 ? parseInt(parsedNotes.hour) + 12 : parsedNotes.hour).padStart(2,'0')}:${String(parsedNotes.minute||'00').padStart(2,'0')}:00` : null);
+
+        let isExpired = false;
+        if (depISO) {
+            const departureTime = new Date(depISO);
+            if (!isNaN(departureTime.getTime()) && departureTime < now && !isActive && ride.status !== 'completed' && ride.status !== 'cancelled') {
+                isExpired = true;
+            }
+        }
+
+        let statusText = isExpired ? 'فات وقتها' : getStatusText(ride.status);
+        let statusClass = isExpired ? 'status-expired' : getStatusClass(ride.status);
+
         let driversSection = '';
-        if (ride.status === 'pending' && ride.accepted_count > 0) {
+        if (ride.status === 'pending' && ride.accepted_count > 0 && !isExpired) {
             driversSection = `
                 <div style="margin-top:1rem;padding-top:1rem;border-top:1px dashed var(--gray-300);">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
@@ -2775,9 +2790,11 @@ function displayPassengerRides() {
             ${activeActions}
             <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--gray-light);">
                 ${!isActive && ride.status !== 'completed' && ride.status !== 'cancelled' ? `
+                    ${!isExpired ? `
                     <div style="font-size:0.8rem;color:var(--gray-600);background:var(--gray-50);padding:0.6rem;border-radius:var(--radius);margin-bottom:0.75rem;border:1px solid var(--gray-200);line-height:1.5;text-align:right;">
                         يمكن قبول رحلتك مبدئياً حتى 10 سائقين، وبمجرد اختيارك لأحدهم سيتم إغلاق القبول، ستظهر لك أرقام التواصل مع السائق المختار قبل 10 ساعات من موعد الرحلة
                     </div>
+                    ` : ''}
                     <button class="btn btn-danger btn-sm" onclick="cancelRide('${ride.id}')">
                         <i class="ph-light ph-x"></i> إلغاء
                     </button>
