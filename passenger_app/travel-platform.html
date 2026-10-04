@@ -236,6 +236,7 @@
         .status-confirmed { background:#d1fae5; color:#065f46; }
         .status-completed { background:#d1fae5; color:#065f46; }
         .status-cancelled { background:#fee2e2; color:#991b1b; }
+        .status-expired { background:#f3f4f6; color:#6b7280; }
         .price-preview { background:rgba(255,255,255,0.3); border-radius:var(--radius-lg); padding:1.5rem; border:1.5px solid var(--gray-light); margin:1.5rem 0; }
         .price-item { display:flex; justify-content:space-between; padding:0.75rem 0; border-bottom:1px solid var(--gray-light); font-size:0.95rem; }
         .price-item:last-child { border-bottom:none; }
@@ -2585,7 +2586,9 @@ async function check24hTravelReminder() {
 }
 
 async function loadPassengerRides() {
-    await check24hTravelReminder();
+    // Run reminder check asynchronously in parallel
+    check24hTravelReminder().catch(e => console.error('Error in 24h reminder:', e));
+
     try {
         const {data:requests, error} = await travelSupabase
             .from('ride_requests')
@@ -2593,80 +2596,114 @@ async function loadPassengerRides() {
             .eq('customer_id', currentUser.id)
             .order('created_at', {ascending:false});
 
-        const combined = [];
-        if (!error && requests) {
-            for (const req of requests) {
-                // Auto-evaluate 10-hour window for selected driver
-                if (['driver_selected', 'confirmed'].includes(req.status)) {
-                    try {
-                        const token = localStorage.getItem('session_token');
-                        const res = await fetch('/api/travel-platform', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': token ? `Bearer ${token}` : ''
-                            },
-                            body: JSON.stringify({
-                                action: 'process_10h_commission',
-                                rideId: req.id
-                            })
-                        });
-                        const commData = await res.json();
-                        if (commData.success) {
-                            if (commData.result === 'commission_held' || commData.contactsRevealed) {
-                                req.commission_status = 'held';
-                                req.contact_revealed = true;
-                            } else if (commData.result === 'driver_stripped') {
-                                req.status = 'pending';
-                                req.driver_id = null;
-                                req.driver_name = null;
-                                showNotification('السائق المختار لم يقم بتغذية رصيده في المهلة المحددة، تم فتح الطلب مجدداً لاختيار سائق بديل.', 'warning');
-                            }
+        if (error || !requests || requests.length === 0) {
+            userRides = [];
+            displayPassengerRides();
+            return;
+        }
+
+        // 1. Process 10h commission checks concurrently in parallel for active rides
+        const activeReqs = requests.filter(req => ['driver_selected', 'confirmed'].includes(req.status));
+        if (activeReqs.length > 0) {
+            const token = localStorage.getItem('session_token');
+            await Promise.all(activeReqs.map(async (req) => {
+                try {
+                    const res = await fetch('/api/travel-platform', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': token ? `Bearer ${token}` : ''
+                        },
+                        body: JSON.stringify({
+                            action: 'process_10h_commission',
+                            rideId: req.id
+                        })
+                    });
+                    const commData = await res.json();
+                    if (commData.success) {
+                        if (commData.result === 'commission_held' || commData.contactsRevealed) {
+                            req.commission_status = 'held';
+                            req.contact_revealed = true;
+                        } else if (commData.result === 'driver_stripped') {
+                            req.status = 'pending';
+                            req.driver_id = null;
+                            req.driver_name = null;
+                            showNotification('السائق المختار لم يقم بتغذية رصيده في المهلة المحددة، تم فتح الطلب مجدداً لاختيار سائق بديل.', 'warning');
                         }
-                    } catch (e) {
-                        console.error('Error auto-evaluating 10h commission for passenger:', e);
                     }
+                } catch (e) {
+                    console.error('Error auto-evaluating 10h commission for passenger:', e);
                 }
+            }));
+        }
 
-                const {data:acceptances} = await travelSupabase
-                    .from('ride_driver_acceptances')
-                    .select('id,driver_id,status,accepted_at')
-                    .eq('ride_id', req.id)
-                    .eq('status', 'accepted');
+        const requestIds = requests.map(r => r.id);
 
-                const driversInfo = [];
-                if (acceptances && acceptances.length > 0) {
-                    for (const acc of acceptances) {
-                        const {data:d} = await travelSupabase.from('drivers').select('id,full_name,car_type,car_model,car_color,rating').eq('id',acc.driver_id).single();
-                        if (d) driversInfo.push({...d, driver_id:acc.driver_id});
-                    }
-                }
+        // 2. Batch query all driver acceptances for all requests in a single call
+        let acceptancesData = [];
+        if (requestIds.length > 0) {
+            const {data:accData} = await travelSupabase
+                .from('ride_driver_acceptances')
+                .select('id,ride_id,driver_id,status,accepted_at')
+                .in('ride_id', requestIds)
+                .eq('status', 'accepted');
+            acceptancesData = accData || [];
+        }
 
-                let selectedDriverInfo = null;
-                if (req.driver_id) {
-                    const {data:sd} = await travelSupabase.from('drivers').select('id,full_name,car_type,car_model,car_color').eq('id', req.driver_id).single();
-                    if (sd) selectedDriverInfo = sd;
-                }
+        // 3. Collect all unique driver IDs across acceptances and selected drivers
+        const driverIdSet = new Set();
+        acceptancesData.forEach(acc => { if (acc.driver_id) driverIdSet.add(acc.driver_id); });
+        requests.forEach(req => { if (req.driver_id) driverIdSet.add(req.driver_id); });
+        const uniqueDriverIds = Array.from(driverIdSet);
 
-                combined.push({
-                    id: req.id,
-                    passenger_id: req.customer_id,
-                    from_city: req.from_city,
-                    to_city: req.to_city,
-                    vehicle_category: req.vehicle_category,
-                    final_price: req.estimated_price,
-                    notes: req.notes,
-                    status: req.status,
-                    driver_id: req.driver_id,
-                    driver_name: req.driver_name,
-                    driver_phone: req.driver_phone,
-                    created_at: req.created_at,
-                    accepted_drivers: driversInfo,
-                    accepted_count: acceptances?.length || 0,
-                    selected_driver_info: selectedDriverInfo
-                });
+        // 4. Batch query drivers table for all collected driver IDs in a single call
+        const driversMap = {};
+        if (uniqueDriverIds.length > 0) {
+            const {data:driversList} = await travelSupabase
+                .from('drivers')
+                .select('id,full_name,car_type,car_model,car_color,rating')
+                .in('id', uniqueDriverIds);
+            if (driversList) {
+                driversList.forEach(d => { driversMap[d.id] = d; });
             }
         }
+
+        // 5. Construct combined user rides list in memory
+        const acceptancesByRide = {};
+        acceptancesData.forEach(acc => {
+            if (!acceptancesByRide[acc.ride_id]) acceptancesByRide[acc.ride_id] = [];
+            acceptancesByRide[acc.ride_id].push(acc);
+        });
+
+        const combined = requests.map(req => {
+            const rideAccs = acceptancesByRide[req.id] || [];
+            const driversInfo = rideAccs
+                .map(acc => {
+                    const d = driversMap[acc.driver_id];
+                    return d ? {...d, driver_id: acc.driver_id} : null;
+                })
+                .filter(Boolean);
+
+            const selectedDriverInfo = req.driver_id ? (driversMap[req.driver_id] || null) : null;
+
+            return {
+                id: req.id,
+                passenger_id: req.customer_id,
+                from_city: req.from_city,
+                to_city: req.to_city,
+                vehicle_category: req.vehicle_category,
+                final_price: req.estimated_price,
+                notes: req.notes,
+                status: req.status,
+                driver_id: req.driver_id,
+                driver_name: req.driver_name,
+                driver_phone: req.driver_phone,
+                created_at: req.created_at,
+                accepted_drivers: driversInfo,
+                accepted_count: rideAccs.length,
+                selected_driver_info: selectedDriverInfo
+            };
+        });
 
         combined.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
         userRides = combined;
@@ -2685,13 +2722,27 @@ function displayPassengerRides() {
         return;
     }
     container.innerHTML = '';
+    const now = new Date();
     userRides.forEach(ride => {
-        const statusText = getStatusText(ride.status);
-        const statusClass = getStatusClass(ride.status);
         const isActive = ['driver_selected','in_progress'].includes(ride.status);
 
+        // Check if ride departure time has passed
+        const parsedNotes = parseRideNotes(ride.notes) || {};
+        const depISO = ride.departure_time || (parsedNotes.day ? `${parsedNotes.year || '2026'}-${String(parsedNotes.month).padStart(2,'0')}-${String(parsedNotes.day).padStart(2,'0')}T${String(parsedNotes.period === 'مساءً' && parseInt(parsedNotes.hour) < 12 ? parseInt(parsedNotes.hour) + 12 : parsedNotes.hour).padStart(2,'0')}:${String(parsedNotes.minute||'00').padStart(2,'0')}:00` : null);
+
+        let isExpired = false;
+        if (depISO) {
+            const departureTime = new Date(depISO);
+            if (!isNaN(departureTime.getTime()) && departureTime < now && !isActive && ride.status !== 'completed' && ride.status !== 'cancelled') {
+                isExpired = true;
+            }
+        }
+
+        let statusText = isExpired ? 'فات وقتها' : getStatusText(ride.status);
+        let statusClass = isExpired ? 'status-expired' : getStatusClass(ride.status);
+
         let driversSection = '';
-        if (ride.status === 'pending' && ride.accepted_count > 0) {
+        if (ride.status === 'pending' && ride.accepted_count > 0 && !isExpired) {
             driversSection = `
                 <div style="margin-top:1rem;padding-top:1rem;border-top:1px dashed var(--gray-300);">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
@@ -2775,9 +2826,11 @@ function displayPassengerRides() {
             ${activeActions}
             <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--gray-light);">
                 ${!isActive && ride.status !== 'completed' && ride.status !== 'cancelled' ? `
+                    ${!isExpired ? `
                     <div style="font-size:0.8rem;color:var(--gray-600);background:var(--gray-50);padding:0.6rem;border-radius:var(--radius);margin-bottom:0.75rem;border:1px solid var(--gray-200);line-height:1.5;text-align:right;">
                         يمكن قبول رحلتك مبدئياً حتى 10 سائقين، وبمجرد اختيارك لأحدهم سيتم إغلاق القبول، ستظهر لك أرقام التواصل مع السائق المختار قبل 10 ساعات من موعد الرحلة
                     </div>
+                    ` : ''}
                     <button class="btn btn-danger btn-sm" onclick="cancelRide('${ride.id}')">
                         <i class="ph-light ph-x"></i> إلغاء
                     </button>
