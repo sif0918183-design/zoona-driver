@@ -2250,12 +2250,20 @@
                                 });
                                 const commData = await res.json();
                                 if (commData.success) {
-                                    if (commData.result === 'grace_period_started' || commData.result === 'in_grace_period') {
+                                    if (commData.result === 'driver_stripped' || commData.result === 'already_replaced') {
+                                        localStorage.removeItem('tarhal_active_trip_id');
+                                        continue;
+                                    } else if (commData.result === 'grace_period_started' || commData.result === 'in_grace_period') {
                                         ride.commission_status = 'grace_period';
                                         ride.commission_grace_until = commData.graceUntil || ride.commission_grace_until;
                                     }
                                 }
                             } catch(e) {}
+                        }
+
+                        if (ride.commission_status === 'failed' || ride.status === 'cancelled') {
+                            localStorage.removeItem('tarhal_active_trip_id');
+                            continue;
                         }
 
                         // 1. Fixed Selection Notice (from selection until departure time)
