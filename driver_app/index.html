@@ -977,13 +977,6 @@
                 <div id="driver-grace-timer" style="font-size:1.3rem; font-weight:900; letter-spacing:1px; direction:ltr; color:#dc2626;">30:00</div>
             </div>
 
-            <!-- 3-Hour Lock Banner on Dashboard -->
-            <div id="driver-3h-lock-banner" class="hidden" style="background:linear-gradient(135deg, #f59e0b, #d97706); color:white; padding:0.75rem 1rem; border-radius:12px; margin-bottom:0.75rem; box-shadow:0 4px 15px rgba(245,158,11,0.25); text-align:center;">
-                <i class="ph-bold ph-clock-counter-clockwise" style="font-size:1.4rem; margin-bottom:0.2rem; display:inline-block;"></i>
-                <div style="font-size:0.95rem; font-weight:800; margin-bottom:0.2rem;">عليك الاستعداد لرحلتك السفرية</div>
-                <div id="driver-3h-lock-text" style="font-size:0.82rem; line-height:1.4; opacity:0.95;"></div>
-            </div>
-
             <div class="driver-status">
                 <div id="driver-status-indicator" class="status-indicator status-offline">
                     <span class="status-dot"></span>
@@ -2212,18 +2205,14 @@
             const selectionText = document.getElementById('driver-selection-notice-text');
             const graceNotice = document.getElementById('driver-grace-notice');
             const graceTimer = document.getElementById('driver-grace-timer');
-            const banner = document.getElementById('driver-3h-lock-banner');
-            const bannerText = document.getElementById('driver-3h-lock-text');
 
             if (!rides || rides.length === 0) {
                 if (selectionNotice) selectionNotice.classList.add('hidden');
                 if (graceNotice) graceNotice.classList.add('hidden');
-                if (banner) banner.classList.add('hidden');
                 return false;
             }
 
             const now = new Date();
-            let isLockedOut = false;
             let foundSelection = false;
             let foundGrace = false;
 
@@ -2296,26 +2285,14 @@
                                 if (graceNotice) graceNotice.classList.remove('hidden');
                             }
                         }
-
-                        // 3. 3-Hour Lockout Banner
-                        if (diffHours > 0 && diffHours <= 3) {
-                            isLockedOut = true;
-                            const hoursLeft = Math.floor(diffHours);
-                            const minsLeft = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-                            if (bannerText) {
-                                bannerText.textContent = `عليك الاستعداد لرحلتك السفرية من ${ride.from_city} إلى ${ride.to_city}. تبقى على الرحلة ${hoursLeft} ساعة و ${minsLeft} دقيقة.`;
-                            }
-                            if (banner) banner.classList.remove('hidden');
-                        }
                     }
                 }
             }
 
             if (!foundSelection && selectionNotice) selectionNotice.classList.add('hidden');
             if (!foundGrace && graceNotice) graceNotice.classList.add('hidden');
-            if (!isLockedOut && banner) banner.classList.add('hidden');
 
-            return isLockedOut;
+            return false;
         } catch (e) {
             console.error('Error checking upcoming travel ride:', e);
             return false;
