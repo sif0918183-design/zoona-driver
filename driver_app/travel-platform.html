@@ -867,13 +867,6 @@
                 </button>
             </div>
 
-            <!-- Driver 3-Hour Lock Banner -->
-            <div id="driver-3h-lock-banner" class="hidden" style="background:linear-gradient(135deg, #f59e0b, #d97706); color:white; padding:1.25rem; border-radius:16px; margin-bottom:1.5rem; box-shadow:0 8px 25px rgba(245,158,11,0.3); text-align:center;">
-                <i class="ph-bold ph-clock-counter-clockwise" style="font-size:2.2rem; margin-bottom:0.5rem; display:block;"></i>
-                <div id="driver-3h-lock-title" style="font-size:1.15rem; font-weight:800; margin-bottom:0.5rem;">عليك الاستعداد لرحلتك السفرية</div>
-                <div id="driver-3h-lock-text" style="font-size:0.95rem; line-height:1.6; opacity:0.95;"></div>
-            </div>
-
             <!-- Driver Selection Fixed Notice -->
             <div id="driver-selection-notice" class="hidden" style="background:#f0fdf4; border:2px solid #10b981; padding:1.25rem; border-radius:16px; margin-bottom:1.5rem; color:#065f46; font-size:0.95rem; line-height:1.6; text-align:right;">
                 <div style="font-weight:800; font-size:1.1rem; color:#047857; margin-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
@@ -3315,20 +3308,16 @@ async function checkDriverTravelNotices() {
         const selectionText = document.getElementById('driver-selection-notice-text');
         const graceNotice = document.getElementById('driver-grace-notice');
         const graceTimer = document.getElementById('driver-grace-timer');
-        const lockBanner = document.getElementById('driver-3h-lock-banner');
-        const lockText = document.getElementById('driver-3h-lock-text');
 
         if (!rides || rides.length === 0) {
             if (selectionNotice) selectionNotice.classList.add('hidden');
             if (graceNotice) graceNotice.classList.add('hidden');
-            if (lockBanner) lockBanner.classList.add('hidden');
             return;
         }
 
         const now = new Date();
         let foundSelection = false;
         let foundGrace = false;
-        let foundLock = false;
 
         for (const ride of rides) {
             const parsedNotes = parseRideNotes(ride.notes) || {};
@@ -3396,23 +3385,11 @@ async function checkDriverTravelNotices() {
                         if (graceNotice) graceNotice.classList.remove('hidden');
                     }
                 }
-
-                // 3. 3-Hour Lock Banner
-                if (!foundLock && diffHours > 0 && diffHours <= 3) {
-                    foundLock = true;
-                    const hoursLeft = Math.floor(diffHours);
-                    const minsLeft = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-                    if (lockText) {
-                        lockText.textContent = `عليك الاستعداد لرحلتك السفرية من ${ride.from_city} إلى ${ride.to_city}. تبقى على الرحلة ${hoursLeft} ساعة و ${minsLeft} دقيقة.`;
-                    }
-                    if (lockBanner) lockBanner.classList.remove('hidden');
-                }
             }
         }
 
         if (!foundSelection && selectionNotice) selectionNotice.classList.add('hidden');
         if (!foundGrace && graceNotice) graceNotice.classList.add('hidden');
-        if (!foundLock && lockBanner) lockBanner.classList.add('hidden');
 
     } catch(err) {
         console.error('Error checking driver travel notices:', err);
