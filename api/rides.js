@@ -152,12 +152,17 @@ export default async function handler(req, res) {
             const serverTime = new Date();
             const { data: driverTravelTrips } = await supabase
                 .from('travel_trips')
-                .select('from_city, to_city, departure_time, status')
+                .select('from_city, to_city, departure_time, status, commission_status')
                 .eq('driver_id', driverId)
                 .in('status', ['driver_selected', 'in_progress', 'commission_reserved', 'final_active']);
 
             if (driverTravelTrips && driverTravelTrips.length > 0) {
                 for (const trip of driverTravelTrips) {
+                    // Ignore trips where commission failed, cancelled, or driver was stripped
+                    if (trip.status === 'cancelled' || trip.commission_status === 'failed') {
+                        continue;
+                    }
+
                     if (trip.status === 'in_progress') {
                         return res.status(403).json({ success: false, error: `عليك الاستعداد لرحلتك السفرية من (${trip.from_city || '—'}) إلى (${trip.to_city || '—'}). لا يمكنك استقبال رحلات داخلية أثناء وجود رحلة سفرية جارية.` });
                     }

@@ -217,6 +217,12 @@ async function evaluateTrip10hCommission(tripId, rideId, settings, serverTime) {
                     commission_status: 'failed',
                     contact_revealed: false
                 }).eq('id', targetRideId);
+
+                // Strictly set driver acceptance status to 'withdrawn' to decouple driver completely
+                await supabase.from('ride_driver_acceptances').update({
+                    status: 'withdrawn',
+                    updated_at: serverTime.toISOString()
+                }).eq('ride_id', targetRideId).eq('driver_id', driverId);
             }
 
             if (currentPassengerId) {

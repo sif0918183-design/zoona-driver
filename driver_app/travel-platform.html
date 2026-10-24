@@ -3345,7 +3345,10 @@ async function checkDriverTravelNotices() {
                         });
                         const commData = await res.json();
                         if (commData.success) {
-                            if (commData.result === 'commission_held' || commData.contactsRevealed) {
+                            if (commData.result === 'driver_stripped' || commData.result === 'already_replaced') {
+                                localStorage.removeItem('tarhal_active_trip_id');
+                                continue;
+                            } else if (commData.result === 'commission_held' || commData.contactsRevealed) {
                                 ride.commission_status = 'held';
                                 ride.contact_revealed = true;
                             } else if (commData.result === 'grace_period_started' || commData.result === 'in_grace_period') {
@@ -3356,6 +3359,11 @@ async function checkDriverTravelNotices() {
                     } catch (err) {
                         console.error('Error running process_10h_commission:', err);
                     }
+                }
+
+                if (ride.commission_status === 'failed' || ride.status === 'cancelled') {
+                    localStorage.removeItem('tarhal_active_trip_id');
+                    continue;
                 }
 
                 // 1. Selection notice
