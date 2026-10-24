@@ -677,17 +677,33 @@
             }
         }
 
+        // أيقونة سيارة SVG مدمجة باللون الأخضر المميز لـ Tracka
+        function getInlineCarSvgIcon() {
+            const svgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" width="44" height="44">
+                <circle cx="25" cy="25" r="23" fill="#008B5E" stroke="#ffffff" stroke-width="2.5"/>
+                <path d="M12 28 l3-9 c0.8-2 2.5-3 4.5-3 h11 c2 0 3.7 1 4.5 3 l3 9 v9 c0 1.1-0.9 2-2 2 h-2 c-1.1 0-2-0.9-2-2 v-2 H18 v2 c0 1.1-0.9 2-2 2 h-2 c-1.1 0-2-0.9-2-2 v-9 z" fill="#ffffff"/>
+                <path d="M16 19 h18 l-2.2-5 c-0.4-1-1.3-1.5-2.3-1.5 H20.5 c-1 0-1.9 0.5-2.3 1.5 L16 19 z" fill="#005F41"/>
+                <circle cx="17.5" cy="30.5" r="2.5" fill="#f59e0b"/>
+                <circle cx="32.5" cy="30.5" r="2.5" fill="#f59e0b"/>
+            </svg>`;
+            return {
+                url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svgString),
+                scaledSize: new google.maps.Size(44, 44),
+                anchor: new google.maps.Point(22, 22)
+            };
+        }
+
         // تحديث موقع السائق على الخريطة
         function updateDriverMarker(pos) {
-            if (!map) return;
+            if (!map || !window.google || !google.maps) {
+                setTimeout(() => { if (pos) updateDriverMarker(pos); }, 500);
+                return;
+            }
+            if (!pos || isNaN(parseFloat(pos.lat)) || isNaN(parseFloat(pos.lng))) return;
 
-            const icon = {
-                url: 'https://cdn-icons-png.flaticon.com/512/3202/3202926.png',
-                scaledSize: new google.maps.Size(40, 40),
-                anchor: new google.maps.Point(20, 20)
-            };
-
-            const newPos = new google.maps.LatLng(pos.lat, pos.lng);
+            const lat = parseFloat(pos.lat);
+            const lng = parseFloat(pos.lng);
+            const newPos = new google.maps.LatLng(lat, lng);
 
             if (driverMarker) {
                 animateMarker(driverMarker, newPos);
@@ -695,8 +711,9 @@
                 driverMarker = new google.maps.Marker({
                     position: newPos,
                     map: map,
-                    icon: icon,
-                    title: 'موقعك'
+                    icon: getInlineCarSvgIcon(),
+                    title: 'موقعك الحقيقي المباشر',
+                    zIndex: 1000
                 });
             }
         }
