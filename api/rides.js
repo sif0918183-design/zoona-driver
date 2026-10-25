@@ -270,7 +270,30 @@ export default async function handler(req, res) {
             }
 
             const rideAmount = rideData.amount || 0;
-            const commissionAmount = Math.floor(rideAmount * 0.10); // 10% commission hold or cancellation rules
+
+            // Fetch dynamic instant ride service fee percentage from system_settings
+            let commRate = 10; // Default fallback (10%)
+            try {
+                const { data: feeSetting, error: feeErr } = await supabase
+                    .from('system_settings')
+                    .select('value')
+                    .eq('key', 'service_fee_percentage')
+                    .single();
+
+                if (!feeErr && feeSetting && feeSetting.value) {
+                    const parsed = parseFloat(feeSetting.value);
+                    if (!isNaN(parsed) && parsed >= 0) {
+                        commRate = parsed;
+                    }
+                }
+            } catch (err) {
+                console.error('Error fetching service_fee_percentage setting:', err);
+            }
+
+            // Prioritize already held commission amount if present to preserve exact financial credit on cancellation
+            const commissionAmount = (rideData.commission_held && Number(rideData.commission_held) > 0)
+                ? Number(rideData.commission_held)
+                : Math.floor(rideAmount * (commRate / 100.0));
 
             let driverWithinRange = false;
             if (rideData.driver_id && driverLat && driverLng && rideData.pickup_lat && rideData.pickup_lng) {
