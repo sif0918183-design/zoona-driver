@@ -270,7 +270,7 @@ export default async function handler(req, res) {
             }
 
             const rideAmount = rideData.amount || 0;
-            const commissionAmount = Math.floor(rideAmount * 0.05); // 5% commission hold or cancellation rules
+            const commissionAmount = Math.floor(rideAmount * 0.10); // 10% commission hold or cancellation rules
 
             let driverWithinRange = false;
             if (rideData.driver_id && driverLat && driverLng && rideData.pickup_lat && rideData.pickup_lng) {

@@ -1096,7 +1096,7 @@
                 if (rideError) throw rideError;
 
                 const rideAmount = rideData?.amount || 0;
-                const commissionAmount = Math.floor(rideAmount * 0.05);
+                const commissionAmount = Math.floor(rideAmount * 0.10);
 
                 // استدعاء الـ API الآمن لإلغاء الرحلة وتطبيق الغرامة
                 const token = localStorage.getItem('session_token');

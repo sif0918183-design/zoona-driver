@@ -1239,7 +1239,7 @@
                 // المسار الرئيسي هو Supabase Realtime - هذا دعم إضافي
                 // =====================================================
                 try {
-                    const commissionAmount = Math.floor((rideData.amount || 0) * 0.05);
+                    const commissionAmount = Math.floor((rideData.amount || 0) * 0.10);
                     const driverChannel = new BroadcastChannel('driver_ride_channel');
                     driverChannel.postMessage({
                         type: 'RIDE_CANCELLED_BY_PASSENGER',
