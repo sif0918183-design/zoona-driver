@@ -120,8 +120,8 @@ BEGIN
         RAISE EXCEPTION 'Ride is not active';
     END IF;
     
-    -- Calculate commission (5%)
-    v_commission_amount := FLOOR(COALESCE(v_ride.amount, 0) * 0.05);
+    -- Calculate commission (10%)
+    v_commission_amount := FLOOR(COALESCE(v_ride.amount, 0) * 0.10);
     
     -- Update ride status
     UPDATE rides
