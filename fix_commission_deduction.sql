@@ -68,7 +68,7 @@ ALTER TABLE drivers ADD COLUMN IF NOT EXISTS car_plate TEXT;
 
 -- ============================================================================
 -- الخطوة 7: إعادة إنشاء دالة complete_ride للعمل بشكل صحيح
--- ملاحظة: استخدام 10% كما في كود التطبيق (وليس 5%)
+-- ملاحظة: استخدام 5% كما في كود التطبيق
 -- ============================================================================
 CREATE OR REPLACE FUNCTION complete_ride(p_ride_id UUID)
 RETURNS VOID AS $$
@@ -86,8 +86,8 @@ BEGIN
         RAISE EXCEPTION 'Ride not found or no driver assigned';
     END IF;
 
-    -- 2. Calculate commission (10% as per the app code)
-    v_commission := COALESCE(v_amount, 0) * 0.10;
+    -- 2. Calculate commission (5% as per the app code)
+    v_commission := COALESCE(v_amount, 0) * 0.05;
 
     -- 3. Update ride status and commission
     UPDATE public.rides
@@ -118,8 +118,8 @@ RETURNS VOID AS $$
 DECLARE
     v_commission DECIMAL;
 BEGIN
-    -- Calculate commission (10% of ride amount)
-    v_commission := COALESCE(p_amount, 0) * 0.10;
+    -- Calculate commission (5% of ride amount)
+    v_commission := COALESCE(p_amount, 0) * 0.05;
 
     -- Update ride with cancellation info
     UPDATE public.rides

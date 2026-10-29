@@ -41,8 +41,8 @@ BEGIN
         RETURN json_build_object('success', false, 'message', 'بيانات السائق غير موجودة');
     END IF;
 
-    -- ج. حساب عمولة 10% (تقريب لأسفل)
-    v_commission := FLOOR(COALESCE(v_amount, 0) * 0.10);
+    -- ج. حساب عمولة 5% (تقريب لأسفل)
+    v_commission := FLOOR(COALESCE(v_amount, 0) * 0.05);
 
     IF v_driver_balance < v_commission THEN
         RETURN json_build_object('success', false, 'message', 'رصيدك غير كافٍ لخصم عمولة الرحلة');
@@ -101,7 +101,7 @@ BEGIN
     IF v_commission_held > 0 THEN
         v_commission := v_commission_held;
     ELSE
-        v_commission := FLOOR(COALESCE(v_amount, 0) * 0.10);
+        v_commission := FLOOR(COALESCE(v_amount, 0) * 0.05);
     END IF;
 
     -- تحديث حالة الرحلة
@@ -146,7 +146,7 @@ BEGIN
     IF v_commission_held > 0 THEN
         v_commission := v_commission_held;
     ELSE
-        v_commission := FLOOR(COALESCE(p_amount, 0) * 0.10);
+        v_commission := FLOOR(COALESCE(p_amount, 0) * 0.05);
     END IF;
 
     -- تحديث حالة الرحلة للإلغاء بواسطة السائق
