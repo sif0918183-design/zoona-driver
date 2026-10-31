@@ -1051,7 +1051,7 @@ export default async function handler(req, res) {
                     cancellation_reason: reason || 'إلغاء من السائق',
                     commission_status: 'forfeited',
                     commission_deducted: true,
-                    commission_amount: penalty,
+                    commission_amount: penaltyCharged,
                     updated_at: serverTime.toISOString()
                 })
                 .eq('id', tripId)
