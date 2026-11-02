@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { verifyToken } from './_token-utils.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -14,23 +15,6 @@ const DEFAULT_SETTINGS = {
     restriction_duration_days: 3,
     travel_commission_rate: 5
 };
-
-function verifyToken(req) {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        throw new Error('المصادقة مطلوبة: رمز الجلسة مفقود أو غير صالح');
-    }
-    const token = authHeader.split(' ')[1];
-    try {
-        const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf-8'));
-        if (decoded.exp && decoded.exp < Date.now()) {
-            throw new Error('انتهت صلاحية رمز الجلسة الخاصة بك، يرجى تسجيل الدخول مرة أخرى');
-        }
-        return decoded;
-    } catch (e) {
-        throw new Error('رمز الجلسة غير صالح');
-    }
-}
 
 // Get current server time in Sudan Time (UTC+2)
 function getSudanServerTime() {

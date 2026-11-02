@@ -1,27 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { verifyToken } from './_token-utils.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-function verifyToken(req) {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        throw new Error('المصادقة مطلوبة: رمز الجلسة مفقود أو غير صالح');
-    }
-    const token = authHeader.split(' ')[1];
-    try {
-        const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf-8'));
-        if (decoded.exp && decoded.exp < Date.now()) {
-            throw new Error('انتهت صلاحية رمز الجلسة الخاصة بك، يرجى تسجيل الدخول مرة أخرى');
-        }
-        return decoded;
-    } catch (e) {
-        throw new Error('رمز الجلسة غير صالح');
-    }
-}
 
 export default async function handler(req, res) {
     // Enable CORS
@@ -250,15 +234,20 @@ export default async function handler(req, res) {
             return res.status(200).json({ success: true });
         }
 
-        // --- 5. CANCEL BY PASSENGER (WITH DETAILED COMMISSION REFUND RULES) ---
+        // --- 5. CANCEL BY PASSENGER (WITH STRICT RPC INTEGRATION & ROLE VERIFICATION) ---
         if (action === 'cancel_by_passenger') {
-            const { rideId, passengerId, elapsedMinutes, driverLat, driverLng } = req.body;
+            const { rideId } = req.body;
 
             if (!rideId) {
                 return res.status(400).json({ success: false, error: 'rideId is required' });
             }
 
-            // Get ride details
+            // 1. التحقق الصارم أن دور المستخدم الموثق في التوكن هو passenger حصراً
+            if (!session || session.role !== 'passenger') {
+                return res.status(403).json({ success: false, error: 'غير مصرح: يجب أن تكون راكباً لإلغاء هذه الرحلة' });
+            }
+
+            // 2. التحقق من وجود الرحلة
             const { data: rideData, error: rErr } = await supabase
                 .from('rides')
                 .select('*')
@@ -266,157 +255,34 @@ export default async function handler(req, res) {
                 .single();
 
             if (rErr || !rideData) {
-                return res.status(400).json({ success: false, error: 'الرحلة غير موجودة' });
+                return res.status(404).json({ success: false, error: 'الرحلة غير موجودة' });
             }
 
-            const rideAmount = rideData.amount || 0;
-            const commissionAmount = Math.floor(rideAmount * 0.05); // 5% commission hold or cancellation rules
-
-            let driverWithinRange = false;
-            if (rideData.driver_id && driverLat && driverLng && rideData.pickup_lat && rideData.pickup_lng) {
-                // Calculate distance manually
-                const R = 6371e3; // meters
-                const φ1 = rideData.pickup_lat * Math.PI/180;
-                const φ2 = driverLat * Math.PI/180;
-                const Δφ = (driverLat-rideData.pickup_lat) * Math.PI/180;
-                const Δλ = (driverLng-rideData.pickup_lng) * Math.PI/180;
-
-                const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-                        Math.cos(φ1) * Math.cos(φ2) *
-                        Math.sin(Δλ/2) * Math.sin(Δλ/2);
-                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-                const d = R * c; // in meters
-
-                driverWithinRange = d <= 200; // 200 meters
+            // 3. رفض الرحلة التي لا تحتوي على passenger_id
+            if (!rideData.passenger_id) {
+                return res.status(403).json({ success: false, error: 'بيانات مالك الرحلة مفقودة وغير مصرح بإلغائها' });
             }
 
-            let finalStatus = 'cancelled_by_customer';
-            let cancellationReason = '';
-
-            // Helper to safely execute cancellation refund ONLY IF driver actually accepted AND commission was held AND no refund occurred yet
-            const processCancellationRefund = async (description) => {
-                if (!rideData.driver_id || commissionAmount <= 0) {
-                    return false;
-                }
-
-                // Strictly check if driver actually accepted the ride and commission was held
-                const isAcceptedAndHeld = rideData.driver_accepted === true &&
-                    (Number(rideData.commission_held) > 0 || rideData.status === 'accepted' || rideData.status === 'arrived' || rideData.status === 'ongoing');
-
-                if (!isAcceptedAndHeld) {
-                    return false;
-                }
-
-                // Check balance_transactions to ensure a commission_held/deduction transaction exists
-                const { data: holdTx } = await supabase
-                    .from('balance_transactions')
-                    .select('id')
-                    .eq('driver_id', rideData.driver_id)
-                    .eq('ride_id', rideId)
-                    .in('type', ['commission_held', 'commission_deduction'])
-                    .limit(1);
-
-                if (!holdTx || holdTx.length === 0) {
-                    return false;
-                }
-
-                // Check if a cancellation_refund transaction ALREADY exists to prevent duplicate refunds
-                const { data: existingRefund } = await supabase
-                    .from('balance_transactions')
-                    .select('id')
-                    .eq('driver_id', rideData.driver_id)
-                    .eq('ride_id', rideId)
-                    .eq('type', 'cancellation_refund')
-                    .limit(1);
-
-                if (existingRefund && existingRefund.length > 0) {
-                    return false;
-                }
-
-                // Insert the cancellation_refund transaction FIRST to ensure idempotency via DB unique index
-                const { data: insertedTx, error: insertErr } = await supabase
-                    .from('balance_transactions')
-                    .insert([{
-                        driver_id: rideData.driver_id,
-                        ride_id: rideId,
-                        amount: commissionAmount,
-                        type: 'cancellation_refund',
-                        description: description
-                    }])
-                    .select('id')
-                    .single();
-
-                if (insertErr || !insertedTx) {
-                    return false;
-                }
-
-                // Get current driver balance
-                const { data: driver, error: driverErr } = await supabase
-                    .from('drivers')
-                    .select('balance')
-                    .eq('id', rideData.driver_id)
-                    .single();
-
-                if (driverErr || !driver) {
-                    // Do NOT delete insertedTx to prevent Duplicate Credit on retries
-                    return false;
-                }
-
-                // Update driver balance
-                const { data: updatedDriver, error: updateErr } = await supabase
-                    .from('drivers')
-                    .update({ balance: (driver.balance || 0) + commissionAmount })
-                    .eq('id', rideData.driver_id)
-                    .select('id');
-
-                if (updateErr || !updatedDriver || updatedDriver.length === 0) {
-                    console.error('Driver balance update warning:', updateErr ? updateErr.message : 'No rows updated');
-                    // Do NOT delete insertedTx to prevent Duplicate Credit on retries
-                    return false;
-                }
-
-                return true;
-            };
-
-            if (elapsedMinutes <= 2) {
-                // Within 2 minutes: Return commission to driver (full refund) if driver had accepted
-                const refunded = await processCancellationRefund('استرجاع عمولة الرحلة - إلغاء الراكب خلال دقيقتين');
-                cancellationReason = refunded
-                    ? 'تم استرجاع العمولة للسائق (إلغاء خلال دقيقتين)'
-                    : 'تم إلغاء الرحلة من قبل الراكب';
-            } else if (driverWithinRange) {
-                // After 2 minutes + driver is nearby (within 200m): Keep commission, mark as completed
-                finalStatus = 'completed';
-                cancellationReason = 'السائق كان بالقرب من نقطة الاستلام - تم إبقاء العمولة للشركة';
-            } else {
-                // After 2 minutes + driver NOT nearby: Return commission to driver if driver had accepted
-                const refunded = await processCancellationRefund('استرجاع عمولة الرحلة - إلغاء بعد دقيقتين والسائق بعيد');
-                cancellationReason = refunded
-                    ? 'تم استرجاع العمولة للسائق (السائق لم يكن قريباً)'
-                    : 'تم إلغاء الرحلة من قبل الراكب';
+            // 4. التأكد الصارم أن session.id يطابق rideData.passenger_id تماماً
+            if (String(session.id).trim() !== String(rideData.passenger_id).trim()) {
+                return res.status(403).json({ success: false, error: 'غير مصرح لك بإلغاء رحلة راكب آخر' });
             }
 
-            // Update ride status
-            const updatePayload = {
-                status: finalStatus,
-                updated_at: new Date().toISOString(),
-                cancellation_reason: cancellationReason
-            };
+            // 5. استدعاء الدالة الذرية المحمية cancel_ride عبر RPC فقط مع تحديد p_cancelled_by: 'customer' برمجياً من الخادم
+            const { error: rpcError } = await supabase.rpc('cancel_ride', {
+                p_ride_id: rideId,
+                p_cancelled_by: 'customer'
+            });
 
-            if (finalStatus === 'completed') {
-                updatePayload.completed_at = new Date().toISOString();
-            } else {
-                updatePayload.cancelled_at = new Date().toISOString();
+            if (rpcError) {
+                return res.status(400).json({ success: false, error: rpcError.message });
             }
 
-            const { error: updateError } = await supabase
-                .from('rides')
-                .update(updatePayload)
-                .eq('id', rideId);
-
-            if (updateError) throw updateError;
-
-            return res.status(200).json({ success: true, finalStatus, cancellationReason });
+            return res.status(200).json({
+                success: true,
+                finalStatus: 'cancelled_by_customer',
+                cancellationReason: 'إلغاء الراكب'
+            });
         }
 
         // --- 6. CANCEL BY DRIVER ---
