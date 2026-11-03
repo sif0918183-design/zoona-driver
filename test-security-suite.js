@@ -515,7 +515,7 @@ console.log('\n--- 1. REAL API HANDLER INVOCATIONS ---');
     }
 }
 
-// 1.24 مراقبة وتأكيد عدم تنفيذ أي عمليات قاعدة بيانات (RPC/INSERT/UPDATE) عند فشل الصلاحيات
+// 1.24 مراقبة وتأكيد عدم تنفيذ أي عمليات قاعدة بيانات (RPC/INSERT/UPDATE) عند فشل الصلاحيات عبر ridesHandler و travelHandler
 {
     let rpcCallCount = 0;
     let insertCallCount = 0;
@@ -529,34 +529,67 @@ console.log('\n--- 1. REAL API HANDLER INVOCATIONS ---');
                 eq: async () => { updateCallCount++; return { data: null, error: null }; }
             }),
             select: () => ({
-                eq: () => ({
+                eq: (col, val) => ({
                     single: async () => ({ data: { id: 'r1', passenger_id: 'victim', driver_id: 'd1' } }),
-                    maybeSingle: async () => ({ data: { id: 'r1', passenger_id: 'victim', driver_id: 'd1' } })
+                    maybeSingle: async () => {
+                        if (table === 'travel_trips') {
+                            return { data: { id: 'trip-1', passenger_id: 'victim-p', driver_id: 'victim-d', ride_request_id: 'req-1' } };
+                        }
+                        if (table === 'ride_requests') {
+                            return { data: { id: 'req-1', customer_id: 'victim-p', driver_id: 'victim-d' } };
+                        }
+                        return { data: { id: 'r1', passenger_id: 'victim', driver_id: 'd1' } };
+                    }
                 })
             })
         })
     };
 
     setRidesSupabaseClient(monitoredClient);
+    setTravelSupabaseClient(monitoredClient);
 
     try {
-        // تنفيذ محاولة غير مصرحة (راكب يحاول قبول رحلة كسائق)
+        // حالة أ: محاولة غير مصرحة في ridesHandler (راكب يحاول قبول رحلة كسائق)
         const unauthorizedToken = generateToken({ id: 'hacker', role: 'passenger' });
-        const { req, res, getStatus } = createMockReqRes({
+        const { req: rRides, res: resRides, getStatus: sRides } = createMockReqRes({
             method: 'POST',
             body: { action: 'accept', rideId: 'r1', driverId: 'd1' },
             token: unauthorizedToken
         });
-        await ridesHandler(req, res);
-        assert.strictEqual(getStatus(), 403);
+        await ridesHandler(rRides, resRides);
+        assert.strictEqual(sRides(), 403);
+        assert.strictEqual(rpcCallCount, 0, 'RPC must not be called on ridesHandler auth failure');
+        assert.strictEqual(insertCallCount, 0, 'INSERT must not be called on ridesHandler auth failure');
+        assert.strictEqual(updateCallCount, 0, 'UPDATE must not be called on ridesHandler auth failure');
 
-        // التأكيد الرياضي الصارم بأن المعالج الفعلي لم يقم بأي عملية RPC أو كتابة
-        assert.strictEqual(rpcCallCount, 0, 'RPC must not be called on auth failure');
-        assert.strictEqual(insertCallCount, 0, 'INSERT must not be called on auth failure');
-        assert.strictEqual(updateCallCount, 0, 'UPDATE must not be called on auth failure');
-        console.log('✅ Test 1.24 Passed: Verified that 0 RPCs, 0 INSERTs, and 0 UPDATEs occur on actual handlers when authorization fails');
+        // حالة ب: محاولة غير مصرحة في travelHandler لـ process_10h_commission (مستخدم غريب عن الرحلة)
+        const { req: rTravelComm, res: resTravelComm, getStatus: sTravelComm } = createMockReqRes({
+            method: 'POST',
+            body: { action: 'process_10h_commission', tripId: 'trip-1' },
+            token: unauthorizedToken // ليس victim-p وليس victim-d
+        });
+        await travelHandler(rTravelComm, resTravelComm);
+        assert.strictEqual(sTravelComm(), 403);
+        assert.strictEqual(rpcCallCount, 0, 'RPC must not be called on unauthorized process_10h_commission');
+        assert.strictEqual(insertCallCount, 0, 'INSERT must not be called on unauthorized process_10h_commission');
+        assert.strictEqual(updateCallCount, 0, 'UPDATE must not be called on unauthorized process_10h_commission');
+
+        // حالة ج: محاولة استدعاء cron_process_10h عند غياب سر الكرون أو استخدام سر خاطئ
+        const { req: rCron, res: resCron, getStatus: sCron } = createMockReqRes({
+            method: 'POST',
+            body: { action: 'cron_process_10h' },
+            token: 'wrong_secret_123'
+        });
+        await travelHandler(rCron, resCron);
+        assert.strictEqual(sCron(), 401);
+        assert.strictEqual(rpcCallCount, 0, 'RPC must not be called on invalid cron_process_10h');
+        assert.strictEqual(insertCallCount, 0, 'INSERT must not be called on invalid cron_process_10h');
+        assert.strictEqual(updateCallCount, 0, 'UPDATE must not be called on invalid cron_process_10h');
+
+        console.log('✅ Test 1.24 Passed: Verified that 0 RPCs, 0 INSERTs, and 0 UPDATEs occur across both ridesHandler and travelHandler on auth/cron failures');
     } finally {
         setRidesSupabaseClient(originalRidesSupabase);
+        setTravelSupabaseClient(originalTravelSupabase);
     }
 }
 
