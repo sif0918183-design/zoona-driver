@@ -1,5 +1,10 @@
 import { verifyToken } from './_token-utils.js';
 
+/**
+ * نقطة نهاية آمنة لتهيئة عميل Supabase على المتصفح
+ * تم تطهيرها بالكامل لمنع كشف SUPABASE_SERVICE_ROLE_KEY أو أي مفتاح إداري تحت أي ظرف.
+ * تعيد فقط المفتاح العام (ANON KEY) المخصص للمتصفحات وتطبيقات الهواتف.
+ */
 export default function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -16,12 +21,13 @@ export default function handler(req, res) {
     return res.status(401).json({ success: false, error: error.message });
   }
 
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '';
+  // استخدام المفتاح العام فقط ومنع كشف مفتاح الخدمة الإداري إطلاقاً
+  const clientKey = process.env.SUPABASE_ANON_KEY || '';
 
   const response = {
-    serviceRoleKey,
+    serviceRoleKey: clientKey,
     data: {
-      serviceRoleKey
+      serviceRoleKey: clientKey
     }
   };
 
