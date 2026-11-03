@@ -391,15 +391,15 @@ export default async function handler(req, res) {
 
         let session = null;
         if (action === 'cron_process_10h') {
-            const cronHeader = req.headers['x-vercel-cron'];
             const authHeader = req.headers['authorization'];
             const cronSecret = process.env.CRON_SECRET;
 
-            const isVercelCron = cronHeader === '1' || cronHeader === 'true';
-            const isAuthorizedSecret = cronSecret && authHeader === `Bearer ${cronSecret}`;
+            // التحقق الأمني الصارم: منع الاعتماد على x-vercel-cron القابل للتزوير
+            // واشتراط تطابق Authorization: Bearer ${CRON_SECRET} حصراً مع وجود المتغير في البيئة
+            const isAuthorizedSecret = !!(cronSecret && cronSecret.trim() !== '' && authHeader === `Bearer ${cronSecret.trim()}`);
 
-            if (!isVercelCron && !isAuthorizedSecret) {
-                return res.status(401).json({ success: false, error: 'غير مصرح للتشغيل التلقائي' });
+            if (!isAuthorizedSecret) {
+                return res.status(401).json({ success: false, error: 'غير مصرح للتشغيل التلقائي: رمز الجدولة مفقود أو غير صحيح' });
             }
         } else {
             try {
@@ -849,6 +849,43 @@ export default async function handler(req, res) {
             if (!tripId && !rideId) {
                 return res.status(400).json({ success: false, error: 'tripId or rideId is required' });
             }
+
+            // التحقق الأمني الصارم من الصلاحيات:
+            // استرجاع الرحلة للتحقق من أطرافها ومنع تشغيلها لأي مستخدم غريب
+            let tripRecord = null;
+            if (tripId) {
+                const { data: t } = await supabase
+                    .from('travel_trips')
+                    .select('passenger_id, driver_id, ride_request_id')
+                    .eq('id', tripId)
+                    .maybeSingle();
+                tripRecord = t;
+            }
+
+            const targetReqId = rideId || tripRecord?.ride_request_id;
+            let reqRecord = null;
+            if (targetReqId) {
+                const { data: r } = await supabase
+                    .from('ride_requests')
+                    .select('customer_id, driver_id')
+                    .eq('id', targetReqId)
+                    .maybeSingle();
+                reqRecord = r;
+            }
+
+            const tripPassengerId = tripRecord?.passenger_id || reqRecord?.customer_id;
+            const tripDriverId = tripRecord?.driver_id || reqRecord?.driver_id;
+
+            const isAuthorizedCaller = (
+                session?.role === 'admin' ||
+                (session?.role === 'passenger' && tripPassengerId && session.id === tripPassengerId) ||
+                (session?.role === 'driver' && tripDriverId && session.id === tripDriverId)
+            );
+
+            if (!isAuthorizedCaller) {
+                return res.status(403).json({ success: false, error: 'غير مصرح: لا يمكنك معالجة عمولة رحلة لا تخصك' });
+            }
+
             const evalResult = await evaluateTrip10hCommission(tripId, rideId, settings, serverTime);
             if (!evalResult.success && evalResult.error) {
                 return res.status(400).json(evalResult);

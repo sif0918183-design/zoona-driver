@@ -1,16 +1,18 @@
 import assert from 'assert';
 
-// ضبط متغيرات البيئة قبل استيراد المعالجات
+// 1. ضبط متغيرات بيئة الاختبار التجريبية والآمنة قبل أي استيراد للموديولات
 process.env.SESSION_TOKEN_SECRET = 'test_secret_for_suite_abcdef1234567890';
+process.env.CRON_SECRET = 'test_cron_secret_secure_999888';
 process.env.SUPABASE_ANON_KEY = 'test_anon_public_key_only';
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'test_secret_service_role_key_danger';
 process.env.SUPABASE_URL = 'https://fake-test-supabase.co';
 
-import { generateToken, verifyToken } from './api/_token-utils.js';
-import getServiceKeyHandler from './api/get-service-key.js';
-import supabaseServiceKeyHandler from './api/supabase-service-key.js';
-import ridesHandler from './api/rides.js';
-import travelHandler from './api/travel-platform.js';
+// 2. استخدام Dynamic Imports لضمان قراءة متغيرات البيئة قبل تهيئة الوحدات
+const { generateToken, verifyToken } = await import('./api/_token-utils.js');
+const { default: getServiceKeyHandler } = await import('./api/get-service-key.js');
+const { default: supabaseServiceKeyHandler } = await import('./api/supabase-service-key.js');
+const { default: ridesHandler } = await import('./api/rides.js');
+const { default: travelHandler } = await import('./api/travel-platform.js');
 
 console.log('=== STARTING SECURITY & ROLE AUTHORIZATION TEST SUITE ===');
 
@@ -382,6 +384,67 @@ console.log('\n--- 1. REAL API HANDLER INVOCATIONS ---');
     console.log('✅ Test 1.18 Passed: Real api/travel-platform.js blocks passenger from viewing trip passenger details with 403');
 }
 
+// 1.19 اختبار travelHandler الحقيقي (cron_process_10h): رفض هيدر x-vercel-cron المزيف بدون السر (401)
+{
+    const { req, res, getStatus, getJson } = createMockReqRes({
+        method: 'POST',
+        body: { action: 'cron_process_10h' },
+        headers: { 'x-vercel-cron': '1' },
+        token: null
+    });
+    await travelHandler(req, res);
+    assert.strictEqual(getStatus(), 401);
+    assert.strictEqual(getJson().success, false);
+    assert.match(getJson().error, /رمز الجدولة مفقود أو غير صحيح/);
+    console.log('✅ Test 1.19 Passed: Real api/travel-platform.js strictly rejects fake x-vercel-cron header with 401');
+}
+
+// 1.20 اختبار travelHandler الحقيقي (cron_process_10h): رفض السر الخاطئ برمز 401
+{
+    const { req, res, getStatus, getJson } = createMockReqRes({
+        method: 'POST',
+        body: { action: 'cron_process_10h' },
+        token: 'wrong_secret_attempt'
+    });
+    await travelHandler(req, res);
+    assert.strictEqual(getStatus(), 401);
+    assert.strictEqual(getJson().success, false);
+    assert.match(getJson().error, /رمز الجدولة مفقود أو غير صحيح/);
+    console.log('✅ Test 1.20 Passed: Real api/travel-platform.js rejects invalid CRON_SECRET with 401');
+}
+
+// 1.21 اختبار travelHandler الحقيقي (cron_process_10h): قبول السر الصحيح الموثق
+{
+    const { req, res, getStatus, getJson } = createMockReqRes({
+        method: 'POST',
+        body: { action: 'cron_process_10h' },
+        headers: { 'authorization': `Bearer ${process.env.CRON_SECRET}` }
+    });
+    await travelHandler(req, res);
+    // إما 200 بنجاح الفحص أو معالجة الحالات المتاحة
+    assert.strictEqual(getStatus(), 200);
+    assert.strictEqual(getJson().success, true);
+    console.log('✅ Test 1.21 Passed: Real api/travel-platform.js accepts valid CRON_SECRET bearer header');
+}
+
+// 1.22 اختبار travelHandler الحقيقي (process_10h_commission): منع مستخدم غريب من تشغيل معالجة العمولة (403)
+{
+    const strangerToken = generateToken({ id: 'stranger-user', role: 'passenger' });
+    const { req, res, getStatus, getJson } = createMockReqRes({
+        method: 'POST',
+        body: {
+            action: 'process_10h_commission',
+            rideId: 'random-ride-req-id'
+        },
+        token: strangerToken
+    });
+    await travelHandler(req, res);
+    assert.strictEqual(getStatus(), 403);
+    assert.strictEqual(getJson().success, false);
+    assert.match(getJson().error, /غير مصرح: لا يمكنك معالجة عمولة رحلة لا تخصك/);
+    console.log('✅ Test 1.22 Passed: Real api/travel-platform.js blocks unauthorized user from running process_10h_commission with 403');
+}
+
 
 // ====================================================================
 // 2. اختبارات المصادقة والتوقيع التشفيري الشاملة في _token-utils.js
@@ -459,8 +522,9 @@ console.log('\n--- 2. CRYPTOGRAPHIC TOKEN VERIFICATION TESTS ---');
 // ====================================================================
 
 console.log('\n--- 3. ACCOUNTING LOGIC & LEDGER AUDIT SIMULATION TESTS ---');
-console.log('ℹ️ ملاحظة صريحة: الاختبارات التالية هي محاكاة منطقية وحسابية في JavaScript لقواعد دالة SQL');
-console.log('   نظراً لعدم توفر محرك PostgreSQL محلي، ولم تُنفذ دالة SQL على قاعدة بيانات حية حماية للإنتاج.');
+console.log('ℹ️ إيضاح صريح: الاختبارات التالية هي محاكاة منطقية وحسابية في JavaScript لقواعد دالة SQL');
+console.log('   نظراً لعدم توفر بيئة PostgreSQL محلية في بيئة الـ Sandbox (تم التحقق عبر which psql / which postgres).');
+console.log('   والتزاماً بالشرط الحاسم بعدم تنفيذ أي SQL أو اختبارات على قاعدة البيانات الحية.');
 
 function simulateCancelRideLedgerAudit({
     rideCommHeld,
