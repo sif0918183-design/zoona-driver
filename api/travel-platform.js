@@ -850,8 +850,7 @@ export default async function handler(req, res) {
                 return res.status(400).json({ success: false, error: 'tripId or rideId is required' });
             }
 
-            // التحقق الأمني الصارم من الصلاحيات:
-            // استرجاع الرحلة للتحقق من أطرافها ومنع تشغيلها لأي مستخدم غريب
+            // التحقق الأمني الصارم من الصلاحيات وتطابق المعرفات:
             let tripRecord = null;
             if (tripId) {
                 const { data: t } = await supabase
@@ -860,17 +859,35 @@ export default async function handler(req, res) {
                     .eq('id', tripId)
                     .maybeSingle();
                 tripRecord = t;
+
+                if (!tripRecord) {
+                    return res.status(404).json({ success: false, error: 'رحلة السفر المحددة (tripId) غير موجودة' });
+                }
             }
 
-            const targetReqId = rideId || tripRecord?.ride_request_id;
+            // إذا أُرسل tripId و rideId معاً: التحقق الحاسم من تطابقهما التام
+            if (tripRecord && rideId && tripRecord.ride_request_id && String(tripRecord.ride_request_id).trim() !== String(rideId).trim()) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'معرف الرحلة rideId لا يطابق طلب السفر المرتبط بـ tripId'
+                });
+            }
+
+            // تحديد المعرف الموثوق: إذا أرسل tripId يتم استخدام ride_request_id المرتبط به حكماً
+            const trustedReqId = tripRecord ? tripRecord.ride_request_id : rideId;
+
             let reqRecord = null;
-            if (targetReqId) {
+            if (trustedReqId) {
                 const { data: r } = await supabase
                     .from('ride_requests')
                     .select('customer_id, driver_id')
-                    .eq('id', targetReqId)
+                    .eq('id', trustedReqId)
                     .maybeSingle();
                 reqRecord = r;
+
+                if (!tripRecord && !reqRecord) {
+                    return res.status(404).json({ success: false, error: 'طلب الرحلة المحدد (rideId) غير موجود' });
+                }
             }
 
             const tripPassengerId = tripRecord?.passenger_id || reqRecord?.customer_id;
@@ -886,7 +903,8 @@ export default async function handler(req, res) {
                 return res.status(403).json({ success: false, error: 'غير مصرح: لا يمكنك معالجة عمولة رحلة لا تخصك' });
             }
 
-            const evalResult = await evaluateTrip10hCommission(tripId, rideId, settings, serverTime);
+            // تمرير المعرف الموثوق حصراً لمنع استبداله بمعرف خارجي
+            const evalResult = await evaluateTrip10hCommission(tripId || null, trustedReqId, settings, serverTime);
             if (!evalResult.success && evalResult.error) {
                 return res.status(400).json(evalResult);
             }

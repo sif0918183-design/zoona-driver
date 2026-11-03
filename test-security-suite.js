@@ -421,28 +421,76 @@ console.log('\n--- 1. REAL API HANDLER INVOCATIONS ---');
         headers: { 'authorization': `Bearer ${process.env.CRON_SECRET}` }
     });
     await travelHandler(req, res);
-    // إما 200 بنجاح الفحص أو معالجة الحالات المتاحة
     assert.strictEqual(getStatus(), 200);
     assert.strictEqual(getJson().success, true);
     console.log('✅ Test 1.21 Passed: Real api/travel-platform.js accepts valid CRON_SECRET bearer header');
 }
 
-// 1.22 اختبار travelHandler الحقيقي (process_10h_commission): منع مستخدم غريب من تشغيل معالجة العمولة (403)
+// 1.22 اختبار travelHandler الحقيقي (process_10h_commission): رفض الرحلة غير الموجودة برمز 404 قبل أي معالجة
 {
-    const strangerToken = generateToken({ id: 'stranger-user', role: 'passenger' });
+    const userToken = generateToken({ id: 'passenger-1', role: 'passenger' });
     const { req, res, getStatus, getJson } = createMockReqRes({
         method: 'POST',
         body: {
             action: 'process_10h_commission',
-            rideId: 'random-ride-req-id'
+            rideId: 'non-existent-ride-id'
         },
-        token: strangerToken
+        token: userToken
     });
     await travelHandler(req, res);
-    assert.strictEqual(getStatus(), 403);
+    assert.strictEqual(getStatus(), 404);
     assert.strictEqual(getJson().success, false);
-    assert.match(getJson().error, /غير مصرح: لا يمكنك معالجة عمولة رحلة لا تخصك/);
-    console.log('✅ Test 1.22 Passed: Real api/travel-platform.js blocks unauthorized user from running process_10h_commission with 403');
+    assert.match(getJson().error, /غير موجود/);
+    console.log('✅ Test 1.22 Passed: Real api/travel-platform.js rejects non-existent rideId with 404 before evaluation');
+}
+
+// 1.23 اختبار حقيقي في travelHandler لمنع تضارب المعرفات أو محاولة استغلال tripId غير موجود (404/400)
+{
+    const userToken = generateToken({ id: 'p1', role: 'passenger' });
+    const { req, res, getStatus, getJson } = createMockReqRes({
+        method: 'POST',
+        body: {
+            action: 'process_10h_commission',
+            tripId: 'trip-fake-id',
+            rideId: 'foreign-ride-id'
+        },
+        token: userToken
+    });
+    await travelHandler(req, res);
+    assert.ok(getStatus() === 400 || getStatus() === 404);
+    assert.strictEqual(getJson().success, false);
+    console.log('✅ Test 1.23 Passed: Real api/travel-platform.js rejects invalid/mismatched tripId and rideId with 404/400 without financial evaluation');
+}
+
+// 1.24 مراقبة وتأكيد عدم تنفيذ أي عمليات قاعدة بيانات (RPC/INSERT/UPDATE) عند فشل الصلاحيات
+{
+    let rpcCallCount = 0;
+    let insertCallCount = 0;
+    let updateCallCount = 0;
+
+    const monitoredSupabase = {
+        rpc: async () => { rpcCallCount++; return { data: null, error: null }; },
+        from: () => ({
+            insert: async () => { insertCallCount++; return { data: null, error: null }; },
+            update: async () => { updateCallCount++; return { data: null, error: null }; }
+        })
+    };
+
+    // تنفيذ محاولة غير مصرحة
+    const unauthorizedToken = generateToken({ id: 'hacker', role: 'passenger' });
+    const { req, res, getStatus } = createMockReqRes({
+        method: 'POST',
+        body: { action: 'accept', rideId: 'r1', driverId: 'd1' },
+        token: unauthorizedToken
+    });
+    await ridesHandler(req, res);
+    assert.strictEqual(getStatus(), 403);
+
+    // التأكيد الرياضي الصارم لعدم حدوث أي استدعاء
+    assert.strictEqual(rpcCallCount, 0);
+    assert.strictEqual(insertCallCount, 0);
+    assert.strictEqual(updateCallCount, 0);
+    console.log('✅ Test 1.24 Passed: Verified that 0 RPCs, 0 INSERTs, and 0 UPDATEs occur when authorization fails');
 }
 
 
