@@ -5,7 +5,11 @@ import { verifyToken } from './_token-utils.js';
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+export let supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+export function setSupabaseClient(client) {
+    supabase = client;
+}
 
 export default async function handler(req, res) {
     // Enable CORS

@@ -11,8 +11,8 @@ process.env.SUPABASE_URL = 'https://fake-test-supabase.co';
 const { generateToken, verifyToken } = await import('./api/_token-utils.js');
 const { default: getServiceKeyHandler } = await import('./api/get-service-key.js');
 const { default: supabaseServiceKeyHandler } = await import('./api/supabase-service-key.js');
-const { default: ridesHandler } = await import('./api/rides.js');
-const { default: travelHandler } = await import('./api/travel-platform.js');
+const { default: ridesHandler, setSupabaseClient: setRidesSupabaseClient, supabase: originalRidesSupabase } = await import('./api/rides.js');
+const { default: travelHandler, setSupabaseClient: setTravelSupabaseClient, supabase: originalTravelSupabase } = await import('./api/travel-platform.js');
 
 console.log('=== STARTING SECURITY & ROLE AUTHORIZATION TEST SUITE ===');
 
@@ -444,22 +444,75 @@ console.log('\n--- 1. REAL API HANDLER INVOCATIONS ---');
     console.log('✅ Test 1.22 Passed: Real api/travel-platform.js rejects non-existent rideId with 404 before evaluation');
 }
 
-// 1.23 اختبار حقيقي في travelHandler لمنع تضارب المعرفات أو محاولة استغلال tripId غير موجود (404/400)
+// 1.23 اختبار حقيقي لرحلتين موجودتين مع تضارب tripId و rideId، واختبار ride_request_id المفقود
 {
-    const userToken = generateToken({ id: 'p1', role: 'passenger' });
-    const { req, res, getStatus, getJson } = createMockReqRes({
-        method: 'POST',
-        body: {
-            action: 'process_10h_commission',
-            tripId: 'trip-fake-id',
-            rideId: 'foreign-ride-id'
-        },
-        token: userToken
-    });
-    await travelHandler(req, res);
-    assert.ok(getStatus() === 400 || getStatus() === 404);
-    assert.strictEqual(getJson().success, false);
-    console.log('✅ Test 1.23 Passed: Real api/travel-platform.js rejects invalid/mismatched tripId and rideId with 404/400 without financial evaluation');
+    // تهيئة عميل Mock لـ travelHandler يحاكي وجود رحلتين مختلفتين
+    let evalRpcCalled = 0;
+    const testTravelDB = {
+        from: (table) => ({
+            select: () => ({
+                eq: (col, val) => ({
+                    maybeSingle: async () => {
+                        if (table === 'travel_trips' && val === 'trip-1') {
+                            return { data: { id: 'trip-1', passenger_id: 'p1', driver_id: 'd1', ride_request_id: 'req-1' } };
+                        }
+                        if (table === 'travel_trips' && val === 'trip-corrupted-no-req') {
+                            return { data: { id: 'trip-corrupted-no-req', passenger_id: 'p1', driver_id: 'd1', ride_request_id: null } };
+                        }
+                        if (table === 'ride_requests' && val === 'req-1') {
+                            return { data: { id: 'req-1', customer_id: 'p1', driver_id: 'd1' } };
+                        }
+                        if (table === 'ride_requests' && val === 'req-2') {
+                            return { data: { id: 'req-2', customer_id: 'p2', driver_id: 'd2' } };
+                        }
+                        return { data: null };
+                    }
+                })
+            })
+        }),
+        rpc: async () => { evalRpcCalled++; return { data: null, error: null }; }
+    };
+
+    setTravelSupabaseClient(testTravelDB);
+
+    try {
+        const p1Token = generateToken({ id: 'p1', role: 'passenger' });
+
+        // حالة 1: المستخدم صاحب trip-1 يحاول تمرير rideId لطلب رحلة ثانية (req-2)
+        const { req: r1, res: res1, getStatus: s1, getJson: j1 } = createMockReqRes({
+            method: 'POST',
+            body: {
+                action: 'process_10h_commission',
+                tripId: 'trip-1',
+                rideId: 'req-2' // لا يطابق req-1
+            },
+            token: p1Token
+        });
+        await travelHandler(r1, res1);
+        assert.strictEqual(s1(), 400);
+        assert.strictEqual(j1().success, false);
+        assert.match(j1().error, /معرف الرحلة rideId لا يطابق طلب السفر المرتبط بـ tripId/);
+        assert.strictEqual(evalRpcCalled, 0, 'يجب عدم استدعاء أي RPC عند تضارب المعرفات');
+
+        // حالة 2: وجود tripRecord ولكن ride_request_id فارغ أو null
+        const { req: r2, res: res2, getStatus: s2, getJson: j2 } = createMockReqRes({
+            method: 'POST',
+            body: {
+                action: 'process_10h_commission',
+                tripId: 'trip-corrupted-no-req'
+            },
+            token: p1Token
+        });
+        await travelHandler(r2, res2);
+        assert.strictEqual(s2(), 400);
+        assert.strictEqual(j2().success, false);
+        assert.match(j2().error, /ride_request_id مفقود/);
+        assert.strictEqual(evalRpcCalled, 0, 'يجب عدم استدعاء أي RPC عند غياب ride_request_id');
+
+        console.log('✅ Test 1.23 Passed: Real travelHandler rejects cross-ride mismatch and null ride_request_id with 400 without RPC');
+    } finally {
+        setTravelSupabaseClient(originalTravelSupabase);
+    }
 }
 
 // 1.24 مراقبة وتأكيد عدم تنفيذ أي عمليات قاعدة بيانات (RPC/INSERT/UPDATE) عند فشل الصلاحيات
@@ -468,29 +521,43 @@ console.log('\n--- 1. REAL API HANDLER INVOCATIONS ---');
     let insertCallCount = 0;
     let updateCallCount = 0;
 
-    const monitoredSupabase = {
+    const monitoredClient = {
         rpc: async () => { rpcCallCount++; return { data: null, error: null }; },
-        from: () => ({
+        from: (table) => ({
             insert: async () => { insertCallCount++; return { data: null, error: null }; },
-            update: async () => { updateCallCount++; return { data: null, error: null }; }
+            update: () => ({
+                eq: async () => { updateCallCount++; return { data: null, error: null }; }
+            }),
+            select: () => ({
+                eq: () => ({
+                    single: async () => ({ data: { id: 'r1', passenger_id: 'victim', driver_id: 'd1' } }),
+                    maybeSingle: async () => ({ data: { id: 'r1', passenger_id: 'victim', driver_id: 'd1' } })
+                })
+            })
         })
     };
 
-    // تنفيذ محاولة غير مصرحة
-    const unauthorizedToken = generateToken({ id: 'hacker', role: 'passenger' });
-    const { req, res, getStatus } = createMockReqRes({
-        method: 'POST',
-        body: { action: 'accept', rideId: 'r1', driverId: 'd1' },
-        token: unauthorizedToken
-    });
-    await ridesHandler(req, res);
-    assert.strictEqual(getStatus(), 403);
+    setRidesSupabaseClient(monitoredClient);
 
-    // التأكيد الرياضي الصارم لعدم حدوث أي استدعاء
-    assert.strictEqual(rpcCallCount, 0);
-    assert.strictEqual(insertCallCount, 0);
-    assert.strictEqual(updateCallCount, 0);
-    console.log('✅ Test 1.24 Passed: Verified that 0 RPCs, 0 INSERTs, and 0 UPDATEs occur when authorization fails');
+    try {
+        // تنفيذ محاولة غير مصرحة (راكب يحاول قبول رحلة كسائق)
+        const unauthorizedToken = generateToken({ id: 'hacker', role: 'passenger' });
+        const { req, res, getStatus } = createMockReqRes({
+            method: 'POST',
+            body: { action: 'accept', rideId: 'r1', driverId: 'd1' },
+            token: unauthorizedToken
+        });
+        await ridesHandler(req, res);
+        assert.strictEqual(getStatus(), 403);
+
+        // التأكيد الرياضي الصارم بأن المعالج الفعلي لم يقم بأي عملية RPC أو كتابة
+        assert.strictEqual(rpcCallCount, 0, 'RPC must not be called on auth failure');
+        assert.strictEqual(insertCallCount, 0, 'INSERT must not be called on auth failure');
+        assert.strictEqual(updateCallCount, 0, 'UPDATE must not be called on auth failure');
+        console.log('✅ Test 1.24 Passed: Verified that 0 RPCs, 0 INSERTs, and 0 UPDATEs occur on actual handlers when authorization fails');
+    } finally {
+        setRidesSupabaseClient(originalRidesSupabase);
+    }
 }
 
 

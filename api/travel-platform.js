@@ -4,7 +4,11 @@ import { verifyToken } from './_token-utils.js';
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+export let supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+export function setSupabaseClient(client) {
+    supabase = client;
+}
 
 const DEFAULT_SETTINGS = {
     max_advance_creation_days: 7,
@@ -865,12 +869,22 @@ export default async function handler(req, res) {
                 }
             }
 
-            // إذا أُرسل tripId و rideId معاً: التحقق الحاسم من تطابقهما التام
-            if (tripRecord && rideId && tripRecord.ride_request_id && String(tripRecord.ride_request_id).trim() !== String(rideId).trim()) {
+            // إذا كان tripRecord موجوداً ولكن ride_request_id فارغ أو null: رفض الطلب فوراً قبل أي معالجة مالية
+            if (tripRecord && (!tripRecord.ride_request_id || String(tripRecord.ride_request_id).trim() === '')) {
                 return res.status(400).json({
                     success: false,
-                    error: 'معرف الرحلة rideId لا يطابق طلب السفر المرتبط بـ tripId'
+                    error: 'بيانات الرحلة السفرية غير مكتملة: ride_request_id مفقود ولا يمكن معالجة العمولة'
                 });
+            }
+
+            // إذا أُرسل tripId و rideId معاً: التحقق الحاسم من تطابقهما التام
+            if (tripRecord && rideId) {
+                if (String(tripRecord.ride_request_id).trim() !== String(rideId).trim()) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'معرف الرحلة rideId لا يطابق طلب السفر المرتبط بـ tripId'
+                    });
+                }
             }
 
             // تحديد المعرف الموثوق: إذا أرسل tripId يتم استخدام ride_request_id المرتبط به حكماً
