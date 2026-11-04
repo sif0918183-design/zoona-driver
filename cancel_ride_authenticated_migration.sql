@@ -71,21 +71,7 @@ BEGIN
         RAISE EXCEPTION 'الرحلة غير موجودة: %', p_ride_id;
     END IF;
 
-    -- 4. منع إعادة معالجة الرحلات النهائية
-    IF v_ride.status IN (
-        'completed',
-        'cancelled_by_driver',
-        'cancelled_by_customer',
-        'cancelled'
-    ) THEN
-        RETURN;
-    END IF;
-
-    IF v_ride.status NOT IN ('accepted', 'arrived', 'ongoing', 'searching') THEN
-        RETURN;
-    END IF;
-
-    -- 5. التحقق من ملكية الرحلة للمستخدم الموثق
+    -- 4. التحقق الأمني المسبق من ملكية الرحلة للمستخدم الموثق (قبل أي خروج)
     IF v_current_role = 'authenticated' THEN
 
         IF v_caller_id IS NULL THEN
@@ -100,6 +86,28 @@ BEGIN
             RAISE EXCEPTION 'لا يمكنك إلغاء رحلة راكب آخر';
         END IF;
 
+    END IF;
+
+    -- 5. منع إعادة معالجة الرحلات النهائية (Idempotency آمن بعد إثبات الملكية)
+    IF v_ride.status IN (
+        'completed',
+        'cancelled_by_driver',
+        'cancelled_by_customer',
+        'cancelled'
+    ) THEN
+        RETURN;
+    END IF;
+
+    -- 6. حصر الحالات القابلة للإلغاء ورفض NULL وأي حالة أخرى باستثناء صريح يمنع النجاح الزائف
+    IF v_ride.status IS NULL OR v_ride.status NOT IN (
+        'accepted',
+        'arrived',
+        'ongoing',
+        'searching',
+        'pending',
+        'awaiting_driver_acceptance'
+    ) THEN
+        RAISE EXCEPTION 'لا يمكن إلغاء رحلة بحالتها الحالية: %', COALESCE(v_ride.status, 'فارغة (NULL)');
     END IF;
 
     v_ride_comm_held := COALESCE(v_ride.commission_held, 0);
