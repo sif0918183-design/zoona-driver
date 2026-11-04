@@ -515,16 +515,18 @@ console.log('\n--- 1. REAL API HANDLER INVOCATIONS ---');
     }
 }
 
-// 1.24 مراقبة وتأكيد عدم تنفيذ أي عمليات قاعدة بيانات (RPC/INSERT/UPDATE) عند فشل الصلاحيات عبر ridesHandler و travelHandler
+// 1.24 مراقبة وتأكيد عدم تنفيذ أي عمليات قاعدة بيانات (RPC/INSERT/UPDATE/UPSERT) عند فشل الصلاحيات عبر ridesHandler و travelHandler
 {
     let rpcCallCount = 0;
     let insertCallCount = 0;
     let updateCallCount = 0;
+    let upsertCallCount = 0;
 
     const monitoredClient = {
         rpc: async () => { rpcCallCount++; return { data: null, error: null }; },
         from: (table) => ({
             insert: async () => { insertCallCount++; return { data: null, error: null }; },
+            upsert: async () => { upsertCallCount++; return { data: null, error: null }; },
             update: () => ({
                 eq: async () => { updateCallCount++; return { data: null, error: null }; }
             }),
@@ -561,6 +563,7 @@ console.log('\n--- 1. REAL API HANDLER INVOCATIONS ---');
         assert.strictEqual(rpcCallCount, 0, 'RPC must not be called on ridesHandler auth failure');
         assert.strictEqual(insertCallCount, 0, 'INSERT must not be called on ridesHandler auth failure');
         assert.strictEqual(updateCallCount, 0, 'UPDATE must not be called on ridesHandler auth failure');
+        assert.strictEqual(upsertCallCount, 0, 'UPSERT must not be called on ridesHandler auth failure');
 
         // حالة ب: محاولة غير مصرحة في travelHandler لـ process_10h_commission (مستخدم غريب عن الرحلة)
         const { req: rTravelComm, res: resTravelComm, getStatus: sTravelComm } = createMockReqRes({
@@ -573,20 +576,35 @@ console.log('\n--- 1. REAL API HANDLER INVOCATIONS ---');
         assert.strictEqual(rpcCallCount, 0, 'RPC must not be called on unauthorized process_10h_commission');
         assert.strictEqual(insertCallCount, 0, 'INSERT must not be called on unauthorized process_10h_commission');
         assert.strictEqual(updateCallCount, 0, 'UPDATE must not be called on unauthorized process_10h_commission');
+        assert.strictEqual(upsertCallCount, 0, 'UPSERT must not be called on unauthorized process_10h_commission');
 
-        // حالة ج: محاولة استدعاء cron_process_10h عند غياب سر الكرون أو استخدام سر خاطئ
-        const { req: rCron, res: resCron, getStatus: sCron } = createMockReqRes({
+        // حالة ج: استدعاء cron_process_10h دون هيدر Authorization نهائياً
+        const { req: rCronNoAuth, res: resCronNoAuth, getStatus: sCronNoAuth } = createMockReqRes({
             method: 'POST',
             body: { action: 'cron_process_10h' },
-            token: 'wrong_secret_123'
+            headers: {} // بدون authorization header
         });
-        await travelHandler(rCron, resCron);
-        assert.strictEqual(sCron(), 401);
-        assert.strictEqual(rpcCallCount, 0, 'RPC must not be called on invalid cron_process_10h');
-        assert.strictEqual(insertCallCount, 0, 'INSERT must not be called on invalid cron_process_10h');
-        assert.strictEqual(updateCallCount, 0, 'UPDATE must not be called on invalid cron_process_10h');
+        await travelHandler(rCronNoAuth, resCronNoAuth);
+        assert.strictEqual(sCronNoAuth(), 401);
+        assert.strictEqual(rpcCallCount, 0, 'RPC must not be called on missing cron authorization header');
+        assert.strictEqual(insertCallCount, 0, 'INSERT must not be called on missing cron authorization header');
+        assert.strictEqual(updateCallCount, 0, 'UPDATE must not be called on missing cron authorization header');
+        assert.strictEqual(upsertCallCount, 0, 'UPSERT must not be called on missing cron authorization header');
 
-        console.log('✅ Test 1.24 Passed: Verified that 0 RPCs, 0 INSERTs, and 0 UPDATEs occur across both ridesHandler and travelHandler on auth/cron failures');
+        // حالة د: استدعاء cron_process_10h باستخدام سر خاطئ
+        const { req: rCronWrongSecret, res: resCronWrongSecret, getStatus: sCronWrongSecret } = createMockReqRes({
+            method: 'POST',
+            body: { action: 'cron_process_10h' },
+            headers: { 'authorization': 'Bearer wrong_secret_123' }
+        });
+        await travelHandler(rCronWrongSecret, resCronWrongSecret);
+        assert.strictEqual(sCronWrongSecret(), 401);
+        assert.strictEqual(rpcCallCount, 0, 'RPC must not be called on invalid cron_process_10h secret');
+        assert.strictEqual(insertCallCount, 0, 'INSERT must not be called on invalid cron_process_10h secret');
+        assert.strictEqual(updateCallCount, 0, 'UPDATE must not be called on invalid cron_process_10h secret');
+        assert.strictEqual(upsertCallCount, 0, 'UPSERT must not be called on invalid cron_process_10h secret');
+
+        console.log('✅ Test 1.24 Passed: Verified that 0 RPCs, 0 INSERTs, 0 UPDATEs, and 0 UPSERTs occur across both ridesHandler and travelHandler on auth/cron failures');
     } finally {
         setRidesSupabaseClient(originalRidesSupabase);
         setTravelSupabaseClient(originalTravelSupabase);
