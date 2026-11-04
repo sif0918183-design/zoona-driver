@@ -399,13 +399,21 @@ export default async function handler(req, res) {
             }
 
             // Verify if the current driver is indeed the one assigned
-            const { data: ride } = await supabase
+            const { data: ride, error: fetchError } = await supabase
                 .from('rides')
                 .select('driver_id')
                 .eq('id', rideId)
-                .single();
+                .maybeSingle();
 
-            if (ride && ride.driver_id !== driverId) {
+            if (fetchError) {
+                return res.status(500).json({ success: false, error: 'حدث خطأ أثناء جلب بيانات الرحلة' });
+            }
+
+            if (!ride) {
+                return res.status(404).json({ success: false, error: 'الرحلة غير موجودة' });
+            }
+
+            if (ride.driver_id !== driverId) {
                 return res.status(403).json({ success: false, error: 'غير مصرح برفض هذه الرحلة' });
             }
 
