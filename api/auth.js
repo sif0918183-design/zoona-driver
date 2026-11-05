@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
+import { generateToken, verifyToken } from './_token-utils.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -147,11 +148,10 @@ export default async function handler(req, res) {
                 }
 
                 // Generate secure session token immediately
-                const sessionToken = Buffer.from(JSON.stringify({
+                const sessionToken = generateToken({
                     id: newCustomer.id,
-                    role: 'passenger',
-                    exp: Date.now() + 7 * 24 * 60 * 60 * 1000
-                })).toString('base64');
+                    role: 'passenger'
+                });
 
                 // Safe payload (do not return password)
                 const safeUser = { ...newCustomer };
@@ -333,11 +333,10 @@ export default async function handler(req, res) {
             }
 
             // Generate secure session token and return status 200 with customer data
-            const sessionToken = Buffer.from(JSON.stringify({
+            const sessionToken = generateToken({
                 id: updatedCustomer.id,
-                role: 'passenger',
-                exp: Date.now() + 7 * 24 * 60 * 60 * 1000
-            })).toString('base64');
+                role: 'passenger'
+            });
 
             // Safe payload
             const safeUser = {
@@ -368,17 +367,14 @@ export default async function handler(req, res) {
 
             let decoded;
             try {
-                decoded = JSON.parse(Buffer.from(bearerToken, 'base64').toString('utf-8'));
-                if (decoded.exp && decoded.exp < Date.now()) {
-                    return res.status(401).json({ success: false, error: 'انتهت صلاحية جلسة العمل، يرجى تسجيل الدخول مجدداً' });
-                }
+                decoded = verifyToken(req);
             } catch (e) {
-                return res.status(401).json({ success: false, error: 'رمز الجلسة غير صالح' });
+                return res.status(401).json({ success: false, error: e.message });
             }
 
             const { id, role } = decoded;
             if (!id || role !== 'passenger') {
-                return res.status(400).json({ success: false, error: 'غير مصرح لك بإجراء هذه العملية' });
+                return res.status(403).json({ success: false, error: 'غير مصرح لك بإجراء هذه العملية' });
             }
 
             // Delete customer from customers table in Supabase
@@ -444,11 +440,10 @@ export default async function handler(req, res) {
                 }
 
                 // Generate secure session token
-                const sessionToken = Buffer.from(JSON.stringify({
+                const sessionToken = generateToken({
                     id: customer.id,
-                    role: 'passenger',
-                    exp: Date.now() + 7 * 24 * 60 * 60 * 1000
-                })).toString('base64');
+                    role: 'passenger'
+                });
 
                 // Safe payload compatible with database columns and user requests
                 const safeUser = {
@@ -530,11 +525,10 @@ export default async function handler(req, res) {
                 }
 
                 // Generate secure session token
-                const sessionToken = Buffer.from(JSON.stringify({
+                const sessionToken = generateToken({
                     id: driver.id,
-                    role: 'driver',
-                    exp: Date.now() + 7 * 24 * 60 * 60 * 1000
-                })).toString('base64');
+                    role: 'driver'
+                });
 
                 // Safe payload compatible with database columns and user requests
                 const safeUser = {

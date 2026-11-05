@@ -128,6 +128,17 @@ BEGIN
         RETURN NULL;
     END IF;
 
+    -- Handle signed tokens (payload.signature): extract payload part before the dot
+    IF position('.' in token_b64) > 0 THEN
+        token_b64 := split_part(token_b64, '.', 1);
+    END IF;
+
+    -- Normalize Base64URL to standard Base64 for PostgreSQL
+    token_b64 := replace(replace(token_b64, '-', '+'), '_', '/');
+    WHILE length(token_b64) % 4 <> 0 LOOP
+        token_b64 := token_b64 || '=';
+    END LOOP;
+
     -- Decode Base64 to JSON string and parse id
     BEGIN
         token_json := convert_from(decode(token_b64, 'base64'), 'UTF-8');

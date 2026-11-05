@@ -1,9 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
+import { verifyToken } from './_token-utils.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+export let supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+export function setSupabaseClient(client) {
+    supabase = client;
+}
 
 const DEFAULT_SETTINGS = {
     max_advance_creation_days: 7,
@@ -14,23 +19,6 @@ const DEFAULT_SETTINGS = {
     restriction_duration_days: 3,
     travel_commission_rate: 5
 };
-
-function verifyToken(req) {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        throw new Error('المصادقة مطلوبة: رمز الجلسة مفقود أو غير صالح');
-    }
-    const token = authHeader.split(' ')[1];
-    try {
-        const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf-8'));
-        if (decoded.exp && decoded.exp < Date.now()) {
-            throw new Error('انتهت صلاحية رمز الجلسة الخاصة بك، يرجى تسجيل الدخول مرة أخرى');
-        }
-        return decoded;
-    } catch (e) {
-        throw new Error('رمز الجلسة غير صالح');
-    }
-}
 
 // Get current server time in Sudan Time (UTC+2)
 function getSudanServerTime() {
@@ -407,15 +395,15 @@ export default async function handler(req, res) {
 
         let session = null;
         if (action === 'cron_process_10h') {
-            const cronHeader = req.headers['x-vercel-cron'];
             const authHeader = req.headers['authorization'];
             const cronSecret = process.env.CRON_SECRET;
 
-            const isVercelCron = cronHeader === '1' || cronHeader === 'true';
-            const isAuthorizedSecret = cronSecret && authHeader === `Bearer ${cronSecret}`;
+            // التحقق الأمني الصارم: منع الاعتماد على x-vercel-cron القابل للتزوير
+            // واشتراط تطابق Authorization: Bearer ${CRON_SECRET} حصراً مع وجود المتغير في البيئة
+            const isAuthorizedSecret = !!(cronSecret && cronSecret.trim() !== '' && authHeader === `Bearer ${cronSecret.trim()}`);
 
-            if (!isVercelCron && !isAuthorizedSecret) {
-                return res.status(401).json({ success: false, error: 'غير مصرح للتشغيل التلقائي' });
+            if (!isAuthorizedSecret) {
+                return res.status(401).json({ success: false, error: 'غير مصرح للتشغيل التلقائي: رمز الجدولة مفقود أو غير صحيح' });
             }
         } else {
             try {
@@ -431,6 +419,9 @@ export default async function handler(req, res) {
         // --- 1. CHECK PASSENGER ELIGIBILITY ---
         if (action === 'check_eligibility') {
             const { passengerId, departureTime, fromCity, toCity } = req.body;
+            if (!session || session.role !== 'passenger' || String(session.id).trim() !== String(passengerId).trim()) {
+                return res.status(403).json({ success: false, allowed: false, error: 'غير مصرح: لا يمكنك فحص الأهلية لمستخدم آخر' });
+            }
             try {
                 await checkPassengerRestrictions(passengerId, departureTime, fromCity, toCity, settings);
                 return res.status(200).json({ success: true, allowed: true });
@@ -445,6 +436,11 @@ export default async function handler(req, res) {
 
             if (!passengerId || !fromCity || !toCity || !departureTime || !estimatedPrice) {
                 return res.status(400).json({ success: false, error: 'بيانات غير كافية لإنشاء طلب الرحلة السفرية' });
+            }
+
+            // التحقق من الصلاحيات: راكب ومطابق للـ passengerId
+            if (!session || session.role !== 'passenger' || String(session.id).trim() !== String(passengerId).trim()) {
+                return res.status(403).json({ success: false, error: 'غير مصرح: لا يمكنك إنشاء طلب رحلة باسم راكب آخر' });
             }
 
             // Check restrictions
@@ -488,6 +484,11 @@ export default async function handler(req, res) {
 
             if (!rideId || !driverId) {
                 return res.status(400).json({ success: false, error: 'rideId and driverId are required' });
+            }
+
+            // التحقق من الصلاحيات: سائق ومطابق للـ driverId
+            if (!session || session.role !== 'driver' || String(session.id).trim() !== String(driverId).trim()) {
+                return res.status(403).json({ success: false, error: 'غير مصرح: لا يمكنك قبول رحلة باسم سائق آخر' });
             }
 
             // Fetch driver details
@@ -592,6 +593,11 @@ export default async function handler(req, res) {
                 return res.status(400).json({ success: false, error: 'rideId and driverId are required' });
             }
 
+            // التحقق من الصلاحيات: سائق ومطابق للـ driverId
+            if (!session || session.role !== 'driver' || String(session.id).trim() !== String(driverId).trim()) {
+                return res.status(403).json({ success: false, error: 'غير مصرح: لا يمكنك الانسحاب باسم سائق آخر' });
+            }
+
             // Get ride request details
             const { data: rideReq } = await supabase
                 .from('ride_requests')
@@ -648,6 +654,11 @@ export default async function handler(req, res) {
                 return res.status(400).json({ success: false, error: 'rideId, driverId, and passengerId are required' });
             }
 
+            // التحقق من الصلاحيات: راكب ومطابق للـ passengerId
+            if (!session || session.role !== 'passenger' || String(session.id).trim() !== String(passengerId).trim()) {
+                return res.status(403).json({ success: false, error: 'غير مصرح: لا يمكنك اختيار سائق باسم راكب آخر' });
+            }
+
             // Get driver details
             const { data: driver } = await supabase
                 .from('drivers')
@@ -668,6 +679,11 @@ export default async function handler(req, res) {
 
             if (!ride) {
                 return res.status(400).json({ success: false, error: 'طلب الرحلة غير موجود' });
+            }
+
+            // التحقق من ملكية طلب الرحلة للراكب
+            if (ride.customer_id !== session.id) {
+                return res.status(403).json({ success: false, error: 'غير مصرح: لا يمكنك إدارة رحلة راكب آخر' });
             }
 
             // Idempotency / State Guard: Check if a driver is already selected
@@ -837,7 +853,72 @@ export default async function handler(req, res) {
             if (!tripId && !rideId) {
                 return res.status(400).json({ success: false, error: 'tripId or rideId is required' });
             }
-            const evalResult = await evaluateTrip10hCommission(tripId, rideId, settings, serverTime);
+
+            // التحقق الأمني الصارم من الصلاحيات وتطابق المعرفات:
+            let tripRecord = null;
+            if (tripId) {
+                const { data: t } = await supabase
+                    .from('travel_trips')
+                    .select('passenger_id, driver_id, ride_request_id')
+                    .eq('id', tripId)
+                    .maybeSingle();
+                tripRecord = t;
+
+                if (!tripRecord) {
+                    return res.status(404).json({ success: false, error: 'رحلة السفر المحددة (tripId) غير موجودة' });
+                }
+            }
+
+            // إذا كان tripRecord موجوداً ولكن ride_request_id فارغ أو null: رفض الطلب فوراً قبل أي معالجة مالية
+            if (tripRecord && (!tripRecord.ride_request_id || String(tripRecord.ride_request_id).trim() === '')) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'بيانات الرحلة السفرية غير مكتملة: ride_request_id مفقود ولا يمكن معالجة العمولة'
+                });
+            }
+
+            // إذا أُرسل tripId و rideId معاً: التحقق الحاسم من تطابقهما التام
+            if (tripRecord && rideId) {
+                if (String(tripRecord.ride_request_id).trim() !== String(rideId).trim()) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'معرف الرحلة rideId لا يطابق طلب السفر المرتبط بـ tripId'
+                    });
+                }
+            }
+
+            // تحديد المعرف الموثوق: إذا أرسل tripId يتم استخدام ride_request_id المرتبط به حكماً
+            const trustedReqId = tripRecord ? tripRecord.ride_request_id : rideId;
+
+            let reqRecord = null;
+            if (trustedReqId) {
+                const { data: r } = await supabase
+                    .from('ride_requests')
+                    .select('customer_id, driver_id')
+                    .eq('id', trustedReqId)
+                    .maybeSingle();
+                reqRecord = r;
+
+                if (!tripRecord && !reqRecord) {
+                    return res.status(404).json({ success: false, error: 'طلب الرحلة المحدد (rideId) غير موجود' });
+                }
+            }
+
+            const tripPassengerId = tripRecord?.passenger_id || reqRecord?.customer_id;
+            const tripDriverId = tripRecord?.driver_id || reqRecord?.driver_id;
+
+            const isAuthorizedCaller = (
+                session?.role === 'admin' ||
+                (session?.role === 'passenger' && tripPassengerId && session.id === tripPassengerId) ||
+                (session?.role === 'driver' && tripDriverId && session.id === tripDriverId)
+            );
+
+            if (!isAuthorizedCaller) {
+                return res.status(403).json({ success: false, error: 'غير مصرح: لا يمكنك معالجة عمولة رحلة لا تخصك' });
+            }
+
+            // تمرير المعرف الموثوق حصراً لمنع استبداله بمعرف خارجي
+            const evalResult = await evaluateTrip10hCommission(tripId || null, trustedReqId, settings, serverTime);
             if (!evalResult.success && evalResult.error) {
                 return res.status(400).json(evalResult);
             }
@@ -850,6 +931,11 @@ export default async function handler(req, res) {
 
             if (!tripId) {
                 return res.status(400).json({ success: false, error: 'tripId is required' });
+            }
+
+            // التحقق من الصلاحيات: راكب حصراً
+            if (!session || session.role !== 'passenger') {
+                return res.status(403).json({ success: false, error: 'غير مصرح: يجب أن تكون راكباً لإلغاء هذه الرحلة' });
             }
 
             // 1. Thorough trip lookup across travel_trips and ride_requests
@@ -880,6 +966,10 @@ export default async function handler(req, res) {
                 .maybeSingle();
 
             const passengerId = trip?.passenger_id || reqData?.customer_id;
+            if (!passengerId || passengerId !== session.id) {
+                return res.status(403).json({ success: false, error: 'غير مصرح: لا يمكنك إلغاء رحلة راكب آخر' });
+            }
+
             const targetDriverId = trip?.driver_id || reqData?.driver_id;
             const departureTime = trip?.departure_time
                 ? new Date(trip.departure_time)
@@ -1016,12 +1106,21 @@ export default async function handler(req, res) {
                 return res.status(400).json({ success: false, error: 'tripId, driverId, and finalPrice are required' });
             }
 
+            // التحقق من الصلاحيات: سائق ومطابق للـ driverId
+            if (!session || session.role !== 'driver' || String(session.id).trim() !== String(driverId).trim()) {
+                return res.status(403).json({ success: false, error: 'غير مصرح: لا يمكنك إلغاء رحلة باسم سائق آخر' });
+            }
+
             // Idempotency check: Don't charge penalty twice
             const { data: existingTrip } = await supabase
                 .from('travel_trips')
-                .select('id, status, commission_deducted, commission_status, ride_request_id, passenger_id, from_city, to_city')
+                .select('id, driver_id, status, commission_deducted, commission_status, ride_request_id, passenger_id, from_city, to_city')
                 .eq('id', tripId)
                 .maybeSingle();
+
+            if (existingTrip && existingTrip.driver_id && existingTrip.driver_id !== session.id) {
+                return res.status(403).json({ success: false, error: 'غير مصرح: هذه الرحلة غير منسوبة إليك' });
+            }
 
             if (existingTrip && existingTrip.status === 'cancelled') {
                 return res.status(200).json({ success: true, message: 'الرحلة ملغاة بالفعل' });
@@ -1092,6 +1191,11 @@ export default async function handler(req, res) {
         if (action === 'complete_trip') {
             const { tripId, rideId, driverId, finalPrice } = req.body;
 
+            // التحقق من الصلاحيات: سائق حصراً
+            if (!session || session.role !== 'driver') {
+                return res.status(403).json({ success: false, error: 'غير مصرح: السائقون فقط يمكنهم إكمال الرحلة' });
+            }
+
             if (!tripId && !rideId) {
                 return res.status(400).json({ success: false, error: 'tripId or rideId is required' });
             }
@@ -1131,6 +1235,10 @@ export default async function handler(req, res) {
             }
 
             const activeDriverId = driverId || trip?.driver_id || rideReq?.driver_id;
+
+            if (activeDriverId && activeDriverId !== session.id) {
+                return res.status(403).json({ success: false, error: 'غير مصرح: لا يمكنك إكمال رحلة غير منسوبة إليك' });
+            }
 
             // Comprehensively update travel_trips
             if (trip?.id) {
@@ -1215,14 +1323,24 @@ export default async function handler(req, res) {
                 return res.status(400).json({ success: false, error: 'tripId is required' });
             }
 
+            // التحقق من الصلاحيات: سائق حصراً
+            if (!session || session.role !== 'driver') {
+                return res.status(403).json({ success: false, error: 'غير مصرح: السائقون المختارون فقط يمكنهم الاطلاع على بيانات الراكب' });
+            }
+
             const { data: trip, error: tErr } = await supabase
                 .from('travel_trips')
-                .select('passenger_id, contact_revealed, commission_status')
+                .select('passenger_id, driver_id, contact_revealed, commission_status')
                 .eq('id', tripId)
                 .single();
 
             if (tErr || !trip) {
                 return res.status(400).json({ success: false, error: 'الرحلة غير موجودة' });
+            }
+
+            // التأكد من أن السائق المستعلم هو السائق المختار للرحلة
+            if (trip.driver_id !== session.id) {
+                return res.status(403).json({ success: false, error: 'غير مصرح: لا يمكنك الاطلاع على بيانات راكب لرحلة ليست لك' });
             }
 
             if (!trip.contact_revealed && trip.commission_status !== 'held') {
