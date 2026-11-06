@@ -90,6 +90,11 @@ BEGIN
         RETURN json_build_object('success', false, 'message', 'بيانات السائق غير موجودة');
     END IF;
 
+    -- التحقق الصارم من حالة تفعيل السائق بعد حيازة القفل الحصري (منع السائق المعطل)
+    IF NOT COALESCE(v_driver.is_active, false) THEN
+        RETURN json_build_object('success', false, 'message', 'حساب السائق غير مفعل');
+    END IF;
+
     -- 7. حساب العمولة وفق النسبة المقروءة والمعتمدة من الإعدادات ديناميكياً (تقريب لأسفل)
     v_commission := pg_catalog.floor(COALESCE(v_ride.amount, 0) * (v_fee_percentage / 100.0));
 
