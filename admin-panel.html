@@ -1946,7 +1946,7 @@
                                             <label class="form-label" style="margin: 0; font-weight: 700; color: #005F41;">عمولة الرحلات الداخلية (%)</label>
                                             <span id="current-instant-commission-badge" style="background: #008B5E; color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 12px;">المحفوظ في القاعدة: جاري التحميل...</span>
                                         </div>
-                                        <input type="number" class="form-control" name="service_fee" id="input-instant-service-fee" value="5" min="0" max="50" step="0.5" required>
+                                        <input type="number" class="form-control" name="instant_service_fee" id="input-instant-service-fee" value="5" min="0" max="50" step="0.5" required>
                                         <small style="color: #64748b; font-size: 11px; display: block; margin-top: 4px;">المفتاح المركزي: <code>service_fee_percentage</code> — تطبق هذه النسبة مباشرة وتلقائياً على جميع الرحلات الفورية الجديدة عند قبولها من قِبل السائق.</small>
                                     </div>
                                     
@@ -4319,7 +4319,8 @@
                 const settingsForm = document.getElementById('platform-settings-form');
                 if (settingsForm) {
                     document.querySelector('[name="platform_name"]').value = settingsMap.platform_name;
-                    document.querySelector('[name="service_fee"]').value = settingsMap.service_fee_percentage;
+                    const instantFeeInput = document.getElementById('input-instant-service-fee') || document.querySelector('[name="instant_service_fee"]');
+                    if (instantFeeInput) instantFeeInput.value = settingsMap.service_fee_percentage;
                     document.querySelector('[name="max_wait_time"]').value = settingsMap.max_wait_time_minutes;
                     document.querySelector('[name="enable_chat"]').checked = settingsMap.enable_chat !== 'false';
                     document.querySelector('[name="enable_whatsapp"]').checked = settingsMap.enable_whatsapp !== 'false';
@@ -4342,7 +4343,8 @@
                 const settingsForm = document.getElementById('platform-settings-form');
                 if (settingsForm) {
                     document.querySelector('[name="platform_name"]').value = 'تراكا للنقل';
-                    document.querySelector('[name="service_fee"]').value = 5;
+                    const instantFeeInput = document.getElementById('input-instant-service-fee') || document.querySelector('[name="instant_service_fee"]');
+                    if (instantFeeInput) instantFeeInput.value = 5;
                     document.querySelector('[name="max_wait_time"]').value = 40;
                     document.querySelector('[name="enable_chat"]').checked = true;
                     document.querySelector('[name="enable_whatsapp"]').checked = true;
@@ -4360,7 +4362,8 @@
             e.preventDefault();
             
             const formData = new FormData(this);
-            const serviceFeeVal = parseFloat(formData.get('service_fee'));
+            const rawInstantFee = formData.get('instant_service_fee') || document.getElementById('input-instant-service-fee')?.value;
+            const serviceFeeVal = parseFloat(rawInstantFee);
 
             // التحقق الصارم من صحة ونطاق نسبة عمولة الرحلات الداخلية (0% - 50%)
             if (isNaN(serviceFeeVal) || serviceFeeVal < 0 || serviceFeeVal > 50) {
