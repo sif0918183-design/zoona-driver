@@ -1941,9 +1941,13 @@
                                         <input type="text" class="form-control" name="platform_name" value="تراكا للنقل - سفيريات السفر">
                                     </div>
                                     
-                                    <div class="form-group">
-                                        <label class="form-label">رسوم الخدمة (%)</label>
-                                        <input type="number" class="form-control" name="service_fee" value="5" min="0" max="50" step="0.5">
+                                    <div class="form-group" style="background: rgba(0, 139, 94, 0.04); padding: 12px; border-radius: 8px; border: 1px solid rgba(0, 139, 94, 0.15);">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                            <label class="form-label" style="margin: 0; font-weight: 700; color: #005F41;">عمولة الرحلات الداخلية (%)</label>
+                                            <span id="current-instant-commission-badge" style="background: #008B5E; color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 12px;">المحفوظ في القاعدة: جاري التحميل...</span>
+                                        </div>
+                                        <input type="number" class="form-control" name="instant_service_fee" id="input-instant-service-fee" value="5" min="0" max="50" step="0.5" required>
+                                        <small style="color: #64748b; font-size: 11px; display: block; margin-top: 4px;">المفتاح المركزي: <code>service_fee_percentage</code> — تطبق هذه النسبة مباشرة وتلقائياً على جميع الرحلات الفورية الجديدة عند قبولها من قِبل السائق.</small>
                                     </div>
                                     
                                     <div class="form-group">
@@ -4315,10 +4319,22 @@
                 const settingsForm = document.getElementById('platform-settings-form');
                 if (settingsForm) {
                     document.querySelector('[name="platform_name"]').value = settingsMap.platform_name;
-                    document.querySelector('[name="service_fee"]').value = settingsMap.service_fee_percentage;
+                    const instantFeeInput = document.getElementById('input-instant-service-fee') || document.querySelector('[name="instant_service_fee"]');
+                    if (instantFeeInput) instantFeeInput.value = settingsMap.service_fee_percentage;
                     document.querySelector('[name="max_wait_time"]').value = settingsMap.max_wait_time_minutes;
                     document.querySelector('[name="enable_chat"]').checked = settingsMap.enable_chat !== 'false';
                     document.querySelector('[name="enable_whatsapp"]').checked = settingsMap.enable_whatsapp !== 'false';
+
+                    const badge = document.getElementById('current-instant-commission-badge');
+                    if (badge) {
+                        if (!error && data && data.some(s => s.key === 'service_fee_percentage')) {
+                            badge.textContent = `المحفوظ في القاعدة: ${settingsMap.service_fee_percentage}%`;
+                            badge.style.background = '#008B5E';
+                        } else {
+                            badge.textContent = 'المحفوظ في القاعدة: غير متوفر / لم يتم التأكيد';
+                            badge.style.background = '#64748b';
+                        }
+                    }
                 }
                 
             } catch (error) {
@@ -4327,10 +4343,17 @@
                 const settingsForm = document.getElementById('platform-settings-form');
                 if (settingsForm) {
                     document.querySelector('[name="platform_name"]').value = 'تراكا للنقل';
-                    document.querySelector('[name="service_fee"]').value = 5;
+                    const instantFeeInput = document.getElementById('input-instant-service-fee') || document.querySelector('[name="instant_service_fee"]');
+                    if (instantFeeInput) instantFeeInput.value = 5;
                     document.querySelector('[name="max_wait_time"]').value = 40;
                     document.querySelector('[name="enable_chat"]').checked = true;
                     document.querySelector('[name="enable_whatsapp"]').checked = true;
+
+                    const badge = document.getElementById('current-instant-commission-badge');
+                    if (badge) {
+                        badge.textContent = 'المحفوظ في القاعدة: تعذر القراءة';
+                        badge.style.background = '#dc2626';
+                    }
                 }
             }
         }
@@ -4339,9 +4362,20 @@
             e.preventDefault();
             
             const formData = new FormData(this);
+            const rawInstantFee = formData.get('instant_service_fee') || document.getElementById('input-instant-service-fee')?.value;
+            const serviceFeeVal = parseFloat(rawInstantFee);
+
+            // التحقق الصارم من صحة ونطاق نسبة عمولة الرحلات الداخلية (0% - 50%)
+            if (isNaN(serviceFeeVal) || serviceFeeVal < 0 || serviceFeeVal > 50) {
+                showNotification('❌ نسبة عمولة الرحلات الداخلية يجب أن تكون بين 0% و 50%', 'error');
+                return;
+            }
+
+            const cleanFeeStr = String(serviceFeeVal);
+
             const settingsArray = [
                 { key: 'platform_name', value: formData.get('platform_name') },
-                { key: 'service_fee_percentage', value: formData.get('service_fee') },
+                { key: 'service_fee_percentage', value: cleanFeeStr },
                 { key: 'max_wait_time_minutes', value: formData.get('max_wait_time') },
                 { key: 'enable_chat', value: formData.get('enable_chat') ? 'true' : 'false' },
                 { key: 'enable_whatsapp', value: formData.get('enable_whatsapp') ? 'true' : 'false' }
@@ -4350,11 +4384,42 @@
             try {
                 // حفظ الإعدادات عبر الـ API الآمنة
                 await adminApiCall('save_settings', { settings: settingsArray });
-                showNotification('تم حفظ الإعدادات بنجاح في قاعدة البيانات', 'success');
+
+                // التحقق بعد الحفظ (Read-after-write verification) للتأكد من تخزين النسبة فعلياً في القاعدة
+                let verified = false;
+                try {
+                    const verifyRes = await tarhalDB
+                        .from('system_settings')
+                        .select('value')
+                        .eq('key', 'service_fee_percentage')
+                        .single();
+
+                    if (!verifyRes.error && verifyRes.data && String(verifyRes.data.value) === cleanFeeStr) {
+                        verified = true;
+                    }
+                } catch (verifyErr) {
+                    console.warn('Read-after-write verification check error:', verifyErr);
+                }
+
+                if (verified) {
+                    const badge = document.getElementById('current-instant-commission-badge');
+                    if (badge) {
+                        badge.textContent = `المحفوظ في القاعدة: ${cleanFeeStr}%`;
+                        badge.style.background = '#008B5E';
+                    }
+                    showNotification(`✅ تم حفظ الإعدادات وتأكيد عمولة الرحلات الداخلية في القاعدة (${cleanFeeStr}%)`, 'success');
+                } else {
+                    const badge = document.getElementById('current-instant-commission-badge');
+                    if (badge) {
+                        badge.textContent = 'المحفوظ في القاعدة: لم يتم التأكيد';
+                        badge.style.background = '#f59e0b';
+                    }
+                    showNotification('⚠️ تم إرسال الحفظ ولكن تعذر التأكد من مطابقة نسبة العمولة في قاعدة البيانات، يرجى التحديث', 'warning');
+                }
                 
             } catch (error) {
                 console.error('Error saving settings:', error);
-                // Save to localStorage as fallback
+                // Save to localStorage as fallback للحفاظ على سلوك الإعدادات الأخرى
                 const settingsObj = {};
                 settingsArray.forEach(setting => {
                     settingsObj[setting.key] = setting.value;
