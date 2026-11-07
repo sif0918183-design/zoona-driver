@@ -3946,7 +3946,7 @@ async function cancelRide(rideId) {
             closeActiveTripModal();
         }
 
-        showNotification('تم إلغاء الرحلة بنجاح واسترداد أي عمولة للسائق.', 'success');
+        showNotification('تم إلغاء الرحلة بنجاح.', 'success');
         await loadPassengerRides();
     } catch(err) {
         console.error('Error cancelling ride:', err);
