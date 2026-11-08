@@ -797,7 +797,8 @@
                 <div class="form-group">
                     <label class="form-label" for="driver-phone">رقم واتساب السائق</label>
                     <input type="tel" id="driver-phone" class="form-input"
-                           placeholder="رقم الواتساب المسجل" required>
+                           placeholder="مثال: 0912300000" required maxlength="10"
+                           inputmode="numeric" pattern="[0-9]*" oninput="this.value = normalizeToEnglishDigits(this.value).replace(/\D/g, '').substring(0, 10)" dir="ltr">
                 </div>
 
                 <div class="form-group">
@@ -841,19 +842,21 @@
                 <div class="form-group">
                     <label class="form-label" for="register-whatsapp">رقم الواتساب *</label>
                     <input type="tel" id="register-whatsapp" class="form-input"
-                           placeholder="مثال: 249123456789" required>
+                           placeholder="مثال: 0912300000 أو 0123111000" required maxlength="10"
+                           inputmode="numeric" pattern="[0-9]*" oninput="this.value = normalizeToEnglishDigits(this.value).replace(/\D/g, '').substring(0, 10)" dir="ltr">
                 </div>
 
                 <div class="form-group">
                     <label class="form-label" for="register-phone">رقم الاتصال *</label>
                     <input type="tel" id="register-phone" class="form-input"
-                           placeholder="مثال: 249987654321" required>
+                           placeholder="مثال: 0912300000 أو 0123111000" required maxlength="10"
+                           inputmode="numeric" pattern="[0-9]*" oninput="this.value = normalizeToEnglishDigits(this.value).replace(/\D/g, '').substring(0, 10)" dir="ltr">
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" for="register-password">كلمة المرور (6 أرقام) *</label>
+                    <label class="form-label" for="register-password">كلمة المرور (6 خانات على الأقل) *</label>
                     <input type="password" id="register-password" class="form-input"
-                           placeholder="أدخل كلمة مرور من 6 خانات" maxlength="6" inputmode="numeric" required>
+                           placeholder="أدخل كلمة المرور (أرقام، حروف أو رموز)" minlength="6" required>
                 </div>
 
                 <div class="form-group">
@@ -910,7 +913,7 @@
                 <!-- Cloudflare Turnstile Widget -->
                 <div id="turnstile-container" style="margin: 15px auto; display: flex; justify-content: center;"></div>
 
-                <button type="button" class="btn btn-driver" id="register-btn" onclick="registerDriver()" disabled>
+                <button type="button" class="btn btn-driver" id="register-btn" onclick="registerDriver()">
                     <i class="ph-bold ph-user-plus"></i>
                     تسجيل حساب سائق
                 </button>
@@ -1054,7 +1057,7 @@
 
         <div class="form-group" style="margin-bottom: 5px;">
             <label class="form-label">رقم الإتصال (قابل للتعديل)</label>
-            <input type="tel" id="settings-phone" class="form-input" placeholder="0XXXXXXXXX" maxlength="10" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/\D/g, '').substring(0, 10)" dir="ltr">
+            <input type="tel" id="settings-phone" class="form-input" placeholder="مثال: 0912300000 أو 0123111000" maxlength="10" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/\D/g, '').substring(0, 10)" dir="ltr">
         </div>
     </div>
 
@@ -1758,6 +1761,27 @@
         }
     }
 
+    // Utility to convert Arabic/Indic digits to English digits
+    function normalizeToEnglishDigits(str) {
+        if (!str) return '';
+        const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+        const farsiDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+        let result = str.toString();
+        for (let i = 0; i < 10; i++) {
+            result = result.replace(new RegExp(arabicDigits[i], 'g'), i.toString());
+            result = result.replace(new RegExp(farsiDigits[i], 'g'), i.toString());
+        }
+        return result;
+    }
+
+    function isValidDriverPhone(phone) {
+        const cleanPhone = normalizeToEnglishDigits(phone).replace(/\D/g, '');
+        if (cleanPhone.length !== 10) {
+            return false;
+        }
+        return cleanPhone.startsWith('09') || cleanPhone.startsWith('01');
+    }
+
     // Screen Navigation
     function showScreen(screenId) {
         document.querySelectorAll('.screen').forEach(screen => {
@@ -1824,25 +1848,17 @@
                 if (container) {
                     container.innerHTML = '';
                     window.turnstileToken = null;
-                    const registerBtn = document.getElementById('register-btn');
-                    if (registerBtn) registerBtn.setAttribute('disabled', 'true');
 
                     turnstileWidgetId = window.turnstile.render(container, {
                         sitekey: data.siteKey,
                         callback: function(token) {
                             window.turnstileToken = token;
-                            const btn = document.getElementById('register-btn');
-                            if (btn) btn.removeAttribute('disabled');
                         },
                         'expired-callback': function() {
                             window.turnstileToken = null;
-                            const btn = document.getElementById('register-btn');
-                            if (btn) btn.setAttribute('disabled', 'true');
                         },
                         'error-callback': function() {
                             window.turnstileToken = null;
-                            const btn = document.getElementById('register-btn');
-                            if (btn) btn.setAttribute('disabled', 'true');
                         }
                     });
                 }
@@ -1915,13 +1931,23 @@
             return;
         }
 
+        if (!isValidDriverPhone(whatsappNumber)) {
+            showNotification('رقم الواتساب يجب أن يبدأ بـ 09 أو 01 ومكون من 10 أرقام تماماً', 'error');
+            return;
+        }
+
+        if (!isValidDriverPhone(phone)) {
+            showNotification('رقم الاتصال يجب أن يبدأ بـ 09 أو 01 ومكون من 10 أرقام تماماً', 'error');
+            return;
+        }
+
         if (!license_image_url || !vehicle_registration_url || !car_photo_url || !plate_photo_url) {
             showNotification('الرجاء رفع جميع الصور والمستندات المطلوبة', 'error');
             return;
         }
 
-        if (password.length !== 6 || isNaN(password)) {
-            showNotification('كلمة المرور يجب أن تكون رقمية ومكونة من 6 خانات', 'warning');
+        if (password.length < 6) {
+            showNotification('كلمة المرور يجب أن تكون 6 خانات على الأقل', 'warning');
             return;
         }
 
@@ -2001,7 +2027,7 @@
         const carModel = localStorage.getItem('success_driver_carmodel') || '';
         const plateNumber = localStorage.getItem('success_driver_platenumber') || '';
 
-        const adminNumber = "249111991551";
+        const adminNumber = "249918183521";
         const templateMessage = ` طلب تفعيل حساب سائق جديد 
 
 الاسم: ${fullName}
@@ -2069,7 +2095,26 @@
         document.body.style.overflow = 'auto';
         localStorage.setItem('driver_agreement_accepted', 'true');
         showNotification('✅ شكراً لك، تم تسجيل موافقتك على بنود الاستخدام', 'success');
+
+        document.getElementById('register-form-card').classList.remove('hidden');
+        document.getElementById('register-success-card').classList.add('hidden');
+
+        localStorage.removeItem('driver_license_image_url');
+        localStorage.removeItem('driver_vehicle_registration_url');
+        localStorage.removeItem('driver_car_photo_url');
+        localStorage.removeItem('driver_plate_photo_url');
+
+        document.getElementById('license-status').textContent = 'لم يتم اختيار ملف';
+        document.getElementById('license-status').style.color = 'var(--gray)';
+        document.getElementById('registration-status').textContent = 'لم يتم اختيار ملف';
+        document.getElementById('registration-status').style.color = 'var(--gray)';
+        document.getElementById('car-status').textContent = 'لم يتم اختيار ملف';
+        document.getElementById('car-status').style.color = 'var(--gray)';
+        document.getElementById('plate-status').textContent = 'لم يتم اختيار ملف';
+        document.getElementById('plate-status').style.color = 'var(--gray)';
+
         showScreen('driver-register-info-screen');
+        loadTurnstile();
     }
 
     function rejectAgreement() {
@@ -2090,6 +2135,11 @@
 
         if (!phone || !password) {
             showNotification('الرجاء إدخال رقم الواتساب وكلمة المرور', 'error');
+            return;
+        }
+
+        if (!isValidDriverPhone(phone)) {
+            showNotification('رقم الواتساب يجب أن يبدأ بـ 09 أو 01 ومكون من 10 أرقام تماماً', 'error');
             return;
         }
 
@@ -3327,14 +3377,6 @@
     // ============================================
     //  إعدادات الحساب للسائق
     // ============================================
-
-    function isValidDriverPhone(phone) {
-        const cleanPhone = phone.replace(/\D/g, '');
-        if (cleanPhone.length !== 10) {
-            return false;
-        }
-        return cleanPhone.startsWith('09') || cleanPhone.startsWith('01');
-    }
 
     async function showSettings() {
         if (!currentDriver) {
