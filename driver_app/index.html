@@ -1059,6 +1059,33 @@
             <label class="form-label">رقم الإتصال (قابل للتعديل)</label>
             <input type="tel" id="settings-phone" class="form-input" placeholder="مثال: 0912300000 أو 0123111000" maxlength="10" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/\D/g, '').substring(0, 10)" dir="ltr">
         </div>
+
+        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--tech-border);">
+            <div style="font-weight: 700; color: var(--Tracka-primary); font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+                <i class="ph-bold ph-lock-key"></i>
+                تعديل كلمة المرور (اختياري)
+            </div>
+
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label class="form-label">كلمة المرور الحالية</label>
+                <div class="password-input-container">
+                    <input type="password" id="settings-current-password" class="form-input" placeholder="أدخل كلمة المرور الحالية">
+                    <button type="button" class="toggle-password" onclick="togglePassword('settings-current-password')">
+                        <i class="ph-light ph-eye"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 5px;">
+                <label class="form-label">كلمة المرور الجديدة</label>
+                <div class="password-input-container">
+                    <input type="password" id="settings-new-password" class="form-input" placeholder="كلمة المرور الجديدة (6 خانات على الأقل)">
+                    <button type="button" class="toggle-password" onclick="togglePassword('settings-new-password')">
+                        <i class="ph-light ph-eye"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="agreement-actions" style="display: flex; flex-direction: column; gap: 10px; padding: 0 20px 20px 20px; background: white;">
@@ -3412,10 +3439,17 @@
 
     function closeSettings() {
         document.getElementById('settings-modal').classList.add('hidden');
+        // تنظيف حقول كلمة المرور
+        const currentPassEl = document.getElementById('settings-current-password');
+        const newPassEl = document.getElementById('settings-new-password');
+        if (currentPassEl) currentPassEl.value = '';
+        if (newPassEl) newPassEl.value = '';
     }
 
     async function saveSettings() {
         const phone = document.getElementById('settings-phone').value.trim();
+        const currentPassword = document.getElementById('settings-current-password') ? document.getElementById('settings-current-password').value : '';
+        const newPassword = document.getElementById('settings-new-password') ? document.getElementById('settings-new-password').value : '';
 
         if (!currentDriver) return;
 
@@ -3424,19 +3458,59 @@
             return;
         }
 
+        // التحقق من إدخال كلمة المرور إن أراد السائق تعديلها
+        if (currentPassword || newPassword) {
+            if (!currentPassword) {
+                showNotification('الرجاء إدخال كلمة المرور الحالية لتغيير كلمة المرور', 'error');
+                return;
+            }
+            if (!newPassword || newPassword.length < 6) {
+                showNotification('كلمة المرور الجديدة يجب أن تكون 6 خانات على الأقل', 'error');
+                return;
+            }
+        }
+
         try {
-            await initSupabaseAdmin();
-            const dbClient = supabaseAdmin || tarhalDB;
-            const { error } = await dbClient
-                .from('drivers')
-                .update({ phone: phone })
-                .eq('id', currentDriver.id);
+            // إذا قام السائق بملء حقول كلمة المرور، نقوم بتحديثها عبر الـ Backend الآمن
+            if (currentPassword && newPassword) {
+                const token = localStorage.getItem('tarhal_session_token') || localStorage.getItem('session_token');
+                const passRes = await fetch('/api/auth', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': token ? `Bearer ${token}` : ''
+                    },
+                    body: JSON.stringify({
+                        action: 'change_password',
+                        role: 'driver',
+                        userId: currentDriver.id,
+                        currentPassword: currentPassword,
+                        newPassword: newPassword
+                    })
+                });
 
-            if (error) throw error;
+                const passData = await passRes.json();
+                if (!passRes.ok || !passData.success) {
+                    showNotification(passData.error || 'فشل تحديث كلمة المرور', 'error');
+                    return;
+                }
+            }
 
-            currentDriver.phone = phone;
-            localStorage.setItem('tarhal_driver', JSON.stringify(currentDriver));
-            localStorage.setItem('user_data', JSON.stringify(currentDriver));
+            // تحديث رقم الاتصال إذا تم تعديله
+            if (phone !== currentDriver.phone) {
+                await initSupabaseAdmin();
+                const dbClient = supabaseAdmin || tarhalDB;
+                const { error } = await dbClient
+                    .from('drivers')
+                    .update({ phone: phone })
+                    .eq('id', currentDriver.id);
+
+                if (error) throw error;
+
+                currentDriver.phone = phone;
+                localStorage.setItem('tarhal_driver', JSON.stringify(currentDriver));
+                localStorage.setItem('user_data', JSON.stringify(currentDriver));
+            }
 
             showNotification('✅ تم حفظ التعديلات بنجاح', 'success');
             closeSettings();

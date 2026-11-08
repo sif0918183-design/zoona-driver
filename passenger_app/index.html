@@ -2182,6 +2182,33 @@
             <label class="form-label">رقم الإتصال (قابل للتعديل)</label>
             <input type="tel" id="settings-phone2" class="form-input" placeholder="0XXXXXXXXX" maxlength="10" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/\D/g, '').substring(0, 10)" dir="ltr">
         </div>
+
+        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--tech-border);">
+            <div style="font-weight: 700; color: var(--Tracka-primary); font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+                <i class="ph-bold ph-lock-key"></i>
+                تعديل كلمة المرور (اختياري)
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">كلمة المرور الحالية</label>
+                <div class="password-input-container">
+                    <input type="password" id="settings-current-password" class="form-input" placeholder="أدخل كلمة المرور الحالية">
+                    <button type="button" class="toggle-password" onclick="togglePassword('settings-current-password')">
+                        <i class="ph-light ph-eye"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">كلمة المرور الجديدة</label>
+                <div class="password-input-container">
+                    <input type="password" id="settings-new-password" class="form-input" placeholder="كلمة المرور الجديدة (6 خانات على الأقل)">
+                    <button type="button" class="toggle-password" onclick="togglePassword('settings-new-password')">
+                        <i class="ph-light ph-eye"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="agreement-actions" style="display: flex; flex-direction: column; gap: 10px; padding: 20px;">
@@ -3117,13 +3144,11 @@ async function registerCustomer() {
             role: 'passenger'
         });
 
-        showPageLoader(true);
-        setTimeout(() => {
-            showScreen('home-screen');
-            updateUserProfile();
-            initRealtime();
-            showPageLoader(false);
-        }, 800);
+        // الانتقال الفوري والمباشر للواجهة الرئيسية بدون تأخير مصطنع
+        showScreen('home-screen');
+        updateUserProfile();
+        initRealtime();
+        showPageLoader(false);
 
     } catch (error) {
         console.error('Registration error:', error);
@@ -3156,7 +3181,10 @@ function updateUserProfile() {
         document.getElementById('verification-status').classList.remove('hidden');
     }
 
-    check24hTravelReminder();
+    // تشغيل تذكيرات السفر في الخلفية دون تعطيل الواجهة
+    setTimeout(() => {
+        check24hTravelReminder();
+    }, 100);
 }
 
 async function check24hTravelReminder() {
@@ -4996,10 +5024,17 @@ async function showSettings() {
 
 function closeSettings() {
     document.getElementById('settings-modal').classList.add('hidden');
+    // تنظيف حقول كلمة المرور
+    const currentPassEl = document.getElementById('settings-current-password');
+    const newPassEl = document.getElementById('settings-new-password');
+    if (currentPassEl) currentPassEl.value = '';
+    if (newPassEl) newPassEl.value = '';
 }
 
 async function saveSettings() {
     const phone2 = document.getElementById('settings-phone2').value.trim();
+    const currentPassword = document.getElementById('settings-current-password') ? document.getElementById('settings-current-password').value : '';
+    const newPassword = document.getElementById('settings-new-password') ? document.getElementById('settings-new-password').value : '';
 
     if (!currentUser) return;
 
@@ -5008,21 +5043,60 @@ async function saveSettings() {
         return;
     }
 
+    // التحقق من إدخال كلمة المرور إن أراد المستخدم تعديلها
+    if (currentPassword || newPassword) {
+        if (!currentPassword) {
+            showNotification('الرجاء إدخال كلمة المرور الحالية لتغيير كلمة المرور', 'error');
+            return;
+        }
+        if (!newPassword || newPassword.length < 6) {
+            showNotification('كلمة المرور الجديدة يجب أن تكون 6 خانات على الأقل', 'error');
+            return;
+        }
+    }
+
     try {
-        await initSupabaseAdmin();
-        const dbClient = supabaseAdmin || tarhalDB;
-        const { error } = await dbClient
-            .from('customers')
-            .update({ phone2: phone2 })
-            .eq('id', currentUser.id);
+        // إذا قام المستخدم بملء حقول كلمة المرور، نقوم بتحديثها عبر الـ Backend الآمن
+        if (currentPassword && newPassword) {
+            const token = localStorage.getItem('tarhal_session_token') || localStorage.getItem('session_token');
+            const passRes = await fetch('/api/auth', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': token ? `Bearer ${token}` : ''
+                },
+                body: JSON.stringify({
+                    action: 'change_password',
+                    role: 'passenger',
+                    userId: currentUser.id,
+                    currentPassword: currentPassword,
+                    newPassword: newPassword
+                })
+            });
 
-        if (error) throw error;
+            const passData = await passRes.json();
+            if (!passRes.ok || !passData.success) {
+                showNotification(passData.error || 'فشل تحديث كلمة المرور', 'error');
+                return;
+            }
+        }
 
-        // تحديث الحالة المحلية
-        currentUser.phone2 = phone2;
-        localStorage.setItem('tarhal_passenger', JSON.stringify(currentUser));
-        localStorage.setItem('tarhal_customer', JSON.stringify(currentUser));
-        localStorage.setItem('user_data', JSON.stringify(currentUser));
+        // تحديث رقم الاتصال إذا تم تعديله
+        if (phone2 !== currentUser.phone2) {
+            await initSupabaseAdmin();
+            const dbClient = supabaseAdmin || tarhalDB;
+            const { error } = await dbClient
+                .from('customers')
+                .update({ phone2: phone2 })
+                .eq('id', currentUser.id);
+
+            if (error) throw error;
+
+            currentUser.phone2 = phone2;
+            localStorage.setItem('tarhal_passenger', JSON.stringify(currentUser));
+            localStorage.setItem('tarhal_customer', JSON.stringify(currentUser));
+            localStorage.setItem('user_data', JSON.stringify(currentUser));
+        }
 
         showNotification('✅ تم حفظ التعديلات بنجاح', 'success');
         closeSettings();

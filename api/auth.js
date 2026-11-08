@@ -552,6 +552,79 @@ export default async function handler(req, res) {
             }
         }
 
+        // --- CHANGE PASSWORD PASSENGER / DRIVER ---
+        if (action === 'change_password') {
+            const { currentPassword, newPassword, userId, role: userRole } = req.body;
+
+            if (!currentPassword || !newPassword) {
+                return res.status(400).json({ success: false, error: 'الرجاء إدخال كلمة المرور الحالية وكلمة المرور الجديدة' });
+            }
+
+            if (newPassword.length < 6) {
+                return res.status(400).json({ success: false, error: 'كلمة المرور الجديدة يجب أن تكون 6 خانات على الأقل' });
+            }
+
+            // Determine caller id and role securely via token or body with validation
+            let callerId = userId;
+            let callerRole = userRole || role;
+
+            if (bearerToken) {
+                try {
+                    const session = verifyToken(bearerToken);
+                    if (session && session.id) {
+                        callerId = session.id;
+                        callerRole = session.role || callerRole;
+                    }
+                } catch (tokErr) {
+                    console.warn('[Auth API] change_password token verify warning:', tokErr.message);
+                }
+            }
+
+            if (!callerId) {
+                return res.status(401).json({ success: false, error: 'المصادقة مطلوبة: يرجى تسجيل الدخول مجدداً' });
+            }
+
+            const targetTable = (callerRole === 'driver') ? 'drivers' : 'customers';
+
+            // Fetch current user from table
+            const { data: userRecord, error: fetchErr } = await supabase
+                .from(targetTable)
+                .select('id, password')
+                .eq('id', callerId)
+                .maybeSingle();
+
+            if (fetchErr || !userRecord) {
+                return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
+            }
+
+            // Verify current password
+            const isMatch = (userRecord.password && (userRecord.password.startsWith('$2a$') || userRecord.password.startsWith('$2b$')))
+                ? bcrypt.compareSync(currentPassword, userRecord.password)
+                : currentPassword === userRecord.password;
+
+            if (!isMatch) {
+                return res.status(400).json({ success: false, error: 'كلمة المرور الحالية غير صحيحة' });
+            }
+
+            // Hash new password
+            const newPasswordHash = bcrypt.hashSync(newPassword, 10);
+
+            // Update user password in DB
+            const { error: updateErr } = await supabase
+                .from(targetTable)
+                .update({ password: newPasswordHash })
+                .eq('id', callerId);
+
+            if (updateErr) {
+                throw updateErr;
+            }
+
+            return res.status(200).json({
+                success: true,
+                message: 'تم تحديث كلمة المرور بنجاح'
+            });
+        }
+
         return res.status(400).json({ success: false, error: 'Unknown action' });
 
     } catch (error) {
