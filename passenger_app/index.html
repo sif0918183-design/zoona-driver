@@ -3144,7 +3144,7 @@ async function registerCustomer() {
             role: 'passenger'
         });
 
-        // الانتقال الفوري والمباشر للواجهة الرئيسية بدون تأخير مصطنع
+        // الانتقال الفوري لواجهة الحساب الرئيسية دون تأخير اصطناعي
         showScreen('home-screen');
         updateUserProfile();
         initRealtime();
@@ -3181,7 +3181,7 @@ function updateUserProfile() {
         document.getElementById('verification-status').classList.remove('hidden');
     }
 
-    // تشغيل تذكيرات السفر في الخلفية دون تعطيل الواجهة
+    // تشغيل فحص تذكيرات السفر في الخلفية بشكل غير متزامن
     setTimeout(() => {
         check24hTravelReminder();
     }, 100);
@@ -5171,44 +5171,40 @@ if ('serviceWorker' in navigator) {
 
 <!-- Complaints Modal -->
 <div id="complaints-modal" class="overlay hidden">
-    <div class="modal" style="background: var(--tech-card); border: 2px solid var(--Tracka-primary); backdrop-filter: blur(15px); max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; font-family: 'Tajawal', sans-serif;">
-        <div class="modal-header" style="border-bottom: 2px solid var(--Tracka-primary); padding-bottom: 15px; margin-bottom: 15px;">
-            <h2 class="modal-title" style="color: var(--Tracka-primary); font-size: 1.5rem; font-family: 'Tajawal', sans-serif;">الشكاوى والمقترحات</h2>
-            <button onclick="closeComplaintsModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--gray);">&times;</button>
+    <div class="modal" style="background: var(--tech-card, #ffffff); border: 2px solid var(--Tracka-primary); border-radius: 18px; box-shadow: 0 12px 36px rgba(0,0,0,0.18); max-width: 500px; width: 92%; max-height: 90vh; overflow-y: auto; font-family: 'Tajawal', sans-serif; padding: 24px;">
+        <div class="modal-header" style="border-bottom: 2px solid rgba(0, 139, 94, 0.15); padding-bottom: 14px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <i class="ph-bold ph-chat-teardrop-text" style="color: var(--Tracka-primary); font-size: 1.5rem;"></i>
+                <h2 class="modal-title" style="color: var(--Tracka-primary); font-size: 1.35rem; font-weight: 800; margin: 0; font-family: 'Tajawal', sans-serif;">الشكاوى والمقترحات</h2>
+            </div>
+            <button onclick="closeComplaintsModal()" style="background: #f1f5f9; border: none; width: 34px; height: 34px; border-radius: 50%; font-size: 1.25rem; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #64748b; transition: all 0.2s;">&times;</button>
         </div>
+
         <form id="complaints-form" onsubmit="submitPassengerComplaint(event)" style="font-family: 'Tajawal', sans-serif;">
-            <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; color: var(--tech-text); font-weight: 600; font-family: 'Tajawal', sans-serif;">الاسم الكامل</label>
-                <input type="text" id="complaint-name" name="name" required 
-                       style="width: 100%; padding: 12px; border: 1.5px solid var(--tech-border); border-radius: 10px; background: white; color: var(--tech-text); font-size: 1rem; font-family: 'Tajawal', sans-serif;">
-            </div>
-            
-            <div style="display: flex; gap: 15px; margin-bottom: 15px;">
-                <div style="flex: 1;">
-                    <label style="display: block; margin-bottom: 5px; color: var(--tech-text); font-weight: 600; font-family: 'Tajawal', sans-serif;">رقم الواتساب</label>
-                    <input type="tel" id="complaint-whatsapp" name="whatsapp" 
-                           style="width: 100%; padding: 12px; border: 1.5px solid var(--tech-border); border-radius: 10px; background: white; color: var(--tech-text); font-size: 1rem; font-family: 'Tajawal', sans-serif;">
+            <!-- بطاقة البيانات الثابتة غير القابلة للتعديل -->
+            <div style="background: linear-gradient(135deg, rgba(0, 139, 94, 0.05) 0%, rgba(0, 139, 94, 0.02) 100%); border: 1.5px solid rgba(0, 139, 94, 0.2); border-radius: 14px; padding: 14px; margin-bottom: 18px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <span style="font-size: 0.85rem; color: #64748b; font-weight: 600; font-family: 'Tajawal', sans-serif;">بيانات الحساب المعتمدة:</span>
+                    <span style="background: var(--Tracka-primary); color: white; padding: 3px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: 700; font-family: 'Tajawal', sans-serif;">حساب راكب</span>
                 </div>
-                <div style="flex: 1;">
-                    <label style="display: block; margin-bottom: 5px; color: var(--tech-text); font-weight: 600; font-family: 'Tajawal', sans-serif;">رقم الهاتف</label>
-                    <input type="tel" id="complaint-phone" name="phone" required 
-                           style="width: 100%; padding: 12px; border: 1.5px solid var(--tech-border); border-radius: 10px; background: white; color: var(--tech-text); font-size: 1rem; font-family: 'Tajawal', sans-serif;">
+
+                <div style="margin-bottom: 10px;">
+                    <label style="display: block; margin-bottom: 4px; color: #475569; font-size: 0.85rem; font-weight: 600; font-family: 'Tajawal', sans-serif;">الاسم الكامل</label>
+                    <input type="text" id="complaint-name" name="name" readonly disabled
+                           style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: #f8fafc; color: #1e293b; font-size: 0.95rem; font-weight: 700; cursor: not-allowed; font-family: 'Tajawal', sans-serif;">
                 </div>
-            </div>
-            
-            <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 8px; color: var(--tech-text); font-weight: 600; font-family: 'Tajawal', sans-serif;">نوع الحساب</label>
-                <div style="display: flex; gap: 20px;">
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-family: 'Tajawal', sans-serif;">
-                        <input type="radio" name="user_type" id="complaint-driver" value="driver" 
-                               style="accent-color: var(--Tracka-primary); width: 20px; height: 20px;">
-                        <span style="color: var(--tech-text); font-family: 'Tajawal', sans-serif;">سائق</span>
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-family: 'Tajawal', sans-serif;">
-                        <input type="radio" name="user_type" id="complaint-passenger" value="passenger" checked 
-                               style="accent-color: var(--Tracka-primary); width: 20px; height: 20px;">
-                        <span style="color: var(--tech-text); font-family: 'Tajawal', sans-serif;">راكب</span>
-                    </label>
+
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex: 1;">
+                        <label style="display: block; margin-bottom: 4px; color: #475569; font-size: 0.85rem; font-weight: 600; font-family: 'Tajawal', sans-serif;">رقم الواتساب</label>
+                        <input type="tel" id="complaint-whatsapp" name="whatsapp" readonly disabled
+                               style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: #f8fafc; color: #1e293b; font-size: 0.95rem; font-weight: 600; direction: ltr; text-align: right; cursor: not-allowed; font-family: 'Tajawal', sans-serif;">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="display: block; margin-bottom: 4px; color: #475569; font-size: 0.85rem; font-weight: 600; font-family: 'Tajawal', sans-serif;">رقم الاتصال</label>
+                        <input type="tel" id="complaint-phone" name="phone" readonly disabled
+                               style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: #f8fafc; color: #1e293b; font-size: 0.95rem; font-weight: 600; direction: ltr; text-align: right; cursor: not-allowed; font-family: 'Tajawal', sans-serif;">
+                    </div>
                 </div>
             </div>
             
@@ -5266,11 +5262,14 @@ function showComplaintsModal() {
     if (passengerData) {
         try {
             const passenger = JSON.parse(passengerData);
-            document.getElementById('complaint-name').value = passenger.full_name || passenger.fullName || passenger.name || '';
-            document.getElementById('complaint-whatsapp').value = passenger.whatsapp_number || passenger.whatsappNumber || passenger.phone || '';
-            document.getElementById('complaint-phone').value = passenger.phone || passenger.whatsapp_number || '';
-            document.getElementById('complaint-passenger').checked = true;
-            console.log('✅ تم ملء بيانات الراكب:', passenger.full_name);
+            const fullName = passenger.full_name || passenger.fullName || passenger.name || 'راكب تراكا';
+            const whatsapp = passenger.whatsapp_number || passenger.whatsappNumber || passenger.phone || '';
+            const phone = passenger.phone || passenger.whatsapp_number || passenger.phone2 || '';
+
+            document.getElementById('complaint-name').value = fullName;
+            document.getElementById('complaint-whatsapp').value = whatsapp;
+            document.getElementById('complaint-phone').value = phone;
+            console.log('✅ تم ملء بيانات الراكب المعتمدة بنجاح:', fullName);
         } catch (e) {
             console.error('Error parsing passenger data:', e);
         }
@@ -5318,16 +5317,22 @@ async function submitPassengerComplaint(event) {
         }
     }
     
+    const nameVal = document.getElementById('complaint-name').value.trim() || userName || 'راكب';
+    const whatsappVal = document.getElementById('complaint-whatsapp').value.trim();
+    const phoneVal = document.getElementById('complaint-phone').value.trim();
+
     const complaintData = {
-        name: formData.get('name'),
+        name: nameVal,
         user_id: userId,
-        user_name: userName,
-        user_type: formData.get('user_type'),
-        whatsapp: formData.get('whatsapp'),
-        phone: formData.get('phone'),
+        user_name: nameVal,
+        user_type: 'passenger',
+        account_type: 'راكب',
+        whatsapp: whatsappVal,
+        phone: phoneVal,
         complaint_type: formData.get('complaint_type'),
         message: formData.get('description'),
-        rating: formData.get('rating'),
+        rating: parseInt(formData.get('rating') || '0', 10) || 0,
+        status: 'new',
         created_at: new Date().toISOString()
     };
     

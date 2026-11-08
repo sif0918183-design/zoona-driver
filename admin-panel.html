@@ -1142,6 +1142,11 @@
                     <i class="ph-light ph-chart-bar"></i>
                     <span>التقارير</span>
                 </a>
+
+                <a class="nav-item" onclick="showSection('complaints')">
+                    <i class="ph-light ph-chat-teardrop-text"></i>
+                    <span>الشكاوى والمقترحات</span>
+                </a>
                 
                 <a class="nav-item" onclick="showSection('settings')">
                     <i class="ph-light ph-gear"></i>
@@ -1882,6 +1887,138 @@
                         </div>
                     </div>
                 </section>
+
+                <!-- Complaints Section -->
+                <section id="complaints-section" class="section">
+                    <!-- Complaints Stats Cards -->
+                    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom: 2rem;">
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-title">إجمالي الشكاوى</span>
+                                <div class="stat-icon primary">
+                                    <i class="ph-light ph-chat-teardrop-text"></i>
+                                </div>
+                            </div>
+                            <div class="stat-value" id="total-complaints-count">0</div>
+                            <div class="stat-change neutral">
+                                <span>جميع الشكاوى والمقترحات</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-title">شكاوى جديدة</span>
+                                <div class="stat-icon warning">
+                                    <i class="ph-light ph-bell-ringing"></i>
+                                </div>
+                            </div>
+                            <div class="stat-value" id="new-complaints-count" style="color: #f59e0b;">0</div>
+                            <div class="stat-change warning">
+                                <span>بانتظار المراجعة</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-title">قيد المتابعة</span>
+                                <div class="stat-icon primary">
+                                    <i class="ph-light ph-clock-countdown"></i>
+                                </div>
+                            </div>
+                            <div class="stat-value" id="progress-complaints-count" style="color: #3b82f6;">0</div>
+                            <div class="stat-change primary">
+                                <span>يجري التعامل معها</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-title">شكاوى تم حلها</span>
+                                <div class="stat-icon success">
+                                    <i class="ph-light ph-check-circle"></i>
+                                </div>
+                            </div>
+                            <div class="stat-value" id="resolved-complaints-count" style="color: #10b981;">0</div>
+                            <div class="stat-change success">
+                                <span>تمت معالجتها بنجاح</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Complaints Table Container -->
+                    <div class="tables-container">
+                        <div class="table-header" style="flex-wrap: wrap; gap: 1rem;">
+                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                <h3 class="table-title">
+                                    <i class="ph-light ph-chat-circle-dots"></i>
+                                    قائمة الشكاوى والمقترحات
+                                </h3>
+                                <button class="btn btn-outline btn-sm" onclick="loadComplaints()" title="تحديث القائمة">
+                                    <i class="ph-light ph-arrows-clockwise"></i> تحديث
+                                </button>
+                            </div>
+
+                            <!-- Filters Toolbar -->
+                            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+                                <div class="search-box" style="margin: 0; min-width: 220px;">
+                                    <i class="ph-light ph-magnifying-glass search-icon"></i>
+                                    <input type="text" id="search-complaints" class="search-input" placeholder="بحث بالاسم أو الهاتف..." oninput="filterComplaintsTable()">
+                                </div>
+
+                                <select id="filter-complaint-status" class="form-control" style="width: auto; padding: 0.5rem 1rem;" onchange="filterComplaintsTable()">
+                                    <option value="all">كل الحالات</option>
+                                    <option value="new">جديدة</option>
+                                    <option value="read">مقروءة</option>
+                                    <option value="in_progress">قيد المتابعة</option>
+                                    <option value="resolved">تم الحل</option>
+                                </select>
+
+                                <select id="filter-complaint-user-type" class="form-control" style="width: auto; padding: 0.5rem 1rem;" onchange="filterComplaintsTable()">
+                                    <option value="all">كل المستخدمين</option>
+                                    <option value="driver">سائق</option>
+                                    <option value="passenger">راكب</option>
+                                </select>
+
+                                <select id="filter-complaint-type" class="form-control" style="width: auto; padding: 0.5rem 1rem;" onchange="filterComplaintsTable()">
+                                    <option value="all">كل التصنيفات</option>
+                                    <option value="شكوى_against_driver">شكوى ضد سائق</option>
+                                    <option value="شكوى_against_passenger">شكوى ضد راكب</option>
+                                    <option value="مشكلة_تقنية">مشكلة تقنية</option>
+                                    <option value="مقترح">اقتراح</option>
+                                    <option value="أخرى">أخرى</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="table-content">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>المستخدم</th>
+                                        <th>نوع الحساب</th>
+                                        <th>الهاتف والواتساب</th>
+                                        <th>نوع الشكوى</th>
+                                        <th>التقييم</th>
+                                        <th>الحالة</th>
+                                        <th>التاريخ</th>
+                                        <th>الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="complaints-table-body">
+                                    <tr>
+                                        <td colspan="8" style="text-align: center; padding: 2.5rem;">
+                                            <div class="empty-state" style="padding: 0;">
+                                                <div class="empty-icon"><i class="ph-light ph-spinner ph-spin" style="font-size: 2rem;"></i></div>
+                                                <div class="empty-title">جاري تحميل الشكاوى...</div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
                 <section id="settings-section" class="section">
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem;">
                         <!-- Travel Platform Settings -->
@@ -2134,6 +2271,80 @@
             </div>
         </div>
     </div>
+
+    <!-- Complaint Details Modal -->
+    <div id="complaint-details-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <i class="ph-light ph-chat-teardrop-text"></i>
+                    تفاصيل الشكوى / المقترح
+                </h3>
+                <button class="modal-close" onclick="closeComplaintDetailsModal()">&times;</button>
+            </div>
+
+            <div style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; background: var(--gray-50); padding: 1rem; border-radius: var(--border-radius);">
+                    <div>
+                        <div style="font-size: 0.8125rem; color: var(--gray-500);">صاحب الشكوى</div>
+                        <div style="font-weight: 700; font-size: 1.05rem;" id="cd-user-name">-</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.8125rem; color: var(--gray-500);">نوع الحساب</div>
+                        <div id="cd-user-type">-</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.8125rem; color: var(--gray-500);">رقم الهاتف للاتصال</div>
+                        <div style="font-weight: 600;" id="cd-phone">-</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.8125rem; color: var(--gray-500);">رقم الواتساب</div>
+                        <div style="font-weight: 600;" id="cd-whatsapp">-</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.8125rem; color: var(--gray-500);">نوع البلاغ</div>
+                        <div style="font-weight: 600; color: var(--primary);" id="cd-complaint-type">-</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.8125rem; color: var(--gray-500);">تاريخ الإرسال</div>
+                        <div style="font-size: 0.875rem;" id="cd-created-at">-</div>
+                    </div>
+                </div>
+
+                <div>
+                    <div style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--gray-700);">تقييم الخدمة المقدمة:</div>
+                    <div id="cd-rating" style="color: #f59e0b; font-size: 1.25rem;"></div>
+                </div>
+
+                <div>
+                    <div style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--gray-700);">نص الشكوى أو المقترح:</div>
+                    <div id="cd-message" style="background: white; border: 1.5px solid var(--gray-200); padding: 1rem; border-radius: 8px; line-height: 1.7; white-space: pre-wrap; font-size: 0.95rem; color: var(--gray-800); max-height: 200px; overflow-y: auto;">-</div>
+                </div>
+
+                <div style="border-top: 1px solid var(--gray-200); padding-top: 1rem;">
+                    <label class="form-label" style="font-weight: 600; margin-bottom: 0.5rem;">تحديث حالة الشكوى:</label>
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                        <button class="btn btn-outline btn-sm" onclick="changeActiveComplaintStatus('read')">
+                            <i class="ph-light ph-envelope-open"></i> تمييز كمقروءة
+                        </button>
+                        <button class="btn btn-outline btn-sm" style="color: #2563eb; border-color: #93c5fd;" onclick="changeActiveComplaintStatus('in_progress')">
+                            <i class="ph-light ph-clock-countdown"></i> قيد المتابعة
+                        </button>
+                        <button class="btn btn-primary btn-sm" onclick="changeActiveComplaintStatus('resolved')">
+                            <i class="ph-light ph-check-circle"></i> تم الحل والمعالجة
+                        </button>
+                        <button class="btn btn-danger btn-sm" style="margin-right: auto;" onclick="deleteActiveComplaint()">
+                            <i class="ph-light ph-trash"></i> حذف الشكوى
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div style="padding: 1rem 1.5rem; border-top: 1px solid var(--gray-200); display: flex; justify-content: flex-end;">
+                <button class="btn btn-outline" onclick="closeComplaintDetailsModal()">إغلاق</button>
+            </div>
+        </div>
+    </div>
     <script>
         // ============================================
         // GLOBAL VARIABLES AND CONFIGURATION
@@ -2176,6 +2387,8 @@
         let travelPricePerKm = 1000;
         let allDrivers = [];
         let allPassengers = [];
+        let allComplaints = [];
+        let activeComplaint = null;
         let vehicleCategories = [];
         let cities = [];
         let currentPage = 1;
@@ -2357,6 +2570,7 @@
                 'reliability': 'موثوقية الركاب',
                 'reports': 'التقارير',
                 'balance': 'الرصيد والعمولات',
+                'complaints': 'الشكاوى والمقترحات',
                 'settings': 'الإعدادات'
             };
             
@@ -2369,6 +2583,7 @@
                 'reliability': 'ph-shield-check',
                 'reports': 'ph-chart-bar',
                 'balance': 'ph-wallet',
+                'complaints': 'ph-chat-teardrop-text',
                 'settings': 'ph-gear'
             };
             
@@ -2406,6 +2621,9 @@
                     loadLowBalanceDrivers();
                     loadSuspiciousCancellations();
                     populateDriverSelect();
+                    break;
+                case 'complaints':
+                    loadComplaints();
                     break;
                 case 'settings':
                     loadSettings();
@@ -2840,6 +3058,7 @@
                 displayPassengersTable();
                 displayCategoriesTables();
                 updateStats();
+                loadComplaints();
                 
                 console.log('✅ تم تحميل البيانات بنجاح');
                 showNotification('تم تحميل البيانات من قاعدة البيانات', 'success');
@@ -4288,6 +4507,258 @@
             } catch (err) {
                 console.error('Error saving travel settings:', err);
                 showNotification('خطأ في حفظ الضوابط: ' + err.message, 'error');
+            }
+        }
+
+        // ============================================
+        // COMPLAINTS MANAGEMENT
+        // ============================================
+        async function loadComplaints() {
+            try {
+                const res = await adminApiCall('list_complaints', { limit: 150 });
+                allComplaints = res.complaints || [];
+
+                updateComplaintsStats();
+                displayComplaintsTable(allComplaints);
+            } catch (err) {
+                console.error('Error loading complaints:', err);
+                try {
+                    const { data, error } = await adminSupabase
+                        .from('complaints')
+                        .select('*')
+                        .order('created_at', { ascending: false })
+                        .limit(150);
+                    if (!error && data) {
+                        allComplaints = data;
+                        updateComplaintsStats();
+                        displayComplaintsTable(allComplaints);
+                        return;
+                    }
+                } catch(e) {}
+                showNotification('فشل تحميل الشكاوى: ' + err.message, 'error');
+            }
+        }
+
+        function updateComplaintsStats() {
+            const total = allComplaints.length;
+            const newCount = allComplaints.filter(c => c.status === 'new').length;
+            const progressCount = allComplaints.filter(c => c.status === 'in_progress' || c.status === 'read' || c.status === 'replied').length;
+            const resolvedCount = allComplaints.filter(c => c.status === 'resolved').length;
+
+            document.getElementById('total-complaints-count').innerText = total;
+            document.getElementById('new-complaints-count').innerText = newCount;
+            document.getElementById('progress-complaints-count').innerText = progressCount;
+            document.getElementById('resolved-complaints-count').innerText = resolvedCount;
+        }
+
+        function filterComplaintsTable() {
+            const search = document.getElementById('search-complaints')?.value.toLowerCase().trim() || '';
+            const statusFilter = document.getElementById('filter-complaint-status')?.value || 'all';
+            const userTypeFilter = document.getElementById('filter-complaint-user-type')?.value || 'all';
+            const complaintTypeFilter = document.getElementById('filter-complaint-type')?.value || 'all';
+
+            let filtered = allComplaints.filter(item => {
+                if (statusFilter !== 'all' && item.status !== statusFilter) return false;
+                if (userTypeFilter !== 'all' && item.user_type !== userTypeFilter) return false;
+                if (complaintTypeFilter !== 'all' && item.complaint_type !== complaintTypeFilter) return false;
+                if (search) {
+                    const nameMatch = (item.user_name || item.name || '').toLowerCase().includes(search);
+                    const phoneMatch = (item.phone || '').includes(search) || (item.whatsapp || '').includes(search);
+                    const msgMatch = (item.message || '').toLowerCase().includes(search);
+                    if (!nameMatch && !phoneMatch && !msgMatch) return false;
+                }
+                return true;
+            });
+
+            displayComplaintsTable(filtered);
+        }
+
+        function displayComplaintsTable(complaintsList) {
+            const tbody = document.getElementById('complaints-table-body');
+            if (!tbody) return;
+
+            if (!complaintsList || complaintsList.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 2.5rem;">
+                            <div class="empty-state" style="padding: 0;">
+                                <div class="empty-icon"><i class="ph-light ph-chat-teardrop-slash" style="font-size: 2.5rem; color: var(--gray-400);"></i></div>
+                                <div class="empty-title">لا توجد شكاوى مطابقة</div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = complaintsList.map(c => {
+                const dateStr = c.created_at ? new Date(c.created_at).toLocaleString('ar-EG', {
+                    year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                }) : '-';
+
+                const statusBadges = {
+                    'new': '<span class="badge badge-warning">جديدة</span>',
+                    'read': '<span class="badge badge-secondary" style="background:#e0e7ff; color:#3730a3;">مقروءة</span>',
+                    'in_progress': '<span class="badge badge-primary">قيد المتابعة</span>',
+                    'replied': '<span class="badge badge-info">تم الرد</span>',
+                    'resolved': '<span class="badge badge-success">تم الحل</span>'
+                };
+                const statusBadge = statusBadges[c.status] || `<span class="badge badge-secondary">${c.status || 'غير محدد'}</span>`;
+
+                const userBadge = c.user_type === 'driver'
+                    ? '<span class="badge badge-primary" style="background:#dbeafe; color:#1e40af;"><i class="ph-bold ph-steering-wheel"></i> سائق</span>'
+                    : '<span class="badge badge-secondary" style="background:#f3e8ff; color:#6b21a8;"><i class="ph-bold ph-user"></i> راكب</span>';
+
+                const typeNames = {
+                    'شكوى_against_driver': 'شكوى ضد سائق',
+                    'شكوى_against_passenger': 'شكوى ضد راكب',
+                    'مشكلة_تقنية': 'مشكلة تقنية',
+                    'مقترح': 'اقتراح تطويري',
+                    'أخرى': 'أخرى'
+                };
+                const typeText = typeNames[c.complaint_type] || c.complaint_type || 'شكوى عامة';
+
+                const ratingStars = c.rating && c.rating > 0
+                    ? `<span style="color:#f59e0b;">${'★'.repeat(c.rating)}${'☆'.repeat(5 - c.rating)}</span>`
+                    : '<span style="color:var(--gray-400); font-size:0.8rem;">بدون تقييم</span>';
+
+                return `
+                    <tr>
+                        <td>
+                            <div style="font-weight: 700; color: var(--gray-900);">${c.user_name || c.name || 'مستخدم غير محدد'}</div>
+                            <div style="font-size: 0.75rem; color: var(--gray-500); font-family: monospace;">ID: ${(c.user_id || c.id || '').substring(0, 8)}</div>
+                        </td>
+                        <td>${userBadge}</td>
+                        <td>
+                            <div style="font-size: 0.875rem;"><i class="ph-bold ph-phone" style="font-size:0.75rem; color:var(--primary);"></i> ${c.phone || '-'}</div>
+                            ${c.whatsapp ? `<div style="font-size: 0.8125rem; color: #10b981;"><i class="ph-bold ph-whatsapp-logo"></i> ${c.whatsapp}</div>` : ''}
+                        </td>
+                        <td>
+                            <span style="font-weight: 600; font-size: 0.875rem;">${typeText}</span>
+                        </td>
+                        <td>${ratingStars}</td>
+                        <td>${statusBadge}</td>
+                        <td style="font-size: 0.8125rem; color: var(--gray-600);">${dateStr}</td>
+                        <td>
+                            <div style="display: flex; gap: 0.35rem;">
+                                <button class="btn btn-outline btn-sm" onclick="viewComplaintDetails('${c.id}')" title="عرض تفاصيل الشكوى">
+                                    <i class="ph-light ph-eye"></i>
+                                </button>
+                                ${c.status !== 'resolved' ? `
+                                    <button class="btn btn-success btn-sm" onclick="quickResolveComplaint('${c.id}')" title="تمييز كتم الحل">
+                                        <i class="ph-light ph-check"></i>
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function viewComplaintDetails(id) {
+            const complaint = allComplaints.find(c => String(c.id) === String(id));
+            if (!complaint) return;
+            activeComplaint = complaint;
+
+            document.getElementById('cd-user-name').innerText = complaint.user_name || complaint.name || 'مستخدم غير محدد';
+            document.getElementById('cd-user-type').innerHTML = complaint.user_type === 'driver'
+                ? '<span class="badge badge-primary">سائق تراكا</span>'
+                : '<span class="badge badge-secondary">راكب تراكا</span>';
+            document.getElementById('cd-phone').innerText = complaint.phone || '-';
+            document.getElementById('cd-whatsapp').innerText = complaint.whatsapp || '-';
+
+            const typeNames = {
+                'شكوى_against_driver': 'شكوى ضد سائق',
+                'شكوى_against_passenger': 'شكوى ضد راكب',
+                'مشكلة_تقنية': 'مشكلة تقنية في التطبيق',
+                'مقترح': 'مقترح واقتراح تطويري',
+                'أخرى': 'أخرى'
+            };
+            document.getElementById('cd-complaint-type').innerText = typeNames[complaint.complaint_type] || complaint.complaint_type || 'عامة';
+
+            const dateStr = complaint.created_at ? new Date(complaint.created_at).toLocaleString('ar-EG', {
+                year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+            }) : '-';
+            document.getElementById('cd-created-at').innerText = dateStr;
+
+            const rating = complaint.rating || 0;
+            document.getElementById('cd-rating').innerHTML = rating > 0
+                ? `${'★'.repeat(rating)}${'☆'.repeat(5 - rating)} <span style="font-size:0.875rem; color:var(--gray-600); font-weight:600;">(${rating}/5)</span>`
+                : '<span style="font-size:0.875rem; color:var(--gray-400);">لا يوجد تقييم</span>';
+
+            document.getElementById('cd-message').innerText = complaint.message || '(لا يوجد نص مرفق)';
+
+            document.getElementById('complaint-details-modal').classList.remove('hidden');
+        }
+
+        function closeComplaintDetailsModal() {
+            document.getElementById('complaint-details-modal').classList.add('hidden');
+            activeComplaint = null;
+        }
+
+        async function changeActiveComplaintStatus(newStatus) {
+            if (!activeComplaint) return;
+            try {
+                await adminApiCall('update_complaint_status', {
+                    complaint_id: activeComplaint.id,
+                    status: newStatus
+                });
+
+                showNotification('تم تحديث حالة الشكوى بنجاح', 'success');
+                activeComplaint.status = newStatus;
+
+                const idx = allComplaints.findIndex(c => String(c.id) === String(activeComplaint.id));
+                if (idx !== -1) {
+                    allComplaints[idx].status = newStatus;
+                }
+
+                updateComplaintsStats();
+                filterComplaintsTable();
+                closeComplaintDetailsModal();
+            } catch (err) {
+                console.error('Error updating complaint status:', err);
+                showNotification('خطأ في تحديث الحالة: ' + err.message, 'error');
+            }
+        }
+
+        async function quickResolveComplaint(id) {
+            try {
+                await adminApiCall('update_complaint_status', {
+                    complaint_id: id,
+                    status: 'resolved'
+                });
+                showNotification('تم وضع علامة تم الحل على الشكوى', 'success');
+                const idx = allComplaints.findIndex(c => String(c.id) === String(id));
+                if (idx !== -1) {
+                    allComplaints[idx].status = 'resolved';
+                }
+                updateComplaintsStats();
+                filterComplaintsTable();
+            } catch (err) {
+                console.error('Error resolving complaint:', err);
+                showNotification('فشل حل الشكوى: ' + err.message, 'error');
+            }
+        }
+
+        async function deleteActiveComplaint() {
+            if (!activeComplaint) return;
+            if (!confirm(`هل أنت متأكد من حذف هذه الشكوى المقدمة من "${activeComplaint.user_name || activeComplaint.name}" نهائياً؟`)) {
+                return;
+            }
+
+            try {
+                await adminApiCall('delete_complaint', {
+                    complaint_id: activeComplaint.id
+                });
+                showNotification('تم حذف الشكوى بنجاح', 'success');
+                allComplaints = allComplaints.filter(c => String(c.id) !== String(activeComplaint.id));
+                updateComplaintsStats();
+                filterComplaintsTable();
+                closeComplaintDetailsModal();
+            } catch (err) {
+                console.error('Error deleting complaint:', err);
+                showNotification('فشل حذف الشكوى: ' + err.message, 'error');
             }
         }
 

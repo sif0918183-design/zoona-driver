@@ -200,38 +200,6 @@ export default async function handler(req, res) {
             return res.status(200).json({ success: true });
         }
 
-        // --- DELETE CUSTOMER (ADMIN) ---
-        if (action === 'delete_customer') {
-            const { id } = req.body;
-            if (!id) {
-                return res.status(400).json({ success: false, error: 'معرف العميل مطلوب' });
-            }
-
-            const { error } = await supabase
-                .from('customers')
-                .delete()
-                .eq('id', id);
-
-            if (error) throw error;
-            return res.status(200).json({ success: true, message: 'تم حذف حساب العميل بنجاح' });
-        }
-
-        // --- DELETE DRIVER (ADMIN) ---
-        if (action === 'delete_driver') {
-            const { id } = req.body;
-            if (!id) {
-                return res.status(400).json({ success: false, error: 'معرف السائق مطلوب' });
-            }
-
-            const { error } = await supabase
-                .from('drivers')
-                .delete()
-                .eq('id', id);
-
-            if (error) throw error;
-            return res.status(200).json({ success: true, message: 'تم حذف حساب السائق بنجاح' });
-        }
-
         // --- GET TRAVEL SETTINGS ---
         if (action === 'get_travel_settings') {
             const { data, error } = await supabase
@@ -833,6 +801,99 @@ export default async function handler(req, res) {
 
             if (saveErr) throw saveErr;
 
+            return res.status(200).json({ success: true });
+        }
+
+        // --- DELETE CUSTOMER ---
+        if (action === 'delete_customer') {
+            const { id } = req.body;
+            if (!id) {
+                return res.status(400).json({ success: false, error: 'معرف الراكب مطلوب' });
+            }
+
+            const { error } = await supabase
+                .from('customers')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+            return res.status(200).json({ success: true, message: 'تم حذف حساب الراكب بنجاح' });
+        }
+
+        // --- DELETE DRIVER ---
+        if (action === 'delete_driver') {
+            const { id } = req.body;
+            if (!id) {
+                return res.status(400).json({ success: false, error: 'معرف السائق مطلوب' });
+            }
+
+            const { error } = await supabase
+                .from('drivers')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+            return res.status(200).json({ success: true, message: 'تم حذف حساب السائق بنجاح' });
+        }
+
+        // --- LIST COMPLAINTS ---
+        if (action === 'list_complaints') {
+            const { status, user_type, limit = 100 } = req.body;
+            let query = supabase
+                .from('complaints')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(Math.min(parseInt(limit, 10) || 100, 200));
+
+            if (status && status !== 'all') {
+                query = query.eq('status', status);
+            }
+            if (user_type && user_type !== 'all') {
+                query = query.eq('user_type', user_type);
+            }
+
+            const { data: complaints, error: complaintsErr } = await query;
+            if (complaintsErr) throw complaintsErr;
+
+            return res.status(200).json({ success: true, complaints: complaints || [] });
+        }
+
+        // --- UPDATE COMPLAINT STATUS ---
+        if (action === 'update_complaint_status') {
+            const { complaint_id, status } = req.body;
+            if (!complaint_id || !status) {
+                return res.status(400).json({ success: false, error: 'معرف الشكوى والحالة مطلوبان' });
+            }
+
+            const allowedStatuses = ['new', 'read', 'in_progress', 'replied', 'resolved'];
+            if (!allowedStatuses.includes(status)) {
+                return res.status(400).json({ success: false, error: 'حالة غير صالحة' });
+            }
+
+            const { data, error } = await supabase
+                .from('complaints')
+                .update({ status: status, updated_at: new Date().toISOString() })
+                .eq('id', complaint_id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            return res.status(200).json({ success: true, complaint: data });
+        }
+
+        // --- DELETE COMPLAINT ---
+        if (action === 'delete_complaint') {
+            const { complaint_id } = req.body;
+            if (!complaint_id) {
+                return res.status(400).json({ success: false, error: 'معرف الشكوى مطلوب' });
+            }
+
+            const { error } = await supabase
+                .from('complaints')
+                .delete()
+                .eq('id', complaint_id);
+
+            if (error) throw error;
             return res.status(200).json({ success: true });
         }
 

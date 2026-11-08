@@ -552,77 +552,63 @@ export default async function handler(req, res) {
             }
         }
 
-        // --- CHANGE PASSWORD PASSENGER / DRIVER ---
+        // --- CHANGE PASSWORD ---
         if (action === 'change_password') {
-            const { currentPassword, newPassword, userId, role: userRole } = req.body;
+            const { role, userId, currentPassword, newPassword } = req.body;
 
-            if (!currentPassword || !newPassword) {
-                return res.status(400).json({ success: false, error: 'الرجاء إدخال كلمة المرور الحالية وكلمة المرور الجديدة' });
+            if (!role || !userId || !currentPassword || !newPassword) {
+                return res.status(400).json({ success: false, error: 'جميع الحقول مطلوبة لتغيير كلمة المرور' });
             }
 
             if (newPassword.length < 6) {
                 return res.status(400).json({ success: false, error: 'كلمة المرور الجديدة يجب أن تكون 6 خانات على الأقل' });
             }
 
-            // Determine caller id and role securely via token or body with validation
-            let callerId = userId;
-            let callerRole = userRole || role;
+            // Verify identity via mandatory session token
+            const authHeader = req.headers.authorization;
+            if (!authHeader || !authHeader.startsWith('Bearer ')) {
+                return res.status(401).json({ success: false, error: 'جلسة المستخدم مفقودة أو غير مصرح بها' });
+            }
 
-            if (bearerToken) {
-                try {
-                    const session = verifyToken(bearerToken);
-                    if (session && session.id) {
-                        callerId = session.id;
-                        callerRole = session.role || callerRole;
-                    }
-                } catch (tokErr) {
-                    console.warn('[Auth API] change_password token verify warning:', tokErr.message);
+            const token = authHeader.substring(7);
+            try {
+                const decoded = verifyToken(token);
+                if (!decoded || decoded.id !== userId) {
+                    return res.status(403).json({ success: false, error: 'غير مصرح بتعديل هذا الحساب' });
                 }
+            } catch (e) {
+                return res.status(401).json({ success: false, error: 'جلسة المستخدم غير صالحة' });
             }
 
-            if (!callerId) {
-                return res.status(401).json({ success: false, error: 'المصادقة مطلوبة: يرجى تسجيل الدخول مجدداً' });
-            }
+            const table = role === 'driver' ? 'drivers' : 'customers';
+            const { data: user, error: fetchErr } = await supabase
+                .from(table)
+                .select('*')
+                .eq('id', userId)
+                .single();
 
-            const targetTable = (callerRole === 'driver') ? 'drivers' : 'customers';
-
-            // Fetch current user from table
-            const { data: userRecord, error: fetchErr } = await supabase
-                .from(targetTable)
-                .select('id, password')
-                .eq('id', callerId)
-                .maybeSingle();
-
-            if (fetchErr || !userRecord) {
-                return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
+            if (fetchErr || !user) {
+                return res.status(404).json({ success: false, error: 'لم يتم العثور على الحساب' });
             }
 
             // Verify current password
-            const isMatch = (userRecord.password && (userRecord.password.startsWith('$2a$') || userRecord.password.startsWith('$2b$')))
-                ? bcrypt.compareSync(currentPassword, userRecord.password)
-                : currentPassword === userRecord.password;
-
+            const isMatch = bcrypt.compareSync(currentPassword, user.password);
             if (!isMatch) {
                 return res.status(400).json({ success: false, error: 'كلمة المرور الحالية غير صحيحة' });
             }
 
             // Hash new password
-            const newPasswordHash = bcrypt.hashSync(newPassword, 10);
+            const salt = bcrypt.genSaltSync(10);
+            const hashedPassword = bcrypt.hashSync(newPassword, salt);
 
-            // Update user password in DB
             const { error: updateErr } = await supabase
-                .from(targetTable)
-                .update({ password: newPasswordHash })
-                .eq('id', callerId);
+                .from(table)
+                .update({ password: hashedPassword })
+                .eq('id', userId);
 
-            if (updateErr) {
-                throw updateErr;
-            }
+            if (updateErr) throw updateErr;
 
-            return res.status(200).json({
-                success: true,
-                message: 'تم تحديث كلمة المرور بنجاح'
-            });
+            return res.status(200).json({ success: true, message: 'تم تغيير كلمة المرور بنجاح' });
         }
 
         return res.status(400).json({ success: false, error: 'Unknown action' });
