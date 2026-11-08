@@ -200,6 +200,38 @@ export default async function handler(req, res) {
             return res.status(200).json({ success: true });
         }
 
+        // --- DELETE CUSTOMER (ADMIN) ---
+        if (action === 'delete_customer') {
+            const { id } = req.body;
+            if (!id) {
+                return res.status(400).json({ success: false, error: 'معرف العميل مطلوب' });
+            }
+
+            const { error } = await supabase
+                .from('customers')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+            return res.status(200).json({ success: true, message: 'تم حذف حساب العميل بنجاح' });
+        }
+
+        // --- DELETE DRIVER (ADMIN) ---
+        if (action === 'delete_driver') {
+            const { id } = req.body;
+            if (!id) {
+                return res.status(400).json({ success: false, error: 'معرف السائق مطلوب' });
+            }
+
+            const { error } = await supabase
+                .from('drivers')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+            return res.status(200).json({ success: true, message: 'تم حذف حساب السائق بنجاح' });
+        }
+
         // --- GET TRAVEL SETTINGS ---
         if (action === 'get_travel_settings') {
             const { data, error } = await supabase
