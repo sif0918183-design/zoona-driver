@@ -1125,6 +1125,9 @@
                                         '<ion-icon name="ban-outline"></ion-icon>تعطيل' :
                                         '<ion-icon name="checkmark-outline"></ion-icon>تفعيل'}
                                 </button>
+                                <button class="action-btn btn-delete" onclick="deleteCustomer('${customer.id}')" title="حذف حساب الراكب">
+                                    <ion-icon name="trash-outline"></ion-icon>حذف
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -1200,6 +1203,9 @@
                                     ${driver.is_active ?
                                         '<ion-icon name="ban-outline"></ion-icon>تعطيل' :
                                         '<ion-icon name="checkmark-outline"></ion-icon>تفعيل'}
+                                </button>
+                                <button class="action-btn btn-delete" onclick="deleteDriver('${driver.id}')" title="حذف حساب السائق">
+                                    <ion-icon name="trash-outline"></ion-icon>حذف
                                 </button>
                                 <button class="action-btn btn-add-balance" onclick="openAddBalanceModal('${driver.id}')">
                                     <ion-icon name="cash-outline"></ion-icon>
@@ -1557,6 +1563,11 @@
                                     '<ion-icon name="ban-outline"></ion-icon>تعطيل الحساب' :
                                     '<ion-icon name="checkmark-outline"></ion-icon>تفعيل الحساب'}
                             </button>
+                            <button class="btn btn-delete"
+                                    onclick="deleteCustomer('${customer.id}', true)"
+                                    style="flex: 1;">
+                                <ion-icon name="trash-outline"></ion-icon>حذف الحساب
+                            </button>
                         </div>
                     </div>
                 `;
@@ -1610,6 +1621,29 @@
             } catch (error) {
                 console.error('Error toggling customer status:', error);
                 showNotification(`حدث خطأ أثناء ${action} الحساب`, 'error');
+            }
+        }
+
+        async function deleteCustomer(customerId, fromModal = false) {
+            if (!confirm('هل أنت متأكد من حذف حساب هذا الراكب نهائياً؟ هذا الإجراء لا يمكن التراجع عنه.')) {
+                return;
+            }
+
+            try {
+                await callAdminAPI('delete_customer', { id: customerId });
+                showNotification('تم حذف حساب الراكب بنجاح', 'success');
+
+                if (fromModal) {
+                    closeModal('customer-details-modal');
+                }
+
+                // Refresh data
+                loadCustomers();
+                loadDashboardStats();
+
+            } catch (error) {
+                console.error('Error deleting customer:', error);
+                showNotification('حدث خطأ أثناء حذف حساب الراكب', 'error');
             }
         }
 
@@ -1692,6 +1726,11 @@
                                     '<ion-icon name="ban-outline"></ion-icon>تعطيل الحساب' :
                                     '<ion-icon name="checkmark-outline"></ion-icon>تفعيل الحساب'}
                             </button>
+                            <button class="btn btn-delete"
+                                    onclick="deleteDriver('${driver.id}', true)"
+                                    style="flex: 1;">
+                                <ion-icon name="trash-outline"></ion-icon>حذف الحساب
+                            </button>
                             <button class="btn btn-add-balance" onclick="openAddBalanceModal('${driver.id}', true)" style="flex: 1;">
                                 <ion-icon name="cash-outline"></ion-icon>
                                 إضافة رصيد
@@ -1741,6 +1780,29 @@
             } catch (error) {
                 console.error('Error toggling driver status:', error);
                 showNotification(`حدث خطأ أثناء ${action} الحساب`, 'error');
+            }
+        }
+
+        async function deleteDriver(driverId, fromModal = false) {
+            if (!confirm('هل أنت متأكد من حذف حساب هذا السائق نهائياً؟ هذا الإجراء لا يمكن التراجع عنه.')) {
+                return;
+            }
+
+            try {
+                await callAdminAPI('delete_driver', { id: driverId });
+                showNotification('تم حذف حساب السائق بنجاح', 'success');
+
+                if (fromModal) {
+                    closeModal('driver-details-modal');
+                }
+
+                // Refresh data
+                loadDrivers();
+                loadDashboardStats();
+
+            } catch (error) {
+                console.error('Error deleting driver:', error);
+                showNotification('حدث خطأ أثناء حذف حساب السائق', 'error');
             }
         }
 

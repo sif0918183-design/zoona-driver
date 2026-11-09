@@ -552,6 +552,65 @@ export default async function handler(req, res) {
             }
         }
 
+        // --- CHANGE PASSWORD ---
+        if (action === 'change_password') {
+            const { role, userId, currentPassword, newPassword } = req.body;
+
+            if (!role || !userId || !currentPassword || !newPassword) {
+                return res.status(400).json({ success: false, error: 'جميع الحقول مطلوبة لتغيير كلمة المرور' });
+            }
+
+            if (newPassword.length < 6) {
+                return res.status(400).json({ success: false, error: 'كلمة المرور الجديدة يجب أن تكون 6 خانات على الأقل' });
+            }
+
+            // Verify identity via mandatory session token
+            const authHeader = req.headers.authorization;
+            if (!authHeader || !authHeader.startsWith('Bearer ')) {
+                return res.status(401).json({ success: false, error: 'جلسة المستخدم مفقودة أو غير مصرح بها' });
+            }
+
+            const token = authHeader.substring(7);
+            try {
+                const decoded = verifyToken(token);
+                if (!decoded || decoded.id !== userId) {
+                    return res.status(403).json({ success: false, error: 'غير مصرح بتعديل هذا الحساب' });
+                }
+            } catch (e) {
+                return res.status(401).json({ success: false, error: 'جلسة المستخدم غير صالحة' });
+            }
+
+            const table = role === 'driver' ? 'drivers' : 'customers';
+            const { data: user, error: fetchErr } = await supabase
+                .from(table)
+                .select('*')
+                .eq('id', userId)
+                .single();
+
+            if (fetchErr || !user) {
+                return res.status(404).json({ success: false, error: 'لم يتم العثور على الحساب' });
+            }
+
+            // Verify current password
+            const isMatch = bcrypt.compareSync(currentPassword, user.password);
+            if (!isMatch) {
+                return res.status(400).json({ success: false, error: 'كلمة المرور الحالية غير صحيحة' });
+            }
+
+            // Hash new password
+            const salt = bcrypt.genSaltSync(10);
+            const hashedPassword = bcrypt.hashSync(newPassword, salt);
+
+            const { error: updateErr } = await supabase
+                .from(table)
+                .update({ password: hashedPassword })
+                .eq('id', userId);
+
+            if (updateErr) throw updateErr;
+
+            return res.status(200).json({ success: true, message: 'تم تغيير كلمة المرور بنجاح' });
+        }
+
         return res.status(400).json({ success: false, error: 'Unknown action' });
 
     } catch (error) {
