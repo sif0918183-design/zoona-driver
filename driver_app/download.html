@@ -41,90 +41,10 @@
             direction: rtl;
         }
 
-        header, .app-header {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            backdrop-filter: blur(8px);
-        }
-
-        .header-content {
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            max-width: 500px;
-            margin: 0 auto;
-            padding: 8px 12px;
-            min-height: 52px;
-            box-sizing: border-box;
-            width: 100%;
-        }
-
-        .header-title-box {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            text-align: center;
-            flex: 1;
-            margin: 0 4px;
-            min-width: 0;
-        }
-
-        .header-logo {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            object-fit: cover;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
-            border: 1.5px solid rgba(255, 255, 255, 0.4);
-            flex-shrink: 0;
-        }
-
-        .header-title {
-            margin: 0;
-            font-size: 0.95rem;
-            font-weight: 800;
-            color: #ffffff;
-            letter-spacing: -0.2px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .header-content .back-btn {
-            position: relative;
-            width: 34px;
-            height: 34px;
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.15);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #ffffff;
-            text-decoration: none;
-            transition: all 0.2s ease;
-            flex-shrink: 0;
-            z-index: 2;
-        }
-
-        .header-content .header-spacer {
-            width: 34px;
-            height: 34px;
-            visibility: hidden;
-            flex-shrink: 0;
-        }
-
-        .header-content .back-btn:active {
-            transform: scale(0.92);
-            background: rgba(255, 255, 255, 0.25);
-        }
-
         .download-container {
             max-width: 500px;
-            margin: 12px auto;
-            padding: 0 12px;
+            margin: 0 auto;
+            padding: calc(env(safe-area-inset-top, 0px) + 16px) 12px 24px;
         }
 
         /* Hero Banner Card */
@@ -471,21 +391,6 @@
     </style>
 </head>
 <body>
-
-    <!-- Header Navigation -->
-    <header>
-        <div class="header-content">
-            <!-- Spacer to balance the layout for perfect centering -->
-            <div class="header-spacer" aria-hidden="true"></div>
-            <div class="header-title-box">
-                <img src="../assets/branding/driver-app-icon.png" alt="تراكا كابتن" class="header-logo">
-                <h1 class="header-title">تطبيق السائقين - تراكا</h1>
-            </div>
-            <a href="../landing.html" class="back-btn" title="الرئيسية" aria-label="الرئيسية">
-                <i class="ph-bold ph-house"></i>
-            </a>
-        </div>
-    </header>
 
     <div class="download-container">
 
