@@ -1891,47 +1891,145 @@
         }
     }
 
-    // Upload to ImageKit
+    // Helper to compress image client-side to prevent network timeout & memory issues
+    async function compressImageIfNeeded(file, maxDimension = 1600, quality = 0.82) {
+        // If file is not an image, return original
+        if (!file.type || !file.type.startsWith('image/')) {
+            return file;
+        }
+
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > maxDimension || height > maxDimension) {
+                        if (width > height) {
+                            height = Math.round((height * maxDimension) / width);
+                            width = maxDimension;
+                        } else {
+                            width = Math.round((width * maxDimension) / height);
+                            height = maxDimension;
+                        }
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    canvas.toBlob(
+                        (blob) => {
+                            if (blob && blob.size < file.size) {
+                                const cleanFileName = file.name ? file.name.replace(/\.[^/.]+$/, "") + ".jpg" : "photo.jpg";
+                                const compressedFile = new File([blob], cleanFileName, {
+                                    type: 'image/jpeg',
+                                    lastModified: Date.now()
+                                });
+                                resolve(compressedFile);
+                            } else {
+                                resolve(file);
+                            }
+                        },
+                        'image/jpeg',
+                        quality
+                    );
+                };
+                img.onerror = () => resolve(file);
+                img.src = e.target.result;
+            };
+            reader.onerror = () => resolve(file);
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // Upload to ImageKit with resilient retry and image optimization
     async function uploadToImageKit(fileInputId, statusId, storageKey) {
         const fileInput = document.getElementById(fileInputId);
         const statusDiv = document.getElementById(statusId);
 
         if (!fileInput || fileInput.files.length === 0) return;
 
-        const file = fileInput.files[0];
-        statusDiv.innerHTML = '<span class="loading"></span> جاري الرفع...';
+        const originalFile = fileInput.files[0];
+        statusDiv.innerHTML = '<span class="loading"></span> جاري تجهيز الصورة...';
         statusDiv.style.color = 'var(--driver)';
 
+        // Optimize image first
+        let fileToUpload = originalFile;
         try {
-            const authRes = await fetch('/api/imagekit-auth');
-            if (!authRes.ok) throw new Error('فشل جلب تصريح الرفع');
-            const authData = await authRes.json();
-
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('fileName', file.name);
-            formData.append('publicKey', 'public_SnxtM9/xheLA8u65v643QBMQcMo=');
-            formData.append('signature', authData.signature);
-            formData.append('expire', authData.expire);
-            formData.append('token', authData.token);
-
-            const uploadRes = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!uploadRes.ok) throw new Error('فشل الرفع');
-            const uploadData = await uploadRes.json();
-
-            localStorage.setItem(storageKey, uploadData.url);
-            statusDiv.innerHTML = '✅ تم الرفع بنجاح';
-            statusDiv.style.color = '#16a34a';
-
-        } catch (error) {
-            console.error('ImageKit upload error:', error);
-            statusDiv.innerHTML = '❌ فشل الرفع: ' + error.message;
-            statusDiv.style.color = 'var(--danger)';
+            fileToUpload = await compressImageIfNeeded(originalFile);
+        } catch (compErr) {
+            console.warn('Image compression fallback to original file:', compErr);
+            fileToUpload = originalFile;
         }
+
+        const maxRetries = 3;
+        let lastError = null;
+
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                if (attempt === 1) {
+                    statusDiv.innerHTML = '<span class="loading"></span> جاري الرفع...';
+                } else {
+                    statusDiv.innerHTML = `<span class="loading"></span> محاولة إعادة الرفع (${attempt}/${maxRetries})...`;
+                }
+                statusDiv.style.color = 'var(--driver)';
+
+                // Fetch fresh authentication parameters
+                const authRes = await fetch('/api/imagekit-auth', { cache: 'no-store' });
+                if (!authRes.ok) {
+                    throw new Error('فشل جلب تصريح الرفع من السيرفر');
+                }
+                const authData = await authRes.json();
+                if (!authData || !authData.signature || !authData.token) {
+                    throw new Error('بيانات تصريح الرفع غير مكتملة');
+                }
+
+                const formData = new FormData();
+                formData.append('file', fileToUpload);
+                formData.append('fileName', fileToUpload.name || originalFile.name || 'document.jpg');
+                formData.append('publicKey', 'public_SnxtM9/xheLA8u65v643QBMQcMo=');
+                formData.append('signature', authData.signature);
+                formData.append('expire', authData.expire);
+                formData.append('token', authData.token);
+
+                const uploadRes = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!uploadRes.ok) {
+                    const errText = await uploadRes.text().catch(() => '');
+                    throw new Error(`فشل الرفع إلى السيرفر (${uploadRes.status}) ${errText}`);
+                }
+
+                const uploadData = await uploadRes.json();
+                if (!uploadData || !uploadData.url) {
+                    throw new Error('لم يتم استلام رابط الصورة المرفوعة');
+                }
+
+                localStorage.setItem(storageKey, uploadData.url);
+                statusDiv.innerHTML = '✅ تم الرفع بنجاح';
+                statusDiv.style.color = '#16a34a';
+                return;
+
+            } catch (error) {
+                lastError = error;
+                console.error(`ImageKit upload attempt ${attempt} failed:`, error);
+
+                if (attempt < maxRetries) {
+                    // Small backoff before retrying
+                    await new Promise((resolve) => setTimeout(resolve, 1500));
+                }
+            }
+        }
+
+        statusDiv.innerHTML = '❌ فشل الرفع: ' + (lastError?.message || 'يرجى التحقق من الاتصال وإعادة اختيار الصورة');
+        statusDiv.style.color = 'var(--danger)';
     }
 
     // Register Driver
