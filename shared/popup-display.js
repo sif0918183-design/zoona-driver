@@ -17,6 +17,20 @@
     // Guards against sending the same "once" view record twice in one page life.
     var markedView = {};
 
+    // Pages where popups must NEVER appear (active ride flows). Matched by path
+    // so the exclusion stays correct even if the script is loaded on these pages.
+    var EXCLUDED_PAGES = [
+        'driver_app/accept-ride.html',
+        'driver_app/active-ride.html',
+        'passenger_app/ride-accepted.html'
+    ];
+
+    function isExcludedPage() {
+        var path;
+        try { path = (window.location && window.location.pathname) || ''; } catch (e) { return false; }
+        return EXCLUDED_PAGES.some(function (page) { return path.indexOf(page) !== -1; });
+    }
+
     function injectStyles() {
         if (document.getElementById(STYLE_ID)) return;
         var style = document.createElement('style');
@@ -227,6 +241,7 @@
     }
 
     function init(appType) {
+        if (isExcludedPage()) return;
         if (fetchedOnce) return;
         fetchedOnce = true;
 
