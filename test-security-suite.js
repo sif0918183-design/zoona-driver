@@ -10,7 +10,6 @@ process.env.SUPABASE_URL = 'https://fake-test-supabase.co';
 // 2. استخدام Dynamic Imports لضمان قراءة متغيرات البيئة قبل تهيئة الوحدات
 const { generateToken, verifyToken } = await import('./api/_token-utils.js');
 const { default: getServiceKeyHandler } = await import('./api/get-service-key.js');
-const { default: supabaseServiceKeyHandler } = await import('./api/supabase-service-key.js');
 const { default: ridesHandler, setSupabaseClient: setRidesSupabaseClient, supabase: originalRidesSupabase } = await import('./api/rides.js');
 const { default: travelHandler, setSupabaseClient: setTravelSupabaseClient, supabase: originalTravelSupabase } = await import('./api/travel-platform.js');
 
@@ -78,18 +77,8 @@ console.log('\n--- 1. REAL API HANDLER INVOCATIONS ---');
     console.log('✅ Test 1.1 Passed: Real api/get-service-key.js returns only ANON_KEY, never SERVICE_ROLE_KEY');
 }
 
-// 1.2 اختبار supabase-service-key الحقيقي: التأكد من عدم كشف مفتاح الخدمة الإداري
-{
-    const driverToken = generateToken({ id: 'd1', role: 'driver' });
-    const { req, res, getStatus, getJson } = createMockReqRes({ method: 'GET', token: driverToken });
-    supabaseServiceKeyHandler(req, res);
-    assert.strictEqual(getStatus(), 200);
-    const json = getJson();
-    assert.strictEqual(json.serviceRoleKey, process.env.SUPABASE_ANON_KEY);
-    assert.strictEqual(json.data.serviceRoleKey, process.env.SUPABASE_ANON_KEY);
-    assert.notStrictEqual(json.serviceRoleKey, process.env.SUPABASE_SERVICE_ROLE_KEY);
-    console.log('✅ Test 1.2 Passed: Real api/supabase-service-key.js returns only ANON_KEY, never SERVICE_ROLE_KEY');
-}
+// 1.2 (محذوف) كانت api/supabase-service-key.js نسخة مكررة بايت-ببايت من get-service-key
+// وتم حذفها للحفاظ على عدد دوال Serverless ضمن حد خطة Hobby (12). يغطي الاختبار 1.1 سلوكها.
 
 // 1.3 رفض الطلب إلى get-service-key بدون توكن صالح (401)
 {

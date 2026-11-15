@@ -1148,6 +1148,11 @@
                     <span>الشكاوى والمقترحات</span>
                 </a>
                 
+                <a class="nav-item" onclick="showSection('popup-messages')">
+                    <i class="ph-light ph-megaphone"></i>
+                    <span>إدارة الرسائل المنبثقة والإعلانات</span>
+                </a>
+
                 <a class="nav-item" onclick="showSection('settings')">
                     <i class="ph-light ph-gear"></i>
                     <span>الإعدادات</span>
@@ -2019,6 +2024,68 @@
                     </div>
                 </section>
 
+                <section id="popup-messages-section" class="section">
+                    <!-- Popup Messages Table Container -->
+                    <div class="tables-container">
+                        <div class="table-header" style="flex-wrap: wrap; gap: 1rem;">
+                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                <h3 class="table-title">
+                                    <i class="ph-light ph-megaphone"></i>
+                                    قائمة الرسائل والإعلانات
+                                </h3>
+                                <button class="btn btn-outline btn-sm" onclick="loadPopupMessages()" title="تحديث القائمة">
+                                    <i class="ph-light ph-arrows-clockwise"></i> تحديث
+                                </button>
+                            </div>
+
+                            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+                                <select id="filter-popup-target" class="form-control" style="width: auto; padding: 0.5rem 1rem;" onchange="filterPopupMessagesTable()">
+                                    <option value="all">كل الأماكن</option>
+                                    <option value="driver">واجهة تطبيق السائق</option>
+                                    <option value="passenger">واجهة تطبيق الراكب</option>
+                                </select>
+
+                                <select id="filter-popup-status" class="form-control" style="width: auto; padding: 0.5rem 1rem;" onchange="filterPopupMessagesTable()">
+                                    <option value="all">كل الحالات</option>
+                                    <option value="active">مفعّلة</option>
+                                    <option value="inactive">متوقفة</option>
+                                </select>
+
+                                <button class="btn btn-primary" onclick="openPopupMessageModal()">
+                                    <i class="ph-light ph-plus"></i> إنشاء رسالة جديدة
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="table-content">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>العنوان</th>
+                                        <th>الحالة</th>
+                                        <th>سياسة التكرار</th>
+                                        <th>مكان الظهور</th>
+                                        <th>الأولوية</th>
+                                        <th>تاريخ البداية</th>
+                                        <th>تاريخ الانتهاء</th>
+                                        <th>الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="popup-messages-table-body">
+                                    <tr>
+                                        <td colspan="8" style="text-align: center; padding: 2.5rem;">
+                                            <div class="empty-state" style="padding: 0;">
+                                                <div class="empty-icon"><i class="ph-light ph-spinner ph-spin" style="font-size: 2rem;"></i></div>
+                                                <div class="empty-title">جاري تحميل الرسائل...</div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
                 <section id="settings-section" class="section">
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem;">
                         <!-- Travel Platform Settings -->
@@ -2345,6 +2412,149 @@
             </div>
         </div>
     </div>
+
+    <!-- Popup Message Create/Edit Modal -->
+    <div id="popup-message-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="popup-message-modal-title">
+                    <i class="ph-light ph-megaphone"></i>
+                    إنشاء رسالة جديدة
+                </h3>
+                <button class="modal-close" onclick="closePopupMessageModal()">&times;</button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+                <!-- Form -->
+                <form id="popup-message-form" onsubmit="handlePopupMessageSubmit(event)">
+                    <input type="hidden" id="pm-id">
+
+                    <div class="form-group">
+                        <label class="form-label">عنوان الرسالة <span style="color: var(--danger);">*</span></label>
+                        <input type="text" class="form-control" id="pm-title" required maxlength="120" oninput="updatePopupPreview()">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">نص الرسالة <span style="color: var(--danger);">*</span></label>
+                        <textarea class="form-control" id="pm-body" required rows="3" oninput="updatePopupPreview()"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">رابط الصورة (اختياري)</label>
+                        <input type="url" class="form-control" id="pm-image-url" placeholder="https://..." oninput="updatePopupPreview()">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">أو ارفع صورة من الجهاز</label>
+                        <input type="file" class="form-control" id="pm-image-file" accept="image/png,image/jpeg,image/webp,image/gif" onchange="handlePopupImageUpload(event)">
+                        <small id="pm-image-status" style="display: block; margin-top: 4px; color: var(--gray-500); font-size: 0.8125rem;"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">نص الزر الرئيسي</label>
+                        <input type="text" class="form-control" id="pm-primary-text" oninput="updatePopupPreview()">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">رابط الزر الرئيسي</label>
+                        <input type="url" class="form-control" id="pm-primary-url" placeholder="https://..." oninput="updatePopupPreview()">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">نص الزر الثانوي (اختياري)</label>
+                        <input type="text" class="form-control" id="pm-secondary-text" oninput="updatePopupPreview()">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">رابط الزر الثانوي (اختياري)</label>
+                        <input type="url" class="form-control" id="pm-secondary-url" placeholder="https://..." oninput="updatePopupPreview()">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">مكان ظهور الرسالة <span style="color: var(--danger);">*</span></label>
+                        <select class="form-control form-select" id="pm-target-app" required onchange="updatePopupPreview()">
+                            <option value="">اختر الواجهة</option>
+                            <option value="driver">واجهة تطبيق السائق</option>
+                            <option value="passenger">واجهة تطبيق الراكب</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">سياسة تكرار الظهور</label>
+                        <select class="form-control form-select" id="pm-repeat-policy" onchange="onPopupRepeatChange(); updatePopupPreview();">
+                            <option value="once">مرة واحدة فقط لكل مستخدم</option>
+                            <option value="session">مرة واحدة في كل جلسة</option>
+                            <option value="every_visit">في كل زيارة</option>
+                            <option value="interval">تكرار بعد مدة زمنية</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="pm-interval-group" style="display: none;">
+                        <label class="form-label">مدة التكرار (بالدقائق)</label>
+                        <input type="number" class="form-control" id="pm-repeat-interval" min="1" value="60">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">مدة التأخير قبل ظهور الرسالة (بالثواني)</label>
+                        <input type="number" class="form-control" id="pm-delay-seconds" min="0" value="0" oninput="updatePopupPreview()">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">الأولوية (الأعلى يظهر أولاً)</label>
+                        <input type="number" class="form-control" id="pm-priority" value="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">تاريخ بداية العرض (اختياري)</label>
+                        <input type="datetime-local" class="form-control" id="pm-start-at">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">تاريخ انتهاء العرض (اختياري)</label>
+                        <input type="datetime-local" class="form-control" id="pm-end-at">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">حالة الرسالة</label>
+                        <select class="form-control form-select" id="pm-is-active">
+                            <option value="true">مفعّلة</option>
+                            <option value="false">متوقفة</option>
+                        </select>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="ph-light ph-floppy-disk"></i> حفظ
+                        </button>
+                        <button type="button" class="btn btn-outline" onclick="closePopupMessageModal()">
+                            <i class="ph-light ph-x"></i> إلغاء
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Live Preview -->
+                <div>
+                    <div class="form-label" style="font-weight: 700; margin-bottom: 0.75rem;">معاينة الرسالة</div>
+                    <div style="background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 1.5rem;">
+                        <div style="background: rgba(0,0,0,0.55); border-radius: 18px; padding: 1rem;">
+                            <div id="pm-preview-card" style="background: #ffffff; border-radius: 18px; overflow: hidden; box-shadow: 0 12px 36px rgba(0,0,0,0.18); max-width: 360px; margin: 0 auto;">
+                                <img id="pm-preview-image" src="" alt="" style="display: none; width: 100%; max-height: 200px; object-fit: cover;">
+                                <div style="padding: 1.25rem;">
+                                    <h4 id="pm-preview-title" style="margin: 0 0 0.5rem; color: var(--primary); font-size: 1.15rem; font-weight: 800;">عنوان الرسالة</h4>
+                                    <p id="pm-preview-body" style="margin: 0 0 1rem; color: var(--gray-700); font-size: 0.95rem; line-height: 1.6;">نص الرسالة سيظهر هنا...</p>
+                                    <button type="button" id="pm-preview-primary" class="btn btn-primary" style="display: none; width: 100%; margin-bottom: 0.5rem;"></button>
+                                    <button type="button" id="pm-preview-secondary" class="btn btn-outline" style="display: none; width: 100%;"></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="pm-preview-target-note" style="text-align: center; margin-top: 0.75rem; color: var(--gray-500); font-size: 0.8125rem;">
+                            ستظهر هذه الرسالة داخل التطبيق المستهدف وفق الإعدادات أعلاه.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <script>
         // ============================================
         // GLOBAL VARIABLES AND CONFIGURATION
@@ -2389,6 +2599,8 @@
         let allPassengers = [];
         let allComplaints = [];
         let activeComplaint = null;
+        let allPopupMessages = [];
+        let popupImageUploading = false;
         let vehicleCategories = [];
         let cities = [];
         let currentPage = 1;
@@ -2571,6 +2783,7 @@
                 'reports': 'التقارير',
                 'balance': 'الرصيد والعمولات',
                 'complaints': 'الشكاوى والمقترحات',
+                'popup-messages': 'إدارة الرسائل المنبثقة والإعلانات',
                 'settings': 'الإعدادات'
             };
             
@@ -2584,6 +2797,7 @@
                 'reports': 'ph-chart-bar',
                 'balance': 'ph-wallet',
                 'complaints': 'ph-chat-teardrop-text',
+                'popup-messages': 'ph-megaphone',
                 'settings': 'ph-gear'
             };
             
@@ -2624,6 +2838,9 @@
                     break;
                 case 'complaints':
                     loadComplaints();
+                    break;
+                case 'popup-messages':
+                    loadPopupMessages();
                     break;
                 case 'settings':
                     loadSettings();
@@ -4759,6 +4976,356 @@
             } catch (err) {
                 console.error('Error deleting complaint:', err);
                 showNotification('فشل حذف الشكوى: ' + err.message, 'error');
+            }
+        }
+
+        // ============================================
+        // POPUP MESSAGES & ANNOUNCEMENTS
+        // ============================================
+        const POPUP_TARGET_LABELS = { driver: 'واجهة تطبيق السائق', passenger: 'واجهة تطبيق الراكب' };
+        const POPUP_REPEAT_LABELS = {
+            once: 'مرة واحدة فقط',
+            session: 'مرة واحدة في كل جلسة',
+            every_visit: 'في كل زيارة',
+            interval: 'حسب الإعداد (فترة زمنية)'
+        };
+
+        async function loadPopupMessages() {
+            const tbody = document.getElementById('popup-messages-table-body');
+            if (!tbody) return;
+
+            try {
+                const res = await adminApiCall('list_popup_messages');
+                allPopupMessages = res.messages || [];
+                filterPopupMessagesTable();
+            } catch (err) {
+                console.error('Error loading popup messages:', err);
+                tbody.innerHTML = `
+                    <tr><td colspan="8" style="text-align: center; padding: 2.5rem; color: var(--danger);">
+                        فشل تحميل الرسائل: ${escapePopupHtml(err.message)}
+                    </td></tr>`;
+            }
+        }
+
+        function filterPopupMessagesTable() {
+            const targetFilter = document.getElementById('filter-popup-target')?.value || 'all';
+            const statusFilter = document.getElementById('filter-popup-status')?.value || 'all';
+
+            let list = allPopupMessages.slice();
+            if (targetFilter !== 'all') list = list.filter(m => m.target_app === targetFilter);
+            if (statusFilter === 'active') list = list.filter(m => m.is_active === true);
+            if (statusFilter === 'inactive') list = list.filter(m => m.is_active === false);
+
+            displayPopupMessagesTable(list);
+        }
+
+        function displayPopupMessagesTable(list) {
+            const tbody = document.getElementById('popup-messages-table-body');
+            if (!tbody) return;
+
+            if (!list || list.length === 0) {
+                tbody.innerHTML = `
+                    <tr><td colspan="8" style="text-align: center; padding: 2.5rem;">
+                        <div class="empty-state" style="padding: 0;">
+                            <div class="empty-icon"><i class="ph-light ph-megaphone" style="font-size: 2rem;"></i></div>
+                            <div class="empty-title">لا توجد رسائل منبثقة بعد</div>
+                        </div>
+                    </td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = '';
+            list.forEach(msg => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td style="font-weight: 600;">${escapePopupHtml(msg.title)}</td>
+                    <td>
+                        <span class="badge ${msg.is_active ? 'badge-success' : 'badge-danger'}">
+                            ${msg.is_active ? 'مفعّلة' : 'متوقفة'}
+                        </span>
+                    </td>
+                    <td>${POPUP_REPEAT_LABELS[msg.repeat_policy] || escapePopupHtml(msg.repeat_policy)}</td>
+                    <td>${POPUP_TARGET_LABELS[msg.target_app] || escapePopupHtml(msg.target_app)}</td>
+                    <td style="font-weight: 700;">${msg.priority ?? 0}</td>
+                    <td>${msg.start_at ? formatPopupDate(msg.start_at) : '—'}</td>
+                    <td>${msg.end_at ? formatPopupDate(msg.end_at) : '—'}</td>
+                    <td>
+                        <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                            <button class="btn btn-outline btn-sm" onclick="openPopupMessageModal('${msg.id}')" title="تعديل">
+                                <i class="ph-light ph-pencil-simple"></i>
+                            </button>
+                            <button class="btn btn-outline btn-sm" onclick="togglePopupMessage('${msg.id}', ${msg.is_active ? 'false' : 'true'})" title="${msg.is_active ? 'إيقاف' : 'تفعيل'}">
+                                <i class="ph-light ${msg.is_active ? 'ph-pause' : 'ph-play'}"></i>
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="deletePopupMessage('${msg.id}')" title="حذف">
+                                <i class="ph-light ph-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function formatPopupDate(dateString) {
+            try {
+                const d = new Date(dateString);
+                return d.toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            } catch (e) {
+                return '—';
+            }
+        }
+
+        function escapePopupHtml(value) {
+            if (value === null || value === undefined) return '';
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function onPopupRepeatChange() {
+            const policy = document.getElementById('pm-repeat-policy')?.value;
+            const group = document.getElementById('pm-interval-group');
+            if (group) group.style.display = policy === 'interval' ? 'block' : 'none';
+        }
+
+        function openPopupMessageModal(messageId) {
+            const form = document.getElementById('popup-message-form');
+            form.reset();
+            document.getElementById('pm-image-status').textContent = '';
+            document.getElementById('pm-id').value = '';
+
+            if (messageId) {
+                const msg = allPopupMessages.find(m => String(m.id) === String(messageId));
+                if (!msg) return;
+
+                document.getElementById('popup-message-modal-title').innerHTML =
+                    '<i class="ph-light ph-pencil-simple"></i> تعديل الرسالة';
+                document.getElementById('pm-id').value = msg.id;
+                document.getElementById('pm-title').value = msg.title || '';
+                document.getElementById('pm-body').value = msg.body || '';
+                document.getElementById('pm-image-url').value = msg.image_url || '';
+                document.getElementById('pm-primary-text').value = msg.primary_button_text || '';
+                document.getElementById('pm-primary-url').value = msg.primary_button_url || '';
+                document.getElementById('pm-secondary-text').value = msg.secondary_button_text || '';
+                document.getElementById('pm-secondary-url').value = msg.secondary_button_url || '';
+                document.getElementById('pm-target-app').value = msg.target_app || '';
+                document.getElementById('pm-repeat-policy').value = msg.repeat_policy || 'once';
+                document.getElementById('pm-repeat-interval').value = msg.repeat_interval_minutes || 60;
+                document.getElementById('pm-delay-seconds').value = msg.delay_seconds || 0;
+                document.getElementById('pm-priority').value = msg.priority || 0;
+                document.getElementById('pm-start-at').value = toLocalDatetimeInput(msg.start_at);
+                document.getElementById('pm-end-at').value = toLocalDatetimeInput(msg.end_at);
+                document.getElementById('pm-is-active').value = msg.is_active ? 'true' : 'false';
+            } else {
+                document.getElementById('popup-message-modal-title').innerHTML =
+                    '<i class="ph-light ph-megaphone"></i> إنشاء رسالة جديدة';
+                document.getElementById('pm-repeat-policy').value = 'once';
+                document.getElementById('pm-repeat-interval').value = 60;
+                document.getElementById('pm-delay-seconds').value = 0;
+                document.getElementById('pm-priority').value = 0;
+                document.getElementById('pm-is-active').value = 'true';
+            }
+
+            onPopupRepeatChange();
+            updatePopupPreview();
+            document.getElementById('popup-message-modal').classList.remove('hidden');
+        }
+
+        function closePopupMessageModal() {
+            document.getElementById('popup-message-modal').classList.add('hidden');
+        }
+
+        function toLocalDatetimeInput(isoString) {
+            if (!isoString) return '';
+            try {
+                const d = new Date(isoString);
+                if (isNaN(d.getTime())) return '';
+                const pad = (n) => String(n).padStart(2, '0');
+                return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            } catch (e) {
+                return '';
+            }
+        }
+
+        function updatePopupPreview() {
+            const title = document.getElementById('pm-title')?.value?.trim();
+            const body = document.getElementById('pm-body')?.value?.trim();
+            const imageUrl = document.getElementById('pm-image-url')?.value?.trim();
+            const primaryText = document.getElementById('pm-primary-text')?.value?.trim();
+            const secondaryText = document.getElementById('pm-secondary-text')?.value?.trim();
+            const target = document.getElementById('pm-target-app')?.value;
+
+            const previewImage = document.getElementById('pm-preview-image');
+            if (previewImage) {
+                if (imageUrl && /^https?:\/\//i.test(imageUrl)) {
+                    previewImage.src = imageUrl;
+                    previewImage.style.display = 'block';
+                } else {
+                    previewImage.style.display = 'none';
+                    previewImage.removeAttribute('src');
+                }
+            }
+
+            const titleEl = document.getElementById('pm-preview-title');
+            if (titleEl) titleEl.textContent = title || 'عنوان الرسالة';
+
+            const bodyEl = document.getElementById('pm-preview-body');
+            if (bodyEl) bodyEl.textContent = body || 'نص الرسالة سيظهر هنا...';
+
+            const primaryBtn = document.getElementById('pm-preview-primary');
+            if (primaryBtn) {
+                primaryBtn.textContent = primaryText || '';
+                primaryBtn.style.display = primaryText ? 'block' : 'none';
+            }
+
+            const secondaryBtn = document.getElementById('pm-preview-secondary');
+            if (secondaryBtn) {
+                secondaryBtn.textContent = secondaryText || '';
+                secondaryBtn.style.display = secondaryText ? 'block' : 'none';
+            }
+
+            const note = document.getElementById('pm-preview-target-note');
+            if (note) {
+                note.textContent = target
+                    ? `مكان الظهور: ${POPUP_TARGET_LABELS[target]}`
+                    : 'يجب تحديد مكان ظهور الرسالة.';
+            }
+        }
+
+        async function handlePopupImageUpload(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+
+            const statusEl = document.getElementById('pm-image-status');
+            const allowedTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+            if (!allowedTypes.includes(file.type)) {
+                statusEl.textContent = '❌ نوع الملف غير مدعوم (يُسمح بـ PNG/JPEG/WEBP/GIF).';
+                statusEl.style.color = 'var(--danger)';
+                event.target.value = '';
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                statusEl.textContent = '❌ حجم الصورة يتجاوز 5 ميغابايت.';
+                statusEl.style.color = 'var(--danger)';
+                event.target.value = '';
+                return;
+            }
+
+            popupImageUploading = true;
+            statusEl.textContent = '⏳ جاري رفع الصورة...';
+            statusEl.style.color = 'var(--gray-500)';
+
+            try {
+                const authRes = await fetch('/api/imagekit-auth', { cache: 'no-store' });
+                if (!authRes.ok) throw new Error('فشل جلب تصريح الرفع');
+                const authData = await authRes.json();
+                if (!authData || !authData.signature || !authData.token) throw new Error('بيانات التصريح غير مكتملة');
+
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('fileName', file.name || 'popup.jpg');
+                formData.append('publicKey', 'public_SnxtM9/xheLA8u65v643QBMQcMo=');
+                formData.append('signature', authData.signature);
+                formData.append('expire', authData.expire);
+                formData.append('token', authData.token);
+
+                const uploadRes = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!uploadRes.ok) throw new Error('فشل الرفع إلى الخادم');
+                const uploadData = await uploadRes.json();
+                if (!uploadData || !uploadData.url) throw new Error('لم يتم استلام رابط الصورة');
+
+                document.getElementById('pm-image-url').value = uploadData.url;
+                statusEl.textContent = '✅ تم رفع الصورة بنجاح.';
+                statusEl.style.color = '#16a34a';
+                updatePopupPreview();
+            } catch (err) {
+                console.error('Popup image upload failed:', err);
+                statusEl.textContent = '❌ فشل رفع الصورة: ' + err.message;
+                statusEl.style.color = 'var(--danger)';
+            } finally {
+                popupImageUploading = false;
+            }
+        }
+
+        async function handlePopupMessageSubmit(event) {
+            event.preventDefault();
+
+            if (popupImageUploading) {
+                showNotification('يرجى الانتظار حتى انتهاء رفع الصورة', 'warning');
+                return;
+            }
+
+            const target = document.getElementById('pm-target-app').value;
+            if (target !== 'driver' && target !== 'passenger') {
+                showNotification('يرجى تحديد مكان ظهور الرسالة (واجهة السائق أو واجهة الراكب)', 'warning');
+                return;
+            }
+
+            const startAt = document.getElementById('pm-start-at').value;
+            const endAt = document.getElementById('pm-end-at').value;
+            if (startAt && endAt && new Date(endAt) <= new Date(startAt)) {
+                showNotification('تاريخ الانتهاء يجب أن يكون بعد تاريخ البداية', 'warning');
+                return;
+            }
+
+            const payload = {
+                id: document.getElementById('pm-id').value || null,
+                title: document.getElementById('pm-title').value.trim(),
+                body: document.getElementById('pm-body').value.trim(),
+                image_url: document.getElementById('pm-image-url').value.trim() || null,
+                primary_button_text: document.getElementById('pm-primary-text').value.trim() || null,
+                primary_button_url: document.getElementById('pm-primary-url').value.trim() || null,
+                secondary_button_text: document.getElementById('pm-secondary-text').value.trim() || null,
+                secondary_button_url: document.getElementById('pm-secondary-url').value.trim() || null,
+                target_app: target,
+                repeat_policy: document.getElementById('pm-repeat-policy').value,
+                repeat_interval_minutes: parseInt(document.getElementById('pm-repeat-interval').value, 10) || 60,
+                delay_seconds: parseInt(document.getElementById('pm-delay-seconds').value, 10) || 0,
+                priority: parseInt(document.getElementById('pm-priority').value, 10) || 0,
+                start_at: startAt ? new Date(startAt).toISOString() : null,
+                end_at: endAt ? new Date(endAt).toISOString() : null,
+                is_active: document.getElementById('pm-is-active').value === 'true'
+            };
+
+            try {
+                await adminApiCall('save_popup_message', { message: payload });
+                showNotification('تم حفظ الرسالة بنجاح', 'success');
+                closePopupMessageModal();
+                await loadPopupMessages();
+            } catch (err) {
+                console.error('Error saving popup message:', err);
+                showNotification('فشل حفظ الرسالة: ' + err.message, 'error');
+            }
+        }
+
+        async function togglePopupMessage(messageId, isActive) {
+            try {
+                await adminApiCall('toggle_popup_message', { message_id: messageId, is_active: isActive });
+                showNotification(isActive ? 'تم تفعيل الرسالة' : 'تم إيقاف الرسالة', 'success');
+                await loadPopupMessages();
+            } catch (err) {
+                console.error('Error toggling popup message:', err);
+                showNotification('فشل تغيير حالة الرسالة: ' + err.message, 'error');
+            }
+        }
+
+        async function deletePopupMessage(messageId) {
+            if (!confirm('هل أنت متأكد من حذف هذه الرسالة نهائياً؟')) return;
+            try {
+                await adminApiCall('delete_popup_message', { message_id: messageId });
+                showNotification('تم حذف الرسالة بنجاح', 'success');
+                allPopupMessages = allPopupMessages.filter(m => String(m.id) !== String(messageId));
+                filterPopupMessagesTable();
+            } catch (err) {
+                console.error('Error deleting popup message:', err);
+                showNotification('فشل حذف الرسالة: ' + err.message, 'error');
             }
         }
 
