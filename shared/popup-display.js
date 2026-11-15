@@ -14,6 +14,8 @@
     var FETCH_TIMEOUT_MS = 4000;
     var fetchedOnce = false;
     var isShowing = false;
+    // Guards against sending the same "once" view record twice in one page life.
+    var markedView = {};
 
     function injectStyles() {
         if (document.getElementById(STYLE_ID)) return;
@@ -21,7 +23,7 @@
         style.id = STYLE_ID;
         style.textContent =
             '.tracka-popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);' +
-            'display:flex;align-items:center;justify-content:center;padding:18px;z-index:99999;' +
+            'display:flex;align-items:center;justify-content:center;padding:18px;z-index:4500;' +
             '-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);animation:trackaPopupFade .25s ease;}' +
             '.tracka-popup-card{background:#fff;border-radius:18px;overflow:hidden;width:100%;max-width:380px;' +
             'max-height:90vh;overflow-y:auto;box-shadow:0 18px 50px rgba(0,0,0,0.3);' +
@@ -102,6 +104,9 @@
     }
 
     function sendMarkView(messageId) {
+        // Idempotent: never send the same record twice within this page life.
+        if (markedView[messageId]) return;
+        markedView[messageId] = true;
         try {
             var token = getToken();
             fetch('/api/popup-messages', {
@@ -110,7 +115,10 @@
                     'Content-Type': 'application/json',
                     'Authorization': token ? 'Bearer ' + token : ''
                 },
-                body: JSON.stringify({ action: 'mark_view', message_id: messageId })
+                body: JSON.stringify({ action: 'mark_view', message_id: messageId }),
+                // keepalive lets the request complete even if the page is being
+                // navigated away (e.g. driver tapping an incoming ride request).
+                keepalive: true
             }).catch(function () {});
         } catch (e) {}
     }
@@ -167,13 +175,16 @@
         overlay.appendChild(card);
         document.body.appendChild(overlay);
 
+        // Record the permanent per-user view the moment the message is actually
+        // shown (not on close), so it is never lost if the user navigates away.
+        if (msg.repeat_policy === 'once') sendMarkView(msg.id);
+
         var closed = false;
         function close() {
             if (closed) return;
             closed = true;
             try { overlay.remove(); } catch (e) {}
             markShown(msg);
-            if (msg.repeat_policy === 'once') sendMarkView(msg.id);
             isShowing = false;
         }
 
