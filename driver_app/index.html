@@ -30,6 +30,7 @@
     <script src="../shared/supabase-config.js"></script>
     <script src="../shared/notification-utils.js"></script>
     <script src="../sound-manager.js"></script>
+    <script src="../shared/popup-display.js"></script>
 
     <style>
         /* الأنماط الأساسية */
@@ -2315,6 +2316,11 @@
             await updatePushSubscriptionOnLogin();
             initRealtime();
 
+            // Popup messages: independent, fail-safe, single fetch after fresh login.
+            setTimeout(function () {
+                try { if (window.TrackaPopupMessages) window.TrackaPopupMessages.init('driver'); } catch (e) {}
+            }, 1500);
+
             // ✅ مزامنة FCM Token بعد تسجيل الدخول (نفرض المزامنة الإلزامية force = true لتخطي الـ Cooldown)
             console.log('[PWA] 🔄 Syncing FCM Token after login...');
             
@@ -2799,6 +2805,11 @@
                 initDriverSystems();
                 initRealtime();
                 updatePushSubscriptionOnLogin();
+
+                // Popup messages: independent, fail-safe, single fetch on session restore.
+                setTimeout(function () {
+                    try { if (window.TrackaPopupMessages) window.TrackaPopupMessages.init('driver'); } catch (e) {}
+                }, 1200);
 
                 // مزامنة FCM Token بعد استعادة الجلسة (بدون فرض force=false للاعتماد على الـ Cooldown لتفادي كثرة الطلبات)
                 console.log('[PWA] 🔄 Syncing FCM Token after session restore...');

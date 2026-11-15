@@ -39,6 +39,84 @@ async function checkAdminAuth(req) {
     }
 }
 
+// Validate and normalize a popup message payload coming from the admin panel.
+// Rejects unsafe button URLs and invalid enum values before touching the database.
+function buildPopupPayload(raw) {
+    const input = raw || {};
+
+    const title = typeof input.title === 'string' ? input.title.trim() : '';
+    const body = typeof input.body === 'string' ? input.body.trim() : '';
+    if (!title) return { error: 'عنوان الرسالة مطلوب' };
+    if (!body) return { error: 'نص الرسالة مطلوب' };
+
+    const targetApp = input.target_app;
+    if (targetApp !== 'driver' && targetApp !== 'passenger') {
+        return { error: 'مكان الظهور مطلوب (واجهة السائق أو واجهة الراكب)' };
+    }
+
+    const allowedRepeat = ['once', 'session', 'every_visit', 'interval'];
+    const repeatPolicy = allowedRepeat.includes(input.repeat_policy) ? input.repeat_policy : 'once';
+
+    // Only allow safe http(s) links, or empty. Blocks javascript:, data:, etc.
+    const sanitizeUrl = (value) => {
+        if (value === undefined || value === null) return null;
+        const url = String(value).trim();
+        if (!url) return null;
+        if (!/^https?:\/\//i.test(url)) return undefined; // invalid marker
+        return url;
+    };
+
+    const primaryUrl = sanitizeUrl(input.primary_button_url);
+    const secondaryUrl = sanitizeUrl(input.secondary_button_url);
+    if (primaryUrl === undefined || secondaryUrl === undefined) {
+        return { error: 'روابط الأزرار يجب أن تبدأ بـ http:// أو https://' };
+    }
+
+    const imageUrl = sanitizeUrl(input.image_url);
+    if (imageUrl === undefined) {
+        return { error: 'رابط الصورة غير صالح' };
+    }
+
+    const toInt = (value, fallback) => {
+        const n = parseInt(value, 10);
+        return Number.isFinite(n) ? n : fallback;
+    };
+
+    const delaySeconds = Math.max(0, toInt(input.delay_seconds, 0));
+    const priority = toInt(input.priority, 0);
+
+    let repeatIntervalMinutes = null;
+    if (repeatPolicy === 'interval') {
+        repeatIntervalMinutes = Math.max(1, toInt(input.repeat_interval_minutes, 60));
+    }
+
+    const parseDate = (value) => {
+        if (value === undefined || value === null || value === '') return null;
+        const d = new Date(value);
+        return isNaN(d.getTime()) ? null : d.toISOString();
+    };
+
+    return {
+        record: {
+            title,
+            body,
+            image_url: imageUrl,
+            primary_button_text: input.primary_button_text ? String(input.primary_button_text).trim() || null : null,
+            primary_button_url: primaryUrl,
+            secondary_button_text: input.secondary_button_text ? String(input.secondary_button_text).trim() || null : null,
+            secondary_button_url: secondaryUrl,
+            delay_seconds: delaySeconds,
+            priority,
+            target_app: targetApp,
+            repeat_policy: repeatPolicy,
+            repeat_interval_minutes: repeatIntervalMinutes,
+            start_at: parseDate(input.start_at),
+            end_at: parseDate(input.end_at),
+            is_active: input.is_active === undefined ? true : !!input.is_active
+        }
+    };
+}
+
 export default async function handler(req, res) {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -892,6 +970,88 @@ export default async function handler(req, res) {
                 .from('complaints')
                 .delete()
                 .eq('id', complaint_id);
+
+            if (error) throw error;
+            return res.status(200).json({ success: true });
+        }
+
+        // --- POPUP MESSAGES: LIST ---
+        if (action === 'list_popup_messages') {
+            const { data, error } = await supabase
+                .from('popup_messages')
+                .select('*')
+                .order('priority', { ascending: false })
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            return res.status(200).json({ success: true, messages: data || [] });
+        }
+
+        // --- POPUP MESSAGES: SAVE (create or update) ---
+        if (action === 'save_popup_message') {
+            const payload = buildPopupPayload(req.body.message || req.body);
+            if (payload.error) {
+                return res.status(400).json({ success: false, error: payload.error });
+            }
+
+            const record = payload.record;
+            const messageId = req.body.message && req.body.message.id ? req.body.message.id : req.body.id;
+
+            let result;
+            if (messageId) {
+                const { data, error } = await supabase
+                    .from('popup_messages')
+                    .update(record)
+                    .eq('id', messageId)
+                    .select()
+                    .single();
+                if (error) throw error;
+                result = data;
+            } else {
+                const { data, error } = await supabase
+                    .from('popup_messages')
+                    .insert([record])
+                    .select()
+                    .single();
+                if (error) throw error;
+                result = data;
+            }
+
+            return res.status(200).json({ success: true, message: result });
+        }
+
+        // --- POPUP MESSAGES: TOGGLE ACTIVE ---
+        if (action === 'toggle_popup_message') {
+            const { message_id, is_active } = req.body;
+            if (!message_id) {
+                return res.status(400).json({ success: false, error: 'معرف الرسالة مطلوب' });
+            }
+            if (typeof is_active !== 'boolean') {
+                return res.status(400).json({ success: false, error: 'قيمة الحالة غير صالحة' });
+            }
+
+            const { data, error } = await supabase
+                .from('popup_messages')
+                .update({ is_active })
+                .eq('id', message_id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            return res.status(200).json({ success: true, message: data });
+        }
+
+        // --- POPUP MESSAGES: DELETE ---
+        if (action === 'delete_popup_message') {
+            const { message_id } = req.body;
+            if (!message_id) {
+                return res.status(400).json({ success: false, error: 'معرف الرسالة مطلوب' });
+            }
+
+            const { error } = await supabase
+                .from('popup_messages')
+                .delete()
+                .eq('id', message_id);
 
             if (error) throw error;
             return res.status(200).json({ success: true });
