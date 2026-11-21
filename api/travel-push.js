@@ -346,7 +346,17 @@ async function getRideContext(rideId) {
         .maybeSingle();
     rideRequest = request || null;
 
-    if (!rideRequest) {
+    if (rideRequest) {
+        // Also load the selected trip: a driver-withdrawal action may already
+        // clear ride_requests.driver_id while the cancelled trip retains its driver_id.
+        const { data: linkedTrip } = await db.from('travel_trips')
+            .select('id, passenger_id, driver_id, ride_request_id, from_city, to_city')
+            .eq('ride_request_id', rideRequest.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        trip = linkedTrip || null;
+    } else {
         const { data: tripData } = await db.from('travel_trips')
             .select('id, passenger_id, driver_id, ride_request_id, from_city, to_city')
             .eq('id', rideId)
