@@ -5333,18 +5333,26 @@
             try {
                 await loadTravelSettings();
 
+                // Fetch only non-secret settings required by this form.
+                // Admin passcodes must never be sent to the browser.
                 const { data, error } = await adminSupabase
                     .from('system_settings')
-                    .select('*');
+                    .select('key, value')
+                    .in('key', [
+                        'platform_name',
+                        'service_fee_percentage',
+                        'max_wait_time_minutes',
+                        'enable_chat',
+                        'enable_whatsapp'
+                    ]);
 
-                // Update form values with defaults if table is empty or error
+                // Update form values with safe defaults if settings are unavailable.
                 const defaultSettings = {
                     platform_name: 'تراكا للنقل',
                     service_fee_percentage: '5',
                     max_wait_time_minutes: '40',
                     enable_chat: 'true',
-                    enable_whatsapp: 'true',
-                    staff_passcode: '1234'
+                    enable_whatsapp: 'true'
                 };
 
                 const settingsMap = { ...defaultSettings };
