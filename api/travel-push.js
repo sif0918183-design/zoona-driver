@@ -511,7 +511,7 @@ export default async function handler(req, res) {
                 });
             }
 
-            const routeText = (fromCity && toCity) ? `${fromCity} → ${toCity}` : 'الرحلة';
+            const routeText = (context.fromCity && context.toCity) ? `${context.fromCity} → ${context.toCity}` : 'الرحلة';
             const result = await sendQuietPush(
                 driver.fcm_token,
                 '✅ تم اختيارك للرحلة - تراكا',
@@ -693,7 +693,7 @@ export default async function handler(req, res) {
             }
 
             console.log(`🔍 [TravelPush] Ride #${rideId || 'N/A'}: Fetched ${drivers.length} drivers with tokens from DB`);
-            console.log(`📍 Origin City Raw: "${fromCity}" (Normalized: "${normalizeCityName(fromCity)}", Canonical: "${getCanonicalCityName(fromCity)}")`);
+            console.log(`📍 Origin City Raw: "${verifiedFromCity}" (Normalized: "${normalizeCityName(verifiedFromCity)}", Canonical: "${getCanonicalCityName(verifiedFromCity)}")`);
 
             // 4.2 جلب المواقع الجغرافية الحديثة فقط للسائقين (خلال آخر 48 ساعة)
             const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
@@ -774,7 +774,7 @@ export default async function handler(req, res) {
                 // ====== طريقة المطابقة 1: مطابقة اسم المدينة بالنص والقواميس ======
                 if (driverCityVal && matchesCityName(driverCityVal, verifiedFromCity)) {
                     matchesCity = true;
-                    matchReason = `Matched by normalized city name: "${driverCityVal}" ↔ "${fromCity}"`;
+                    matchReason = `Matched by normalized city name: "${driverCityVal}" ↔ "${verifiedFromCity}"`;
                     matchStats.textCityMatch++;
                     console.log(`✅ Driver ${driver.id}: ${matchReason}`);
                 }
@@ -789,7 +789,7 @@ export default async function handler(req, res) {
                         // نطاق 200 كم يشمل بورتسودان والمدن المحيطة بها في البحر الأحمر
                         if (dist <= 200) {
                             matchesCity = true;
-                            matchReason = `Matched by GPS location (${dist.toFixed(1)} km from ${fromCity})`;
+                            matchReason = `Matched by GPS location (${dist.toFixed(1)} km from ${verifiedFromCity})`;
                             matchStats.gpsDistanceMatch++;
                             console.log(`📍 Driver ${driver.id}: ${matchReason}`);
                         } else {
@@ -814,7 +814,7 @@ export default async function handler(req, res) {
                         match_reason: matchReason
                     });
                 } else {
-                    console.log(`❌ Driver ${driver.id} excluded: Registered city "${driver.city || 'N/A'}" does not match "${fromCity}" and no nearby GPS location`);
+                    console.log(`❌ Driver ${driver.id} excluded: Registered city "${driver.city || 'N/A'}" does not match "${verifiedFromCity}" and no nearby GPS location`);
                 }
             }
 
