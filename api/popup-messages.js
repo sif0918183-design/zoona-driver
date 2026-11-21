@@ -2,9 +2,9 @@ import { createClient } from '@supabase/supabase-js';
 import { verifyToken } from './_token-utils.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const supabase = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) : null;
 
 // Safe projection: never expose internal/admin-only fields to the app clients.
 const PUBLIC_FIELDS =
@@ -29,6 +29,10 @@ export default async function handler(req, res) {
     // The session role is derived from the verified token ONLY. Any role/target_app
     // value sent by the client is ignored, so apps cannot cross-read each other's messages.
     let session;
+    if (!supabase) {
+        return res.status(503).json({ success: false, error: 'Supabase server configuration is unavailable' });
+    }
+
     try {
         session = verifyToken(req);
     } catch (error) {

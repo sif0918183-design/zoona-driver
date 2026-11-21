@@ -1,42 +1,37 @@
 import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+import { generateToken, verifyToken } from './_token-utils.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabase = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+    ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    : null;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-// Helper to authenticate admin passcode from token or body
+// Admin sessions are signed and expire after 8 hours. Legacy unsigned tokens are rejected.
 async function checkAdminAuth(req) {
     const authHeader = req.headers.authorization;
-    let token = null;
+    const token = authHeader && authHeader.startsWith('Bearer ')
+        ? authHeader.substring(7)
+        : (req.body && req.body.token);
 
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        token = authHeader.substring(7);
-    } else if (req.body && req.body.token) {
-        token = req.body.token;
-    }
-
-    if (!token) return false;
+    if (!token || !supabase) return false;
 
     try {
-        const decoded = Buffer.from(token, 'base64').toString('utf-8');
-        const parts = decoded.split(':');
-        if (parts.length < 2) return false;
-
-        const passcode = parts.slice(1).join(':'); // handles any colons inside passcode
-
-        const { data, error } = await supabase
-            .from('system_settings')
-            .select('value')
-            .eq('key', 'staff_passcode')
-            .single();
-
-        if (error || !data) return false;
-        return data.value === passcode;
-    } catch (e) {
+        const session = verifyToken(token);
+        return session.role === 'admin' && session.id === 'tracka-admin';
+    } catch (error) {
         return false;
     }
+}
+
+function passcodeMatches(storedValue, suppliedValue) {
+    if (typeof storedValue !== 'string' || typeof suppliedValue !== 'string') return false;
+    if (/^\$2[aby]\$/.test(storedValue)) return bcrypt.compare(suppliedValue, storedValue);
+    const stored = Buffer.from(storedValue, 'utf8');
+    const supplied = Buffer.from(suppliedValue, 'utf8');
+    return stored.length === supplied.length && crypto.timingSafeEqual(stored, supplied);
 }
 
 // Validate and normalize a popup message payload coming from the admin panel.
@@ -131,6 +126,10 @@ export default async function handler(req, res) {
         return res.status(405).json({ success: false, error: 'Method not allowed' });
     }
 
+    if (!supabase) {
+        return res.status(503).json({ success: false, error: 'إعدادات قاعدة البيانات غير مكتملة على الخادم' });
+    }
+
     try {
         const { action } = req.body;
 
@@ -155,12 +154,25 @@ export default async function handler(req, res) {
                 return res.status(500).json({ success: false, error: 'خطأ في التحقق من كلمة المرور' });
             }
 
-            if (data.value === password) {
-                const token = Buffer.from(Date.now() + ':' + password).toString('base64');
+            if (await passcodeMatches(data.value, password)) {
+                // Upgrade legacy plaintext passcodes to bcrypt after a successful login.
+                if (!/^\$2[aby]\$/.test(data.value)) {
+                    const hashedPasscode = await bcrypt.hash(password, 12);
+                    const { error: upgradeError } = await supabase
+                        .from('system_settings')
+                        .update({ value: hashedPasscode })
+                        .eq('key', 'staff_passcode');
+                    if (upgradeError) {
+                        console.error('Failed to upgrade admin passcode hash:', upgradeError);
+                        return res.status(503).json({ success: false, error: 'تعذر تحديث حماية كلمة المرور. حاول مرة أخرى.' });
+                    }
+                }
+
+                const token = generateToken({ id: 'tracka-admin', role: 'admin' }, 8 * 60 * 60 * 1000);
                 return res.status(200).json({ success: true, token });
-            } else {
-                return res.status(400).json({ success: false, error: 'كلمة المرور غير صحيحة' });
             }
+
+            return res.status(401).json({ success: false, error: 'كلمة المرور غير صحيحة' });
         }
 
         // --- SECURE AREA: MUST BE AUTHENTICATED ---
@@ -280,9 +292,19 @@ export default async function handler(req, res) {
 
         // --- GET TRAVEL SETTINGS ---
         if (action === 'get_travel_settings') {
+            const allowedTravelSettings = [
+                'max_advance_creation_days',
+                'max_drivers_accepting',
+                'commission_hold_hours',
+                'driver_lock_hours',
+                'high_impact_cancel_limit',
+                'restriction_duration_days',
+                'travel_commission_rate'
+            ];
             const { data, error } = await supabase
                 .from('system_settings')
-                .select('key, value');
+                .select('key, value')
+                .in('key', allowedTravelSettings);
 
             if (error) throw error;
 
@@ -297,7 +319,7 @@ export default async function handler(req, res) {
             };
 
             (data || []).forEach(item => {
-                settingsMap[item.key] = item.value;
+                if (allowedTravelSettings.includes(item.key)) settingsMap[item.key] = item.value;
             });
 
             return res.status(200).json({ success: true, settings: settingsMap });
@@ -573,6 +595,11 @@ export default async function handler(req, res) {
                 return res.status(400).json({ success: false, error: 'Settings array is required' });
             }
 
+            // Never allow the generic settings endpoint to write the admin passcode.
+            if (settings.some((setting) => setting && setting.key === 'staff_passcode')) {
+                return res.status(400).json({ success: false, error: 'استخدم مسار تغيير كلمة مرور الإدارة المخصص' });
+            }
+
             const promises = settings.map(async (setting) => {
                 const { error } = await supabase
                     .from('system_settings')
@@ -776,21 +803,20 @@ export default async function handler(req, res) {
         // --- UPDATE STAFF PASSCODE ---
         if (action === 'update_passcode') {
             const { newPasscode } = req.body;
-            if (!newPasscode || newPasscode.length < 4) {
+            if (typeof newPasscode !== 'string' || newPasscode.length < 4) {
                 return res.status(400).json({ success: false, error: 'الرجاء إدخال كلمة مرور قوية (4 أحرف على الأقل)' });
             }
 
+            // Always store admin passcodes as bcrypt hashes; never persist plaintext.
+            const hashedPasscode = await bcrypt.hash(newPasscode, 12);
             const { error } = await supabase
                 .from('system_settings')
-                .update({ value: newPasscode })
-                .eq('key', 'staff_passcode');
+                .upsert({ key: 'staff_passcode', value: hashedPasscode }, {
+                    onConflict: 'key',
+                    ignoreDuplicates: false
+                });
 
-            if (error) {
-                // If it fails (key does not exist), insert
-                await supabase
-                    .from('system_settings')
-                    .insert([{ key: 'staff_passcode', value: newPasscode }]);
-            }
+            if (error) throw error;
 
             return res.status(200).json({ success: true });
         }

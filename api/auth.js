@@ -3,9 +3,9 @@ import bcrypt from 'bcryptjs';
 import { generateToken, verifyToken } from './_token-utils.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const supabase = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) : null;
 
 export default async function handler(req, res) {
     // Enable CORS with relaxed headers for tracka.zoonasd.com, webviews, and general PWA clients
@@ -46,7 +46,11 @@ export default async function handler(req, res) {
     // محاولة فك تشفير توكن Supabase JWT لاستخراج المعطيات للتحقق الآمن للراكب الجديد
     let decodedSupabaseUser = null;
     if (bearerToken) {
-        try {
+        if (!supabase) {
+        return res.status(503).json({ success: false, error: 'Supabase server configuration is unavailable' });
+    }
+
+    try {
             const parts = bearerToken.split('.');
             if (parts.length === 3) {
                 const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));

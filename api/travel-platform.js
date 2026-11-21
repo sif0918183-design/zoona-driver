@@ -2,9 +2,9 @@ import { createClient } from '@supabase/supabase-js';
 import { verifyToken } from './_token-utils.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-export let supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+export let supabase = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) : null;
 
 export function setSupabaseClient(client) {
     supabase = client;
@@ -385,6 +385,10 @@ export default async function handler(req, res) {
 
     if (req.method !== 'POST') {
         return res.status(405).json({ success: false, error: 'Method not allowed' });
+    }
+
+    if (!supabase) {
+        return res.status(503).json({ success: false, error: 'Supabase server configuration is unavailable' });
     }
 
     try {
