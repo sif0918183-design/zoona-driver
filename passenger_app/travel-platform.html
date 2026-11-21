@@ -3757,9 +3757,13 @@ function filterChatMessage(message) {
 }
 
 function sendTravelPush(payload) {
+    const sessionToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_session_token');
     fetch('/api/travel-push', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': sessionToken ? `Bearer ${sessionToken}` : ''
+        },
         body: JSON.stringify(payload)
     }).catch(() => {});
 }

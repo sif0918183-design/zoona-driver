@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { verifyToken } from './_token-utils.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
@@ -9,7 +10,7 @@ export default async function handler(req, res) {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
@@ -20,6 +21,16 @@ export default async function handler(req, res) {
     }
 
     try {
+        let session;
+        try {
+            session = verifyToken(req);
+        } catch (tokenError) {
+            return res.status(401).json({ success: false, error: tokenError.message });
+        }
+        if (session.role !== 'passenger') {
+            return res.status(403).json({ success: false, error: 'هذه العملية متاحة للراكب فقط' });
+        }
+
         const { driverId } = req.body;
 
         if (!driverId) {
@@ -51,10 +62,7 @@ export default async function handler(req, res) {
 
         console.log(`[check-driver-linked] Driver ${driverId} linked status (FCM): ${isLinked}`);
 
-        return res.status(200).json({
-            linked: isLinked,
-            fcm_token: fcmToken // إرجاع التوكن للفحص
-        });
+        return res.status(200).json({ linked: isLinked });
 
     } catch (error) {
         console.error('Error in check-driver-linked:', error);

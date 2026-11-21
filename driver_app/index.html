@@ -1005,7 +1005,7 @@
                 </div>
             </div>
 
-            <button class="btn btn-driver mt-2" onclick="window.location.href='travel-platform.html'">
+            <button class="btn btn-driver mt-2" onclick="window.location.href='/driver_app/travel-platform.html'">
                 <i class="ph-light ph-suitcase"></i>
                 دخول منصة الرحلات السفرية
             </button>
@@ -1981,7 +1981,11 @@
                 statusDiv.style.color = 'var(--driver)';
 
                 // Fetch fresh authentication parameters
-                const authRes = await fetch('/api/imagekit-auth', { cache: 'no-store' });
+                const sessionToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_session_token');
+                const authRes = await fetch('/api/imagekit-auth', {
+                    cache: 'no-store',
+                    headers: { 'Authorization': sessionToken ? `Bearer ${sessionToken}` : '' }
+                });
                 if (!authRes.ok) {
                     throw new Error('فشل جلب تصريح الرفع من السيرفر');
                 }
