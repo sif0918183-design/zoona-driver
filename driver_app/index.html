@@ -1981,7 +1981,11 @@
                 statusDiv.style.color = 'var(--driver)';
 
                 // Fetch fresh authentication parameters
-                const authRes = await fetch('/api/imagekit-auth', { cache: 'no-store' });
+                const sessionToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_session_token');
+                const authRes = await fetch('/api/imagekit-auth', {
+                    cache: 'no-store',
+                    headers: { 'Authorization': sessionToken ? `Bearer ${sessionToken}` : '' }
+                });
                 if (!authRes.ok) {
                     throw new Error('فشل جلب تصريح الرفع من السيرفر');
                 }
