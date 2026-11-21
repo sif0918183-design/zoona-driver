@@ -1,5 +1,6 @@
 import admin from 'firebase-admin';
 import { createClient } from '@supabase/supabase-js';
+import { verifyToken } from './_token-utils.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -35,6 +36,16 @@ export default async function handler(req, res) {
     }
 
     try {
+        let session;
+        try {
+            session = verifyToken(req);
+        } catch (tokenError) {
+            return res.status(401).json({ success: false, error: tokenError.message });
+        }
+        if (session.role !== 'admin') {
+            return res.status(403).json({ success: false, error: 'هذه العملية متاحة للإدارة فقط' });
+        }
+
         if (!req.body) {
             return res.status(400).json({ success: false, error: 'Missing request body' });
         }
