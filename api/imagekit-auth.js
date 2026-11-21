@@ -1,4 +1,5 @@
 import ImageKit from 'imagekit';
+import { verifyToken } from './_token-utils.js';
 
 export default async function handler(req, res) {
     // Enable CORS with relaxed headers
@@ -11,9 +12,24 @@ export default async function handler(req, res) {
     }
 
     try {
+        let session;
+        try {
+            session = verifyToken(req);
+        } catch (tokenError) {
+            return res.status(401).json({ success: false, error: tokenError.message });
+        }
+        if (!['driver', 'admin'].includes(session.role)) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك برفع الملفات' });
+        }
+
+        const privateKey = process.env.IMAGEKIT_PRIVATE_KEY;
+        if (!privateKey || !privateKey.trim()) {
+            return res.status(503).json({ success: false, error: 'ImageKit private key is not configured on the server' });
+        }
+
         const imagekit = new ImageKit({
             publicKey: process.env.IMAGEKIT_PUBLIC_KEY || "public_SnxtM9/xheLA8u65v643QBMQcMo=",
-            privateKey: process.env.IMAGEKIT_PRIVATE_KEY || "private_o/lKTz8k3C2jWMhV+g6UFLLXnoU=",
+            privateKey,
             urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT || "https://ik.imagekit.io/vurkt9qyk"
         });
 
