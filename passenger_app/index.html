@@ -5125,7 +5125,7 @@ function openTravelPlatform() {
     // Save current user to local storage to be accessed by the travel platform
     if (currentUser) {
         localStorage.setItem('tarhal_customer', JSON.stringify(currentUser));
-        window.location.href = 'travel-platform.html';
+        window.location.href = '/passenger_app/travel-platform.html';
     } else {
         showNotification('الرجاء تسجيل الدخول أولاً', 'error');
     }
