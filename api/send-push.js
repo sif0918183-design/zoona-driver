@@ -46,7 +46,7 @@ export default async function handler(req, res) {
         // لا نعتمد على بيانات الراكب أو السائق القادمة من المتصفح؛ نتحقق من ملكية الرحلة وتعيين السائق من قاعدة البيانات.
         const { data: ride, error: rideError } = await tarhalDB
             .from('rides')
-            .select('passenger_id, driver_id, status, passenger_name, amount, vehicle_category')
+            .select('passenger_id, driver_id, driver_rejected, status, passenger_name, amount, vehicle_category')
             .eq('id', rideId)
             .maybeSingle();
 
@@ -56,7 +56,7 @@ export default async function handler(req, res) {
         if (String(ride.passenger_id) !== session.id) {
             return res.status(403).json({ success: false, error: 'لا تملك صلاحية إرسال إشعار لهذه الرحلة' });
         }
-        if (String(ride.driver_id) !== String(driverId)) {
+        if (String(ride.driver_id || '') !== String(driverId) && ride.driver_rejected !== true) {
             return res.status(403).json({ success: false, error: 'السائق المحدد غير مرتبط بهذه الرحلة' });
         }
 
