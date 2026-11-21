@@ -595,6 +595,11 @@ export default async function handler(req, res) {
                 return res.status(400).json({ success: false, error: 'Settings array is required' });
             }
 
+            // Never allow the generic settings endpoint to write the admin passcode.
+            if (settings.some((setting) => setting && setting.key === 'staff_passcode')) {
+                return res.status(400).json({ success: false, error: 'استخدم مسار تغيير كلمة مرور الإدارة المخصص' });
+            }
+
             const promises = settings.map(async (setting) => {
                 const { error } = await supabase
                     .from('system_settings')
@@ -798,21 +803,20 @@ export default async function handler(req, res) {
         // --- UPDATE STAFF PASSCODE ---
         if (action === 'update_passcode') {
             const { newPasscode } = req.body;
-            if (!newPasscode || newPasscode.length < 4) {
+            if (typeof newPasscode !== 'string' || newPasscode.length < 4) {
                 return res.status(400).json({ success: false, error: 'الرجاء إدخال كلمة مرور قوية (4 أحرف على الأقل)' });
             }
 
+            // Always store admin passcodes as bcrypt hashes; never persist plaintext.
+            const hashedPasscode = await bcrypt.hash(newPasscode, 12);
             const { error } = await supabase
                 .from('system_settings')
-                .update({ value: newPasscode })
-                .eq('key', 'staff_passcode');
+                .upsert({ key: 'staff_passcode', value: hashedPasscode }, {
+                    onConflict: 'key',
+                    ignoreDuplicates: false
+                });
 
-            if (error) {
-                // If it fails (key does not exist), insert
-                await supabase
-                    .from('system_settings')
-                    .insert([{ key: 'staff_passcode', value: newPasscode }]);
-            }
+            if (error) throw error;
 
             return res.status(200).json({ success: true });
         }
