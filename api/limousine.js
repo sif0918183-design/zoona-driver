@@ -206,9 +206,10 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true, pricing: data });
       }
       if (!b.contractId || !['no_penalty','penalty'].includes(b.resolution)) return fail(res, 400, 'بيانات التسوية غير مكتملة');
-      const { data: settlementContract, error: contractReadError } = await db.from('limousine_contracts').select('actual_ended_at,scheduled_end_at').eq('id', b.contractId).maybeSingle();
+      const { data: settlementContract, error: contractReadError } = await db.from('limousine_contracts').select('status,actual_ended_at,scheduled_end_at').eq('id', b.contractId).maybeSingle();
       if (contractReadError || !settlementContract) throw contractReadError || new Error('contract_not_found');
-      const settlementEnd = b.endAt || settlementContract.actual_ended_at || settlementContract.scheduled_end_at || new Date().toISOString();
+      if (!['awaiting_settlement','disputed'].includes(settlementContract.status)) return fail(res, 400, 'لا يمكن اعتماد التسوية قبل تأكيد الطرف الآخر انتهاء الخدمة.');
+      const settlementEnd = b.endAt || settlementContract.actual_ended_at || new Date().toISOString();
       const { data, error } = await db.rpc('limousine_settle_contract', { p_contract_id: b.contractId, p_end_at: settlementEnd, p_penalty_days: Number(b.penaltyDays) || 0, p_resolution: b.resolution });
       if (error) throw error;
       return res.status(200).json({ success: true, result: data });
