@@ -21,7 +21,7 @@ create table if not exists public.limousine_pricing (
 
 create table if not exists public.limousine_requests (
   id uuid primary key default gen_random_uuid(),
-  passenger_id uuid not null,
+  passenger_id uuid not null references public.customers(id) on delete restrict,
   city_id uuid not null references public.cities(id) on delete restrict,
   pickup_area text not null,
   start_at timestamptz not null,
@@ -61,7 +61,7 @@ create index if not exists idx_limo_acceptances_request on public.limousine_acce
 create table if not exists public.limousine_contracts (
   id uuid primary key default gen_random_uuid(),
   request_id uuid not null references public.limousine_requests(id) on delete restrict,
-  passenger_id uuid not null,
+  passenger_id uuid not null references public.customers(id) on delete restrict,
   driver_id uuid not null references public.drivers(id) on delete restrict,
   status text not null check (status in
     ('confirmed','awaiting_funding','booked','active','completion_requested','awaiting_settlement','settled','disputed','cancelled')),
