@@ -35,7 +35,7 @@
   ],
   "crons": [
     {
-      "path": "/api/limousine?action=process_due",
+      "path": "/api/travel-platform?module=limousine&action=process_due",
       "schedule": "*/5 * * * *"
     }
   ]
