@@ -133,7 +133,7 @@ export default async function handler(req, res) {
       const acceptedIds = (ownAcceptances || []).map(a => a.request_id);
       const acceptedRequestIds = [...new Set(acceptedIds)];
       const { data: acceptedRows, error: acceptedError } = acceptedRequestIds.length
-        ? await db.from('limousine_requests').select('*').in('id', acceptedRequestIds).in('status', ['open','awaiting_driver_selection','driver_selected','booked']).gt('start_at', new Date().toISOString()).order('start_at')
+        ? await db.from('limousine_requests').select('*').in('id', acceptedRequestIds).in('status', ['open','awaiting_driver_selection','driver_selected']).gt('start_at', new Date().toISOString()).order('start_at')
         : { data: [], error: null };
       if (acceptedError) throw acceptedError;
       const acceptedSet = new Set((ownAcceptances || []).map(x => x.request_id));
