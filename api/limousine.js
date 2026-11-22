@@ -160,19 +160,15 @@ export default async function handler(req, res) {
       const { data: contract, error: contractError } = await db.from('limousine_contracts').select('*').eq('id', b.contractId).maybeSingle();
       if (contractError || !contract) throw contractError || new Error('العقد غير موجود');
       if (action === 'request_end') {
-        if (!['booked','active'].includes(contract.status)) return fail(res, 400, 'لا يمكن طلب الإنهاء في حالة العقد الحالية');
-        const { data, error } = await db.from('limousine_contracts').update({ status: 'completion_requested', end_requested_by: session.role, end_confirmed_at: null, updated_at: new Date().toISOString() }).eq('id', contract.id).select('*').single();
+        const { data, error } = await db.rpc('limousine_request_end', { p_contract_id: b.contractId, p_user_id: id, p_user_role: session.role });
         if (error) throw error;
-        const otherId = session.role === 'passenger' ? chat.driver_id : chat.passenger_id;
-        const otherType = session.role === 'passenger' ? 'driver' : 'passenger';
-        await db.from('limousine_notifications').insert({ request_id: chat.request_id, contract_id: chat.contract_id, recipient_id: otherId, recipient_type: otherType, event_code: 'LIMO_END_CONFIRMATION_REQUIRED', title: 'طلب إنهاء التأجير', body: 'يرجى تأكيد ما إذا كانت خدمة التأجير قد انتهت.' });
-        return res.status(200).json({ success: true, contract: data });
+        return res.status(200).json({ success: true, result: data });
       }
-      if (contract.status !== 'completion_requested' || contract.end_requested_by === session.role) return fail(res, 400, 'لا يوجد طلب إنهاء بانتظار تأكيدك');
-      const { data, error } = await db.from('limousine_contracts').update({ status: 'awaiting_settlement', end_confirmed_at: new Date().toISOString(), actual_ended_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', contract.id).select('*').single();
-      if (error) throw error;
-      // The admin dashboard reads awaiting_settlement contracts directly; admin IDs are not UUID recipients.
-      return res.status(200).json({ success: true, contract: data });
+      if (action === 'confirm_end') {
+        const { data, error } = await db.rpc('limousine_confirm_end', { p_contract_id: b.contractId, p_user_id: id, p_user_role: session.role });
+        if (error) throw error;
+        return res.status(200).json({ success: true, result: data });
+      }
     }
 
     if (action === 'admin_overview' || action === 'admin_update_pricing' || action === 'admin_resolve') {
