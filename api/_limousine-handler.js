@@ -76,43 +76,70 @@ export default async function handler(req, res) {
       const { data: requests, error } = await db.from('limousine_requests').select('*').eq('passenger_id', id).order('created_at', { ascending: false }).limit(50);
       if (error) throw error;
       const requestIds = (requests || []).map(x => x.id);
-      if (!requestIds.length) return res.status(200).json({ success: true, requests: [], acceptances: [], contracts: [] });
+      if (!requestIds.length) return res.status(200).json({ success: true, requests: [], acceptances: [], contracts: [], drivers: [] });
       const [{ data: acceptances, error: ae }, { data: contracts, error: ce }] = await Promise.all([
         db.from('limousine_acceptances').select('id,request_id,driver_id,status,accepted_at').in('request_id', requestIds),
-        db.from('limousine_contracts').select('*').in('request_id', requestIds).order('created_at', { ascending: false })
+        db.from('limousine_contracts').select('id,request_id,status').in('request_id', requestIds).order('created_at', { ascending: false })
       ]);
       if (ae || ce) throw ae || ce;
       const driverIds = [...new Set((acceptances || []).map(x => x.driver_id))];
-      const { data: drivers, error: de } = driverIds.length ? await db.from('drivers').select('id,full_name,car_type,car_model,car_color,rating,total_rides,profile_image_url').in('id', driverIds) : { data: [], error: null };
+      const released = new Set((contracts || []).filter(c => ['booked','active','completion_requested','awaiting_settlement','settled','disputed'].includes(c.status)).map(c => c.request_id));
+      const { data: driverRows, error: de } = driverIds.length
+        ? await db.from('drivers').select('id,full_name,car_type,car_model,car_color,phone,whatsapp_number,rating,total_rides,profile_image_url,car_plate_number').in('id', driverIds)
+        : { data: [], error: null };
       if (de) throw de;
-      return res.status(200).json({ success: true, requests, acceptances, contracts, drivers: drivers || [] });
+      const safeDrivers = (driverRows || []).map(d => {
+        const identityReleased = released.has((acceptances || []).find(a => a.driver_id === d.id)?.request_id);
+        const safe = { id:d.id, car_type:d.car_type, car_model:d.car_model, car_color:d.car_color, identity_released:identityReleased };
+        if (identityReleased) Object.assign(safe, {
+          full_name:d.full_name, phone:d.phone, whatsapp_number:d.whatsapp_number,
+          rating:d.rating, total_rides:d.total_rides, profile_image_url:d.profile_image_url,
+          car_plate_number:d.car_plate_number
+        });
+        return safe;
+      });
+      return res.status(200).json({ success: true, requests, acceptances, contracts, drivers: safeDrivers });
     }
 
     if (action === 'list_driver_requests') {
       if (session?.role !== 'driver' || id !== b.driverId) return fail(res, 403, 'غير مصرح');
-      const { data: driver, error: dre } = await db.from('drivers').select('id,car_type,vehicle_type,is_active,is_approved,is_banned,is_available,status').eq('id', id).maybeSingle();
-      if (dre || !driver) throw dre || new Error('السائق غير موجود');
-      if (!driver.is_active || !driver.is_approved || driver.is_banned || !driver.is_available || driver.status === 'SUSPENDED') return fail(res, 403, 'حساب السائق غير مؤهل');
+      const { data: driver, error: dre } = await db.from('drivers')
+        .select('id,full_name,balance,car_type,vehicle_type,is_active,is_approved,is_banned,is_available,status')
+        .eq('id', id).maybeSingle();
+      if (dre || !driver) throw dre || new Error('driver_not_found');
+      if (!driver.is_active || !driver.is_approved || driver.is_banned || !driver.is_available || driver.status === 'SUSPENDED') return fail(res, 403, 'driver_not_eligible');
       const { data: cats, error: catErr } = await db.from('vehicle_categories').select('id,name_ar');
       if (catErr) throw catErr;
       const rank = vehicleRank(driver.car_type || driver.vehicle_type);
       const categoryMap = new Map((cats || []).map(c => [c.id, c.name_ar]));
-      const { data: requests, error } = await db.from('limousine_requests').select('*').in('status', ['open','awaiting_driver_selection']).gt('start_at', new Date().toISOString()).order('start_at').limit(100);
+      const { data: rows, error } = await db.from('limousine_requests').select('*')
+        .in('status', ['open','awaiting_driver_selection']).gt('start_at', new Date().toISOString()).order('start_at').limit(100);
       if (error) throw error;
-      const eligible = (requests || []).filter(r => rank >= categoryRank(categoryMap.get(r.requested_category_id)));
+      const eligible = (rows || []).filter(r => rank >= categoryRank(categoryMap.get(r.requested_category_id)));
       const ids = eligible.map(r => r.id);
-      if (!ids.length) return res.status(200).json({ success: true, requests: [] });
-      const [{ data: accepted, error: ae }, { data: counts, error: countErr }] = await Promise.all([
-        db.from('limousine_acceptances').select('request_id,status').eq('driver_id', id).in('request_id', ids),
-        ids.length ? db.from('limousine_acceptances').select('request_id,status').in('request_id', ids).in('status', ['accepted','selected','contracted']) : Promise.resolve({ data: [], error: null })
+      const [{ data: ownAcceptances, error: ownError }, { data: counts, error: countErr }] = await Promise.all([
+        db.from('limousine_acceptances').select('request_id,status').eq('driver_id', id).in('status', ['accepted','selected','contracted']),
+        ids.length
+          ? db.from('limousine_acceptances').select('request_id,status').in('request_id', ids).in('status', ['accepted','selected','contracted'])
+          : Promise.resolve({ data: [], error: null })
       ]);
-      if (ae || countErr) throw ae || countErr;
-      const acceptedSet = new Set((accepted || []).map(x => x.request_id));
+      if (ownError || countErr) throw ownError || countErr;
+      const acceptedIds = (ownAcceptances || []).filter(a => a.status === 'accepted').map(a => a.request_id);
+      const acceptedRequestIds = [...new Set(acceptedIds)];
+      const { data: acceptedRows, error: acceptedError } = acceptedRequestIds.length
+        ? await db.from('limousine_requests').select('*').in('id', acceptedRequestIds).order('start_at')
+        : { data: [], error: null };
+      if (acceptedError) throw acceptedError;
+      const acceptedSet = new Set((ownAcceptances || []).map(x => x.request_id));
       const countMap = new Map();
       (counts || []).forEach(x => countMap.set(x.request_id, (countMap.get(x.request_id) || 0) + 1));
-      return res.status(200).json({ success: true, requests: eligible.filter(r => !acceptedSet.has(r.id)).map(r => ({ ...r, accepted_count: countMap.get(r.id) || 0 })) });
+      return res.status(200).json({
+        success:true,
+        profile:{ full_name:driver.full_name, balance:driver.balance },
+        accepted_requests:acceptedRows || [],
+        requests:eligible.filter(r => !acceptedSet.has(r.id)).map(r => ({ ...r, accepted_count:countMap.get(r.id) || 0 }))
+      });
     }
-
     if (action === 'accept_request') {
       if (session?.role !== 'driver' || id !== b.driverId) return fail(res, 403, 'غير مصرح');
       const { data, error } = await db.rpc('limousine_accept_request', { p_request_id: b.requestId, p_driver_id: id });
@@ -258,6 +285,7 @@ export default async function handler(req, res) {
     console.error('[Limousine API]', error);
     const message = String(error?.message || 'حدث خطأ غير متوقع');
     const clientErrors = ['start_must_be_future','outside_service_hours','invalid_duration','invalid_request_details','passenger_not_found','pricing_unavailable','duration_out_of_pricing_range','request_not_found','request_not_available','driver_not_eligible','vehicle_category_not_eligible','driver_has_overlapping_limo_contract','acceptance_limit_reached','request_not_found_or_forbidden','request_not_selectable','driver_has_not_accepted','live_contract_exists','contract_not_found','contract_not_settleable','commission_not_held','contract_not_owned','contract_not_disputable','contract_not_eligible_for_early_end','no_end_confirmation_pending'];
-    return fail(res, clientErrors.includes(message) ? 400 : 500, message);
+    const friendly = { driver_not_found:'حساب السائق غير موجود.', driver_not_eligible:'حساب السائق غير مؤهل حالياً لاستقبال طلبات التأجير.', request_not_available:'هذا الطلب لم يعد متاحاً.', insufficient_balance:'رصيد السائق غير كافٍ لتأمين العمولة.', commission_not_held:'لم يتم تأمين العمولة بعد.' };
+    return fail(res, clientErrors.includes(message) ? 400 : 500, friendly[message] || (clientErrors.includes(message) ? 'تعذر تنفيذ العملية بسبب حالة الطلب الحالية.' : 'حدث خطأ أثناء معالجة الطلب. يرجى المحاولة لاحقاً.'));
   }
 }
