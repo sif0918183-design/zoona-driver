@@ -196,6 +196,8 @@ begin
     values(c.request_id,c.id,c.driver_id,'driver','LIMO_COMMISSION_FUNDING_REQUIRED',
       'استكمال رصيد العمولة','رصيدك غير كافٍ لتأمين عمولة عقد التأجير. يرجى شحن الرصيد قبل انتهاء المهلة.',
       jsonb_build_object('required_amount',c.commission_due,'deadline',least(v_now + interval '4 hours',c.start_at)));
+    insert into public.limousine_notifications(request_id,contract_id,recipient_id,recipient_type,event_code,title,body)
+    values(c.request_id,c.id,c.passenger_id,'passenger','LIMO_FUNDING_PENDING','بانتظار تأمين العمولة','تم اختيار السائق، ويجري استكمال تأمين العمولة قبل تأكيد الحجز.');
     return jsonb_build_object('ok',false,'reason','insufficient_balance','required',c.commission_due,'available',coalesce(d.balance,0),'deadline',least(v_now + interval '4 hours',c.start_at));
   end if;
 
@@ -211,6 +213,8 @@ begin
   update public.limousine_requests set status='booked',updated_at=v_now where id=c.request_id;
   insert into public.limousine_notifications(request_id,contract_id,recipient_id,recipient_type,event_code,title,body)
   values(c.request_id,c.id,c.passenger_id,'passenger','LIMO_COMMISSION_RESERVED','تم تأمين الحجز','تم تأمين عمولة التأجير وأصبح الحجز مؤكداً مالياً.');
+  insert into public.limousine_notifications(request_id,contract_id,recipient_id,recipient_type,event_code,title,body)
+  values(c.request_id,c.id,c.driver_id,'driver','LIMO_BOOKING_CONFIRMED','تم تأكيد عقد التأجير','تم تأمين العمولة وأصبح عقد التأجير مؤكداً مالياً.');
   return jsonb_build_object('ok',true,'held',c.commission_due,'status','booked');
 end;
 $$;
