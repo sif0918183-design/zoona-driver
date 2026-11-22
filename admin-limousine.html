@@ -13,7 +13,7 @@
 <section class="card"><h2>السجل المالي (ليموزين فقط)</h2><div class="table-wrap"><table><thead><tr><th>التاريخ</th><th>نوع الحركة</th><th>المبلغ</th><th>العقد</th></tr></thead><tbody id="ledgerRows"></tbody></table></div></section></main>
 <script>
 const $=id=>document.getElementById(id),token=localStorage.getItem('tarhal_admin_token')||'';let cfg={};
-async function api(action,extra={}){const r=await fetch('/api/limousine',{method:'POST',headers:{'Content-Type':'application/json','Authorization':token?'Bearer '+token:''},body:JSON.stringify({action,...extra})});const d=await r.json();if(!r.ok||!d.success)throw new Error(d.error||'فشلت العملية');return d}
+async function api(action,extra={}){const r=await fetch('/api/travel-platform?module=limousine',{method:'POST',headers:{'Content-Type':'application/json','Authorization':token?'Bearer '+token:''},body:JSON.stringify({action,...extra})});const d=await r.json();if(!r.ok||!d.success)throw new Error(d.error||'فشلت العملية');return d}
 function note(t,bad=false){$('notice').textContent=t;$('notice').className='notice show'+(bad?' error':'')}
 const money=n=>Number(n||0).toLocaleString('ar-SD')+' ج.س',date=d=>d?new Date(d).toLocaleString('ar-SD'):'—';
 async function init(){if(!token)throw new Error('جلسة الإدارة غير موجودة. سجل الدخول إلى لوحة الإدارة أولاً.');const c=await api('list_config');cfg=c;$('city').innerHTML=c.cities.map(x=>'<option value="'+x.id+'">'+x.name_ar+'</option>').join('');$('category').innerHTML=c.categories.map(x=>'<option value="'+x.id+'">'+x.name_ar+'</option>').join('');await load()}
