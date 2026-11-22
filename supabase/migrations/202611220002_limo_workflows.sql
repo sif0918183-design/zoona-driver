@@ -30,7 +30,7 @@ begin
   select v_id,d.id,'driver','LIMO_NEW_REQUEST','طلب تأجير جديد','يوجد طلب تأجير يومي جديد يناسب فئة سيارتك.',
     jsonb_build_object('city_id',p_city_id,'start_at',p_start_at)
   from public.drivers d
-  where coalesce(d.is_active,false) and coalesce(d.is_approved,false) and not coalesce(d.is_banned,false)
+  where coalesce(d.is_active,false) and coalesce(d.is_approved,false) and coalesce(d.is_available,false) and not coalesce(d.is_banned,false)
     and (case when d.car_type in ('vip') then 3 when d.car_type='comfort' then 2 when d.car_type='economy' then 1 else 0 end)
       >= (select case when name_ar ilike '%SUV%' or name_ar ilike '%عالي%' then 3
         when name_ar ilike '%مريح%' then 2 when name_ar ilike '%اقتصادي%' then 1 else 99 end
