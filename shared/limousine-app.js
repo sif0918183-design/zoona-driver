@@ -44,7 +44,7 @@
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.success) {
       const raw = String(data.error || '');
-      throw new Error(errorNames[raw] || (res.status >= 500 ? 'تعذر تحميل البيانات حالياً. تحقق من اتصال الإنترنت ثم أعد المحاولة.' : raw || 'تعذر إكمال العملية.'));
+      const technical = /^[a-z][a-z0-9_]*$/i.test(raw) || /^(Method not allowed|Unknown action|Action is required)$/i.test(raw);\n      throw new Error(errorNames[raw] || (res.status >= 500 || technical ? 'تعذر تنفيذ الطلب حالياً. يرجى المحاولة مرة أخرى، وإذا تكرر الخطأ فتواصل مع الدعم.' : raw || 'تعذر إكمال العملية.'));
     }
     return data;
   }
