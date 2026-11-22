@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { verifyToken } from './_token-utils.js';
+import limousineHandler from './_limousine-handler.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -347,8 +348,7 @@ async function checkPassengerRestrictions(passengerId, departureTimeISO, fromCit
 
         if (normFromExisting === normFromNew && normToExisting === normToNew && ride.departure_time) {
             const existingDepTime = new Date(ride.departure_time).getTime();
-            const newDepTime = departureTime.getTime();
-            const diffHours = Math.abs(existingDepTime - newDepTime) / (1000 * 60 * 60);
+            const newDepTime = departureTime.getTime();            const diffHours = Math.abs(existingDepTime - newDepTime) / (1000 * 60 * 60);
 
             if (diffHours < 2) {
                 throw new Error('لديك بالفعل طلب رحلة مماثل لهذا الموعد. يمكنك تعديل الطلب الحالي أو إلغاؤه قبل إنشاء طلب جديد.');
@@ -374,6 +374,7 @@ async function checkPassengerRestrictions(passengerId, departureTimeISO, fromCit
 }
 
 export default async function handler(req, res) {
+    if (req.query?.module === 'limousine') return limousineHandler(req, res);
     // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -697,8 +698,7 @@ export default async function handler(req, res) {
                 }
                 // Already selected the same driver -> return existing trip
                 const { data: existingTrip } = await supabase
-                    .from('travel_trips')
-                    .select('*')
+                    .from('travel_trips')                    .select('*')
                     .eq('ride_request_id', rideId)
                     .maybeSingle();
 
@@ -1047,8 +1047,7 @@ export default async function handler(req, res) {
                     status_at_cancellation: trip?.status || 'pending',
                     driver_selected: isDriverSelected,
                     contact_revealed: isContactRevealed,
-                    commission_held: isCommissionHeld,
-                    cancellation_reason: reason || 'إلغاء من الراكب',
+                    commission_held: isCommissionHeld,                    cancellation_reason: reason || 'إلغاء من الراكب',
                     cancelled_by: 'passenger',
                     impact_level: impactLevel,
                     created_at: serverTime.toISOString()
