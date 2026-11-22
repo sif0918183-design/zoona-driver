@@ -229,7 +229,11 @@ set search_path = public, pg_temp
 as $$
 declare
   c public.limousine_contracts%rowtype;
+  v_request_id uuid;
 begin
+  select request_id into v_request_id from public.limousine_contracts where id=p_contract_id;
+  if not found then raise exception 'contract_not_found'; end if;
+  perform 1 from public.limousine_requests where id=v_request_id for update;
   select * into c from public.limousine_contracts where id=p_contract_id for update;
   if not found then raise exception 'contract_not_found'; end if;
   if c.status <> 'awaiting_funding' or c.funding_deadline is null or now() < c.funding_deadline then
