@@ -106,7 +106,7 @@ end; $$;
 create or replace function public.limousine_settle_contract(p_contract_id uuid,p_end_at timestamptz default now(),
   p_penalty_days integer default 0,p_resolution text default 'no_penalty')
 returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
-declare c public.limousine_contracts%rowtype; v_end_local timestamp; v_start_date date; v_end_date date;
+declare c public.limousine_contracts%rowtype; v_end_local timestamp; v_start_local timestamp; v_start_date date; v_end_date date;
   v_used numeric; v_remaining integer; v_penalty integer; v_earned numeric; v_release numeric; v_driver public.drivers%rowtype;
 begin
   select * into c from public.limousine_contracts where id=p_contract_id for update;
@@ -118,13 +118,18 @@ begin
   if c.commission_held <= 0 then raise exception 'commission_not_held'; end if;
   if p_resolution not in ('no_penalty','penalty') then raise exception 'invalid_resolution'; end if;
   v_end_local := least(p_end_at,c.scheduled_end_at) at time zone 'Africa/Khartoum';
-  v_start_date := (c.start_at at time zone 'Africa/Khartoum')::date;
+  v_start_local := c.start_at at time zone 'Africa/Khartoum';
+  v_start_date := v_start_local::date;
   v_end_date := v_end_local::date;
   if v_end_local < (c.start_at at time zone 'Africa/Khartoum') then raise exception 'end_before_start'; end if;
   v_used := greatest(0,(v_end_date-v_start_date)::numeric);
   if v_end_date >= v_start_date then
-    if extract(hour from v_end_local) >= 12 then v_used := v_used + 1;
-    else v_used := v_used + greatest(0,least(1,(extract(epoch from (v_end_local::time-time '07:00'))/36000)));
+    if v_end_date = v_start_date and extract(hour from v_end_local) < 12 then
+      v_used := greatest(0,least(1,extract(epoch from (v_end_local-v_start_local))/36000));
+    elsif extract(hour from v_end_local) >= 12 then
+      v_used := v_used + 1;
+    else
+      v_used := v_used + greatest(0,least(1,(extract(epoch from (v_end_local::time-time '07:00'))/36000)));
     end if;
   end if;
   v_used := least(v_used,c.duration_days);
