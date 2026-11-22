@@ -98,6 +98,8 @@ begin
   else
     insert into public.limousine_notifications(request_id,contract_id,recipient_id,recipient_type,event_code,title,body)
     values(r.id,c_id,p_driver_id,'driver','LIMO_DRIVER_SELECTED','تم اختيارك للتأجير','تم اختيارك من الراكب. سيتم تأمين العمولة قبل موعد البداية بـ20 ساعة.');
+    insert into public.limousine_notifications(request_id,contract_id,recipient_id,recipient_type,event_code,title,body)
+    values(r.id,c_id,r.passenger_id,'passenger','LIMO_DRIVER_SELECTED','تم اختيار السائق','تم اختيار السائق، وسيبدأ تأمين العمولة قبل موعد التأجير بـ20 ساعة.');
     v_hold_result := jsonb_build_object('ok',true,'awaiting_hold_window',true,'hold_due_at',v_hold);
   end if;
   return jsonb_build_object('ok',true,'contract_id',c_id,'financial',v_hold_result);
