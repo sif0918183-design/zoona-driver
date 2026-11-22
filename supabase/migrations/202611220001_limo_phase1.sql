@@ -38,7 +38,7 @@ create table if not exists public.limousine_requests (
   selected_driver_id uuid references public.drivers(id) on delete restrict,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  check (start_at > now())
+  -- start_at is validated in the transactional request RPC; now() is not immutable in CHECK.
 );
 
 create index if not exists idx_limo_requests_dispatch
@@ -200,6 +200,8 @@ begin
   end if;
 
   update public.drivers set balance=coalesce(balance,0)-c.commission_due where id=d.id;
+  insert into public.balance_transactions(driver_id,amount,type,description)
+  values(d.id,-c.commission_due,'commission_hold','LIMO contract '||c.id::text||' commission hold');
   insert into public.limousine_ledger(contract_id,request_id,driver_id,entry_type,amount,idempotency_key,metadata)
   values(c.id,c.request_id,c.driver_id,'commission_hold',-c.commission_due,'limo:hold:'||c.id::text,
     jsonb_build_object('balance_before',coalesce(d.balance,0),'balance_after',coalesce(d.balance,0)-c.commission_due));
