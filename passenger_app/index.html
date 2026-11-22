@@ -3252,9 +3252,13 @@ async function check24hTravelReminder() {
 
 async function checkDriverLinked(driverId) {
     try {
+        const sessionToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_session_token');
         const response = await fetch('/api/check-driver-linked', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': sessionToken ? `Bearer ${sessionToken}` : ''
+            },
             body: JSON.stringify({ driverId })
         });
 
@@ -4495,11 +4499,13 @@ async function runSequentialSearch(rideId, requestId, basePrice, totalPrice, dis
             };
 
             try {
+                const sessionToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_session_token');
                 const pushResponse = await fetch('/api/send-push', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json'
+                        'Accept': 'application/json',
+                        'Authorization': sessionToken ? `Bearer ${sessionToken}` : ''
                     },
                     body: JSON.stringify(pushPayload)
                 });
@@ -4684,9 +4690,13 @@ async function handleDriverRejection(rideId) {
                 timestamp: new Date().toISOString()
             };
 
+            const sessionToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_session_token');
             const pushResponse = await fetch('/api/send-push', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': sessionToken ? `Bearer ${sessionToken}` : ''
+                },
                 body: JSON.stringify(pushPayload)
             });
 
@@ -5125,7 +5135,7 @@ function openTravelPlatform() {
     // Save current user to local storage to be accessed by the travel platform
     if (currentUser) {
         localStorage.setItem('tarhal_customer', JSON.stringify(currentUser));
-        window.location.href = 'travel-platform.html';
+        window.location.href = '/passenger_app/travel-platform.html';
     } else {
         showNotification('الرجاء تسجيل الدخول أولاً', 'error');
     }

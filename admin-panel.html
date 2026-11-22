@@ -5220,7 +5220,11 @@
             statusEl.style.color = 'var(--gray-500)';
 
             try {
-                const authRes = await fetch('/api/imagekit-auth', { cache: 'no-store' });
+                const adminToken = localStorage.getItem('tarhal_admin_token');
+                const authRes = await fetch('/api/imagekit-auth', {
+                    cache: 'no-store',
+                    headers: { 'Authorization': adminToken ? `Bearer ${adminToken}` : '' }
+                });
                 if (!authRes.ok) throw new Error('فشل جلب تصريح الرفع');
                 const authData = await authRes.json();
                 if (!authData || !authData.signature || !authData.token) throw new Error('بيانات التصريح غير مكتملة');

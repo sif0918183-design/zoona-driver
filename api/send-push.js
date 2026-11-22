@@ -1,5 +1,6 @@
 import admin from 'firebase-admin';
 import { createClient } from '@supabase/supabase-js';
+import { verifyToken } from './_token-utils.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -27,26 +28,51 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).end();
 
     try {
-        const { driverId, rideId, customerName, vehicleType, amount } = req.body;
+        const { driverId, rideId } = req.body;
+        let session;
+        try {
+            session = verifyToken(req);
+        } catch (tokenError) {
+            return res.status(401).json({ success: false, error: tokenError.message });
+        }
+
+        if (session.role !== 'passenger') {
+            return res.status(403).json({ success: false, error: 'هذه العملية متاحة للراكب فقط' });
+        }
+        if (!driverId || !rideId) {
+            return res.status(400).json({ success: false, error: 'driverId and rideId are required' });
+        }
+
+        // لا نعتمد على بيانات الراكب أو السائق القادمة من المتصفح؛ نتحقق من ملكية الرحلة وتعيين السائق من قاعدة البيانات.
+        const { data: ride, error: rideError } = await tarhalDB
+            .from('rides')
+            .select('passenger_id, driver_id, driver_rejected, status, passenger_name, amount, vehicle_category')
+            .eq('id', rideId)
+            .maybeSingle();
+
+        if (rideError || !ride) {
+            return res.status(404).json({ success: false, error: 'Ride not found' });
+        }
+        if (String(ride.passenger_id) !== session.id) {
+            return res.status(403).json({ success: false, error: 'لا تملك صلاحية إرسال إشعار لهذه الرحلة' });
+        }
+        if (String(ride.driver_id || '') !== String(driverId) && ride.driver_rejected !== true) {
+            return res.status(403).json({ success: false, error: 'السائق المحدد غير مرتبط بهذه الرحلة' });
+        }
 
         // --- صمام الأمان لمنع تكرار الإشعار (Ghosting Fix) ---
-        if (rideId) {
-            const { data: ride } = await tarhalDB
-                .from('rides')
-                .select('status')
-                .eq('id', rideId)
-                .single();
-
-            const allowedStatuses = ['searching', 'pending', 'awaiting_driver_acceptance'];
-            
-            if (ride && !allowedStatuses.includes(ride.status)) {
-                console.log(` تم منع التكرار: الرحلة في حالة ${ride.status}`);
-                return res.status(200).json({ 
-                    success: false, 
-                    message: 'تم التعامل مع هذه الرحلة مسبقاً، لن يتم إرسال إشعار مكرر.' 
-                });
-            }
+        const allowedStatuses = ['searching', 'pending', 'awaiting_driver_acceptance'];
+        if (!allowedStatuses.includes(ride.status)) {
+            console.log(` تم منع التكرار: الرحلة في حالة ${ride.status}`);
+            return res.status(200).json({
+                success: false,
+                message: 'تم التعامل مع هذه الرحلة مسبقاً، لن يتم إرسال إشعار مكرر.'
+            });
         }
+
+        const customerName = ride.passenger_name || 'عميل';
+        const vehicleType = ride.vehicle_category || '';
+        const amount = ride.amount || '0';
 
         // جلب توكن وحالة حظر السائق
         const { data: driver, error: dbError } = await tarhalDB
