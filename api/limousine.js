@@ -127,6 +127,20 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, result: data });
     }
 
+    if (action === 'list_notifications' || action === 'mark_notification_read') {
+      if (!['passenger','driver'].includes(session?.role)) return fail(res, 403, 'غير مصرح');
+      if (action === 'list_notifications') {
+        const { data, error } = await db.from('limousine_notifications').select('id,event_code,title,body,payload,created_at,read_at')
+          .eq('recipient_id', id).eq('recipient_type', session.role).order('created_at', { ascending: false }).limit(30);
+        if (error) throw error;
+        return res.status(200).json({ success: true, notifications: data || [] });
+      }
+      const { error } = await db.from('limousine_notifications').update({ read_at: new Date().toISOString() })
+        .eq('id', b.notificationId).eq('recipient_id', id).eq('recipient_type', session.role);
+      if (error) throw error;
+      return res.status(200).json({ success: true });
+    }
+
     if (action === 'list_contracts') {
       if (!['passenger','driver'].includes(session?.role)) return fail(res, 403, 'غير مصرح');
       let query = db.from('limousine_contracts').select('*').order('created_at', { ascending: false }).limit(100);
