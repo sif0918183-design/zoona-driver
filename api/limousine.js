@@ -90,9 +90,9 @@ export default async function handler(req, res) {
 
     if (action === 'list_driver_requests') {
       if (session?.role !== 'driver' || id !== b.driverId) return fail(res, 403, 'غير مصرح');
-      const { data: driver, error: dre } = await db.from('drivers').select('id,car_type,vehicle_type,is_active,is_approved,is_banned,status').eq('id', id).maybeSingle();
+      const { data: driver, error: dre } = await db.from('drivers').select('id,car_type,vehicle_type,is_active,is_approved,is_banned,is_available,status').eq('id', id).maybeSingle();
       if (dre || !driver) throw dre || new Error('السائق غير موجود');
-      if (!driver.is_active || !driver.is_approved || driver.is_banned || driver.status === 'SUSPENDED') return fail(res, 403, 'حساب السائق غير مؤهل');
+      if (!driver.is_active || !driver.is_approved || driver.is_banned || !driver.is_available || driver.status === 'SUSPENDED') return fail(res, 403, 'حساب السائق غير مؤهل');
       const { data: cats, error: catErr } = await db.from('vehicle_categories').select('id,name_ar');
       if (catErr) throw catErr;
       const rank = vehicleRank(driver.car_type || driver.vehicle_type);
