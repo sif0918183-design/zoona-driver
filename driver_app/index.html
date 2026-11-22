@@ -911,7 +911,14 @@
                     </div>
                 </div>
 
-                <!-- Cloudflare Turnstile Widget -->
+                <!-- Dedicated Turnstile verification for document uploads (separate from final registration) -->
+                <div style="margin: 14px 0; padding: 10px; background: #fff; border: 1px solid var(--gray-light); border-radius: 10px;">
+                    <div style="font-size: 12px; font-weight: 700; color: var(--driver-dark); text-align: center; margin-bottom: 6px;">تحقق أمني لرفع المستندات</div>
+                    <div id="upload-turnstile-container" style="display: flex; justify-content: center;"></div>
+                    <div style="font-size: 11px; color: var(--gray); text-align: center; margin-top: 4px;">أكمل التحقق مرة واحدة قبل رفع الصور الأربع.</div>
+                </div>
+
+                <!-- Cloudflare Turnstile Widget for final registration -->
                 <div id="turnstile-container" style="margin: 15px auto; display: flex; justify-content: center;"></div>
 
                 <button type="button" class="btn btn-driver" id="register-btn" onclick="registerDriver()">
@@ -1833,6 +1840,11 @@
             localStorage.removeItem('driver_vehicle_registration_url');
             localStorage.removeItem('driver_car_photo_url');
             localStorage.removeItem('driver_plate_photo_url');
+            window.driverUploadAuth = null;
+            window.driverUploadTurnstileToken = null;
+            if (window.turnstile && window.driverUploadTurnstileWidgetId) {
+                window.turnstile.reset(window.driverUploadTurnstileWidgetId);
+            }
 
             document.getElementById('license-status').textContent = 'لم يتم اختيار ملف';
             document.getElementById('license-status').style.color = 'var(--gray)';
@@ -1883,6 +1895,24 @@
                         },
                         'error-callback': function() {
                             window.turnstileToken = null;
+                        }
+                    });
+                }
+
+                const uploadContainer = document.getElementById('upload-turnstile-container');
+                if (uploadContainer && !window.driverUploadTurnstileWidgetId) {
+                    window.driverUploadTurnstileToken = null;
+                    window.driverUploadTurnstileWidgetId = window.turnstile.render(uploadContainer, {
+                        sitekey: data.siteKey,
+                        action: 'driver_upload',
+                        callback: function(token) {
+                            window.driverUploadTurnstileToken = token;
+                        },
+                        'expired-callback': function() {
+                            window.driverUploadTurnstileToken = null;
+                        },
+                        'error-callback': function() {
+                            window.driverUploadTurnstileToken = null;
                         }
                     });
                 }
@@ -1980,18 +2010,33 @@
                 }
                 statusDiv.style.color = 'var(--driver)';
 
-                // Fetch fresh authentication parameters
-                const sessionToken = localStorage.getItem('session_token') || localStorage.getItem('tarhal_session_token');
-                const authRes = await fetch('/api/imagekit-auth', {
-                    cache: 'no-store',
-                    headers: { 'Authorization': sessionToken ? `Bearer ${sessionToken}` : '' }
-                });
-                if (!authRes.ok) {
-                    throw new Error('فشل جلب تصريح الرفع من السيرفر');
-                }
-                const authData = await authRes.json();
-                if (!authData || !authData.signature || !authData.token) {
-                    throw new Error('بيانات تصريح الرفع غير مكتملة');
+                // Obtain a short-lived upload authorization using the dedicated Turnstile proof.
+                // Reuse it for the four registration documents; the final registration captcha remains separate.
+                let authData = window.driverUploadAuth;
+                if (!authData || !authData.signature || !authData.token || !authData.expire || Number(authData.expire) * 1000 <= Date.now() + 30000) {
+                    const uploadCaptchaToken = window.driverUploadTurnstileToken;
+                    if (!uploadCaptchaToken) {
+                        throw new Error('أكمل التحقق الأمني المخصص لرفع المستندات أولاً');
+                    }
+                    const authRes = await fetch('/api/imagekit-auth', {
+                        method: 'POST',
+                        cache: 'no-store',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ turnstileToken: uploadCaptchaToken })
+                    });
+                    const authResult = await authRes.json().catch(() => ({}));
+                    if (!authRes.ok) {
+                        throw new Error(authResult.error || 'فشل تجهيز تصريح رفع المستندات');
+                    }
+                    authData = authResult;
+                    if (!authData.signature || !authData.token) {
+                        throw new Error('بيانات تصريح الرفع غير مكتملة');
+                    }
+                    window.driverUploadAuth = authData;
+                    window.driverUploadTurnstileToken = null;
+                    if (window.turnstile && window.driverUploadTurnstileWidgetId) {
+                        window.turnstile.reset(window.driverUploadTurnstileWidgetId);
+                    }
                 }
 
                 const formData = new FormData();
