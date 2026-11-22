@@ -170,7 +170,7 @@ export default async function handler(req, res) {
       if (contract.status !== 'completion_requested' || contract.end_requested_by === session.role) return fail(res, 400, 'لا يوجد طلب إنهاء بانتظار تأكيدك');
       const { data, error } = await db.from('limousine_contracts').update({ status: 'awaiting_settlement', end_confirmed_at: new Date().toISOString(), actual_ended_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', contract.id).select('*').single();
       if (error) throw error;
-      await db.from('limousine_notifications').insert({ request_id: chat.request_id, contract_id: chat.contract_id, recipient_id: 'tracka-admin', recipient_type: 'admin', event_code: 'LIMO_END_CONFIRMED_ADMIN_REVIEW', title: 'تأكيد إنهاء عقد', body: 'تم تأكيد إنهاء الخدمة من الطرفين، والعقد بانتظار التسوية الإدارية.' });
+      // The admin dashboard reads awaiting_settlement contracts directly; admin IDs are not UUID recipients.
       return res.status(200).json({ success: true, contract: data });
     }
 
