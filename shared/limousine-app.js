@@ -60,7 +60,7 @@
   async function loadContracts() {
     const d=await api('list_contracts',{driverId:user.id,passengerId:user.id}); contracts=d.contracts||[];
     $('contracts').innerHTML=contracts.length?contracts.map(c=>'<article class="card"><div class="line"><strong>عقد تأجير</strong><span class="pill">'+esc(statusNames[c.status]||c.status)+'</span></div><p>'+date(c.start_at)+' — '+date(c.scheduled_end_at)+'</p><p>'+c.duration_days+' يوم · '+money(c.contract_value_snapshot)+'</p>'+
-      (['booked','active'].includes(c.status)?'<button class="secondary" data-end="'+c.id+'">طلب إنهاء الخدمة</button>':'')+
+      (['active'].includes(c.status)?'<button class="secondary" data-end="'+c.id+'">طلب إنهاء الخدمة</button>':'')+
       (c.status==='completion_requested' && c.end_requested_by!==role?'<button class="secondary" data-confirm-end="'+c.id+'">تأكيد انتهاء الخدمة</button>':c.status==='completion_requested'?'<p class="muted">طلب الإنهاء بانتظار تأكيد الطرف الآخر.</p>':'')+
       (c.status==='awaiting_settlement'?'<p class="muted">تم تأكيد انتهاء الخدمة، والعقد بانتظار مراجعة الإدارة والتسوية.</p>':'')+
       '<button class="small" data-chat="'+c.id+'">فتح المحادثة</button><div class="chat" id="chat-'+c.id+'" hidden><div class="messages" id="messages-'+c.id+'"></div><div class="line"><input id="msg-'+c.id+'" placeholder="اكتب رسالتك"><button class="small" data-send="'+c.id+'">إرسال</button></div></div></article>').join(''):'<div class="empty">لا توجد عقود حتى الآن.</div>';
