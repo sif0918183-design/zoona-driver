@@ -41,7 +41,7 @@ export default async function handler(req, res) {
     if (!secret || req.headers.authorization !== `Bearer ${secret}`) return fail(res, 401, 'غير مصرح');
   } else {
     try { session = verifyToken(req); }
-    catch (e) { return fail(res, 401, e.message); }
+    catch (e) { return fail(res, 401, 'غير مصرح'); }
   }
 
   try {
