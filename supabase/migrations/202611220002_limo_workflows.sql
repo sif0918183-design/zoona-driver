@@ -182,4 +182,53 @@ grant execute on function public.limousine_accept_request(uuid,uuid) to service_
 grant execute on function public.limousine_select_driver(uuid,uuid,uuid) to service_role;
 grant execute on function public.limousine_settle_contract(uuid,timestamptz,integer,text) to service_role;
 grant execute on function public.limousine_process_due() to service_role;
+create or replace function public.limousine_request_end(p_contract_id uuid,p_user_id uuid,p_user_role text)
+returns jsonb language plpgsql security definer set search_path=public,pg_temp as $
+declare c public.limousine_contracts%rowtype; v_other_id uuid; v_other_role text;
+begin
+  select * into c from public.limousine_contracts where id=p_contract_id for update;
+  if not found then raise exception 'contract_not_found'; end if;
+  if (p_user_role='passenger' and c.passenger_id<>p_user_id) or
+     (p_user_role='driver' and c.driver_id<>p_user_id) or p_user_role not in ('passenger','driver') then
+    raise exception 'contract_not_owned';
+  end if;
+  if c.status not in ('booked','active') then raise exception 'contract_not_eligible_for_early_end'; end if;
+  v_other_id := case when p_user_role='passenger' then c.driver_id else c.passenger_id end;
+  v_other_role := case when p_user_role='passenger' then 'driver' else 'passenger' end;
+  update public.limousine_contracts set status='completion_requested',end_requested_by=p_user_role,
+    end_confirmed_at=null,updated_at=now() where id=c.id;
+  insert into public.limousine_notifications(request_id,contract_id,recipient_id,recipient_type,event_code,title,body)
+  values(c.request_id,c.id,v_other_id,v_other_role,'LIMO_END_CONFIRMATION_REQUIRED',
+    'طلب إنهاء التأجير','يرجى تأكيد ما إذا كانت خدمة التأجير قد انتهت فعلاً.');
+  return jsonb_build_object('ok',true,'status','completion_requested');
+end; $;
+
+create or replace function public.limousine_confirm_end(p_contract_id uuid,p_user_id uuid,p_user_role text)
+returns jsonb language plpgsql security definer set search_path=public,pg_temp as $
+declare c public.limousine_contracts%rowtype; v_other_id uuid; v_other_role text;
+begin
+  select * into c from public.limousine_contracts where id=p_contract_id for update;
+  if not found then raise exception 'contract_not_found'; end if;
+  if (p_user_role='passenger' and c.passenger_id<>p_user_id) or
+     (p_user_role='driver' and c.driver_id<>p_user_id) or p_user_role not in ('passenger','driver') then
+    raise exception 'contract_not_owned';
+  end if;
+  if c.status<>'completion_requested' or c.end_requested_by=p_user_role then
+    raise exception 'no_end_confirmation_pending';
+  end if;
+  v_other_id := case when p_user_role='passenger' then c.driver_id else c.passenger_id end;
+  v_other_role := case when p_user_role='passenger' then 'driver' else 'passenger' end;
+  update public.limousine_contracts set status='awaiting_settlement',end_confirmed_at=now(),
+    actual_ended_at=now(),updated_at=now() where id=c.id;
+  insert into public.limousine_notifications(request_id,contract_id,recipient_id,recipient_type,event_code,title,body)
+  values(c.request_id,c.id,v_other_id,v_other_role,'LIMO_END_CONFIRMED',
+    'تم تأكيد انتهاء الخدمة','تم تأكيد انتهاء خدمة التأجير من الطرف الآخر، والعقد بانتظار مراجعة الإدارة والتسوية.');
+  return jsonb_build_object('ok',true,'status','awaiting_settlement');
+end; $;
+
+revoke all on function public.limousine_request_end(uuid,uuid,text) from public,anon,authenticated;
+revoke all on function public.limousine_confirm_end(uuid,uuid,text) from public,anon,authenticated;
+grant execute on function public.limousine_request_end(uuid,uuid,text) to service_role;
+grant execute on function public.limousine_confirm_end(uuid,uuid,text) to service_role;
+
 commit;
