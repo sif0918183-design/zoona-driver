@@ -32,11 +32,5 @@
       "source": "/",
       "destination": "/landing.html"
     }
-  ],
-  "crons": [
-    {
-      "path": "/api/travel-platform?module=limousine&action=process_due",
-      "schedule": "*/5 * * * *"
-    }
   ]
 }
