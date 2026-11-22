@@ -224,7 +224,7 @@ grant execute on function public.limousine_select_driver(uuid,uuid,uuid) to serv
 grant execute on function public.limousine_settle_contract(uuid,timestamptz,integer,text) to service_role;
 grant execute on function public.limousine_process_due() to service_role;
 create or replace function public.limousine_request_end(p_contract_id uuid,p_user_id uuid,p_user_role text)
-returns jsonb language plpgsql security definer set search_path=public,pg_temp as $
+returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
 declare c public.limousine_contracts%rowtype; v_other_id uuid; v_other_role text;
 begin
   select * into c from public.limousine_contracts where id=p_contract_id for update;
@@ -242,10 +242,10 @@ begin
   values(c.request_id,c.id,v_other_id,v_other_role,'LIMO_END_CONFIRMATION_REQUIRED',
     'طلب إنهاء التأجير','يرجى تأكيد ما إذا كانت خدمة التأجير قد انتهت فعلاً.');
   return jsonb_build_object('ok',true,'status','completion_requested');
-end; $;
+end; $$;
 
 create or replace function public.limousine_confirm_end(p_contract_id uuid,p_user_id uuid,p_user_role text)
-returns jsonb language plpgsql security definer set search_path=public,pg_temp as $
+returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
 declare c public.limousine_contracts%rowtype; v_other_id uuid; v_other_role text;
 begin
   select * into c from public.limousine_contracts where id=p_contract_id for update;
@@ -265,7 +265,7 @@ begin
   values(c.request_id,c.id,v_other_id,v_other_role,'LIMO_END_CONFIRMED',
     'تم تأكيد انتهاء الخدمة','تم تأكيد انتهاء خدمة التأجير من الطرف الآخر، والعقد بانتظار مراجعة الإدارة والتسوية.');
   return jsonb_build_object('ok',true,'status','awaiting_settlement');
-end; $;
+end; $$;
 
 revoke all on function public.limousine_request_end(uuid,uuid,text) from public,anon,authenticated;
 revoke all on function public.limousine_confirm_end(uuid,uuid,text) from public,anon,authenticated;
