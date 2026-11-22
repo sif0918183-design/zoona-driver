@@ -10,6 +10,7 @@ language plpgsql security definer set search_path=public,pg_temp as $$
 declare p public.limousine_pricing%rowtype; v_id uuid; v_total numeric;
 begin
   if p_start_at <= now() then raise exception 'start_must_be_future'; end if;
+  if extract(hour from (p_start_at at time zone 'Africa/Khartoum')) < 7 or extract(hour from (p_start_at at time zone 'Africa/Khartoum')) >= 17 then raise exception 'outside_service_hours'; end if;
   if p_duration_days < 1 or p_duration_days > 90 then raise exception 'invalid_duration'; end if;
   if p_passenger_count < 1 or length(trim(coalesce(p_pickup_area,''))) not between 2 and 250 then raise exception 'invalid_request_details'; end if;
   if not exists(select 1 from public.customers where id=p_passenger_id) then raise exception 'passenger_not_found'; end if;
