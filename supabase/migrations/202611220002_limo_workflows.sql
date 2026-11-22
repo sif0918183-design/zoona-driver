@@ -77,8 +77,7 @@ begin
     r.commission_rate_snapshot,r.estimated_total,round(r.estimated_total*r.commission_rate_snapshot/100,2),v_hold)
   returning id into c_id;
   update public.limousine_acceptances set status='selected',updated_at=now() where id=a.id;
-  update public.limousine_acceptances set status='not_selected',updated_at=now()
-    where request_id=p_request_id and driver_id<>p_driver_id and status='accepted';
+  -- Other accepted drivers remain eligible if this selection expires for insufficient balance.
   update public.limousine_requests set selected_driver_id=p_driver_id,status='driver_selected',updated_at=now() where id=r.id;
   insert into public.limousine_chats(request_id,contract_id,passenger_id,driver_id)
   values(r.id,c_id,r.passenger_id,p_driver_id);
