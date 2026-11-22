@@ -28,10 +28,11 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return fail(res, 405, 'Method not allowed');
+  const isCronGet = req.method === 'GET' && req.query?.action === 'process_due';
+  if (req.method !== 'POST' && !isCronGet) return fail(res, 405, 'Method not allowed');
   if (!db) return fail(res, 503, 'إعدادات قاعدة البيانات غير مكتملة على الخادم');
 
-  const action = req.body?.action;
+  const action = req.body?.action || req.query?.action;
   if (!action) return fail(res, 400, 'Action is required');
 
   let session = null;
