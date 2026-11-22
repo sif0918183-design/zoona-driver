@@ -171,7 +171,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, contracts: data || [] });
     }
 
-    if (action === 'list_messages' || action === 'send_message' || action === 'request_end' || action === 'confirm_end') {
+    if (action === 'list_messages' || action === 'send_message' || action === 'request_end' || action === 'confirm_end' || action === 'reject_end') {
       if (!['passenger','driver'].includes(session?.role)) return fail(res, 403, 'غير مصرح');
       const { data: chat, error: chatError } = await db.from('limousine_chats').select('*').eq('contract_id', b.contractId).maybeSingle();
       if (chatError || !chat) throw chatError || new Error('المحادثة غير موجودة');
@@ -202,6 +202,11 @@ export default async function handler(req, res) {
       }
       if (action === 'confirm_end') {
         const { data, error } = await db.rpc('limousine_confirm_end', { p_contract_id: b.contractId, p_user_id: id, p_user_role: session.role });
+        if (error) throw error;
+        return res.status(200).json({ success: true, result: data });
+      }
+      if (action === 'reject_end') {
+        const { data, error } = await db.rpc('limousine_reject_end', { p_contract_id: b.contractId, p_user_id: id, p_user_role: session.role });
         if (error) throw error;
         return res.status(200).json({ success: true, result: data });
       }
