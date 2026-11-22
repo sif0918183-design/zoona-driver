@@ -119,7 +119,7 @@ export default async function handler(req, res) {
       const rank = vehicleRank(driver.car_type || driver.vehicle_type);
       const categoryMap = new Map((cats || []).map(c => [c.id, c.name_ar]));
       const { data: rows, error } = await db.from('limousine_requests').select('*')
-        .in('status', ['open','awaiting_driver_selection']).gt('start_at', new Date().toISOString()).order('start_at').limit(100);
+        .in('status', ['open','awaiting_driver_selection','driver_selected','booked']).gt('start_at', new Date().toISOString()).order('start_at').limit(100);
       if (error) throw error;
       const eligible = (rows || []).filter(r => rank >= categoryRank(categoryMap.get(r.requested_category_id)));
       const ids = eligible.map(r => r.id);
