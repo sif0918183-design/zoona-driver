@@ -9,7 +9,7 @@
   const date = d => d ? new Date(d).toLocaleString('ar-SD', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
   const statusNames = { open:'بانتظار قبول السائقين', awaiting_driver_selection:'بانتظار اختيار سائق', driver_selected:'تم اختيار السائق', confirmed:'مؤكد', awaiting_funding:'بانتظار تأمين العمولة', booked:'محجوز مالياً', active:'نشط', completion_requested:'طلب إنهاء الخدمة', awaiting_settlement:'بانتظار التسوية', settled:'تمت التسوية', disputed:'متنازع عليه', cancelled:'ملغى' };
   async function api(action, payload = {}) {
-    const res = await fetch('/api/limousine', { method:'POST', headers:{'Content-Type':'application/json','Authorization':token ? 'Bearer '+token : ''}, body:JSON.stringify({action,...payload}) });
+    const res = await fetch('/api/travel-platform?module=limousine', { method:'POST', headers:{'Content-Type':'application/json','Authorization':token ? 'Bearer '+token : ''}, body:JSON.stringify({action,...payload}) });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.success) throw new Error(data.error || 'تعذر إكمال العملية');
     return data;
