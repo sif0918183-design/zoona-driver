@@ -1117,7 +1117,7 @@
                     <i class="ph-light ph-path"></i>
                     <span>إدارة الرحلات</span>
                 </a>
-                <a class="nav-item" href="/admin-limousine.html">
+                <a class="nav-item" onclick="showSection('limousine')">
                     <i class="ph-light ph-car-profile"></i>
                     <span>منصة ليموزين تراكا</span>
                 </a>
@@ -2090,6 +2090,12 @@
                     </div>
                 </section>
 
+                <section id="limousine-section" class="section">
+                    <div class="tables-container" style="padding:0; overflow:hidden;">
+                        <iframe src="/admin-limousine.html" title="إدارة منصة ليموزين تراكا" style="display:block;width:100%;height:1200px;border:0;background:var(--tech-bg,#f5f7fa);" loading="lazy"></iframe>
+                    </div>
+                </section>
+
                 <section id="settings-section" class="section">
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem;">
                         <!-- Travel Platform Settings -->
@@ -2780,6 +2786,7 @@
             const titles = {
                 'dashboard': 'لوحة التحكم',
                 'rides': 'إدارة الرحلات',
+                'limousine': 'منصة ليموزين تراكا',
                 'prices': 'أسعار الرحلات',
                 'drivers': 'السائقون',
                 'passengers': 'الركاب',
@@ -2794,6 +2801,7 @@
             const icons = {
                 'dashboard': 'ph-gauge',
                 'rides': 'ph-path',
+                'limousine': 'ph-car-profile',
                 'prices': 'ph-tag',
                 'drivers': 'ph-steering-wheel',
                 'passengers': 'ph-users-three',
