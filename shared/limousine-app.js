@@ -73,9 +73,16 @@
     const d=await api('list_messages',{contractId});
     $('messages-'+contractId).innerHTML=(d.messages||[]).map(m=>'<div class="message '+(m.sender_type===role?'mine':'')+'">'+esc(m.message)+'<small>'+date(m.created_at)+'</small></div>').join('');
   }
+  async function loadNotifications() {
+    const d=await api('list_notifications');
+    const items=d.notifications||[];
+    $('notifications').innerHTML=items.length?items.map(n=>'<div class="message"><div class="line"><b>'+esc(n.title)+'</b><small>'+date(n.created_at)+'</small></div><p>'+esc(n.body)+'</p>'+(n.read_at?'':'<button class="small" data-read="'+n.id+'">تمت القراءة</button>')+'</div>').join(''):'<div class="empty">لا توجد تنبيهات جديدة.</div>';
+    $('notifications').querySelectorAll('[data-read]').forEach(btn=>btn.onclick=async()=>{try{await api('mark_notification_read',{notificationId:btn.dataset.read});await loadNotifications();}catch(e){notice(e.message,true);}});
+  }
   async function refresh() {
     if(role==='passenger') await passengerRequests(); else await driverRequests();
     await loadContracts();
+    await loadNotifications();
   }
   $('refresh').onclick=()=>refresh().catch(e=>notice(e.message,true));
   if(role==='passenger') {
