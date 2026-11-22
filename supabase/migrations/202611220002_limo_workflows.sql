@@ -12,7 +12,8 @@ begin
   if p_start_at <= now() then raise exception 'start_must_be_future'; end if;
   if extract(hour from (p_start_at at time zone 'Africa/Khartoum')) < 7 or extract(hour from (p_start_at at time zone 'Africa/Khartoum')) >= 17 then raise exception 'outside_service_hours'; end if;
   if p_duration_days < 1 or p_duration_days > 90 then raise exception 'invalid_duration'; end if;
-  if p_passenger_count < 1 or length(trim(coalesce(p_pickup_area,''))) not between 2 and 250 then raise exception 'invalid_request_details'; end if;
+  if p_passenger_count < 1 or p_passenger_count > 30 or length(trim(coalesce(p_pickup_area,''))) not between 2 and 250
+     or length(coalesce(p_usage_purpose,'')) > 250 or length(coalesce(p_notes,'')) > 1000 then raise exception 'invalid_request_details'; end if;
   if not exists(select 1 from public.customers where id=p_passenger_id) then raise exception 'passenger_not_found'; end if;
   select * into p from public.limousine_pricing
    where city_id=p_city_id and vehicle_category_id=p_requested_category_id and is_active for share;
@@ -48,7 +49,7 @@ begin
   if r.status not in ('open','awaiting_driver_selection') or r.start_at <= now() then raise exception 'request_not_available'; end if;
   select * into d from public.drivers where id=p_driver_id for share;
   if not found or not coalesce(d.is_active,false) or not coalesce(d.is_approved,false)
-     or coalesce(d.is_banned,false) or d.status='SUSPENDED' then raise exception 'driver_not_eligible'; end if;
+     or coalesce(d.is_banned,false) or not coalesce(d.is_available,false) or d.status='SUSPENDED' then raise exception 'driver_not_eligible'; end if;
   select * into cat from public.vehicle_categories where id=r.requested_category_id;
   v_required_rank := case when cat.name_ar ilike '%اقتصادي%' then 1 when cat.name_ar ilike '%مريح%' then 2
     when cat.name_ar ilike '%SUV%' or cat.name_ar ilike '%عالي%' then 3 else 99 end;
