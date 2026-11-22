@@ -298,4 +298,27 @@ end; $$;
 revoke all on function public.limousine_reject_end(uuid,uuid,text) from public,anon,authenticated;
 grant execute on function public.limousine_reject_end(uuid,uuid,text) to service_role;
 
+create or replace function public.limousine_raise_dispute(p_contract_id uuid,p_user_id uuid,p_user_role text,p_reason text default null)
+returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
+declare c public.limousine_contracts%rowtype; v_other_id uuid; v_other_role text;
+begin
+  select * into c from public.limousine_contracts where id=p_contract_id for update;
+  if not found then raise exception 'contract_not_found'; end if;
+  if (p_user_role='passenger' and c.passenger_id<>p_user_id) or
+     (p_user_role='driver' and c.driver_id<>p_user_id) or p_user_role not in ('passenger','driver') then
+    raise exception 'contract_not_owned';
+  end if;
+  if c.status not in ('active','completion_requested','awaiting_settlement') then raise exception 'contract_not_disputable'; end if;
+  v_other_id := case when p_user_role='passenger' then c.driver_id else c.passenger_id end;
+  v_other_role := case when p_user_role='passenger' then 'driver' else 'passenger' end;
+  update public.limousine_contracts set status='disputed',updated_at=now() where id=c.id;
+  insert into public.limousine_notifications(request_id,contract_id,recipient_id,recipient_type,event_code,title,body,payload)
+  values(c.request_id,c.id,v_other_id,v_other_role,'LIMO_CONTRACT_DISPUTED','نزاع على عقد التأجير',
+    'تم رفع نزاع على عقد التأجير، وسيُراجع من الإدارة.',jsonb_build_object('reason',left(coalesce(p_reason,''),1000)));
+  return jsonb_build_object('ok',true,'status','disputed');
+end; $$;
+
+revoke all on function public.limousine_raise_dispute(uuid,uuid,text,text) from public,anon,authenticated;
+grant execute on function public.limousine_raise_dispute(uuid,uuid,text,text) to service_role;
+
 commit;
