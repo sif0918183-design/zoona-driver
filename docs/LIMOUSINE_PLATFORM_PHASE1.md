@@ -1,23 +1,46 @@
-# Limousine Tracka — Phase 1 database foundation
+# منصة ليموزين تراكا — حالة التنفيذ على فرع التطوير
 
-This branch introduces an isolated limousine schema only. It does not modify travel, immediate rides, driver wallet purchase flows, existing commission RPCs, chats, notifications, admin permissions, or Android projects.
+## النطاق
+الخدمة الثالثة مستقلة عن الرحلات الداخلية والسفرية. جميع التغييرات في هذا الفرع فقط:
+`feature/limousine-platform`.
 
-## Locked business rules
-- Daily rental contract, distinct from point-to-point rides.
-- Start time is 07:00 Sudan local time; working day ends 17:00 (10 hours).
-- Before 12:00, a partial first day is prorated by elapsed rental hours / 10; at/after 12:00 the day's commission is a full day.
-- Commission hold starts at T-20h. If selected after T-20h, attempt immediately.
-- Funding grace is min(4 hours, remaining time to start).
-- Funding expiry removes only that driver's selected status, preserves other acceptances, and returns request to awaiting_driver_selection.
-- Snapshot daily price and commission rate on the contract.
-- Scheduled end closes automatically; early termination requires counterpart confirmation and admin resolution.
-- Settlement charges executed-day commission only, releases unused held funds, and admin penalty cannot exceed remaining days' commission.
-- Ledger is append-only; reversals are new rows.
+لم يتم تعديل أي ملف في مستودعي Flutter:
+- `Tracka-apk-aab/pwa_to_flutter_app`
+- `Tracka-drivers/pwa_to_flutter_app`
 
-## Migration
-`supabase/migrations/202611220001_limo_phase1.sql`
+تمت قراءة مصدرهما فقط للتأكد من أن صفحات PWA تُفتح داخل WebView على النطاق `tracka.zoonasd.com`. أضيفت نقاط الدخول إلى صفحات PWA الحالية، ولا يتطلب المسار الحالي تعديل Flutter.
 
-The migration is intentionally not applied to Supabase. Backend APIs, cron processing, client UIs, admin UI, and Android WebView navigation are later phases.
+## ما أُضيف
+- `supabase/migrations/202611220001_limo_phase1.sql`: جداول مستقلة للتسعير والطلبات والقبولات والعقود والسجل المالي والتنبيهات والمحادثات. RLS مفعّل على جداول الليموزين، ولا يملك العميل وصولاً مباشراً إليها؛ الوصول من API الخادم فقط.
+- `supabase/migrations/202611220002_limo_workflows.sql`: RPCs لإنشاء الطلب، قبول السائق مع سقف 10 وقفل الطلب، اختيار السائق، تأمين العمولة، انتهاء مهلة التمويل، التسوية، الإنهاء المبكر وتأكيده، ومعالجة المواعيد.
+- `api/limousine.js`: API مستقل يتحقق من جلسة تراكا الموقعة والأدوار وملكية الطلب/العقد. عمليات التسوية والتأمين تنفذ عبر RPCs ذرية.
+- `passenger_app/limousine.html` و`driver_app/limousine.html` و`shared/limousine-app.js`: واجهتا الراكب والسائق، إنشاء الطلب، القبول المبدئي، اختيار السائق، العقود، المحادثات، طلب الإنهاء والتأكيد، وصندوق تنبيهات داخل المنصة.
+- `admin-limousine.html`: شاشة إدارة مستقلة للأسعار والعمولات والطلبات والعقود والتسويات والسجل المالي، مع رابط من لوحة الإدارة.
+- أضيفت نقاط دخول إلى صفحة الراكب الرئيسية وصفحة السائق الرئيسية.
+- أضيفت مهمة Vercel مجدولة كل خمس دقائق لمعالجة T−20h، انتهاء مهلة التمويل، بدء العقد والإغلاق التلقائي. تتطلب إعداد متغير البيئة `CRON_SECRET`.
 
-## Important deployment boundary
-The two supplied Android repository names currently resolve to repositories whose default-branch trees are Flutter InAppWebView example collections (e.g. `back_forward_navigation_gestures`, `custom_error_page`, `multi_webview_tab_manager`) and do not expose the Tracka app source at their roots. Do not modify these repositories until the correct app source or actual build repositories are identified.
+## الضوابط المالية
+- يستخدم الحجز رصيد `drivers.balance` الحالي مع قفل صف السائق، ويسجل الخصم والإرجاع في `balance_transactions`، بالإضافة إلى دفتر الليموزين append-only.
+- لا يتم الخصم عند القبول المبدئي.
+- يبدأ التأمين عند T−20h أو فور الاختيار إذا كان موعد التأمين قد حل.
+- مهلة التمويل هي الأقل بين أربع ساعات والوقت المتبقي حتى البداية.
+- عند انتهاء المهلة، يُستبعد السائق الذي لم يمول فقط وتظل قبولات السائقين الآخرين محفوظة.
+- التسوية تحتسب العمولة عن المدة المنفذة، وتعيد الجزء غير المستحق، وتقيّد الغرامة بالأيام المتبقية.
+
+## حدود التنفيذ الحالية
+- لم تُطبق أي Migration على قاعدة Supabase، ولم تُنشر تغييرات إلى الإنتاج.
+- لم يُفتح PR ولم يُدمج الفرع.
+- لم تُختبر عمليات SQL على قاعدة staging بعد؛ يلزم اختبارها قبل أي تطبيق.
+- التنبيهات محفوظة في صندوق تنبيهات الليموزين داخل PWA. لم تُرسل رموز `LIMO_*` عبر FCM بعد، لأن مصدر Flutter الحالي يعامل بعض أنواع الإشعارات غير المعروفة كتنبيه رحلة فورية/نافذة عائمة؛ يجب عدم إرسالها قبل توافق آمن في عميل Android. مستودعا Flutter بقيَا للقراءة فقط.
+- لا يوجد في جدول السائقين حقل مدينة خدمة موحد؛ لذلك قائمة الطلبات تُرشّح حالياً حسب فئة السيارة والأهلية، وليس حسب مدينة تشغيل مخصصة للسائق.
+- تسعير كل مدينة/فئة يجب إدخاله من لوحة إدارة الليموزين قبل أن يستطيع الراكب نشر طلب.
+
+## فحوصات لازمة قبل الإنتاج
+1. تطبيق migrations في قاعدة staging فقط، ثم فحص القيود والدوال وRLS.
+2. اختبار تزامن قبول 10 سائقين، واختيار سائقين متزامنين، وحجز رصيد غير كافٍ، وانتهاء المهلة، وإعادة اختيار بديل.
+3. اختبار حساب العمولة قبل 12:00 وبعدها، والإغلاق التلقائي، والإنهاء المبكر والغرامة وإعادة الرصيد، مع التحقق من عدم تكرار الخصم/الإرجاع.
+4. اختبار API بأدوار passenger/driver/admin ومحاولات الوصول إلى عقود الآخرين.
+5. اختبار صفحات PWA على تطبيقَي Android من دون تعديل مستودعي Flutter.
+
+## تنبيه أمني منفصل
+فحص Supabase أظهر أن RLS معطّل حالياً على 12 جدولاً قديماً من التطبيق، من بينها `drivers` و`driver_transactions` و`ride_requests` و`vehicle_categories`. لم نغير هذه الجداول أو سياساتها حتى لا تتعطل أجزاء التطبيق الحالية. يلزم التعامل مع هذا الخطر في مراجعة أمنية مستقلة.
