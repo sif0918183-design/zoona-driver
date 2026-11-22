@@ -203,7 +203,7 @@ begin
      (p_user_role='driver' and c.driver_id<>p_user_id) or p_user_role not in ('passenger','driver') then
     raise exception 'contract_not_owned';
   end if;
-  if c.status not in ('booked','active') then raise exception 'contract_not_eligible_for_early_end'; end if;
+  if c.status <> 'active' then raise exception 'contract_not_eligible_for_early_end'; end if;
   v_other_id := case when p_user_role='passenger' then c.driver_id else c.passenger_id end;
   v_other_role := case when p_user_role='passenger' then 'driver' else 'passenger' end;
   update public.limousine_contracts set status='completion_requested',end_requested_by=p_user_role,
