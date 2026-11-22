@@ -24,6 +24,15 @@ begin
     p_passenger_count,nullif(trim(coalesce(p_usage_purpose,'')),''),nullif(trim(coalesce(p_notes,'')), ''),
     p.daily_price,p.commission_rate,v_total,'open')
   returning id into v_id;
+  insert into public.limousine_notifications(request_id,recipient_id,recipient_type,event_code,title,body,payload)
+  select v_id,d.id,'driver','LIMO_NEW_REQUEST','طلب تأجير جديد','يوجد طلب تأجير يومي جديد يناسب فئة سيارتك.',
+    jsonb_build_object('city_id',p_city_id,'start_at',p_start_at)
+  from public.drivers d
+  where coalesce(d.is_active,false) and coalesce(d.is_approved,false) and not coalesce(d.is_banned,false)
+    and (case when d.car_type in ('vip') then 3 when d.car_type='comfort' then 2 when d.car_type='economy' then 1 else 0 end)
+      >= (select case when name_ar ilike '%SUV%' or name_ar ilike '%عالي%' then 3
+        when name_ar ilike '%مريح%' then 2 when name_ar ilike '%اقتصادي%' then 1 else 99 end
+        from public.vehicle_categories where id=p_requested_category_id);
   return jsonb_build_object('ok',true,'request_id',v_id,'daily_price',p.daily_price,'estimated_total',v_total,
     'commission_rate',p.commission_rate);
 end; $$;
@@ -53,6 +62,8 @@ begin
   select count(*) into v_count from public.limousine_acceptances where request_id=p_request_id and status in ('accepted','selected','contracted');
   if v_count >= 10 then raise exception 'acceptance_limit_reached'; end if;
   insert into public.limousine_acceptances(request_id,driver_id,status) values(p_request_id,p_driver_id,'accepted');
+  insert into public.limousine_notifications(request_id,recipient_id,recipient_type,event_code,title,body)
+  values(r.id,r.passenger_id,'passenger','LIMO_DRIVER_ACCEPTED','سائق جديد قبل طلبك','أصبح لديك سائق جديد ضمن قائمة السائقين الذين قبلوا طلب التأجير.');
   return jsonb_build_object('ok',true,'accepted_count',v_count+1);
 end; $$;
 
@@ -99,7 +110,7 @@ declare c public.limousine_contracts%rowtype; v_end_local timestamp; v_start_dat
 begin
   select * into c from public.limousine_contracts where id=p_contract_id for update;
   if not found then raise exception 'contract_not_found'; end if;
-  if c.status not in ('booked','active','awaiting_settlement','completion_requested') then
+  if c.status not in ('booked','active','awaiting_settlement','completion_requested','disputed') then
     if c.status='settled' then return jsonb_build_object('ok',true,'already_settled',true); end if;
     raise exception 'contract_not_settleable';
   end if;
