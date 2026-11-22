@@ -130,7 +130,7 @@ export default async function handler(req, res) {
           : Promise.resolve({ data: [], error: null })
       ]);
       if (ownError || countErr) throw ownError || countErr;
-      const acceptedIds = (ownAcceptances || []).filter(a => a.status === 'accepted').map(a => a.request_id);
+      const acceptedIds = (ownAcceptances || []).map(a => a.request_id);
       const acceptedRequestIds = [...new Set(acceptedIds)];
       const { data: acceptedRows, error: acceptedError } = acceptedRequestIds.length
         ? await db.from('limousine_requests').select('*').in('id', acceptedRequestIds).in('status', ['open','awaiting_driver_selection']).gt('start_at', new Date().toISOString()).order('start_at')
@@ -142,7 +142,7 @@ export default async function handler(req, res) {
       return res.status(200).json({
         success:true,
         profile:{ full_name:driver.full_name, balance:driver.balance },
-        accepted_requests:acceptedRows || [],
+        accepted_requests:(acceptedRows || []).map(r => ({ ...r, acceptance_status:(ownAcceptances || []).find(a => a.request_id === r.id)?.status || 'accepted' })),
         requests:eligible.filter(r => !acceptedSet.has(r.id)).map(r => ({ ...r, accepted_count:countMap.get(r.id) || 0 }))
       });
     }
