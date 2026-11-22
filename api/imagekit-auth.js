@@ -6,7 +6,6 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
@@ -32,7 +31,7 @@ export default async function handler(req, res) {
             const verification = await verifyResponse.json();
             const allowedHosts = new Set(['tracka.zoonasd.com']);
             for (const value of [process.env.VERCEL_PROJECT_PRODUCTION_URL, process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL]) {
-                if (value) allowedHosts.add(String(value).replace(/^https?:\\/\\//i, '').split('/')[0].toLowerCase());
+                if (value) allowedHosts.add(String(value).replace(/^https?:\/\//i, '').split('/')[0].toLowerCase());
             }
             const verifiedHost = String(verification.hostname || '').toLowerCase();
             if (!verification.success || verification.action !== 'driver_upload' || !verifiedHost || !allowedHosts.has(verifiedHost)) {
@@ -54,7 +53,8 @@ export default async function handler(req, res) {
                 privateKey,
                 urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT || "https://ik.imagekit.io/vurkt9qyk"
             });
-            return res.status(200).json(imagekit.getAuthenticationParameters());
+            const authParams = Array.from({ length: 4 }, () => imagekit.getAuthenticationParameters());
+            return res.status(200).json({ authParams });
         } catch (error) {
             console.error('ImageKit driver upload auth error:', error);
             return res.status(500).json({ success: false, error: 'تعذر تجهيز رفع المستندات. يرجى المحاولة مرة أخرى.' });
