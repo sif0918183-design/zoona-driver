@@ -42,7 +42,7 @@ end; $$;
 create or replace function public.limousine_accept_request(p_request_id uuid,p_driver_id uuid)
 returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
 declare r public.limousine_requests%rowtype; d public.drivers%rowtype; cat public.vehicle_categories%rowtype;
-  v_count integer; v_driver_rank integer; v_required_rank integer;
+  v_count integer; v_driver_rank integer; v_required_rank integer; v_end timestamptz;
 begin
   select * into r from public.limousine_requests where id=p_request_id for update;
   if not found then raise exception 'request_not_found'; end if;
@@ -58,6 +58,12 @@ begin
     when coalesce(d.car_type,d.vehicle_type,'') ilike '%vip%' or coalesce(d.car_type,d.vehicle_type,'') ilike '%suv%' or coalesce(d.car_type,d.vehicle_type,'') ilike '%عالي%' then 3
     else 0 end;
   if v_driver_rank < v_required_rank then raise exception 'vehicle_category_not_eligible'; end if;
+  v_end := (((r.start_at at time zone 'Africa/Khartoum')::date + r.duration_days - 1) + time '17:00') at time zone 'Africa/Khartoum';
+  if exists(select 1 from public.limousine_contracts c where c.driver_id=p_driver_id
+    and c.status in ('confirmed','awaiting_funding','booked','active','completion_requested','awaiting_settlement','disputed')
+    and c.start_at < v_end and c.scheduled_end_at > r.start_at) then
+    raise exception 'driver_has_overlapping_limo_contract';
+  end if;
   if exists(select 1 from public.limousine_acceptances where request_id=p_request_id and driver_id=p_driver_id and status in ('accepted','selected','contracted')) then
     return jsonb_build_object('ok',true,'already_accepted',true);
   end if;
@@ -83,6 +89,11 @@ begin
     raise exception 'live_contract_exists';
   end if;
   v_end := (((r.start_at at time zone 'Africa/Khartoum')::date + r.duration_days - 1) + time '17:00') at time zone 'Africa/Khartoum';
+  if exists(select 1 from public.limousine_contracts c where c.driver_id=p_driver_id
+    and c.status in ('confirmed','awaiting_funding','booked','active','completion_requested','awaiting_settlement','disputed')
+    and c.start_at < v_end and c.scheduled_end_at > r.start_at) then
+    raise exception 'driver_has_overlapping_limo_contract';
+  end if;
   v_hold := r.start_at - interval '20 hours';
   insert into public.limousine_contracts(request_id,passenger_id,driver_id,status,start_at,scheduled_end_at,duration_days,
     daily_price_snapshot,commission_rate_snapshot,contract_value_snapshot,commission_due,hold_due_at)
