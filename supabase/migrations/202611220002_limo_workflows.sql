@@ -150,7 +150,8 @@ begin
     where id=c.id;
   update public.limousine_requests set status='settled',updated_at=now() where id=c.request_id;
   insert into public.limousine_notifications(request_id,contract_id,recipient_id,recipient_type,event_code,title,body)
-  values(c.request_id,c.id,c.driver_id,'driver','LIMO_SETTLEMENT_DONE','تمت تسوية عقد التأجير','تم احتساب العمولة عن المدة المنفذة وإعادة الرصيد غير المستحق.');
+  values(c.request_id,c.id,c.driver_id,'driver','LIMO_SETTLEMENT_DONE','تمت تسوية عقد التأجير','تم احتساب العمولة عن المدة المنفذة وإعادة الرصيد غير المستحق.'),
+        (c.request_id,c.id,c.passenger_id,'passenger','LIMO_SETTLEMENT_DONE','اكتملت تسوية عقد التأجير','تم إغلاق عقد التأجير بعد اعتماد التسوية.');
   return jsonb_build_object('ok',true,'earned',v_earned,'released',v_release,'used_days',v_used,'penalty_days',v_penalty);
 end; $$;
 
@@ -164,8 +165,12 @@ begin
   for r in select id from public.limousine_contracts where status='awaiting_funding' and funding_deadline<=now() order by funding_deadline limit 100 loop
     perform public.limousine_expire_funding(r.id); v_expired_count:=v_expired_count+1;
   end loop;
-  update public.limousine_contracts set status='active',actual_started_at=coalesce(actual_started_at,start_at),updated_at=now()
-    where status='booked' and start_at<=now();
+  for r in select id,request_id,passenger_id,driver_id from public.limousine_contracts where status='booked' and start_at<=now() order by start_at limit 100 loop
+    update public.limousine_contracts set status='active',actual_started_at=coalesce(actual_started_at,start_at),updated_at=now() where id=r.id and status='booked';
+    insert into public.limousine_notifications(request_id,contract_id,recipient_id,recipient_type,event_code,title,body)
+    values(r.request_id,r.id,r.passenger_id,'passenger','LIMO_RENTAL_STARTED','بدأ عقد التأجير','بدأت فترة التأجير وفق الموعد المحدد.'),
+          (r.request_id,r.id,r.driver_id,'driver','LIMO_RENTAL_STARTED','بدأ عقد التأجير','بدأت فترة التأجير وفق الموعد المحدد.');
+  end loop;
   for r in select id,scheduled_end_at from public.limousine_contracts where status in ('booked','active') and scheduled_end_at<=now() order by scheduled_end_at limit 100 loop
     perform public.limousine_settle_contract(r.id,r.scheduled_end_at,0,'no_penalty'); v_closed_count:=v_closed_count+1;
   end loop;
