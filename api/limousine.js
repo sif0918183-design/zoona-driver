@@ -101,6 +101,7 @@ export default async function handler(req, res) {
       if (error) throw error;
       const eligible = (requests || []).filter(r => rank >= categoryRank(categoryMap.get(r.requested_category_id)));
       const ids = eligible.map(r => r.id);
+      if (!ids.length) return res.status(200).json({ success: true, requests: [] });
       const [{ data: accepted, error: ae }, { data: counts, error: countErr }] = await Promise.all([
         db.from('limousine_acceptances').select('request_id,status').eq('driver_id', id).in('request_id', ids),
         ids.length ? db.from('limousine_acceptances').select('request_id,status').in('request_id', ids).in('status', ['accepted','selected','contracted']) : Promise.resolve({ data: [], error: null })
@@ -206,7 +207,7 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('[Limousine API]', error);
     const message = String(error?.message || 'حدث خطأ غير متوقع');
-    const clientErrors = ['start_must_be_future','invalid_duration','invalid_request_details','passenger_not_found','pricing_unavailable','duration_out_of_pricing_range','request_not_found','request_not_available','driver_not_eligible','vehicle_category_not_eligible','acceptance_limit_reached','request_not_found_or_forbidden','request_not_selectable','driver_has_not_accepted','live_contract_exists','contract_not_found','contract_not_settleable','commission_not_held'];
+    const clientErrors = ['start_must_be_future','invalid_duration','invalid_request_details','passenger_not_found','pricing_unavailable','duration_out_of_pricing_range','request_not_found','request_not_available','driver_not_eligible','vehicle_category_not_eligible','acceptance_limit_reached','request_not_found_or_forbidden','request_not_selectable','driver_has_not_accepted','live_contract_exists','contract_not_found','contract_not_settleable','commission_not_held','contract_not_owned','contract_not_eligible_for_early_end','no_end_confirmation_pending'];
     return fail(res, clientErrors.includes(message) ? 400 : 500, message);
   }
 }
