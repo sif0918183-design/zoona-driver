@@ -143,9 +143,9 @@
   }
   function renderAcceptedRequests() {
     $('accepted-requests').innerHTML=acceptedRequests.length?acceptedRequests.map(r=>
-      '<article class="card"><div class="line"><strong>طلب قبلته مبدئياً</strong><span class="pill">بانتظار اختيار الراكب</span></div>'+
+      '<article class="card"><div class="line"><strong>طلب قبلته</strong><span class="pill">'+(r.acceptance_status==='accepted'?'بانتظار اختيار الراكب':r.acceptance_status==='selected'?'تم اختيارك — بانتظار تأمين العمولة':'تم التعاقد')+'</span></div>'+
       '<p>'+esc(r.pickup_area)+' · '+date(r.start_at)+'</p><p>'+r.duration_days+' يوم · '+money(r.estimated_total)+'</p>'+
-      '<p class="muted">سيظهر العقد هنا بعد اختيارك وبدء إجراءات تأمين العمولة.</p></article>').join(''):'<div class="empty">لا توجد طلبات قبلتها وتنتظر اختيار الراكب.</div>';
+      '<p class="muted">'+(r.acceptance_status==='accepted'?'ينتظر الطلب اختيار الراكب. لا يتم حجز العمولة عند القبول المبدئي.':r.acceptance_status==='selected'?'تم اختيارك لهذا الطلب. تبدأ إجراءات تأمين العمولة وفق موعد الحجز.':'راجع قسم العقود لمتابعة الحجز.')+'</p></article>').join(''):'<div class="empty">لا توجد طلبات قبلتها وتنتظر اختيار الراكب.</div>';
   }
   async function driverRequests() {
     const data=await api('list_driver_requests',{driverId:user.id});
