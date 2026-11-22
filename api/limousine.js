@@ -141,6 +141,27 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true });
     }
 
+    if (action === 'get_contract_contact') {
+      if (!['passenger','driver'].includes(session?.role)) return fail(res, 403, 'غير مصرح');
+      const { data: contract, error: contractError } = await db.from('limousine_contracts').select('id,passenger_id,driver_id,status')
+        .eq('id', b.contractId).maybeSingle();
+      if (contractError || !contract) throw contractError || new Error('contract_not_found');
+      const owns = session.role === 'passenger' ? contract.passenger_id === id : contract.driver_id === id;
+      if (!owns) return fail(res, 403, 'لا تملك صلاحية الوصول إلى بيانات هذا العقد');
+      if (!['booked','active','completion_requested','awaiting_settlement','settled','disputed'].includes(contract.status)) {
+        return fail(res, 403, 'بيانات التواصل محجوبة حتى نجاح تأمين العمولة.');
+      }
+      if (session.role === 'passenger') {
+        const { data, error } = await db.from('drivers').select('full_name,whatsapp_number,phone,car_model,car_type,car_color,car_plate_number')
+          .eq('id', contract.driver_id).maybeSingle();
+        if (error || !data) throw error || new Error('driver_not_found');
+        return res.status(200).json({ success: true, contact: data });
+      }
+      const { data, error } = await db.from('customers').select('full_name,phone,phone2').eq('id', contract.passenger_id).maybeSingle();
+      if (error || !data) throw error || new Error('passenger_not_found');
+      return res.status(200).json({ success: true, contact: data });
+    }
+
     if (action === 'list_contracts') {
       if (!['passenger','driver'].includes(session?.role)) return fail(res, 403, 'غير مصرح');
       let query = db.from('limousine_contracts').select('*').order('created_at', { ascending: false }).limit(100);
