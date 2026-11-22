@@ -10,7 +10,7 @@ create table if not exists public.limousine_pricing (
   city_id uuid not null references public.cities(id) on delete restrict,
   vehicle_category_id uuid not null references public.vehicle_categories(id) on delete restrict,
   daily_price numeric(14,2) not null check (daily_price > 0),
-  commission_rate numeric(7,4) not null check (commission_rate >= 0 and commission_rate <= 100),
+  commission_rate numeric(7,4) not null check (commission_rate > 0 and commission_rate <= 100),
   is_active boolean not null default true,
   min_days integer not null default 1 check (min_days > 0),
   max_days integer check (max_days is null or max_days >= min_days),
