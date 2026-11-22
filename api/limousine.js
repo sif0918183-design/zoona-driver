@@ -240,6 +240,7 @@ export default async function handler(req, res) {
       const { data: settlementContract, error: contractReadError } = await db.from('limousine_contracts').select('status,actual_ended_at,scheduled_end_at').eq('id', b.contractId).maybeSingle();
       if (contractReadError || !settlementContract) throw contractReadError || new Error('contract_not_found');
       if (!['awaiting_settlement','disputed'].includes(settlementContract.status)) return fail(res, 400, 'لا يمكن اعتماد التسوية قبل تأكيد الطرف الآخر انتهاء الخدمة.');
+      if (settlementContract.status === 'disputed' && !b.endAt && !settlementContract.actual_ended_at) return fail(res, 400, 'يجب تحديد وقت انتهاء الخدمة عند تسوية عقد متنازع عليه.');
       const settlementEnd = b.endAt || settlementContract.actual_ended_at || new Date().toISOString();
       const { data, error } = await db.rpc('limousine_settle_contract', { p_contract_id: b.contractId, p_end_at: settlementEnd, p_penalty_days: Number(b.penaltyDays) || 0, p_resolution: b.resolution });
       if (error) throw error;
@@ -256,7 +257,7 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('[Limousine API]', error);
     const message = String(error?.message || 'حدث خطأ غير متوقع');
-    const clientErrors = ['start_must_be_future','outside_service_hours','invalid_duration','invalid_request_details','passenger_not_found','pricing_unavailable','duration_out_of_pricing_range','request_not_found','request_not_available','driver_not_eligible','vehicle_category_not_eligible','driver_has_overlapping_limo_contract','acceptance_limit_reached','request_not_found_or_forbidden','request_not_selectable','driver_has_not_accepted','live_contract_exists','contract_not_found','contract_not_settleable','commission_not_held','contract_not_owned','contract_not_eligible_for_early_end','no_end_confirmation_pending'];
+    const clientErrors = ['start_must_be_future','outside_service_hours','invalid_duration','invalid_request_details','passenger_not_found','pricing_unavailable','duration_out_of_pricing_range','request_not_found','request_not_available','driver_not_eligible','vehicle_category_not_eligible','driver_has_overlapping_limo_contract','acceptance_limit_reached','request_not_found_or_forbidden','request_not_selectable','driver_has_not_accepted','live_contract_exists','contract_not_found','contract_not_settleable','commission_not_held','contract_not_owned','contract_not_disputable','contract_not_eligible_for_early_end','no_end_confirmation_pending'];
     return fail(res, clientErrors.includes(message) ? 400 : 500, message);
   }
 }
