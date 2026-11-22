@@ -221,7 +221,7 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('[Limousine API]', error);
     const message = String(error?.message || 'حدث خطأ غير متوقع');
-    const clientErrors = ['start_must_be_future','invalid_duration','invalid_request_details','passenger_not_found','pricing_unavailable','duration_out_of_pricing_range','request_not_found','request_not_available','driver_not_eligible','vehicle_category_not_eligible','acceptance_limit_reached','request_not_found_or_forbidden','request_not_selectable','driver_has_not_accepted','live_contract_exists','contract_not_found','contract_not_settleable','commission_not_held','contract_not_owned','contract_not_eligible_for_early_end','no_end_confirmation_pending'];
+    const clientErrors = ['start_must_be_future','outside_service_hours','invalid_duration','invalid_request_details','passenger_not_found','pricing_unavailable','duration_out_of_pricing_range','request_not_found','request_not_available','driver_not_eligible','vehicle_category_not_eligible','acceptance_limit_reached','request_not_found_or_forbidden','request_not_selectable','driver_has_not_accepted','live_contract_exists','contract_not_found','contract_not_settleable','commission_not_held','contract_not_owned','contract_not_eligible_for_early_end','no_end_confirmation_pending'];
     return fail(res, clientErrors.includes(message) ? 400 : 500, message);
   }
 }
