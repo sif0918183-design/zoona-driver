@@ -88,16 +88,22 @@ export default async function handler(req, res) {
         ? await db.from('drivers').select('id,full_name,car_type,car_model,car_color,phone,whatsapp_number,rating,total_rides,profile_image_url,car_plate_number').in('id', driverIds)
         : { data: [], error: null };
       if (de) throw de;
-      const safeDrivers = (driverRows || []).map(d => {
-        const identityReleased = released.has((acceptances || []).find(a => a.driver_id === d.id)?.request_id);
-        const safe = { id:d.id, car_type:d.car_type, car_model:d.car_model, car_color:d.car_color, identity_released:identityReleased };
+      const driverMap = new Map((driverRows || []).map(d => [d.id, d]));
+      const safeDrivers = (acceptances || []).map(a => {
+        const d = driverMap.get(a.driver_id);
+        if (!d) return null;
+        const identityReleased = released.has(a.request_id);
+        const safe = {
+          id:d.id, request_id:a.request_id, car_type:d.car_type,
+          car_model:d.car_model, car_color:d.car_color, identity_released:identityReleased
+        };
         if (identityReleased) Object.assign(safe, {
           full_name:d.full_name, phone:d.phone, whatsapp_number:d.whatsapp_number,
           rating:d.rating, total_rides:d.total_rides, profile_image_url:d.profile_image_url,
           car_plate_number:d.car_plate_number
         });
         return safe;
-      });
+      }).filter(Boolean);
       return res.status(200).json({ success: true, requests, acceptances, contracts, drivers: safeDrivers });
     }
 
@@ -127,7 +133,7 @@ export default async function handler(req, res) {
       const acceptedIds = (ownAcceptances || []).filter(a => a.status === 'accepted').map(a => a.request_id);
       const acceptedRequestIds = [...new Set(acceptedIds)];
       const { data: acceptedRows, error: acceptedError } = acceptedRequestIds.length
-        ? await db.from('limousine_requests').select('*').in('id', acceptedRequestIds).order('start_at')
+        ? await db.from('limousine_requests').select('*').in('id', acceptedRequestIds).in('status', ['open','awaiting_driver_selection']).gt('start_at', new Date().toISOString()).order('start_at')
         : { data: [], error: null };
       if (acceptedError) throw acceptedError;
       const acceptedSet = new Set((ownAcceptances || []).map(x => x.request_id));
