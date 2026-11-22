@@ -103,7 +103,7 @@
     list.innerHTML=requests.map(r=>{
       const acc=acceptances.filter(a=>a.request_id===r.id && ['accepted','selected','contracted'].includes(a.status));
       const contract=contracts.find(c=>c.request_id===r.id);
-      const ds=drivers.filter(d=>acc.some(a=>a.driver_id===d.id));
+      const ds=drivers.filter(d=>d.request_id===r.id && acc.some(a=>a.driver_id===d.id));
       const driverCards=ds.map(d=>{
         const a=acc.find(x=>x.driver_id===d.id);
         const label=d.identity_released ? esc(d.full_name || 'سائق تراكا') : 'سائق تراكا';
@@ -275,8 +275,8 @@
       loadNotifications(),
       role==='passenger'?loadConfig():driverRequests()
     ]).then(()=>{
+      if(role==='driver') sectionLoaded.available=true;
       showSection(activeSection);
-      if(role==='driver') sectionLoaded[activeSection]=true;
     }).catch(e=>notice(e.message,true));
     setInterval(()=>loadNotifications().catch(()=>{}),45000);
     setInterval(()=>{
