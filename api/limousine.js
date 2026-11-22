@@ -186,7 +186,7 @@ export default async function handler(req, res) {
       }
       if (action === 'admin_update_pricing') {
         const price = Number(b.dailyPrice), rate = Number(b.commissionRate);
-        if (!b.cityId || !b.categoryId || !Number.isFinite(price) || price <= 0 || !Number.isFinite(rate) || rate < 0 || rate > 100) return fail(res, 400, 'بيانات السعر أو العمولة غير صالحة');
+        if (!b.cityId || !b.categoryId || !Number.isFinite(price) || price <= 0 || !Number.isFinite(rate) || rate <= 0 || rate > 100) return fail(res, 400, 'بيانات السعر أو العمولة غير صالحة');
         const { data, error } = await db.from('limousine_pricing').upsert({ city_id: b.cityId, vehicle_category_id: b.categoryId, daily_price: price, commission_rate: rate, min_days: Math.max(1, Number(b.minDays) || 1), max_days: b.maxDays ? Number(b.maxDays) : null, is_active: b.isActive !== false, updated_at: new Date().toISOString() }, { onConflict: 'city_id,vehicle_category_id' }).select('*').single();
         if (error) throw error;
         return res.status(200).json({ success: true, pricing: data });
