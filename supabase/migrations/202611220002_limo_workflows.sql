@@ -107,7 +107,7 @@ create or replace function public.limousine_settle_contract(p_contract_id uuid,p
   p_penalty_days integer default 0,p_resolution text default 'no_penalty')
 returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
 declare c public.limousine_contracts%rowtype; v_end_local timestamp; v_start_local timestamp; v_start_date date; v_end_date date;
-  v_used numeric; v_remaining integer; v_penalty integer; v_earned numeric; v_release numeric; v_driver public.drivers%rowtype;
+  v_used numeric; v_remaining integer; v_penalty integer; v_base_earned numeric; v_penalty_amount numeric; v_earned numeric; v_release numeric; v_driver public.drivers%rowtype;
 begin
   select * into c from public.limousine_contracts where id=p_contract_id for update;
   if not found then raise exception 'contract_not_found'; end if;
@@ -135,7 +135,9 @@ begin
   v_used := least(v_used,c.duration_days);
   v_remaining := greatest(0,c.duration_days-ceil(v_used)::integer);
   v_penalty := case when p_resolution='penalty' then least(greatest(coalesce(p_penalty_days,0),0),v_remaining) else 0 end;
-  v_earned := least(c.commission_held,round(c.daily_price_snapshot*(c.commission_rate_snapshot/100)*(v_used+v_penalty),2));
+  v_base_earned := round(c.daily_price_snapshot*(c.commission_rate_snapshot/100)*v_used,2);
+  v_penalty_amount := round(c.daily_price_snapshot*(c.commission_rate_snapshot/100)*v_penalty,2);
+  v_earned := least(c.commission_held,v_base_earned+v_penalty_amount);
   v_release := greatest(0,c.commission_held-v_earned);
   select * into v_driver from public.drivers where id=c.driver_id for update;
   if v_release > 0 then
@@ -146,10 +148,15 @@ begin
     values(c.id,c.request_id,c.driver_id,'hold_release',v_release,'limo:release:'||c.id::text,
       jsonb_build_object('used_days',v_used,'penalty_days',v_penalty));
   end if;
-  if v_earned > 0 then
+  if v_base_earned > 0 then
     insert into public.limousine_ledger(contract_id,request_id,driver_id,entry_type,amount,idempotency_key,metadata)
-    values(c.id,c.request_id,c.driver_id,'commission_earned',v_earned,'limo:earned:'||c.id::text,
-      jsonb_build_object('used_days',v_used,'penalty_days',v_penalty));
+    values(c.id,c.request_id,c.driver_id,'commission_earned',v_base_earned,'limo:earned:'||c.id::text,
+      jsonb_build_object('used_days',v_used));
+  end if;
+  if v_penalty_amount > 0 then
+    insert into public.limousine_ledger(contract_id,request_id,driver_id,entry_type,amount,idempotency_key,metadata)
+    values(c.id,c.request_id,c.driver_id,'penalty',v_penalty_amount,'limo:penalty:'||c.id::text,
+      jsonb_build_object('penalty_days',v_penalty));
   end if;
   update public.limousine_contracts set status='settled',commission_earned=v_earned,commission_released=v_release,
     actual_ended_at=p_end_at,settled_at=now(),admin_resolution=p_resolution,penalty_days=v_penalty,updated_at=now()
