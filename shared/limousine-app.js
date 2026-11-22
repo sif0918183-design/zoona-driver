@@ -58,6 +58,8 @@
     $('requests').querySelectorAll('[data-accept]').forEach(btn=>btn.onclick=async()=>{try{btn.disabled=true;await api('accept_request',{driverId:user.id,requestId:btn.dataset.accept});notice('تم قبول الطلب مبدئياً.');await refresh();}catch(e){notice(e.message,true);btn.disabled=false;}});
   }
   async function loadContracts() {
+    const openChats=new Set(Array.from(document.querySelectorAll('.chat:not([hidden])')).map(el=>el.id.replace('chat-','')));
+    const drafts=new Map(Array.from(document.querySelectorAll('[id^="msg-"]')).map(el=>[el.id.replace('msg-',''),el.value]));
     const d=await api('list_contracts',{driverId:user.id,passengerId:user.id}); contracts=d.contracts||[];
     $('contracts').innerHTML=contracts.length?contracts.map(c=>'<article class="card"><div class="line"><strong>عقد تأجير</strong><span class="pill">'+esc(statusNames[c.status]||c.status)+'</span></div><p>'+date(c.start_at)+' — '+date(c.scheduled_end_at)+'</p><p>'+c.duration_days+' يوم · '+money(c.contract_value_snapshot)+'</p>'+
       (['booked','active','completion_requested','awaiting_settlement','settled','disputed'].includes(c.status)?'<button class="small" data-contact="'+c.id+'">عرض بيانات التواصل</button><div id="contact-'+c.id+'" class="muted" hidden></div>':'')+
@@ -73,6 +75,7 @@
     $('contracts').querySelectorAll('[data-dispute]').forEach(btn=>btn.onclick=async()=>{const reason=prompt('اكتب سبب النزاع باختصار:');if(reason===null)return;try{await api('raise_dispute',{contractId:btn.dataset.dispute,reason});notice('تم رفع النزاع للإدارة.');await refresh();}catch(e){notice(e.message,true);}});
     $('contracts').querySelectorAll('[data-chat]').forEach(btn=>btn.onclick=async()=>{const c=btn.dataset.chat,box=$('chat-'+c);box.hidden=!box.hidden;if(!box.hidden)await loadMessages(c);});
     $('contracts').querySelectorAll('[data-send]').forEach(btn=>btn.onclick=async()=>{const c=btn.dataset.send,field=$('msg-'+c);try{await api('send_message',{contractId:c,message:field.value});field.value='';await loadMessages(c);}catch(e){notice(e.message,true);}});
+    for(const c of openChats){const box=$('chat-'+c);if(box){box.hidden=false;if(drafts.has(c))$('msg-'+c).value=drafts.get(c);loadMessages(c).catch(()=>{});}}
   }
   async function loadMessages(contractId) {
     const d=await api('list_messages',{contractId});
