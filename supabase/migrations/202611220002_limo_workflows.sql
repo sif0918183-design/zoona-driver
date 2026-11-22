@@ -179,6 +179,13 @@ begin
   for r in select id from public.limousine_contracts where status='confirmed' and hold_due_at<=now() order by hold_due_at limit 100 loop
     perform public.limousine_hold_commission(r.id); v_hold_count:=v_hold_count+1;
   end loop;
+  -- Retry funding during the grace period; a top-up must be captured before the deadline.
+  for r in select c.id from public.limousine_contracts c
+    join public.drivers d on d.id=c.driver_id
+    where c.status='awaiting_funding' and c.funding_deadline>now() and coalesce(d.balance,0)>=c.commission_due
+    order by c.funding_deadline limit 100 loop
+    perform public.limousine_hold_commission(r.id); v_hold_count:=v_hold_count+1;
+  end loop;
   for r in select id from public.limousine_contracts where status='awaiting_funding' and funding_deadline<=now() order by funding_deadline limit 100 loop
     perform public.limousine_expire_funding(r.id); v_expired_count:=v_expired_count+1;
   end loop;
