@@ -138,6 +138,8 @@ begin
   v_base_earned := round(c.daily_price_snapshot*(c.commission_rate_snapshot/100)*v_used,2);
   v_penalty_amount := round(c.daily_price_snapshot*(c.commission_rate_snapshot/100)*v_penalty,2);
   v_earned := least(c.commission_held,v_base_earned+v_penalty_amount);
+  v_base_earned := least(v_base_earned,v_earned);
+  v_penalty_amount := greatest(0,v_earned-v_base_earned);
   v_release := greatest(0,c.commission_held-v_earned);
   select * into v_driver from public.drivers where id=c.driver_id for update;
   if v_release > 0 then
