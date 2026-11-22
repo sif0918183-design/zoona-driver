@@ -1840,7 +1840,7 @@
             localStorage.removeItem('driver_vehicle_registration_url');
             localStorage.removeItem('driver_car_photo_url');
             localStorage.removeItem('driver_plate_photo_url');
-            window.driverUploadAuth = null;
+            window.driverUploadAuthQueue = [];
             window.driverUploadTurnstileToken = null;
             if (window.turnstile && window.driverUploadTurnstileWidgetId) {
                 window.turnstile.reset(window.driverUploadTurnstileWidgetId);
@@ -2012,8 +2012,8 @@
 
                 // Obtain a short-lived upload authorization using the dedicated Turnstile proof.
                 // Reuse it for the four registration documents; the final registration captcha remains separate.
-                let authData = window.driverUploadAuth;
-                if (!authData || !authData.signature || !authData.token || !authData.expire || Number(authData.expire) * 1000 <= Date.now() + 30000) {
+                let authQueue = window.driverUploadAuthQueue || [];
+                if (!authQueue.length || !authQueue[0].signature || !authQueue[0].token || !authQueue[0].expire || Number(authQueue[0].expire) * 1000 <= Date.now() + 30000) {
                     const uploadCaptchaToken = window.driverUploadTurnstileToken;
                     if (!uploadCaptchaToken) {
                         throw new Error('أكمل التحقق الأمني المخصص لرفع المستندات أولاً');
@@ -2028,16 +2028,18 @@
                     if (!authRes.ok) {
                         throw new Error(authResult.error || 'فشل تجهيز تصريح رفع المستندات');
                     }
-                    authData = authResult;
-                    if (!authData.signature || !authData.token) {
-                        throw new Error('بيانات تصريح الرفع غير مكتملة');
+                    if (!Array.isArray(authResult.authParams) || authResult.authParams.length !== 4 ||
+                        authResult.authParams.some(item => !item || !item.signature || !item.token || !item.expire)) {
+                        throw new Error('لم يستلم الخادم تصاريح الرفع الأربعة بصورة صحيحة');
                     }
-                    window.driverUploadAuth = authData;
+                    authQueue = authResult.authParams;
+                    window.driverUploadAuthQueue = authQueue;
                     window.driverUploadTurnstileToken = null;
                     if (window.turnstile && window.driverUploadTurnstileWidgetId) {
                         window.turnstile.reset(window.driverUploadTurnstileWidgetId);
                     }
                 }
+                const authData = authQueue[0];
 
                 const formData = new FormData();
                 formData.append('file', fileToUpload);
@@ -2063,6 +2065,9 @@
                 }
 
                 localStorage.setItem(storageKey, uploadData.url);
+                if (window.driverUploadAuthQueue && window.driverUploadAuthQueue.length) {
+                    window.driverUploadAuthQueue.shift();
+                }
                 statusDiv.innerHTML = '✅ تم الرفع بنجاح';
                 statusDiv.style.color = '#16a34a';
                 return;
