@@ -171,7 +171,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, contracts: data || [] });
     }
 
-    if (action === 'list_messages' || action === 'send_message' || action === 'request_end' || action === 'confirm_end' || action === 'reject_end') {
+    if (action === 'list_messages' || action === 'send_message' || action === 'request_end' || action === 'confirm_end' || action === 'reject_end' || action === 'raise_dispute') {
       if (!['passenger','driver'].includes(session?.role)) return fail(res, 403, 'غير مصرح');
       const { data: chat, error: chatError } = await db.from('limousine_chats').select('*').eq('contract_id', b.contractId).maybeSingle();
       if (chatError || !chat) throw chatError || new Error('المحادثة غير موجودة');
@@ -207,6 +207,11 @@ export default async function handler(req, res) {
       }
       if (action === 'reject_end') {
         const { data, error } = await db.rpc('limousine_reject_end', { p_contract_id: b.contractId, p_user_id: id, p_user_role: session.role });
+        if (error) throw error;
+        return res.status(200).json({ success: true, result: data });
+      }
+      if (action === 'raise_dispute') {
+        const { data, error } = await db.rpc('limousine_raise_dispute', { p_contract_id: b.contractId, p_user_id: id, p_user_role: session.role, p_reason: b.reason || null });
         if (error) throw error;
         return res.status(200).json({ success: true, result: data });
       }
