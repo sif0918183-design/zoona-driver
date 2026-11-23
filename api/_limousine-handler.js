@@ -148,7 +148,7 @@ export default async function handler(req, res) {
         : [{data:[],error:null},{data:[],error:null}];
       if (liveAcceptedError || expiredAcceptedError) throw liveAcceptedError || expiredAcceptedError;
       const acceptedRows=[...(liveAcceptedRows||[]),...(expiredAcceptedRows||[])];
-      const acceptedSet = new Set((ownAcceptances || []).filter(x=>['accepted','selected','contracted'].includes(x.status)).map(x => x.request_id));
+      const acceptedSet = new Set((ownAcceptances || []).filter(x=>['accepted','selected','contracted','funding_expired'].includes(x.status)).map(x => x.request_id));
       const countMap = new Map();
       (counts || []).forEach(x => countMap.set(x.request_id, (countMap.get(x.request_id) || 0) + 1));
       return res.status(200).json({
