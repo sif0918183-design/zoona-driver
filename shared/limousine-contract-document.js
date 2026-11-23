@@ -40,13 +40,15 @@
   }
   async function download(article,id,button){
     button.disabled=true;button.textContent='جارٍ تجهيز ملف PDF...';
+    const bottomActions=article.querySelector('.limo-doc-actions-bottom');
+    if(bottomActions)bottomActions.style.display='none';
     try{
       if(document.fonts&&document.fonts.ready)await document.fonts.ready;
       if(!window.html2pdf)await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';script.onload=resolve;script.onerror=reject;document.head.appendChild(script);});
       await window.html2pdf().set({margin:[12,12,14,12],filename:'Tracka-Limousine-Contract-'+String(id||'contract').slice(0,8)+'.pdf',image:{type:'jpeg',quality:.98},html2canvas:{scale:2,useCORS:true,backgroundColor:'#fff',letterRendering:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],avoid:'.limo-doc-section,.limo-doc-field,.limo-doc-signatures'}}).from(article).save();
       button.textContent='تم تجهيز ملف PDF';
     }catch(error){button.textContent='طباعة / حفظ كـ PDF';window.print();}
-    finally{button.disabled=false;}
+    finally{if(bottomActions)bottomActions.style.display='';button.disabled=false;}
   }
   window.showLimousineContractDocument=function(contract){
     ensureStyle();const modal=document.createElement('div');modal.className='limo-doc-overlay';
