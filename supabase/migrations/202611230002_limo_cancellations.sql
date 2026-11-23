@@ -14,7 +14,7 @@ create table if not exists public.limousine_cancellation_requests (
   status text not null default 'pending_counterparty'
     check (status in ('pending_counterparty','awaiting_admin','rejected','approved')),
   counterparty_responded_at timestamptz,
-  admin_id uuid,
+  admin_id text,
   admin_resolution text check (admin_resolution in ('no_penalty','penalty')),
   penalty_days integer not null default 0 check (penalty_days >= 0),
   resolved_at timestamptz,
