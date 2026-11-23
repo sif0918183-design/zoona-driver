@@ -41,10 +41,11 @@ declare
   c public.limousine_contracts%rowtype;
   d public.drivers%rowtype;
   v_now timestamptz := now();
+  v_request_id uuid;
 begin
-  select request_id into c.request_id from public.limousine_contracts where id=p_contract_id;
+  select request_id into v_request_id from public.limousine_contracts where id=p_contract_id;
   if not found then raise exception 'contract_not_found'; end if;
-  perform 1 from public.limousine_requests where id=c.request_id for update;
+  perform 1 from public.limousine_requests where id=v_request_id for update;
   select * into c from public.limousine_contracts where id=p_contract_id for update;
   if not found then raise exception 'contract_not_found'; end if;
   if c.status not in ('confirmed','awaiting_funding') then
@@ -207,7 +208,7 @@ begin
 end; $$;
 
 create or replace function public.limousine_admin_resolve_cancellation(
-  p_contract_id uuid,p_admin_id uuid,p_resolution text,p_penalty_days integer default 0
+  p_contract_id uuid,p_admin_id text,p_resolution text,p_penalty_days integer default 0
 ) returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
 declare c public.limousine_contracts%rowtype; x public.limousine_cancellation_requests%rowtype;
   v_end timestamptz; v_result jsonb;
@@ -227,7 +228,7 @@ begin
   update public.limousine_contracts set status='cancelled',updated_at=now() where id=c.id;
   update public.limousine_requests set status='cancelled',updated_at=now() where id=c.request_id;
   update public.limousine_cancellation_requests set status='approved',admin_id=p_admin_id,
-    admin_resolution=p_resolution,penalty_days=case when p_resolution='penalty' then least(p_penalty_days,c.duration_days) else 0 end,
+    admin_resolution=p_resolution,penalty_days=coalesce((v_result->>'penalty_days')::integer,0),
     resolved_at=now(),updated_at=now() where id=x.id;
   insert into public.limousine_notifications(request_id,contract_id,recipient_id,recipient_type,event_code,title,body,payload)
   values(c.request_id,c.id,c.passenger_id,'passenger','LIMO_CANCELLATION_APPROVED','اعتمدت الإدارة إلغاء العقد',
@@ -241,7 +242,7 @@ revoke all on function public.limousine_cancel_request(uuid,uuid) from public,an
 revoke all on function public.limousine_withdraw_acceptance(uuid,uuid) from public,anon,authenticated;
 revoke all on function public.limousine_request_cancellation(uuid,uuid,text,text) from public,anon,authenticated;
 revoke all on function public.limousine_respond_cancellation(uuid,uuid,text,text) from public,anon,authenticated;
-revoke all on function public.limousine_admin_resolve_cancellation(uuid,uuid,text,integer) from public,anon,authenticated;
+revoke all on function public.limousine_admin_resolve_cancellation(uuid,text,text,integer) from public,anon,authenticated;
 grant execute on function public.limousine_cancel_request(uuid,uuid) to service_role;
 grant execute on function public.limousine_withdraw_acceptance(uuid,uuid) to service_role;
 grant execute on function public.limousine_request_cancellation(uuid,uuid,text,text) to service_role;
