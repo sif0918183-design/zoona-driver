@@ -268,12 +268,12 @@
   }
   async function loadDriverFunding() {
     if(role!=='driver')return;
+    if(!fundingRefreshTimer)fundingRefreshTimer=setInterval(()=>loadDriverFunding().catch(()=>{}),30000);
     const d=await api('list_driver_funding',{driverId:user.id}),item=(d.funding||[])[0],card=$('limo-funding-card');
     if(!card)return;
     if(!item){card.hidden=true;fundingDeadline=null;return;}
     fundingDeadline=item.funding_deadline;$('limo-funding-required').textContent=money(item.commission_due);card.hidden=false;updateFundingClock();
     if(!fundingClockTimer)fundingClockTimer=setInterval(updateFundingClock,1000);
-    if(!fundingRefreshTimer)fundingRefreshTimer=setInterval(()=>loadDriverFunding().catch(()=>{}),30000);
   }
   function updateFundingClock(){
     const timer=$('limo-funding-timer');if(!timer||!fundingDeadline)return;
@@ -289,7 +289,7 @@
     if(role==='passenger' && section==='chats') await loadChats();
     if(role==='driver' && (section==='available'||section==='accepted')) await driverRequests();
     if(section==='notifications') await loadNotifications();
-    if(role==='driver' && section==='available') await loadDriverFunding();
+    if(role==='driver') await loadDriverFunding();
     if(role==='driver' && section==='contracts') await loadContracts();
     if(role==='driver' && section==='chats') await loadChats();
     sectionLoaded[section]=true;
