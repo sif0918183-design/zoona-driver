@@ -132,7 +132,7 @@ export default async function handler(req, res) {
       });
       const ids = eligible.map(r => r.id);
       const [{ data: ownAcceptances, error: ownError }, { data: counts, error: countErr }] = await Promise.all([
-        db.from('limousine_acceptances').select('request_id,status').eq('driver_id', id).in('status', ['accepted','selected','contracted']),
+        db.from('limousine_acceptances').select('request_id,status').eq('driver_id', id).in('status', ['accepted','selected','contracted','funding_expired','withdrawn']),
         ids.length
           ? db.from('limousine_acceptances').select('request_id,status').in('request_id', ids).in('status', ['accepted','selected','contracted'])
           : Promise.resolve({ data: [], error: null })
@@ -140,11 +140,15 @@ export default async function handler(req, res) {
       if (ownError || countErr) throw ownError || countErr;
       const acceptedIds = (ownAcceptances || []).map(a => a.request_id);
       const acceptedRequestIds = [...new Set(acceptedIds)];
-      const { data: acceptedRows, error: acceptedError } = acceptedRequestIds.length
-        ? await db.from('limousine_requests').select('*').in('id', acceptedRequestIds).in('status', ['open','awaiting_driver_selection','driver_selected']).gt('start_at', new Date().toISOString()).order('start_at')
-        : { data: [], error: null };
-      if (acceptedError) throw acceptedError;
-      const acceptedSet = new Set((ownAcceptances || []).map(x => x.request_id));
+      const [{data: liveAcceptedRows,error: liveAcceptedError},{data: expiredAcceptedRows,error: expiredAcceptedError}] = acceptedRequestIds.length
+        ? await Promise.all([
+            db.from('limousine_requests').select('*').in('id', acceptedRequestIds).in('status', ['open','awaiting_driver_selection','driver_selected']).gt('start_at', new Date().toISOString()).order('start_at'),
+            db.from('limousine_requests').select('*').in('id', acceptedRequestIds).eq('status','expired').order('start_at',{ascending:false})
+          ])
+        : [{data:[],error:null},{data:[],error:null}];
+      if (liveAcceptedError || expiredAcceptedError) throw liveAcceptedError || expiredAcceptedError;
+      const acceptedRows=[...(liveAcceptedRows||[]),...(expiredAcceptedRows||[])];
+      const acceptedSet = new Set((ownAcceptances || []).filter(x=>['accepted','selected','contracted'].includes(x.status)).map(x => x.request_id));
       const countMap = new Map();
       (counts || []).forEach(x => countMap.set(x.request_id, (countMap.get(x.request_id) || 0) + 1));
       return res.status(200).json({
