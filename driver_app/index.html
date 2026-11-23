@@ -2549,6 +2549,7 @@
 
     async function checkDriverLimoFunding() {
         if (!currentDriver || !currentDriver.id) return;
+        if (!limoFundingRefreshTimer) limoFundingRefreshTimer = setInterval(checkDriverLimoFunding, 30000);
         try {
             const token = localStorage.getItem('session_token') || localStorage.getItem('tarhal_session_token') || '';
             const response = await fetch('/api/travel-platform?module=limousine', {
@@ -2566,7 +2567,6 @@
             card.classList.remove('hidden');
             updateDriverLimoFundingClock();
             if (!limoFundingClockTimer) limoFundingClockTimer = setInterval(updateDriverLimoFundingClock, 1000);
-            if (!limoFundingRefreshTimer) limoFundingRefreshTimer = setInterval(checkDriverLimoFunding, 30000);
         } catch (error) { console.warn('Limousine funding reminder unavailable:', error); }
     }
 
