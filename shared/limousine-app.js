@@ -168,7 +168,7 @@
     const d=await api('list_contracts',{driverId:user.id,passengerId:user.id});
     contracts=d.contracts||[];
     $('contracts').innerHTML=contracts.length?contracts.map(c=>{
-      const canView=Number(c.commission_held||0)>0 && ['active','completion_requested','awaiting_settlement','settled','disputed'].includes(c.status);
+      const canView=Number(c.commission_held||0)>0 && (['active','completion_requested','awaiting_settlement','settled','disputed'].includes(c.status)||(c.status==='booked'&&new Date(c.start_at).getTime()<=Date.now()));
       return '<article class="card"><div class="line"><strong>عقد تأجير</strong><span class="pill">'+esc(statusNames[c.status]||c.status)+'</span></div>'+
       '<p><b>المدينة:</b> '+esc(c.city_name||c.pickup_area||'—')+'</p><p><b>بداية العقد:</b> '+date(c.start_at)+'</p>'+
       '<p><b>المدة:</b> '+Number(c.duration_days||0)+' يوم</p><p><b>نهاية العقد:</b> '+date(c.scheduled_end_at)+'</p>'+
