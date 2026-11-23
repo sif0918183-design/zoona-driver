@@ -107,12 +107,15 @@ begin
       and status in ('booked','active','completion_requested','awaiting_settlement','disputed')) then
     raise exception 'cancellation_requires_mutual_approval';
   end if;
-  update public.limousine_acceptances set status='withdrawn',updated_at=now()
-    where request_id=r.id and status in ('accepted','selected','contracted');
-  update public.limousine_requests set status='cancelled',selected_driver_id=null,updated_at=now() where id=r.id;
+  with withdrawn as (
+    update public.limousine_acceptances set status='withdrawn',updated_at=now()
+      where request_id=r.id and status in ('accepted','selected','contracted')
+      returning driver_id
+  )
   insert into public.limousine_notifications(request_id,recipient_id,recipient_type,event_code,title,body)
-  select r.id,a.driver_id,'driver','LIMO_REQUEST_CANCELLED','ألغى الراكب طلب التأجير','تم إلغاء طلب التأجير من الراكب قبل تأمين العمولة.'
-    from public.limousine_acceptances a where a.request_id=r.id;
+  select r.id,w.driver_id,'driver','LIMO_REQUEST_CANCELLED','ألغى الراكب طلب التأجير','تم إلغاء طلب التأجير من الراكب قبل تأمين العمولة.'
+    from withdrawn w;
+  update public.limousine_requests set status='cancelled',selected_driver_id=null,updated_at=now() where id=r.id;
   insert into public.limousine_notifications(request_id,recipient_id,recipient_type,event_code,title,body)
   values(r.id,r.passenger_id,'passenger','LIMO_REQUEST_CANCELLED','تم إلغاء الطلب','تم إلغاء طلب التأجير دون حجز أو خصم عمولة.');
   return jsonb_build_object('ok',true,'status','cancelled');
@@ -247,6 +250,6 @@ grant execute on function public.limousine_cancel_request(uuid,uuid) to service_
 grant execute on function public.limousine_withdraw_acceptance(uuid,uuid) to service_role;
 grant execute on function public.limousine_request_cancellation(uuid,uuid,text,text) to service_role;
 grant execute on function public.limousine_respond_cancellation(uuid,uuid,text,text) to service_role;
-grant execute on function public.limousine_admin_resolve_cancellation(uuid,uuid,text,integer) to service_role;
+grant execute on function public.limousine_admin_resolve_cancellation(uuid,text,text,integer) to service_role;
 
 commit;
