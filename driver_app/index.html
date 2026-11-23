@@ -980,7 +980,7 @@
                 <div id="driver-selection-notice-text"></div>
             </div>
 
-            <div id="driver-limo-funding-notice" class="hidden" style="background:#fff7ed;border:1.5px solid #f59e0b;padding:.8rem 1rem;border-radius:12px;margin-bottom:.75rem;color:#9a3412;text-align:center;"><div style="font-weight:800;margin-bottom:.25rem;">استكمال تأمين عمولة ليموزين تراكا</div><div style="font-size:.82rem;margin-bottom:.35rem;">رصيدك غير كافٍ لتأمين عمولة عقد التأجير. يرجى شحن الرصيد قبل انتهاء المهلة.</div><div>العمولة المطلوبة: <b id="driver-limo-funding-required">—</b></div><div id="driver-limo-funding-timer" style="font-size:1.35rem;font-weight:900;letter-spacing:1px;direction:ltr;color:#c2410c;">--:--:--</div><a class="btn btn-driver mt-2" href="/driver_app/limousine.html">فتح منصة ليموزين تراكا</a></div>
+            <div id="driver-limo-funding-notice" class="hidden" style="background:#fff7ed;border:1.5px solid #f59e0b;padding:.8rem 1rem;border-radius:12px;margin-bottom:.75rem;color:#9a3412;text-align:center;"><div style="font-weight:800;margin-bottom:.25rem;">استكمال تأمين عمولة ليموزين تراكا</div><div style="font-size:.82rem;margin-bottom:.35rem;">رصيدك غير كافٍ لتأمين عمولة عقد التأجير. يرجى شحن الرصيد قبل انتهاء المهلة.</div><div>العمولة المطلوبة: <b id="driver-limo-funding-required">—</b></div><div>الرصيد المتاح: <b id="driver-limo-funding-balance">—</b></div><div id="driver-limo-funding-timer" style="font-size:1.35rem;font-weight:900;letter-spacing:1px;direction:ltr;color:#c2410c;">--:--:--</div><a class="btn btn-driver mt-2" href="/driver_app/limousine.html">فتح منصة ليموزين تراكا</a></div>
 
             <!-- 30-Minute Grace Period Timer Notice -->
             <div id="driver-grace-notice" class="hidden" style="background:#fef2f2; border:1.5px solid #ef4444; padding:0.75rem 1rem; border-radius:12px; margin-bottom:0.75rem; color:#991b1b; text-align:center;">
@@ -2564,6 +2564,7 @@
             if (!item) { card.classList.add('hidden'); limoFundingDeadline = null; return; }
             limoFundingDeadline = item.funding_deadline;
             document.getElementById('driver-limo-funding-required').textContent = Math.round(Number(item.commission_due || 0)).toLocaleString('en-US') + ' ج.س';
+            document.getElementById('driver-limo-funding-balance').textContent = Math.round(Number(data.balance || 0)).toLocaleString('en-US') + ' ج.س';
             card.classList.remove('hidden');
             updateDriverLimoFundingClock();
             if (!limoFundingClockTimer) limoFundingClockTimer = setInterval(updateDriverLimoFundingClock, 1000);
