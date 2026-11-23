@@ -87,8 +87,10 @@
   }
   function updateEstimate() {
     if (role!=='passenger') return;
-    const p=pricingFor($('city').value,$('category').value), days=Math.max(1,Number($('days').value)||1);
-    $('estimate').textContent=p ? 'السعر اليومي: '+money(p.daily_price)+' — الإجمالي التقديري: '+money(p.daily_price*days)+' — عمولة السائق: '+p.commission_rate+'%' : 'اختر المدينة وفئة السيارة لعرض السعر المتاح.';
+    const p=pricingFor($('city').value,$('category').value), days=Math.max(1,Math.floor(Number($('days').value)||1));
+    $('days').min='1'; $('days').max=String(p?.max_days||90);
+    if(Number($('days').value)!==days)$('days').value=String(days);
+    $('estimate').textContent=p ? 'التأجير بالأيام الكاملة فقط — اليوم من 7:00 صباحاً إلى 5:00 مساءً. السعر اليومي: '+money(p.daily_price)+' — الإجمالي التقديري: '+money(p.daily_price*days)+' — عمولة المنصة: '+p.commission_rate+'%' : 'اختر المدينة وفئة السيارة لعرض السعر المتاح.';
   }
   function carDescription(d) {
     return [d.car_model || d.car_type || 'سيارة', d.car_color || ''].filter(Boolean).join(' · ');
@@ -185,7 +187,7 @@
     const d=await api('list_contracts',{driverId:user.id,passengerId:user.id});
     contracts=d.contracts||[];
     $('contracts').innerHTML=contracts.length?contracts.map(c=>{
-      const canView=Number(c.commission_held||0)>0 && (['active','completion_requested','awaiting_settlement','settled','disputed'].includes(c.status)||(c.status==='booked'&&new Date(c.start_at).getTime()<=Date.now()));
+      const canView=Number(c.commission_held||0)>0 && ['booked','active','completion_requested','awaiting_settlement','settled','disputed'].includes(c.status);
       const cx=c.cancellation_request;
       const canRequestCancellation=['booked','active'].includes(c.status)&&(!cx||['rejected'].includes(cx.status));
       const cancellationMarkup=cx?.status==='pending_counterparty'
@@ -209,7 +211,12 @@
     $('contracts').querySelectorAll('[data-contract-document]').forEach(btn=>btn.onclick=()=>showContractDocument(btn.dataset.contractDocument));
     $('contracts').querySelectorAll('[data-contact]').forEach(btn=>btn.onclick=async()=>{
       const c=btn.dataset.contact,box=$('contact-'+c);if(!box.hidden){box.hidden=true;return;}
-      try{const d=await api('get_contract_contact',{contractId:c}),x=d.contact||{};box.innerHTML='<p><b>'+esc(x.full_name||'')+'</b></p><p>'+esc(x.whatsapp_number||x.phone||'')+'</p><p>'+esc([x.car_model,x.car_type,x.car_color,x.car_plate_number].filter(Boolean).join(' · '))+'</p>';box.hidden=false;}
+      try{const d=await api('get_contract_contact',{contractId:c}),x=d.contact||{};
+        const phones=role==='passenger'?[['الهاتف',x.phone],['واتساب',x.whatsapp_number]]:[['الهاتف',x.phone],['رقم إضافي',x.phone2]];
+        box.innerHTML='<p><b>'+esc(x.full_name||'')+'</b></p>'+phones.filter(v=>v[1]).map(v=>'<p><b>'+v[0]+':</b> '+esc(v[1])+'</p>').join('')+
+          (role==='passenger'?'<p>'+esc([x.car_model,x.car_type,x.car_color,x.car_plate_number].filter(Boolean).join(' · '))+'</p>':'');
+        box.hidden=false;
+      }
       catch(e){notice(e.message,true);}
     });
     $('contracts').querySelectorAll('[data-end]').forEach(btn=>btn.onclick=async()=>{if(!confirm('هل تؤكد طلب إنهاء خدمة التأجير؟'))return;try{await api('request_end',{contractId:btn.dataset.end});notice('أُرسل طلب الإنهاء للطرف الآخر للتأكيد.');await loadContracts();}catch(e){notice(e.message,true);}});
@@ -233,42 +240,9 @@
 
   async function showContractDocument(contractId) {
     try {
-      const d=await api('get_contract_document',{contractId}),c=d.contract||{};
-      const vehicle=[c.car_model,c.car_type,c.car_color,c.car_plate_number].filter(Boolean).join(' · ')||'غير محددة';
-      const modal=document.createElement('div');modal.className='contract-document-overlay';modal.id='contract-document-modal';
-      modal.innerHTML='<div class="contract-document-dialog"><div class="contract-document-actions"><button type="button" class="small" id="print-contract">تحميل / حفظ PDF</button><button type="button" class="secondary" id="close-contract">إغلاق</button></div>'+
-        '<article class="contract-document" dir="rtl"><header><h1>منصة ليموزين تراكا</h1><h2>عقد تأجير سيارة بسائق</h2><p>رقم العقد: '+esc(c.id)+'</p></header>'+
-        '<h3>أولاً: أطراف العقد</h3><p><b>الطرف الأول – الراكب:</b> '+esc(c.passenger_name||'—')+(c.passenger_phone?' · '+esc(c.passenger_phone):'')+'</p><p><b>الطرف الثاني – السائق:</b> '+esc(c.driver_name||'—')+(c.driver_phone?' · '+esc(c.driver_phone):'')+'</p>'+
-        '<h3>ثانياً: بيانات التأجير</h3><p><b>المدينة:</b> '+esc(c.city_name||'—')+'</p><p><b>موقع الاستلام:</b> '+esc(c.pickup_area||'—')+'</p><p><b>فئة السيارة:</b> '+esc(c.category_name||'—')+'</p><p><b>السيارة:</b> '+esc(vehicle)+'</p>'+
-        '<p><b>البداية:</b> '+date(c.start_at)+'</p><p><b>النهاية:</b> '+date(c.scheduled_end_at)+'</p><p><b>المدة:</b> '+Number(c.duration_days||0)+' يوم</p><p><b>عدد الركاب:</b> '+Number(c.passenger_count||1)+'</p><p><b>غرض الاستخدام:</b> '+esc(c.usage_purpose||'—')+'</p><p><b>ملاحظات الطلب:</b> '+esc(c.request_notes||'لا توجد')+'</p><p><b>حالة العقد:</b> '+esc(statusNames[c.status]||c.status)+'</p>'+
-        '<h3>ثالثاً: القيمة والعمولة</h3><p><b>السعر اليومي:</b> '+money(c.daily_price_snapshot)+'</p><p><b>إجمالي العقد:</b> '+money(c.contract_value_snapshot)+'</p><p><b>نسبة العمولة:</b> '+Number(c.commission_rate_snapshot||0)+'%</p><p><b>العمولة المؤمّنة:</b> '+money(c.commission_held)+'</p>'+
-        '<h3>رابعاً: الشروط والالتزامات</h3><ol><li>يلتزم السائق بتوفير السيارة المتفق عليها وخدمة النقل طوال المدة والمواعيد المحددة.</li><li>يلتزم الراكب بسداد قيمة التأجير المتفق عليها وفق آلية الدفع المعتمدة بين الطرفين.</li><li>لا يجوز تغيير مدة التأجير أو نطاق الخدمة إلا بموافقة الطرفين وتوثيق التعديل عبر المنصة.</li><li>يتم توثيق إنهاء الخدمة وموافقة الطرف الآخر عبر المنصة، وتُجرى التسوية وفق المدة المنفذة والضوابط المعتمدة.</li><li>تُستخدم المحادثة داخل المنصة لتوثيق التواصل المتعلق بالعقد، ويُحال الخلاف إلى إدارة تراكا.</li></ol>'+
-        '<h3>خامساً: اعتماد العقد</h3><p>هذا المستند ملخص لبيانات التعاقد المسجلة في منصة ليموزين تراكا، وقد تم تأمين العمولة الموضحة أعلاه.</p><div class="contract-signatures"><div>توقيع الراكب: __________________</div><div>توقيع السائق: __________________</div></div><footer>صدر إلكترونياً من منصة ليموزين تراكا · '+date(new Date().toISOString())+'</footer></article></div>';
-      document.body.appendChild(modal);$('close-contract').onclick=()=>modal.remove();
-      $('print-contract').onclick=async()=>{
-        const button=$('print-contract');button.disabled=true;
-        try{
-          if(!window.html2pdf){
-            await new Promise((resolve,reject)=>{
-              const script=document.createElement('script');
-              script.src='https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-              script.onload=resolve;script.onerror=reject;document.head.appendChild(script);
-            });
-          }
-          await window.html2pdf().set({
-            margin:10,
-            filename:'limousine-contract-'+String(c.id||'contract').slice(0,8)+'.pdf',
-            image:{type:'jpeg',quality:0.98},
-            html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},
-            jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
-            pagebreak:{mode:['css','legacy']}
-          }).from(modal.querySelector('.contract-document')).save();
-        }catch(error){
-          notice('تعذر تنزيل PDF مباشرة. يمكنك حفظ نسخة PDF من نافذة الطباعة.',true);
-          window.print();
-        }finally{button.disabled=false;}
-      };
-      if(!document.getElementById('contract-print-style')){const style=document.createElement('style');style.id='contract-print-style';style.textContent='.contract-document-overlay{position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,.72);overflow:auto;padding:14px;display:flex;justify-content:center;align-items:flex-start}.contract-document-dialog{background:#fff;color:#172033;border-radius:14px;width:100%;max-width:760px;padding:14px;max-height:95vh;overflow:auto}.contract-document-actions{display:flex;gap:8px;justify-content:flex-end;margin-bottom:12px}.contract-document{font-family:Tajawal,Arial,sans-serif;line-height:1.9;color:#172033}.contract-document header{text-align:center;border-bottom:2px solid #0d9488;padding-bottom:10px}.contract-document h1{color:#087e73;margin:0}.contract-document h2{margin:4px 0}.contract-document h3{background:#e8f4f2;padding:6px 10px;border-radius:6px;margin:18px 0 8px}.contract-signatures{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:28px 0}.contract-document footer{text-align:center;border-top:1px solid #ddd;padding-top:10px;font-size:11px;color:#64748b}@media print{body *{visibility:hidden!important}#contract-document-modal,#contract-document-modal *{visibility:visible!important}#contract-document-modal{position:absolute!important;inset:0!important;padding:0!important;background:#fff!important;overflow:visible!important;display:block!important}#contract-document-modal .contract-document-dialog{max-width:none!important;max-height:none!important;overflow:visible!important;border:0!important;border-radius:0!important;box-shadow:none!important;padding:0!important}#contract-document-modal .contract-document-actions{display:none!important}.contract-document{font-size:12pt!important}}';document.head.appendChild(style);}
+      const d=await api('get_contract_document',{contractId});
+      if(!window.showLimousineContractDocument)throw new Error('عارض العقد غير متاح حالياً.');
+      window.showLimousineContractDocument(d.contract||{});
     } catch(e){notice(e.message,true);}
   }
   async function loadChats() {
@@ -357,11 +331,14 @@
       try{
         const cityId=$('city').value,categoryId=$('category').value,price=pricingFor(cityId,categoryId);
         if(!price)throw new Error('لا يوجد سعر محدد لهذه المدينة وفئة السيارة.');
-        const start=new Date($('start').value);
-        if(!Number.isFinite(start.getTime())||start<=new Date())throw new Error('حدد موعد بداية في المستقبل.');
-        const days=Number($('days').value);
-        if(days<price.min_days||(price.max_days&&days>price.max_days))throw new Error('مدة التأجير خارج المدة المتاحة لهذه الفئة.');
-        await api('create_request',{passengerId:user.id,cityId,pickupArea:$('pickup').value,startAt:start.toISOString(),durationDays:days,categoryId,passengerCount:Number($('passengers').value),purpose:$('purpose').value,notes:$('notes').value});
+        const startDate=$('start').value;
+        if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(startDate))throw new Error('حدد تاريخ بداية التأجير.');
+        const [year,month,day]=startDate.split('-').map(Number),check=new Date(Date.UTC(year,month-1,day));
+        if(check.getUTCFullYear()!==year||check.getUTCMonth()!==month-1||check.getUTCDate()!==day)throw new Error('تاريخ بداية التأجير غير صحيح.');
+        const start=new Date(startDate+'T07:00:00+02:00'),days=Number($('days').value);
+        if(!Number.isFinite(start.getTime())||start<=new Date())throw new Error('يجب أن يكون تاريخ بداية التأجير في المستقبل عند الساعة 7 صباحاً.');
+        if(!Number.isInteger(days)||days<1||days>90||(price.max_days&&days>price.max_days))throw new Error('مدة التأجير يجب أن تكون يوماً كاملاً واحداً أو أكثر ضمن الحد المتاح.');
+        await api('create_request',{passengerId:user.id,cityId,pickupArea:$('pickup').value,startDate,durationDays:days,categoryId,passengerCount:Number($('passengers').value),purpose:$('purpose').value,notes:$('notes').value});
         $('request-form').reset();updateEstimate();notice('تم نشر طلب التأجير للسائقين المؤهلين.');
         sectionLoaded.requests=false;
       }catch(e){notice(e.message,true);}
