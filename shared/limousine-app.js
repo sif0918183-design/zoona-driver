@@ -107,6 +107,7 @@
     list.innerHTML=requests.map(r=>{
       const acc=acceptances.filter(a=>a.request_id===r.id && ['accepted','selected','contracted'].includes(a.status));
       const contract=contracts.find(c=>c.request_id===r.id);
+      const canCancelRequest=['open','awaiting_driver_selection','driver_selected'].includes(r.status);
       const ds=drivers.filter(d=>d.request_id===r.id && acc.some(a=>a.driver_id===d.id));
       const driverCards=ds.map(d=>{
         const a=acc.find(x=>x.driver_id===d.id);
@@ -119,7 +120,8 @@
       return '<article class="card"><div class="line"><strong>طلب تأجير</strong><span class="pill">'+esc(statusNames[r.status]||r.status)+'</span></div>'+
         '<p>'+esc(r.pickup_area)+' — '+date(r.start_at)+'</p><p>'+r.duration_days+' يوم · '+money(r.estimated_total)+'</p>'+
         (acc.length?'<div class="driver-list"><b>السائقون الذين قبلوا ('+acc.length+')</b>'+driverCards+'</div>':'<p class="muted">بانتظار قبول السائقين.</p>')+
-        (contract?'<p class="muted">العقد: '+esc(statusNames[contract.status]||contract.status)+'</p>':'')+'</article>';
+        (contract?'<p class="muted">العقد: '+esc(statusNames[contract.status]||contract.status)+'</p>':'')+
+        (canCancelRequest?'<button class="secondary" data-cancel-request="'+esc(r.id)+'">إلغاء الطلب</button>':'')+'</article>';
     }).join('');
     list.querySelectorAll('[data-select]').forEach(btn=>btn.onclick=async()=>{
       try {
@@ -128,6 +130,12 @@
         notice('تم تسجيل اختيار السائق. يبدأ تأمين العمولة وفق الموعد المحدد قبل بداية التأجير.');
         await passengerRequests();
       } catch(e) { notice(e.message,true); btn.disabled=false; }
+    });
+    list.querySelectorAll('[data-cancel-request]').forEach(btn=>btn.onclick=async()=>{
+      if(!confirm('هل تريد إلغاء طلب التأجير؟ لن تُحجز أي عمولة في هذه المرحلة.'))return;
+      try{btn.disabled=true;await api('cancel_request',{passengerId:user.id,requestId:btn.dataset.cancelRequest});
+        notice('تم إلغاء الطلب قبل حجز العمولة.');await passengerRequests();}
+      catch(e){notice(e.message,true);btn.disabled=false;}
     });
   }
   function renderDriverRequests() {
@@ -149,11 +157,14 @@
     $('accepted-requests').innerHTML=acceptedRequests.length?acceptedRequests.map(r=>{
       const expired=r.status==='expired';
       const fundingExpired=r.acceptance_status==='funding_expired';
-      const label=expired?'فات وقته':fundingExpired?'انتهت مهلة تأمين العمولة':r.acceptance_status==='accepted'?'بانتظار اختيار الراكب':r.acceptance_status==='selected'?'تم اختيارك — بانتظار تأمين العمولة':'تم التعاقد';
-      const detail=expired?'انتهى موعد بداية التأجير دون اختيار سائق وتأمين العمولة، وأُغلق الطلب تلقائياً.':fundingExpired?'لم يتم تأمين العمولة خلال المهلة، ويمكن للراكب اختيار سائق بديل.':r.acceptance_status==='accepted'?'ينتظر الطلب اختيار الراكب. لا يتم حجز العمولة عند القبول المبدئي.':r.acceptance_status==='selected'?'تم اختيارك لهذا الطلب. تبدأ إجراءات تأمين العمولة وفق موعد الحجز.':'راجع قسم العقود لمتابعة الحجز.';
+      const withdrawn=r.acceptance_status==='withdrawn';
+      const canWithdraw=!expired&&!fundingExpired&&!withdrawn&&['accepted','selected'].includes(r.acceptance_status)&&['open','awaiting_driver_selection','driver_selected'].includes(r.status);
+      const label=expired?'فات وقته':fundingExpired?'انتهت مهلة تأمين العمولة':withdrawn?'سحبت قبولك':r.acceptance_status==='accepted'?'بانتظار اختيار الراكب':r.acceptance_status==='selected'?'تم اختيارك — بانتظار تأمين العمولة':'تم التعاقد';
+      const detail=expired?'انتهى موعد بداية التأجير دون اختيار سائق وتأمين العمولة، وأُغلق الطلب تلقائياً.':fundingExpired?'لم يتم تأمين العمولة خلال المهلة، ويمكن للراكب اختيار سائق بديل.':withdrawn?'سحبت قبولك لهذا الطلب.':r.acceptance_status==='accepted'?'ينتظر الطلب اختيار الراكب. لا يتم حجز العمولة عند القبول المبدئي.':r.acceptance_status==='selected'?'تم اختيارك لهذا الطلب. تبدأ إجراءات تأمين العمولة وفق موعد الحجز.':'راجع قسم العقود لمتابعة الحجز.';
       return '<article class="card"><div class="line"><strong>طلب قبلته</strong><span class="pill">'+label+'</span></div>'+
         '<p>'+esc(r.pickup_area)+' · '+date(r.start_at)+'</p><p>'+r.duration_days+' يوم · '+money(r.estimated_total)+'</p>'+
-        '<p class="muted">'+detail+'</p></article>';
+        '<p class="muted">'+detail+'</p>'+
+        (canWithdraw?'<button class="secondary" data-withdraw="'+esc(r.id)+'">سحب القبول</button>':'')+'</article>';
     }).join(''):'<div class="empty">لا توجد طلبات قبلتها وتنتظر اختيار الراكب.</div>';
   }
   async function driverRequests() {
@@ -163,12 +174,25 @@
     if (data.profile) setProfile(data.profile.full_name, data.profile.balance);
     renderDriverRequests();
     renderAcceptedRequests();
+    $('accepted-requests').querySelectorAll('[data-withdraw]').forEach(btn=>btn.onclick=async()=>{
+      if(!confirm('هل تريد سحب قبولك لهذا الطلب؟ لن تُخصم أو تُحجز عمولة.'))return;
+      try{btn.disabled=true;await api('withdraw_acceptance',{driverId:user.id,requestId:btn.dataset.withdraw});
+        notice('تم سحب قبولك دون أي خصم أو حجز عمولة.');await driverRequests();}
+      catch(e){notice(e.message,true);btn.disabled=false;}
+    });
   }
   async function loadContracts() {
     const d=await api('list_contracts',{driverId:user.id,passengerId:user.id});
     contracts=d.contracts||[];
     $('contracts').innerHTML=contracts.length?contracts.map(c=>{
       const canView=Number(c.commission_held||0)>0 && (['active','completion_requested','awaiting_settlement','settled','disputed'].includes(c.status)||(c.status==='booked'&&new Date(c.start_at).getTime()<=Date.now()));
+      const cx=c.cancellation_request;
+      const canRequestCancellation=['booked','active'].includes(c.status)&&(!cx||['rejected'].includes(cx.status));
+      const cancellationMarkup=cx?.status==='pending_counterparty'
+        ?(cx.requested_by_role===role?'<p class="muted">طلب الإلغاء الذي قدمته بانتظار موافقة الطرف الآخر.</p>':'<p class="muted">طلب الطرف الآخر إلغاء العقد: '+esc(cx.reason)+'</p><button class="secondary" data-cancel-approve="'+esc(c.id)+'">الموافقة على الإلغاء</button><button class="small" data-cancel-reject="'+esc(c.id)+'">رفض الطلب</button>')
+        :cx?.status==='awaiting_admin'?'<p class="muted">وافق الطرفان على الإلغاء. الطلب الآن بانتظار اعتماد إدارة تراكا.</p>'
+        :cx?.status==='rejected'?'<p class="muted">رُفض طلب الإلغاء السابق. يظل العقد قائماً.</p>'
+        :cx?.status==='approved'?'<p class="muted">اعتمدت الإدارة إلغاء العقد والتسوية.</p>':'';
       return '<article class="card"><div class="line"><strong>عقد تأجير</strong><span class="pill">'+esc(statusNames[c.status]||c.status)+'</span></div>'+
       '<p><b>المدينة:</b> '+esc(c.city_name||c.pickup_area||'—')+'</p><p><b>بداية العقد:</b> '+date(c.start_at)+'</p>'+
       '<p><b>المدة:</b> '+Number(c.duration_days||0)+' يوم</p><p><b>نهاية العقد:</b> '+date(c.scheduled_end_at)+'</p>'+
@@ -178,7 +202,9 @@
       (c.status==='active'?'<button class="secondary" data-end="'+esc(c.id)+'">طلب إنهاء الخدمة</button>':'')+
       (['active','completion_requested','awaiting_settlement'].includes(c.status)?'<button class="small" data-dispute="'+esc(c.id)+'">رفع نزاع للإدارة</button>':'')+
       (c.status==='completion_requested' && c.end_requested_by!==role?'<button class="secondary" data-confirm-end="'+esc(c.id)+'">نعم، انتهت الخدمة</button><button class="small" data-reject-end="'+esc(c.id)+'">لا، لم تنتهِ الخدمة</button>':c.status==='completion_requested'?'<p class="muted">طلب الإنهاء بانتظار تأكيد الطرف الآخر.</p>':'')+
-      (c.status==='awaiting_settlement'?'<p class="muted">تم تأكيد انتهاء الخدمة، والعقد بانتظار مراجعة الإدارة والتسوية.</p>':'')+'</article>';
+      (c.status==='awaiting_settlement'?'<p class="muted">تم تأكيد انتهاء الخدمة، والعقد بانتظار مراجعة الإدارة والتسوية.</p>':'')+
+      cancellationMarkup+
+      (canRequestCancellation?'<button class="secondary" data-request-cancel="'+esc(c.id)+'">طلب إلغاء العقد</button>':'')+'</article>';
     }).join(''):'<div class="empty">لا توجد عقود حتى الآن.</div>';
     $('contracts').querySelectorAll('[data-contract-document]').forEach(btn=>btn.onclick=()=>showContractDocument(btn.dataset.contractDocument));
     $('contracts').querySelectorAll('[data-contact]').forEach(btn=>btn.onclick=async()=>{
@@ -190,6 +216,19 @@
     $('contracts').querySelectorAll('[data-confirm-end]').forEach(btn=>btn.onclick=async()=>{if(!confirm('هل تؤكد أن خدمة التأجير قد انتهت فعلاً؟'))return;try{await api('confirm_end',{contractId:btn.dataset.confirmEnd});notice('تم تأكيد انتهاء الخدمة، والعقد بانتظار التسوية الإدارية.');await loadContracts();}catch(e){notice(e.message,true);}});
     $('contracts').querySelectorAll('[data-reject-end]').forEach(btn=>btn.onclick=async()=>{if(!confirm('هل تؤكد أن خدمة التأجير لم تنتهِ بعد وأن العقد سيظل نشطاً؟'))return;try{await api('reject_end',{contractId:btn.dataset.rejectEnd});notice('تم رفض طلب الإنهاء، وسيظل العقد نشطاً.');await loadContracts();}catch(e){notice(e.message,true);}});
     $('contracts').querySelectorAll('[data-dispute]').forEach(btn=>btn.onclick=async()=>{const reason=prompt('اكتب سبب النزاع باختصار:');if(reason===null)return;try{await api('raise_dispute',{contractId:btn.dataset.dispute,reason});notice('تم رفع النزاع للإدارة.');await loadContracts();}catch(e){notice(e.message,true);}});
+    $('contracts').querySelectorAll('[data-request-cancel]').forEach(btn=>btn.onclick=async()=>{
+      const reason=prompt('اكتب سبب طلب إلغاء العقد (مطلوب):');if(reason===null)return;
+      try{btn.disabled=true;await api('request_cancellation',{contractId:btn.dataset.requestCancel,reason});
+        notice('أُرسل طلب الإلغاء للطرف الآخر للموافقة.');await loadContracts();}
+      catch(e){notice(e.message,true);btn.disabled=false;}
+    });
+    $('contracts').querySelectorAll('[data-cancel-approve],[data-cancel-reject]').forEach(btn=>btn.onclick=async()=>{
+      const decision=btn.hasAttribute('data-cancel-approve')?'approve':'reject';
+      if(!confirm(decision==='approve'?'هل توافق على طلب إلغاء العقد؟ سيُحال بعدها إلى الإدارة لاعتماد التسوية.':'هل تريد رفض طلب إلغاء العقد؟'))return;
+      try{btn.disabled=true;await api('respond_cancellation',{contractId:btn.dataset.cancelApprove||btn.dataset.cancelReject,decision});
+        notice(decision==='approve'?'تمت الموافقة، وينتظر الطلب اعتماد الإدارة.':'تم رفض طلب الإلغاء.');await loadContracts();}
+      catch(e){notice(e.message,true);btn.disabled=false;}
+    });
   }
 
   async function showContractDocument(contractId) {
