@@ -272,7 +272,7 @@
     const d=await api('list_driver_funding',{driverId:user.id}),item=(d.funding||[])[0],card=$('limo-funding-card');
     if(!card)return;
     if(!item){card.hidden=true;fundingDeadline=null;return;}
-    fundingDeadline=item.funding_deadline;$('limo-funding-required').textContent=money(item.commission_due);card.hidden=false;updateFundingClock();
+    fundingDeadline=item.funding_deadline;$('limo-funding-required').textContent=money(item.commission_due);$('limo-funding-balance').textContent=money(d.balance);card.hidden=false;updateFundingClock();
     if(!fundingClockTimer)fundingClockTimer=setInterval(updateFundingClock,1000);
   }
   function updateFundingClock(){
