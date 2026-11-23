@@ -8,8 +8,8 @@
   let requests = [], acceptances = [], drivers = [], contracts = [], acceptedRequests = [];
   let activeSection = role === 'passenger' ? 'request' : 'available';
   let sectionLoaded = {};
-  const money = n => Number(n || 0).toLocaleString('ar-SD') + ' ج.س';
-  const date = d => d ? new Date(d).toLocaleString('ar-SD', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+  const money = n => Math.round(Number(n || 0)).toLocaleString('en-US') + ' ج.س';
+  const date = d => d ? new Date(d).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
   const statusNames = {
     open:'بانتظار قبول السائقين', awaiting_driver_selection:'بانتظار اختيار سائق',
     driver_selected:'تم اختيار السائق', confirmed:'مؤكد', awaiting_funding:'بانتظار تأمين العمولة',
@@ -157,8 +157,6 @@
     renderAcceptedRequests();
   }
   async function loadContracts() {
-    const openChats=new Set(Array.from(document.querySelectorAll('.chat:not([hidden])')).map(el=>el.id.replace('chat-','')));
-    const drafts=new Map(Array.from(document.querySelectorAll('[id^="msg-"]')).map(el=>[el.id.replace('msg-',''),el.value]));
     const d=await api('list_contracts',{driverId:user.id,passengerId:user.id});
     contracts=d.contracts||[];
     $('contracts').innerHTML=contracts.length?contracts.map(c=>
@@ -169,7 +167,7 @@
       (['active','completion_requested','awaiting_settlement'].includes(c.status)?'<button class="small" data-dispute="'+esc(c.id)+'">رفع نزاع للإدارة</button>':'')+
       (c.status==='completion_requested' && c.end_requested_by!==role?'<button class="secondary" data-confirm-end="'+esc(c.id)+'">نعم، انتهت الخدمة</button><button class="small" data-reject-end="'+esc(c.id)+'">لا، لم تنتهِ الخدمة</button>':c.status==='completion_requested'?'<p class="muted">طلب الإنهاء بانتظار تأكيد الطرف الآخر.</p>':'')+
       (c.status==='awaiting_settlement'?'<p class="muted">تم تأكيد انتهاء الخدمة، والعقد بانتظار مراجعة الإدارة والتسوية.</p>':'')+
-      '<button class="small" data-chat="'+esc(c.id)+'">فتح المحادثة</button><div class="chat" id="chat-'+esc(c.id)+'" hidden><div class="messages" id="messages-'+esc(c.id)+'"></div><div class="line"><input id="msg-'+esc(c.id)+'" placeholder="اكتب رسالتك"><button class="small" data-send="'+esc(c.id)+'">إرسال</button></div></div></article>'
+      '</article>'
     ).join(''):'<div class="empty">لا توجد عقود حتى الآن.</div>';
     $('contracts').querySelectorAll('[data-contact]').forEach(btn=>btn.onclick=async()=>{
       const c=btn.dataset.contact,box=$('contact-'+c);
@@ -201,20 +199,27 @@
       try{await api('raise_dispute',{contractId:btn.dataset.dispute,reason});notice('تم رفع النزاع للإدارة.');await loadContracts();}
       catch(e){notice(e.message,true);}
     });
-    $('contracts').querySelectorAll('[data-chat]').forEach(btn=>btn.onclick=async()=>{
-      const c=btn.dataset.chat,box=$('chat-'+c);box.hidden=!box.hidden;
-      if(!box.hidden)await loadMessages(c);
+  }
+  async function loadChats() {
+    const d=await api('list_contracts',{driverId:user.id,passengerId:user.id});
+    const items=d.contracts||[];
+    $('chats').innerHTML=items.length?items.map(c=>
+      '<article class="card"><div class="line"><strong>محادثة عقد التأجير</strong><span class="pill">'+esc(statusNames[c.status]||c.status)+'</span></div>'+
+      '<p>'+date(c.start_at)+' — '+date(c.scheduled_end_at)+'</p>'+
+      '<button class="small" data-open-chat="'+esc(c.id)+'">فتح المحادثة</button>'+
+      '<div class="chat" id="chat-'+esc(c.id)+'" hidden><div class="messages" id="messages-'+esc(c.id)+'"></div><div class="line"><input id="msg-'+esc(c.id)+'" placeholder="اكتب رسالتك"><button class="small" data-send-chat="'+esc(c.id)+'">إرسال</button></div></div></article>'
+    ).join(''):'<div class="empty">لا توجد محادثات حتى الآن.</div>';
+    $('chats').querySelectorAll('[data-open-chat]').forEach(btn=>btn.onclick=async()=>{
+      const c=btn.dataset.openChat,box=$('chat-'+c);box.hidden=!box.hidden;
+      if(!box.hidden) await loadMessages(c);
     });
-    $('contracts').querySelectorAll('[data-send]').forEach(btn=>btn.onclick=async()=>{
-      const c=btn.dataset.send,field=$('msg-'+c);
+    $('chats').querySelectorAll('[data-send-chat]').forEach(btn=>btn.onclick=async()=>{
+      const c=btn.dataset.sendChat,field=$('msg-'+c);
       try{await api('send_message',{contractId:c,message:field.value});field.value='';await loadMessages(c);}
       catch(e){notice(e.message,true);}
     });
-    for(const c of openChats){
-      const box=$('chat-'+c);
-      if(box){box.hidden=false;if(drafts.has(c))$('msg-'+c).value=drafts.get(c);loadMessages(c).catch(()=>{});}
-    }
   }
+
   async function loadMessages(contractId) {
     const d=await api('list_messages',{contractId});
     const target=$('messages-'+contractId);
@@ -235,8 +240,10 @@
     if(sectionLoaded[section] && !force) return;
     if(role==='passenger' && section==='requests') await passengerRequests();
     if(role==='passenger' && section==='contracts') await loadContracts();
+    if(role==='passenger' && section==='chats') await loadChats();
     if(role==='driver' && (section==='available'||section==='accepted')) await driverRequests();
     if(role==='driver' && section==='contracts') await loadContracts();
+    if(role==='driver' && section==='chats') await loadChats();
     sectionLoaded[section]=true;
   }
   function showSection(section, button) {
