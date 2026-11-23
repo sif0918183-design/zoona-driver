@@ -200,7 +200,30 @@
         '<h3>ثالثاً: القيمة والعمولة</h3><p><b>السعر اليومي:</b> '+money(c.daily_price_snapshot)+'</p><p><b>إجمالي العقد:</b> '+money(c.contract_value_snapshot)+'</p><p><b>نسبة العمولة:</b> '+Number(c.commission_rate_snapshot||0)+'%</p><p><b>العمولة المؤمّنة:</b> '+money(c.commission_held)+'</p>'+
         '<h3>رابعاً: الشروط والالتزامات</h3><ol><li>يلتزم السائق بتوفير السيارة المتفق عليها وخدمة النقل طوال المدة والمواعيد المحددة.</li><li>يلتزم الراكب بسداد قيمة التأجير المتفق عليها وفق آلية الدفع المعتمدة بين الطرفين.</li><li>لا يجوز تغيير مدة التأجير أو نطاق الخدمة إلا بموافقة الطرفين وتوثيق التعديل عبر المنصة.</li><li>يتم توثيق إنهاء الخدمة وموافقة الطرف الآخر عبر المنصة، وتُجرى التسوية وفق المدة المنفذة والضوابط المعتمدة.</li><li>تُستخدم المحادثة داخل المنصة لتوثيق التواصل المتعلق بالعقد، ويُحال الخلاف إلى إدارة تراكا.</li></ol>'+
         '<h3>خامساً: اعتماد العقد</h3><p>هذا المستند ملخص لبيانات التعاقد المسجلة في منصة ليموزين تراكا، وقد تم تأمين العمولة الموضحة أعلاه.</p><div class="contract-signatures"><div>توقيع الراكب: __________________</div><div>توقيع السائق: __________________</div></div><footer>صدر إلكترونياً من منصة ليموزين تراكا · '+date(new Date().toISOString())+'</footer></article></div>';
-      document.body.appendChild(modal);$('close-contract').onclick=()=>modal.remove();$('print-contract').onclick=()=>window.print();
+      document.body.appendChild(modal);$('close-contract').onclick=()=>modal.remove();
+      $('print-contract').onclick=async()=>{
+        const button=$('print-contract');button.disabled=true;
+        try{
+          if(!window.html2pdf){
+            await new Promise((resolve,reject)=>{
+              const script=document.createElement('script');
+              script.src='https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+              script.onload=resolve;script.onerror=reject;document.head.appendChild(script);
+            });
+          }
+          await window.html2pdf().set({
+            margin:10,
+            filename:'limousine-contract-'+String(c.id||'contract').slice(0,8)+'.pdf',
+            image:{type:'jpeg',quality:0.98},
+            html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},
+            jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
+            pagebreak:{mode:['css','legacy']}
+          }).from(modal.querySelector('.contract-document')).save();
+        }catch(error){
+          notice('تعذر تنزيل PDF مباشرة. يمكنك حفظ نسخة PDF من نافذة الطباعة.',true);
+          window.print();
+        }finally{button.disabled=false;}
+      };
       if(!document.getElementById('contract-print-style')){const style=document.createElement('style');style.id='contract-print-style';style.textContent='.contract-document-overlay{position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,.72);overflow:auto;padding:14px;display:flex;justify-content:center;align-items:flex-start}.contract-document-dialog{background:#fff;color:#172033;border-radius:14px;width:100%;max-width:760px;padding:14px;max-height:95vh;overflow:auto}.contract-document-actions{display:flex;gap:8px;justify-content:flex-end;margin-bottom:12px}.contract-document{font-family:Tajawal,Arial,sans-serif;line-height:1.9;color:#172033}.contract-document header{text-align:center;border-bottom:2px solid #0d9488;padding-bottom:10px}.contract-document h1{color:#087e73;margin:0}.contract-document h2{margin:4px 0}.contract-document h3{background:#e8f4f2;padding:6px 10px;border-radius:6px;margin:18px 0 8px}.contract-signatures{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:28px 0}.contract-document footer{text-align:center;border-top:1px solid #ddd;padding-top:10px;font-size:11px;color:#64748b}@media print{body *{visibility:hidden!important}#contract-document-modal,#contract-document-modal *{visibility:visible!important}#contract-document-modal{position:absolute!important;inset:0!important;padding:0!important;background:#fff!important;overflow:visible!important;display:block!important}#contract-document-modal .contract-document-dialog{max-width:none!important;max-height:none!important;overflow:visible!important;border:0!important;border-radius:0!important;box-shadow:none!important;padding:0!important}#contract-document-modal .contract-document-actions{display:none!important}.contract-document{font-size:12pt!important}}';document.head.appendChild(style);}
     } catch(e){notice(e.message,true);}
   }
