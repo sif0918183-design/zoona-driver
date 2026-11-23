@@ -241,7 +241,7 @@ export default async function handler(req, res) {
       if(!owns)return fail(res,403,'لا تملك صلاحية الوصول إلى هذا العقد');
       if(Number(contract.commission_held||0)<=0||!['booked','active','completion_requested','awaiting_settlement','settled','disputed'].includes(contract.status))return fail(res,403,'لا يمكن إصدار العقد قبل تأمين العمولة.');
       const [{data: request,error: requestError},{data: driver,error: driverError},{data: passenger,error: passengerError}]=await Promise.all([
-        db.from('limousine_requests').select('city_id,pickup_area,requested_category_id').eq('id',contract.request_id).maybeSingle(),
+        db.from('limousine_requests').select('city_id,pickup_area,requested_category_id,passenger_count,usage_purpose,notes').eq('id',contract.request_id).maybeSingle(),
         db.from('drivers').select('full_name,phone,whatsapp_number,car_model,car_type,car_color,car_plate_number').eq('id',contract.driver_id).maybeSingle(),
         db.from('customers').select('full_name,phone,phone2').eq('id',contract.passenger_id).maybeSingle()
       ]);
@@ -251,7 +251,7 @@ export default async function handler(req, res) {
         db.from('vehicle_categories').select('name_ar').eq('id',request.requested_category_id).maybeSingle()
       ]);
       if(cityError||categoryError)throw cityError||categoryError;
-      return res.status(200).json({success:true,contract:{...contract,city_name:city?.name_ar||'',pickup_area:request.pickup_area,category_name:category?.name_ar||'',driver_name:driver.full_name,driver_phone:driver.whatsapp_number||driver.phone,passenger_name:passenger.full_name,passenger_phone:passenger.phone||passenger.phone2,car_model:driver.car_model,car_type:driver.car_type,car_color:driver.car_color,car_plate_number:driver.car_plate_number}});
+      return res.status(200).json({success:true,contract:{...contract,city_name:city?.name_ar||'',pickup_area:request.pickup_area,category_name:category?.name_ar||'',passenger_count:request.passenger_count,usage_purpose:request.usage_purpose,request_notes:request.notes,driver_name:driver.full_name,driver_phone:driver.whatsapp_number||driver.phone,passenger_name:passenger.full_name,passenger_phone:passenger.phone||passenger.phone2,car_model:driver.car_model,car_type:driver.car_type,car_color:driver.car_color,car_plate_number:driver.car_plate_number}});
     }
 
     if (action === 'list_messages' || action === 'send_message' || action === 'request_end' || action === 'confirm_end' || action === 'reject_end' || action === 'raise_dispute') {
