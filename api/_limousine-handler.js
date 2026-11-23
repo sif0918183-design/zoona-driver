@@ -171,10 +171,13 @@ export default async function handler(req, res) {
     if (action === 'list_notifications' || action === 'mark_notification_read') {
       if (!['passenger','driver'].includes(session?.role)) return fail(res, 403, 'غير مصرح');
       if (action === 'list_notifications') {
-        const { data, error } = await db.from('limousine_notifications').select('id,event_code,title,body,payload,created_at,read_at')
-          .eq('recipient_id', id).eq('recipient_type', session.role).order('created_at', { ascending: false }).limit(30);
-        if (error) throw error;
-        return res.status(200).json({ success: true, notifications: data || [] });
+        const [{ data, error }, { count, error: countError }, { data: unreadRows, error: unreadError }] = await Promise.all([
+          db.from('limousine_notifications').select('id,event_code,title,body,payload,created_at,read_at').eq('recipient_id', id).eq('recipient_type', session.role).order('created_at', { ascending: false }).limit(30),
+          db.from('limousine_notifications').select('id', { count: 'exact', head: true }).eq('recipient_id', id).eq('recipient_type', session.role).is('read_at', null),
+          db.from('limousine_notifications').select('id,event_code,title,body,created_at').eq('recipient_id', id).eq('recipient_type', session.role).is('read_at', null).order('created_at', { ascending: false }).limit(1)
+        ]);
+        if (error || countError || unreadError) throw error || countError || unreadError;
+        return res.status(200).json({ success: true, notifications: data || [], unread_count: count || 0, last_unread: unreadRows?.[0] || null });
       }
       const { error } = await db.from('limousine_notifications').update({ read_at: new Date().toISOString() })
         .eq('id', b.notificationId).eq('recipient_id', id).eq('recipient_type', session.role);
@@ -209,7 +212,46 @@ export default async function handler(req, res) {
       query = session.role === 'passenger' ? query.eq('passenger_id', id) : query.eq('driver_id', id);
       const { data, error } = await query;
       if (error) throw error;
-      return res.status(200).json({ success: true, contracts: data || [] });
+      const requestIds=[...new Set((data||[]).map(c=>c.request_id))];
+      const {data: requestRows,error: requestError}=requestIds.length?await db.from('limousine_requests').select('id,city_id,pickup_area').in('id',requestIds):{data:[],error:null};
+      if(requestError)throw requestError;
+      const cityIds=[...new Set((requestRows||[]).map(r=>r.city_id))];
+      const {data: cityRows,error: cityError}=cityIds.length?await db.from('cities').select('id,name_ar').in('id',cityIds):{data:[],error:null};
+      if(cityError)throw cityError;
+      const requestMap=new Map((requestRows||[]).map(r=>[r.id,r])),cityMap=new Map((cityRows||[]).map(c=>[c.id,c.name_ar]));
+      const contracts=(data||[]).map(c=>({...c,city_name:cityMap.get(requestMap.get(c.request_id)?.city_id)||'',pickup_area:requestMap.get(c.request_id)?.pickup_area||''}));
+      return res.status(200).json({ success: true, contracts });
+    }
+
+    if(action==='list_driver_funding'){
+      if(session?.role!=='driver'||id!==b.driverId)return fail(res,403,'غير مصرح');
+      const [{data: funding,error},{data: driver,error: driverError}]=await Promise.all([
+        db.from('limousine_contracts').select('id,request_id,status,funding_deadline,commission_due,start_at,duration_days').eq('driver_id',id).eq('status','awaiting_funding').not('funding_deadline','is',null).order('funding_deadline').limit(5),
+        db.from('drivers').select('balance').eq('id',id).maybeSingle()
+      ]);
+      if(error||driverError)throw error||driverError;
+      return res.status(200).json({success:true,funding:funding||[],balance:Number(driver?.balance||0)});
+    }
+
+    if(action==='get_contract_document'){
+      if(!['passenger','driver'].includes(session?.role))return fail(res,403,'غير مصرح');
+      const {data: contract,error: contractError}=await db.from('limousine_contracts').select('*').eq('id',b.contractId).maybeSingle();
+      if(contractError||!contract)throw contractError||new Error('contract_not_found');
+      const owns=session.role==='passenger'?contract.passenger_id===id:contract.driver_id===id;
+      if(!owns)return fail(res,403,'لا تملك صلاحية الوصول إلى هذا العقد');
+      if(Number(contract.commission_held||0)<=0||!['booked','active','completion_requested','awaiting_settlement','settled','disputed'].includes(contract.status))return fail(res,403,'لا يمكن إصدار العقد قبل تأمين العمولة.');
+      const [{data: request,error: requestError},{data: driver,error: driverError},{data: passenger,error: passengerError}]=await Promise.all([
+        db.from('limousine_requests').select('city_id,pickup_area,requested_category_id').eq('id',contract.request_id).maybeSingle(),
+        db.from('drivers').select('full_name,phone,whatsapp_number,car_model,car_type,car_color,car_plate_number').eq('id',contract.driver_id).maybeSingle(),
+        db.from('customers').select('full_name,phone,phone2').eq('id',contract.passenger_id).maybeSingle()
+      ]);
+      if(requestError||driverError||passengerError||!request||!driver||!passenger)throw requestError||driverError||passengerError||new Error('contract_details_not_found');
+      const [{data: city,error: cityError},{data: category,error: categoryError}]=await Promise.all([
+        db.from('cities').select('name_ar').eq('id',request.city_id).maybeSingle(),
+        db.from('vehicle_categories').select('name_ar').eq('id',request.requested_category_id).maybeSingle()
+      ]);
+      if(cityError||categoryError)throw cityError||categoryError;
+      return res.status(200).json({success:true,contract:{...contract,city_name:city?.name_ar||'',pickup_area:request.pickup_area,category_name:category?.name_ar||'',driver_name:driver.full_name,driver_phone:driver.whatsapp_number||driver.phone,passenger_name:passenger.full_name,passenger_phone:passenger.phone||passenger.phone2,car_model:driver.car_model,car_type:driver.car_type,car_color:driver.car_color,car_plate_number:driver.car_plate_number}});
     }
 
     if (action === 'list_messages' || action === 'send_message' || action === 'request_end' || action === 'confirm_end' || action === 'reject_end' || action === 'raise_dispute') {
