@@ -114,14 +114,22 @@ export default async function handler(req, res) {
         .eq('id', id).maybeSingle();
       if (dre || !driver) throw dre || new Error('driver_not_found');
       if (!driver.is_active || !driver.is_approved || driver.is_banned || !driver.is_available || driver.status === 'SUSPENDED') return fail(res, 403, 'driver_not_eligible');
-      const { data: cats, error: catErr } = await db.from('vehicle_categories').select('id,name_ar');
+      const { data: cats, error: catErr } = await db.from('vehicle_categories').select('id,name_ar,sort_order').eq('is_active', true).order('sort_order');
       if (catErr) throw catErr;
-      const rank = vehicleRank(driver.car_type || driver.vehicle_type);
-      const categoryMap = new Map((cats || []).map(c => [c.id, c.name_ar]));
+      const driverCategory = (cats || []).find(c => String(c.id) === String(driver.car_type || driver.vehicle_type));
+      const legacyDriverRank = vehicleRank(driver.car_type || driver.vehicle_type);
+      const categoryMap = new Map((cats || []).map(c => [String(c.id), c]));
       const { data: rows, error } = await db.from('limousine_requests').select('*')
         .in('status', ['open','awaiting_driver_selection']).gt('start_at', new Date().toISOString()).order('start_at').limit(100);
       if (error) throw error;
-      const eligible = (rows || []).filter(r => rank >= categoryRank(categoryMap.get(r.requested_category_id)));
+      const eligible = (rows || []).filter(r => {
+        const requestedCategory = categoryMap.get(String(r.requested_category_id));
+        if (!requestedCategory) return false;
+        if (driverCategory) return Number(driverCategory.sort_order || 0) >= Number(requestedCategory.sort_order || 0);
+        // Backward compatibility for older drivers whose car_type stores legacy text keys.
+        const requestedRank = categoryRank(requestedCategory.name_ar);
+        return legacyDriverRank > 0 && requestedRank < 99 && legacyDriverRank >= requestedRank;
+      });
       const ids = eligible.map(r => r.id);
       const [{ data: ownAcceptances, error: ownError }, { data: counts, error: countErr }] = await Promise.all([
         db.from('limousine_acceptances').select('request_id,status').eq('driver_id', id).in('status', ['accepted','selected','contracted']),
