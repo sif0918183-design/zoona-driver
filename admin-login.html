@@ -946,6 +946,7 @@
         let allCustomers = [];
         let allDrivers = [];
         let allInstantVehicles = [];
+        let allVehicleCategories = [];
 
         // --- Secure API Helper ---
         async function callAdminAPI(action, params = {}) {
@@ -1001,6 +1002,7 @@
 
                 // Load all data
                 loadInstantVehicles();
+                loadVehicleCategories();
                 loadDashboardStats();
                 loadCustomers();
                 loadDrivers();
@@ -1027,7 +1029,7 @@
                 document.getElementById('total-customers').textContent = res.stats.customers;
                 document.getElementById('total-drivers').textContent = res.stats.drivers;
                 document.getElementById('active-rides').textContent = res.stats.activeRides;
-                document.getElementById('total-earnings').textContent = res.stats.earnings.toLocaleString();
+                document.getElementById('total-earnings').textContent = res.stats.earnings.toLocaleString('en-US');
                 document.getElementById('admin-whatsapp').value = res.adminWhatsapp;
 
                 // Load all data
@@ -1047,7 +1049,7 @@
                 document.getElementById('total-customers').textContent = res.stats.customers;
                 document.getElementById('total-drivers').textContent = res.stats.drivers;
                 document.getElementById('active-rides').textContent = res.stats.activeRides;
-                document.getElementById('total-earnings').textContent = res.stats.earnings.toLocaleString();
+                document.getElementById('total-earnings').textContent = res.stats.earnings.toLocaleString('en-US');
                 document.getElementById('admin-whatsapp').value = res.adminWhatsapp;
             } catch (error) {
                 console.error('Error loading stats:', error);
@@ -1188,7 +1190,7 @@
                             <div class="user-details">
                                 ${driver.car_model} • ${getVehicleTypeName(driver.car_type)} • ${driver.car_plate}
                                 <br>
-                                الرصيد: <strong>${(driver.balance || 0).toLocaleString()} SDG</strong>
+                                الرصيد: <strong>${(driver.balance || 0).toLocaleString('en-US')} SDG</strong>
                                 • مسجل في: ${formatGregorianDate(driver.created_at)}
                             </div>
                         </div>
@@ -1223,10 +1225,8 @@
             if (!type) return 'غير محدد';
 
             // البحث ديناميكياً في فئات السيارات المجلوبة
-            const found = allInstantVehicles.find(v => v.id.toLowerCase() === type.toLowerCase().trim());
-            if (found) {
-                return found.name;
-            }
+            const found = allVehicleCategories.find(v => String(v.id) === String(type)) || allInstantVehicles.find(v => String(v.id).toLowerCase() === String(type).toLowerCase().trim());
+            if (found) return found.name_ar || found.name;
 
             // الترجمات الاحتياطية (Fallback)
             const names = {
@@ -1259,6 +1259,8 @@
                 loadDrivers();
             } else if (tabName === 'pending-approvals') {
                 loadPendingDrivers();
+            } else if (tabName === 'add-driver') {
+                loadVehicleCategories();
             } else if (tabName === 'instant-vehicles') {
                 loadInstantVehicles();
             }
@@ -1267,6 +1269,7 @@
         let allPendingDrivers = [];
         async function loadPendingDrivers() {
             try {
+                await loadVehicleCategories();
                 const res = await callAdminAPI('list_pending_drivers');
                 allPendingDrivers = res.drivers || [];
                 renderPendingDrivers(allPendingDrivers);
@@ -1328,8 +1331,8 @@
 
                 // Generate options for vehicle types
                 let vehicleOptions = '<option value="">اختر نوع السيارة</option>';
-                allInstantVehicles.forEach(v => {
-                    vehicleOptions += `<option value="${v.id}" ${driver.car_type === v.id ? 'selected' : ''}>${v.name}</option>`;
+                allVehicleCategories.forEach(v => {
+                    vehicleOptions += `<option value="${v.id}" ${String(driver.car_type) === String(v.id) ? 'selected' : ''}>${v.name_ar}</option>`;
                 });
 
                 card.innerHTML = `
@@ -1685,7 +1688,7 @@
                             </div>
                             <div>
                                 <strong>الرصيد الحالي:</strong>
-                                <div><strong>${(driver.balance || 0).toLocaleString()} SDG</strong></div>
+                                <div><strong>${(driver.balance || 0).toLocaleString('en-US')} SDG</strong></div>
                             </div>
                             <div>
                                 <strong>حالة الحساب:</strong>
@@ -1708,7 +1711,7 @@
                                 <div style="padding: 8px 0; border-bottom: 1px solid var(--gray-light);">
                                     <div style="display: flex; justify-content: space-between;">
                                         <span>${formatGregorianDate(ride.created_at)}</span>
-                                        <span><strong>${ride.amount?.toLocaleString()} SDG</strong></span>
+                                        <span><strong>${ride.amount?.toLocaleString('en-US')} SDG</strong></span>
                                     </div>
                                     <div style="font-size: 12px; color: var(--gray);">
                                         حالة: ${getRideStatus(ride.status)} • ${ride.distance_km} كم
@@ -1839,7 +1842,7 @@
                     note
                 });
 
-                showNotification(`تم إضافة ${parseInt(amount).toLocaleString()} SDG إلى رصيد السائق ${res.driverName}`, 'success');
+                showNotification(`تم إضافة ${parseInt(amount).toLocaleString('en-US')} SDG إلى رصيد السائق ${res.driverName}`, 'success');
 
                 closeModal('add-balance-modal');
                 loadDrivers();
@@ -1896,7 +1899,7 @@
                 document.getElementById('initial-balance').value = '15000';
 
                 // Show success message with details
-                showNotification(`تم إضافة السائق ${driverName} بنجاح! الرصيد الإبتدائي: ${parseInt(initialBalance).toLocaleString()} SDG`, 'success');
+                showNotification(`تم إضافة السائق ${driverName} بنجاح! الرصيد الإبتدائي: ${parseInt(initialBalance).toLocaleString('en-US')} SDG`, 'success');
 
                 // Switch to drivers tab and refresh
                 switchTab('drivers');
@@ -2063,6 +2066,30 @@
             }, 3000);
         }
 
+        // --- Limousine categories: use the same vehicle_categories table as admin-panel.html ---
+        async function loadVehicleCategories() {
+            try {
+                const res = await callAdminAPI('get_vehicle_categories');
+                allVehicleCategories = res.categories || [];
+                const select = document.getElementById('car-type');
+                if (select) {
+                    const current = select.value;
+                    select.innerHTML = '<option value="">اختر فئة السيارة</option>' + allVehicleCategories.map(category => {
+                        const option = document.createElement('option');
+                        option.value = category.id;
+                        option.textContent = category.name_ar || '';
+                        return option.outerHTML;
+                    }).join('');
+                    if (current && allVehicleCategories.some(category => String(category.id) === String(current))) select.value = current;
+                }
+                return allVehicleCategories;
+            } catch (error) {
+                console.error('Error loading vehicle categories:', error);
+                showNotification('تعذر تحميل فئات السيارات المعتمدة من لوحة الإدارة', 'error');
+                throw error;
+            }
+        }
+
         // --- Instant Vehicles Management ---
         async function loadInstantVehicles() {
             try {
@@ -2070,16 +2097,6 @@
                 allInstantVehicles = res.vehicles || [];
                 renderInstantVehicles();
 
-                // تعبئة خيارات نوع السيارة في نموذج إضافة سائق جديد ديناميكياً
-                const selectElement = document.getElementById('car-type');
-                if (selectElement) {
-                    selectElement.innerHTML = '<option value="">اختر النوع</option>';
-                    allInstantVehicles.forEach(vehicle => {
-                        selectElement.insertAdjacentHTML('beforeend', `
-                            <option value="${vehicle.id}">${vehicle.name}</option>
-                        `);
-                    });
-                }
             } catch (error) {
                 console.error('Error loading instant vehicles:', error);
                 showNotification('خطأ في تحميل بيانات المركبات الفورية', 'error');
@@ -2121,7 +2138,7 @@
                                     ${vehicle.name} <span style="font-weight: 500; color: var(--gray); font-size: 14px;">(${vehicle.id})</span>
                                 </h4>
                                 <div style="font-size: 14px; color: var(--gray);">
-                                    السعر الأساسي: <strong style="color: var(--primary);">${vehicle.base.toLocaleString()} SDG</strong> • سعر الكيلومتر: <strong style="color: var(--secondary);">${vehicle.perKm.toLocaleString()} SDG</strong> • نسبة السفر: <strong style="color: var(--warning);">${(vehicle.travelMultiplier || 1.0).toFixed(1)}x</strong>
+                                    السعر الأساسي: <strong style="color: var(--primary);">${vehicle.base.toLocaleString('en-US')} SDG</strong> • سعر الكيلومتر: <strong style="color: var(--secondary);">${vehicle.perKm.toLocaleString('en-US')} SDG</strong> • نسبة السفر: <strong style="color: var(--warning);">${(vehicle.travelMultiplier || 1.0).toFixed(1)}x</strong>
                                 </div>
                             </div>
                         </div>
