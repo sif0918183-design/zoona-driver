@@ -61,11 +61,18 @@ export default async function handler(req, res) {
 
     if (action === 'create_request') {
       if (session?.role !== 'passenger' || id !== b.passengerId) return fail(res, 403, 'غير مصرح بإنشاء طلب لراكب آخر');
+      const startDate=String(b.startDate||'').trim();
+      if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(startDate))return fail(res,400,'حدد تاريخ بداية التأجير بصيغة صحيحة.');
+      const [year,month,day]=startDate.split('-').map(Number),check=new Date(Date.UTC(year,month-1,day));
+      if(check.getUTCFullYear()!==year||check.getUTCMonth()!==month-1||check.getUTCDate()!==day)return fail(res,400,'تاريخ بداية التأجير غير صحيح.');
+      const startAt=new Date(startDate+'T07:00:00+02:00'),durationDays=Number(b.durationDays);
+      if(!Number.isFinite(startAt.getTime())||startAt.getTime()<=Date.now())return fail(res,400,'start_must_be_future');
+      if(!Number.isInteger(durationDays)||durationDays<1||durationDays>90)return fail(res,400,'invalid_duration');
       const { data, error } = await db.rpc('limousine_create_request', {
-        p_passenger_id: id, p_city_id: b.cityId, p_pickup_area: b.pickupArea,
-        p_start_at: b.startAt, p_duration_days: Number(b.durationDays),
-        p_requested_category_id: b.categoryId, p_passenger_count: Number(b.passengerCount || 1),
-        p_usage_purpose: b.purpose || null, p_notes: b.notes || null
+        p_passenger_id:id,p_city_id:b.cityId,p_pickup_area:b.pickupArea,
+        p_start_at:startAt.toISOString(),p_duration_days:durationDays,
+        p_requested_category_id:b.categoryId,p_passenger_count:Number(b.passengerCount||1),
+        p_usage_purpose:b.purpose||null,p_notes:b.notes||null
       });
       if (error) throw error;
       return res.status(200).json({ success: true, result: data });
@@ -218,7 +225,7 @@ export default async function handler(req, res) {
         return fail(res, 403, 'بيانات التواصل محجوبة حتى نجاح تأمين العمولة.');
       }
       if (session.role === 'passenger') {
-        const { data, error } = await db.from('drivers').select('full_name,whatsapp_number,phone,car_model,car_type,car_color,car_plate_number')
+        const { data, error } = await db.from('drivers').select('full_name,whatsapp_number,phone,car_model,car_type,car_color,car_plate_number,car_plate,plate_number')
           .eq('id', contract.driver_id).maybeSingle();
         if (error || !data) throw error || new Error('driver_not_found');
         return res.status(200).json({ success: true, contact: data });
@@ -264,25 +271,32 @@ export default async function handler(req, res) {
     }
 
     if(action==='get_contract_document'){
-      if(!['passenger','driver'].includes(session?.role))return fail(res,403,'غير مصرح');
-      const {data: contract,error: contractError}=await db.from('limousine_contracts').select('*').eq('id',b.contractId).maybeSingle();
+      if(!['passenger','driver','admin'].includes(session?.role))return fail(res,403,'غير مصرح');
+      const {data:contract,error:contractError}=await db.from('limousine_contracts').select('*').eq('id',b.contractId).maybeSingle();
       if(contractError||!contract)throw contractError||new Error('contract_not_found');
-      const owns=session.role==='passenger'?contract.passenger_id===id:contract.driver_id===id;
+      const owns=isAdmin||(session.role==='passenger'?contract.passenger_id===id:session.role==='driver'?contract.driver_id===id:false);
       if(!owns)return fail(res,403,'لا تملك صلاحية الوصول إلى هذا العقد');
-      const contractStarted=['active','completion_requested','awaiting_settlement','settled','disputed'].includes(contract.status)||(contract.status==='booked'&&new Date(contract.start_at).getTime()<=Date.now());
-      if(Number(contract.commission_held||0)<=0||!contractStarted)return fail(res,403,'لا يمكن إصدار العقد قبل تأمين العمولة وبدء التأجير.');
-      const [{data: request,error: requestError},{data: driver,error: driverError},{data: passenger,error: passengerError}]=await Promise.all([
+      if(Number(contract.commission_held||0)<=0||!['booked','active','completion_requested','awaiting_settlement','settled','disputed'].includes(contract.status))
+        return fail(res,403,'لا يمكن إصدار العقد قبل نجاح تأمين العمولة.');
+      const [{data:request,error:requestError},{data:driver,error:driverError},{data:passenger,error:passengerError}]=await Promise.all([
         db.from('limousine_requests').select('city_id,pickup_area,requested_category_id,passenger_count,usage_purpose,notes').eq('id',contract.request_id).maybeSingle(),
-        db.from('drivers').select('full_name,phone,whatsapp_number,car_model,car_type,car_color,car_plate_number').eq('id',contract.driver_id).maybeSingle(),
+        db.from('drivers').select('full_name,phone,whatsapp_number,car_model,car_type,car_color,car_plate_number,car_plate,plate_number').eq('id',contract.driver_id).maybeSingle(),
         db.from('customers').select('full_name,phone,phone2').eq('id',contract.passenger_id).maybeSingle()
       ]);
       if(requestError||driverError||passengerError||!request||!driver||!passenger)throw requestError||driverError||passengerError||new Error('contract_details_not_found');
-      const [{data: city,error: cityError},{data: category,error: categoryError}]=await Promise.all([
+      const [{data:city,error:cityError},{data:category,error:categoryError}]=await Promise.all([
         db.from('cities').select('name_ar').eq('id',request.city_id).maybeSingle(),
         db.from('vehicle_categories').select('name_ar').eq('id',request.requested_category_id).maybeSingle()
       ]);
       if(cityError||categoryError)throw cityError||categoryError;
-      return res.status(200).json({success:true,contract:{...contract,city_name:city?.name_ar||'',pickup_area:request.pickup_area,category_name:category?.name_ar||'',passenger_count:request.passenger_count,usage_purpose:request.usage_purpose,request_notes:request.notes,driver_name:driver.full_name,driver_phone:driver.whatsapp_number||driver.phone,passenger_name:passenger.full_name,passenger_phone:passenger.phone||passenger.phone2,car_model:driver.car_model,car_type:driver.car_type,car_color:driver.car_color,car_plate_number:driver.car_plate_number}});
+      return res.status(200).json({success:true,contract:{
+        ...contract,city_name:city?.name_ar||'',pickup_area:request.pickup_area,category_name:category?.name_ar||'',
+        passenger_count:request.passenger_count,usage_purpose:request.usage_purpose,request_notes:request.notes,
+        driver_name:driver.full_name,driver_phone:driver.phone,driver_whatsapp_number:driver.whatsapp_number,
+        passenger_name:passenger.full_name,passenger_phone:passenger.phone,passenger_phone2:passenger.phone2,
+        car_model:driver.car_model,car_type:driver.car_type,car_color:driver.car_color,
+        car_plate_number:driver.car_plate_number||driver.car_plate||driver.plate_number
+      }});
     }
 
     if (action === 'request_cancellation' || action === 'respond_cancellation') {
@@ -376,7 +390,7 @@ export default async function handler(req, res) {
       if (action === 'admin_update_pricing') {
         const price = Number(b.dailyPrice), rate = Number(b.commissionRate);
         if (!b.cityId || !b.categoryId || !Number.isFinite(price) || price <= 0 || !Number.isFinite(rate) || rate <= 0 || rate > 100) return fail(res, 400, 'بيانات السعر أو العمولة غير صالحة');
-        const { data, error } = await db.from('limousine_pricing').upsert({ city_id: b.cityId, vehicle_category_id: b.categoryId, daily_price: price, commission_rate: rate, min_days: Math.max(1, Number(b.minDays) || 1), max_days: b.maxDays ? Number(b.maxDays) : null, is_active: b.isActive !== false, updated_at: new Date().toISOString() }, { onConflict: 'city_id,vehicle_category_id' }).select('*').single();
+        const { data, error } = await db.from('limousine_pricing').upsert({ city_id: b.cityId, vehicle_category_id: b.categoryId, daily_price: price, commission_rate: rate, min_days: 1, max_days: b.maxDays ? Number(b.maxDays) : null, is_active: b.isActive !== false, updated_at: new Date().toISOString() }, { onConflict: 'city_id,vehicle_category_id' }).select('*').single();
         if (error) throw error;
         return res.status(200).json({ success: true, pricing: data });
       }
