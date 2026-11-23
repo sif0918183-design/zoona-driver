@@ -168,7 +168,7 @@
       '<p><b>المدينة:</b> '+esc(c.city_name||c.pickup_area||'—')+'</p><p><b>بداية العقد:</b> '+date(c.start_at)+'</p>'+
       '<p><b>المدة:</b> '+Number(c.duration_days||0)+' يوم</p><p><b>نهاية العقد:</b> '+date(c.scheduled_end_at)+'</p>'+
       '<p><b>قيمة العقد:</b> '+money(c.contract_value_snapshot)+'</p>'+
-      (canView?'<button class="primary" data-contract-document="'+esc(c.id)+'">عرض العقد الكامل</button>':'<p class="muted">سيظهر العقد الكامل بعد نجاح تأمين العمولة.</p>')+
+      (canView?'<button class="primary" data-contract-document="'+esc(c.id)+'">عرض العقد الكامل</button>':'<p class="muted">سيظهر العقد الكامل بعد تأمين العمولة وبدء العقد.</p>')+
       (['booked','active','completion_requested','awaiting_settlement','settled','disputed'].includes(c.status)?'<button class="small" data-contact="'+esc(c.id)+'">عرض بيانات التواصل</button><div id="contact-'+esc(c.id)+'" class="muted" hidden></div>':'')+
       (c.status==='active'?'<button class="secondary" data-end="'+esc(c.id)+'">طلب إنهاء الخدمة</button>':'')+
       (['active','completion_requested','awaiting_settlement'].includes(c.status)?'<button class="small" data-dispute="'+esc(c.id)+'">رفع نزاع للإدارة</button>':'')+
