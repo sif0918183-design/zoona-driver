@@ -243,7 +243,8 @@ export default async function handler(req, res) {
       if(contractError||!contract)throw contractError||new Error('contract_not_found');
       const owns=session.role==='passenger'?contract.passenger_id===id:contract.driver_id===id;
       if(!owns)return fail(res,403,'لا تملك صلاحية الوصول إلى هذا العقد');
-      if(Number(contract.commission_held||0)<=0||!['active','completion_requested','awaiting_settlement','settled','disputed'].includes(contract.status))return fail(res,403,'لا يمكن إصدار العقد قبل تأمين العمولة وبدء التأجير.');
+      const contractStarted=['active','completion_requested','awaiting_settlement','settled','disputed'].includes(contract.status)||(contract.status==='booked'&&new Date(contract.start_at).getTime()<=Date.now());
+      if(Number(contract.commission_held||0)<=0||!contractStarted)return fail(res,403,'لا يمكن إصدار العقد قبل تأمين العمولة وبدء التأجير.');
       const [{data: request,error: requestError},{data: driver,error: driverError},{data: passenger,error: passengerError}]=await Promise.all([
         db.from('limousine_requests').select('city_id,pickup_area,requested_category_id,passenger_count,usage_purpose,notes').eq('id',contract.request_id).maybeSingle(),
         db.from('drivers').select('full_name,phone,whatsapp_number,car_model,car_type,car_color,car_plate_number').eq('id',contract.driver_id).maybeSingle(),
