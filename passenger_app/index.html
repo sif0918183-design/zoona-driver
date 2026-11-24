@@ -5402,7 +5402,8 @@ document.getElementById('complaints-modal').addEventListener('click', function(e
 (function(){
   async function refreshLimoContract(){
     const token=localStorage.getItem('session_token')||localStorage.getItem('tarhal_session_token')||'';
-    const user=(()=>{try{return JSON.parse(localStorage.getItem(document.body.dataset.role==='driver'?'tarhal_driver':'tarhal_customer')||'null')}catch(e){return null}})();
+    const role=location.pathname.includes('/driver_app/')?'driver':'passenger';
+    const user=(()=>{try{return JSON.parse(localStorage.getItem(role==='driver'?'tarhal_driver':'tarhal_customer')||'null')}catch(e){return null}})();
     if(!user?.id)return;
     try{
       const res=await fetch('/api/travel-platform?module=limousine',{method:'POST',headers:{'Content-Type':'application/json','Authorization':token?'Bearer '+token:''},body:JSON.stringify({action:'get_active_contract'})});
@@ -5431,7 +5432,7 @@ document.getElementById('complaints-modal').addEventListener('click', function(e
        '<div style="background:#fff9;padding:9px;border-radius:10px"><b>'+fmt(c.daily_price)+' ج.س</b><br><small>أجرك اليومي</small></div></div>'+
        '<div style="display:flex;justify-content:space-between;gap:8px;margin-top:12px"><b>المبلغ الكلي</b><b>'+fmt(c.total)+' SDG</b></div>'+
        '<button type="button" id="main-limo-contract-view" style="width:100%;margin-top:12px;border:0;border-radius:10px;padding:12px;background:#087e73;color:#fff;font:inherit;font-weight:800">عرض العقد</button>';
-      document.getElementById('main-limo-contract-view').onclick=()=>location.href=(document.body.dataset.role==='driver'?'/driver_app/limousine.html':'/passenger_app/limousine.html');
+      document.getElementById('main-limo-contract-view').onclick=()=>location.href=(role==='driver'?'/driver_app/limousine.html':'/passenger_app/limousine.html');
       const key='limo_active_contract_notice_'+c.id;
       if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');alert('تم تأمين عمولة عقد الليموزين بنجاح. العقد الآن ساري، وتم إيقاف استقبال أو طلب الرحلات الأخرى طوال مدة العقد.');}
     }catch(e){console.warn('Active limousine contract check failed:',e);}
