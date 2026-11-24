@@ -158,7 +158,7 @@
       '<p><b>الإجمالي:</b> '+money(r.estimated_total)+'</p>'+
       '<p><b>نسبة العمولة:</b> '+Number(r.commission_rate||0)+'%</p>'+
       '<p><b>العمولة:</b> '+money(commission)+'</p>'+
-      '<p class="limo-funding-reminder">يجب توفر مبلغ '+money(commission)+' على الأقل في رصيدك بحلول الساعة '+date(due)+'.</p></div>';
+      (r.acceptance_status==='funding_expired'?'<p class="limo-funding-reminder">انتهت مهلة تأمين العمولة لهذا الطلب.</p>':r.acceptance_status==='withdrawn'||r.status==='expired'?'':'<p class="limo-funding-reminder">يجب توفر مبلغ '+money(commission)+' على الأقل في رصيدك بحلول الساعة '+date(due)+'.</p>')+'</div>';
   }
   function renderDriverRequests() {
     $('requests').innerHTML=requests.length?requests.map(r=>
