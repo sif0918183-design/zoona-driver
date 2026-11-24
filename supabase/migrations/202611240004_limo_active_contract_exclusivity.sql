@@ -16,8 +16,6 @@ as $$
 $$;
 revoke all on function public.limousine_user_has_active_contract(uuid,text) from public,anon,authenticated;
 
-revoke all on function public.limousine_guard_driver_location() from public,anon,authenticated;
-
 create or replace function public.limousine_guard_driver_location()
 returns trigger language plpgsql security definer set search_path=public,pg_temp
 as $$
@@ -30,11 +28,10 @@ begin
   return new;
 end;
 $$;
+revoke all on function public.limousine_guard_driver_location() from public,anon,authenticated;
 drop trigger if exists trg_limo_guard_driver_location on public.driver_locations;
 create trigger trg_limo_guard_driver_location before insert or update of is_online,is_available
 on public.driver_locations for each row execute function public.limousine_guard_driver_location();
-
-revoke all on function public.limousine_guard_instant_ride() from public,anon,authenticated;
 
 create or replace function public.limousine_guard_instant_ride()
 returns trigger language plpgsql security definer set search_path=public,pg_temp
@@ -48,11 +45,10 @@ begin
   return new;
 end;
 $$;
+revoke all on function public.limousine_guard_instant_ride() from public,anon,authenticated;
 drop trigger if exists trg_limo_guard_rides on public.rides;
 create trigger trg_limo_guard_rides before insert on public.rides
 for each row execute function public.limousine_guard_instant_ride();
-
-revoke all on function public.limousine_guard_travel_request() from public,anon,authenticated;
 
 create or replace function public.limousine_guard_travel_request()
 returns trigger language plpgsql security definer set search_path=public,pg_temp
@@ -66,11 +62,10 @@ begin
   return new;
 end;
 $$;
+revoke all on function public.limousine_guard_travel_request() from public,anon,authenticated;
 drop trigger if exists trg_limo_guard_ride_requests on public.ride_requests;
 create trigger trg_limo_guard_ride_requests before insert on public.ride_requests
 for each row execute function public.limousine_guard_travel_request();
-
-revoke all on function public.limousine_guard_travel_trip() from public,anon,authenticated;
 
 create or replace function public.limousine_guard_travel_trip()
 returns trigger language plpgsql security definer set search_path=public,pg_temp
@@ -88,6 +83,7 @@ begin
   return new;
 end;
 $$;
+revoke all on function public.limousine_guard_travel_trip() from public,anon,authenticated;
 drop trigger if exists trg_limo_guard_travel_trips on public.travel_trips;
 create trigger trg_limo_guard_travel_trips before insert or update of driver_id,passenger_id
 on public.travel_trips for each row execute function public.limousine_guard_travel_trip();
