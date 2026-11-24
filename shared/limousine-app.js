@@ -90,7 +90,7 @@
     const p=pricingFor($('city').value,$('category').value), days=Math.max(1,Math.floor(Number($('days').value)||1));
     $('days').min='1'; $('days').max=String(p?.max_days||90);
     if(Number($('days').value)!==days)$('days').value=String(days);
-    $('estimate').textContent=p ? 'التأجير بالأيام الكاملة فقط — اليوم من 7:00 صباحاً إلى 5:00 مساءً. السعر اليومي: '+money(p.daily_price)+' — الإجمالي التقديري: '+money(p.daily_price*days)+' — عمولة المنصة: '+p.commission_rate+'%' : 'اختر المدينة وفئة السيارة لعرض السعر المتاح.';
+    $('estimate').textContent='التأجير بالأيام الكاملة فقط — يبدأ اليوم الساعة 7:00 صباحاً وينتهي الساعة 5:00 مساءً. تُعرض تفاصيل الاتفاق في العقد بعد إتمام إجراءات التعاقد.';
   }
   function carDescription(d) {
     return [d.car_model || d.car_type || 'سيارة', d.car_color || ''].filter(Boolean).join(' · ');
@@ -120,7 +120,7 @@
           (canSelect?'<button class="small" data-select="'+esc(r.id)+'" data-driver="'+esc(d.id)+'">اختيار</button>':a?.status==='selected'?'<span class="pill">تم الاختيار</span>':'')+'</div>';
       }).join('');
       return '<article class="card"><div class="line"><strong>طلب تأجير</strong><span class="pill">'+esc(statusNames[r.status]||r.status)+'</span></div>'+
-        '<p>'+esc(r.pickup_area)+' — '+date(r.start_at)+'</p><p>'+r.duration_days+' يوم · '+money(r.estimated_total)+'</p>'+
+        '<p>'+esc(r.pickup_area)+' — '+date(r.start_at)+'</p><p>'+r.duration_days+' يوم</p>'+
         (acc.length?'<div class="driver-list"><b>السائقون الذين قبلوا ('+acc.length+')</b>'+driverCards+'</div>':'<p class="muted">بانتظار قبول السائقين.</p>')+
         (contract?'<p class="muted">العقد: '+esc(statusNames[contract.status]||contract.status)+'</p>':'')+
         (canCancelRequest?'<button class="secondary" data-cancel-request="'+esc(r.id)+'">إلغاء الطلب</button>':'')+'</article>';
@@ -187,7 +187,7 @@
     const d=await api('list_contracts',{driverId:user.id,passengerId:user.id});
     contracts=d.contracts||[];
     $('contracts').innerHTML=contracts.length?contracts.map(c=>{
-      const canView=Number(c.commission_held||0)>0 && ['booked','active','completion_requested','awaiting_settlement','settled','disputed'].includes(c.status);
+      const canView=role==='passenger'?c.contract_available===true:Number(c.commission_held||0)>0 && ['booked','active','completion_requested','awaiting_settlement','settled','disputed'].includes(c.status);
       const cx=c.cancellation_request;
       const canRequestCancellation=['booked','active'].includes(c.status)&&(!cx||['rejected'].includes(cx.status));
       const cancellationMarkup=cx?.status==='pending_counterparty'
@@ -197,8 +197,7 @@
         :cx?.status==='approved'?'<p class="muted">اعتمدت الإدارة إلغاء العقد والتسوية.</p>':'';
       return '<article class="card"><div class="line"><strong>عقد تأجير</strong><span class="pill">'+esc(statusNames[c.status]||c.status)+'</span></div>'+
       '<p><b>المدينة:</b> '+esc(c.city_name||c.pickup_area||'—')+'</p><p><b>بداية العقد:</b> '+date(c.start_at)+'</p>'+
-      '<p><b>المدة:</b> '+Number(c.duration_days||0)+' يوم</p><p><b>نهاية العقد:</b> '+date(c.scheduled_end_at)+'</p>'+
-      '<p><b>قيمة العقد:</b> '+money(c.contract_value_snapshot)+'</p>'+
+      '<p><b>رقم العقد:</b> '+esc(c.contract_number||String(c.id).slice(0,8))+'</p><p><b>المدة:</b> '+Number(c.duration_days||0)+' يوم</p><p><b>نهاية العقد:</b> '+date(c.scheduled_end_at)+'</p>'+
       (canView?'<button class="primary" data-contract-document="'+esc(c.id)+'">عرض العقد الكامل</button>':'<p class="muted">سيظهر العقد الكامل بعد تأمين العمولة وبدء العقد.</p>')+
       (['booked','active','completion_requested','awaiting_settlement','settled','disputed'].includes(c.status)?'<button class="small" data-contact="'+esc(c.id)+'">عرض بيانات التواصل</button><div id="contact-'+esc(c.id)+'" class="muted" hidden></div>':'')+
       (c.status==='active'?'<button class="secondary" data-end="'+esc(c.id)+'">طلب إنهاء الخدمة</button>':'')+
@@ -305,8 +304,8 @@
     $('limo-active-days').textContent=c.duration_days+' يوم';
     $('limo-active-completed').textContent=c.days_completed+' يوم';
     $('limo-active-remaining').textContent=c.days_remaining+' يوم';
-    $('limo-active-daily').textContent=money(c.daily_price);
-    $('limo-active-total').textContent=money(c.total);
+    if($('limo-active-daily'))$('limo-active-daily').textContent=money(c.daily_price);
+    if($('limo-active-total'))$('limo-active-total').textContent=money(c.total);
     $('limo-active-view').onclick=()=>showContractDocument(c.id);
     const seenKey='limo_active_contract_notice_'+c.id;
     if(!sessionStorage.getItem(seenKey)){
@@ -366,8 +365,8 @@
       try{
         const cityId=$('city').value,categoryId=$('category').value,price=pricingFor(cityId,categoryId);
         if(!price)throw new Error('لا يوجد سعر محدد لهذه المدينة وفئة السيارة.');
-        const startDate=$('start').value;
-        if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(startDate))throw new Error('حدد تاريخ بداية التأجير.');
+        const startDate=String($('start').value||'').trim();
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(startDate))throw new Error('حدد تاريخ بداية التأجير.');
         const [year,month,day]=startDate.split('-').map(Number),check=new Date(Date.UTC(year,month-1,day));
         if(check.getUTCFullYear()!==year||check.getUTCMonth()!==month-1||check.getUTCDate()!==day)throw new Error('تاريخ بداية التأجير غير صحيح.');
         const start=new Date(startDate+'T07:00:00+02:00'),days=Number($('days').value);
