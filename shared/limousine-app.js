@@ -90,7 +90,10 @@
     const p=pricingFor($('city').value,$('category').value), days=Math.max(1,Math.floor(Number($('days').value)||1));
     $('days').min='1'; $('days').max=String(p?.max_days||90);
     if(Number($('days').value)!==days)$('days').value=String(days);
-    $('estimate').textContent='التأجير بالأيام الكاملة فقط — يبدأ اليوم الساعة 7:00 صباحاً وينتهي الساعة 5:00 مساءً. تُعرض تفاصيل الاتفاق في العقد بعد إتمام إجراءات التعاقد.';
+    const timing='التأجير بالأيام الكاملة فقط — يبدأ اليوم الساعة 7:00 صباحاً وينتهي الساعة 5:00 مساءً.';
+    $('estimate').textContent=p
+      ? 'أجرة اليوم الواحد: '+money(p.daily_price)+' · المدة: '+days+' '+(days===1?'يوم':'أيام')+' · الإجمالي التقديري: '+money(Number(p.daily_price)*days)+'. '+timing
+      : 'اختر المدينة وفئة السيارة المتاحتين لعرض أجرة اليوم والإجمالي. '+timing;
   }
   function carDescription(d) {
     return [d.car_model || d.car_type || 'سيارة', d.car_color || ''].filter(Boolean).join(' · ');
@@ -120,7 +123,7 @@
           (canSelect?'<button class="small" data-select="'+esc(r.id)+'" data-driver="'+esc(d.id)+'">اختيار</button>':a?.status==='selected'?'<span class="pill">تم الاختيار</span>':'')+'</div>';
       }).join('');
       return '<article class="card"><div class="line"><strong>طلب تأجير</strong><span class="pill">'+esc(statusNames[r.status]||r.status)+'</span></div>'+
-        '<p>'+esc(r.pickup_area)+' — '+date(r.start_at)+'</p><p>'+r.duration_days+' يوم</p>'+
+        '<p>'+esc(r.pickup_area)+' — '+date(r.start_at)+'</p><p>فئة السيارة: '+esc(r.category_name||'—')+'</p><p>'+r.duration_days+' يوم</p>'+
         (acc.length?'<div class="driver-list"><b>السائقون الذين قبلوا ('+acc.length+')</b>'+driverCards+'</div>':'<p class="muted">بانتظار قبول السائقين.</p>')+
         (contract?'<p class="muted">العقد: '+esc(statusNames[contract.status]||contract.status)+'</p>':'')+
         (canCancelRequest?'<button class="secondary" data-cancel-request="'+esc(r.id)+'">إلغاء الطلب</button>':'')+'</article>';
