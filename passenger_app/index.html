@@ -5400,6 +5400,12 @@ document.getElementById('complaints-modal').addEventListener('click', function(e
 
 <script>
 (function(){
+  function showMainLimoNotice(){
+    const overlay=document.createElement('div');overlay.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,.62);display:grid;place-items:center;padding:20px;';
+    const panel=document.createElement('div');panel.dir='rtl';panel.style.cssText='width:min(440px,100%);background:#fff;border-radius:20px;padding:24px 20px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.28);border-top:6px solid #0f9b8e;font-family:Tajawal,sans-serif;';
+    panel.innerHTML='<div style="font-size:38px;margin-bottom:8px">🚘</div><h2 style="margin:0 0 10px;color:#065f46">عقد الليموزين أصبح سارياً</h2><p style="line-height:1.9;color:#475569;margin:0 0 18px">تم تأمين عمولة العقد بنجاح. خلال مدة العقد لن يكون بإمكانك طلب أو استقبال رحلات داخلية أو سفرية.</p><button type="button" style="width:100%;border:0;border-radius:11px;padding:12px;background:#087e73;color:#fff;font:inherit;font-weight:800">حسناً</button>';
+    panel.querySelector('button').onclick=()=>overlay.remove();overlay.appendChild(panel);document.body.appendChild(overlay);
+  }
   async function refreshLimoContract(){
     const token=localStorage.getItem('session_token')||localStorage.getItem('tarhal_session_token')||'';
     const role=location.pathname.includes('/driver_app/')?'driver':'passenger';
@@ -5434,7 +5440,7 @@ document.getElementById('complaints-modal').addEventListener('click', function(e
        '<button type="button" id="main-limo-contract-view" style="width:100%;margin-top:12px;border:0;border-radius:10px;padding:12px;background:#087e73;color:#fff;font:inherit;font-weight:800">عرض العقد</button>';
       document.getElementById('main-limo-contract-view').onclick=()=>location.href=((role==='driver'?'/driver_app/limousine.html':'/passenger_app/limousine.html')+'?contract='+encodeURIComponent(c.id));
       const key='limo_active_contract_notice_'+c.id;
-      if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');alert('تم تأمين عمولة عقد الليموزين بنجاح. العقد الآن ساري، وتم إيقاف استقبال أو طلب الرحلات الأخرى طوال مدة العقد.');}
+      if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');showMainLimoNotice();}
     }catch(e){console.warn('Active limousine contract check failed:',e);}
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',refreshLimoContract);else refreshLimoContract();
