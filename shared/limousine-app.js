@@ -364,7 +364,7 @@
       const submit=$('submit-request');submit.disabled=true;
       try{
         const cityId=$('city').value,categoryId=$('category').value,price=pricingFor(cityId,categoryId);
-        if(!price)throw new Error('لا يوجد سعر محدد لهذه المدينة وفئة السيارة.');
+        if(!price)throw new Error('لا تتوفر خدمة التأجير لهذه المدينة وفئة السيارة حالياً.');
         const startDate=String($('start').value||'').trim();
         if(!/^\d{4}-\d{2}-\d{2}$/.test(startDate))throw new Error('حدد تاريخ بداية التأجير.');
         const [year,month,day]=startDate.split('-').map(Number),check=new Date(Date.UTC(year,month-1,day));
