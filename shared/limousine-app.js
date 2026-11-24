@@ -16,7 +16,7 @@
   const statusNames = {
     open:'بانتظار قبول السائقين', awaiting_driver_selection:'بانتظار اختيار سائق',
     driver_selected:'تم اختيار السائق', confirmed:'مؤكد', awaiting_funding:'بانتظار تأمين العمولة',
-    booked:'محجوز مالياً', active:'نشط', completion_requested:'طلب إنهاء الخدمة',
+    booked:'ساري', active:'نشط', completion_requested:'طلب إنهاء الخدمة',
     awaiting_settlement:'بانتظار التسوية', settled:'تمت التسوية', disputed:'نزاع',
     cancelled:'ملغي', expired:'فات وقته', accepted:'قبول مبدئي', selected:'تم الاختيار', contracted:'تم التعاقد'
   };
@@ -284,6 +284,30 @@
       catch(e){notice(e.message,true);}
     });
   }
+  let activeContract=null;
+  function renderActiveContract(c){
+    const card=$('limo-active-contract-banner');if(!card)return;
+    activeContract=c;
+    card.hidden=!c;
+    if(!c)return;
+    $('limo-active-car').textContent='عقد تأجير سيارة — '+(c.category_name||'سيارة');
+    $('limo-active-model').textContent=c.car_model||'';
+    $('limo-active-days').textContent=c.duration_days+' يوم';
+    $('limo-active-completed').textContent=c.days_completed+' يوم';
+    $('limo-active-remaining').textContent=c.days_remaining+' يوم';
+    $('limo-active-daily').textContent=money(c.daily_price);
+    $('limo-active-total').textContent=money(c.total);
+    $('limo-active-view').onclick=()=>showContractDocument(c.id);
+    const seenKey='limo_active_contract_notice_'+c.id;
+    if(!sessionStorage.getItem(seenKey)){
+      sessionStorage.setItem(seenKey,'1');
+      setTimeout(()=>alert('تم تأمين عمولة عقد الليموزين بنجاح. العقد الآن ساري، وستجد تفاصيله في واجهة المنصة.'),150);
+    }
+  }
+  async function loadActiveContract(){
+    const d=await api('get_active_contract');
+    renderActiveContract(d.contract||null);
+  }
   async function loadDriverFunding() {
     if(role!=='driver')return;
     if(!fundingRefreshTimer)fundingRefreshTimer=setInterval(()=>loadDriverFunding().catch(()=>{}),30000);
@@ -308,6 +332,7 @@
     if(role==='driver' && (section==='available'||section==='accepted')) await driverRequests();
     if(section==='notifications') await loadNotifications();
     if(role==='driver') await loadDriverFunding();
+    await loadActiveContract();
     if(role==='driver' && section==='contracts') await loadContracts();
     if(role==='driver' && section==='chats') await loadChats();
     sectionLoaded[section]=true;
@@ -350,6 +375,7 @@
     if(role==='passenger') setProfile(user.full_name || user.name || 'الراكب');
     Promise.all([
       loadNotifications(),
+      loadActiveContract(),
       role==='passenger'?loadConfig():Promise.all([driverRequests(),loadDriverFunding()])
     ]).then(()=>{
       if(role==='driver') sectionLoaded.available=true;
