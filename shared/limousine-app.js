@@ -183,7 +183,8 @@
       const canWithdraw=!expired&&!fundingExpired&&!withdrawn&&['accepted','selected'].includes(r.acceptance_status)&&['open','awaiting_driver_selection','driver_selected'].includes(r.status);
       const label=expired?'فات وقته':fundingExpired?'انتهت مهلة تأمين العمولة':withdrawn?'سحبت قبولك':r.acceptance_status==='accepted'?'بانتظار اختيار الراكب':r.acceptance_status==='selected'?'تم اختيارك — بانتظار تأمين العمولة':'تم التعاقد';
       const detail=expired?'انتهى موعد بداية التأجير دون اختيار سائق وتأمين العمولة، وأُغلق الطلب تلقائياً.':fundingExpired?'لم يتم تأمين العمولة خلال المهلة، ويمكن للراكب اختيار سائق بديل.':withdrawn?'سحبت قبولك لهذا الطلب.':r.acceptance_status==='accepted'?'ينتظر الطلب اختيار الراكب. لا يتم حجز العمولة عند القبول المبدئي.':r.acceptance_status==='selected'?'تم اختيارك لهذا الطلب. تبدأ إجراءات تأمين العمولة وفق موعد الحجز.':'راجع قسم العقود لمتابعة الحجز.';
-      return '<article class="card"><div class="line"><strong>طلب قبلته</strong><span class="pill">'+label+'</span></div>'+
+      const stateClass=fundingExpired||expired?' limo-funding-expired':withdrawn?' limo-request-withdrawn':'';
+      return '<article class="card"><div class="line"><strong>طلب قبلته</strong><span class="pill'+stateClass+'">'+label+'</span></div>'+
         rentalDetails(r)+
         '<p class="muted">'+detail+'</p>'+
         (canWithdraw?'<button class="secondary" data-withdraw="'+esc(r.id)+'">سحب القبول</button>':'')+'</article>';
