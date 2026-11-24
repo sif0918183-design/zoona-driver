@@ -50,12 +50,36 @@ export default async function handler(req, res) {
     const isAdmin = adminSession(session);
 
     if (action === 'list_config') {
-      const [{ data: cities, error: ce }, { data: categories, error: ve }, { data: prices, error: pe }] = await Promise.all([
+      const [{ data: cities, error: ce }, { data: settings, error: se }, { data: categoryRows, error: ve }, { data: prices, error: pe }] = await Promise.all([
         db.from('cities').select('id,name_ar').order('name_ar'),
-        db.from('vehicle_categories').select('id,name_ar,name_en,description_ar,icon_emoji,sort_order').eq('is_active', true).order('sort_order'),
+        db.from('system_settings').select('value').eq('key', 'instant_vehicle_prices').maybeSingle(),
+        db.from('vehicle_categories').select('id,instant_vehicle_id,is_active').eq('is_active', true).not('instant_vehicle_id', 'is', null),
         db.from('limousine_pricing').select('city_id,vehicle_category_id,daily_price,commission_rate,min_days,max_days').eq('is_active', true)
       ]);
-      if (ce || ve || pe) throw ce || ve || pe;
+      if (ce || se || ve || pe) throw ce || se || ve || pe;
+      let instantVehicles = [];
+      try {
+        const raw = settings?.value;
+        instantVehicles = Array.isArray(raw) ? raw : JSON.parse(raw || '[]');
+      } catch (error) {
+        throw new Error('تعذر قراءة فئات السيارات المعتمدة في إعدادات الرحلات الداخلية.');
+      }
+      if (!Array.isArray(instantVehicles) || !instantVehicles.length) {
+        throw new Error('لا توجد فئات سيارات معتمدة في إعدادات الرحلات الداخلية.');
+      }
+      const categoryMap = new Map((categoryRows || []).map(row => [row.instant_vehicle_id, row]));
+      const categories = instantVehicles.map((vehicle, index) => {
+        const mapped = categoryMap.get(String(vehicle.id));
+        if (!mapped) throw new Error('فئة السيارة ' + String(vehicle.name || vehicle.id) + ' غير مربوطة بتسعير الليموزين.');
+        return {
+          id: mapped.id,
+          instant_vehicle_id: String(vehicle.id),
+          name_ar: String(vehicle.name || ''),
+          name_en: String(vehicle.name || ''),
+          icon_emoji: vehicle.icon || '🚗',
+          sort_order: index
+        };
+      });
       return res.status(200).json({ success: true, cities, categories, pricing: prices });
     }
 
