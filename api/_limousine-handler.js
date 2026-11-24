@@ -72,7 +72,7 @@ export default async function handler(req, res) {
       return res.status(200).json({success:true,contract:{
         id:contract.id,status:contract.status,start_at:contract.start_at,duration_days:Number(contract.duration_days||1),
         days_completed:elapsed,days_remaining:Math.max(0,Number(contract.duration_days||1)-elapsed),
-        daily_price:Number(contract.daily_price_snapshot||0),total:Number(contract.contract_value_snapshot||0),
+        ...(session.role==='driver'?{daily_price:Number(contract.daily_price_snapshot||0),total:Number(contract.contract_value_snapshot||0)}:{}),
         category_name:category?.name_ar||'سيارة',car_model:driver?.car_model||'—',
         pickup_area:request?.pickup_area||'—',scheduled_end_at:contract.scheduled_end_at
       }});
@@ -115,7 +115,7 @@ export default async function handler(req, res) {
     if (action === 'create_request') {
       if (session?.role !== 'passenger' || id !== b.passengerId) return fail(res, 403, 'غير مصرح بإنشاء طلب لراكب آخر');
       const startDate=String(b.startDate||'').trim();
-      if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(startDate))return fail(res,400,'حدد تاريخ بداية التأجير بصيغة صحيحة.');
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(startDate))return fail(res,400,'حدد تاريخ بداية التأجير بصيغة صحيحة.');
       const [year,month,day]=startDate.split('-').map(Number),check=new Date(Date.UTC(year,month-1,day));
       if(check.getUTCFullYear()!==year||check.getUTCMonth()!==month-1||check.getUTCDate()!==day)return fail(res,400,'تاريخ بداية التأجير غير صحيح.');
       const startAt=new Date(startDate+'T07:00:00+02:00'),durationDays=Number(b.durationDays);
@@ -135,6 +135,7 @@ export default async function handler(req, res) {
       if (session?.role !== 'passenger' || id !== b.passengerId) return fail(res, 403, 'غير مصرح');
       const { data: requests, error } = await db.from('limousine_requests').select('*').eq('passenger_id', id).order('created_at', { ascending: false }).limit(50);
       if (error) throw error;
+      const passengerSafeRequests=(requests||[]).map(({estimated_total,...request})=>request);
       const requestIds = (requests || []).map(x => x.id);
       if (!requestIds.length) return res.status(200).json({ success: true, requests: [], acceptances: [], contracts: [], drivers: [] });
       const [{ data: acceptances, error: ae }, { data: contracts, error: ce }, { data: cancellationRows, error: xe }] = await Promise.all([
@@ -168,7 +169,7 @@ export default async function handler(req, res) {
       const latestCancellation = new Map();
       (cancellationRows || []).forEach(x => { if (!latestCancellation.has(x.contract_id)) latestCancellation.set(x.contract_id, x); });
       const contractsWithCancellation = (contracts || []).map(x => ({ ...x, cancellation_request: latestCancellation.get(x.id) || null }));
-      return res.status(200).json({ success: true, requests, acceptances, contracts: contractsWithCancellation, drivers: safeDrivers });
+      return res.status(200).json({ success: true, requests:passengerSafeRequests, acceptances, contracts: contractsWithCancellation, drivers: safeDrivers });
     }
 
     if (action === 'list_driver_requests') {
@@ -317,7 +318,12 @@ export default async function handler(req, res) {
       (cancellationRows||[]).forEach(x=>{if(!latestCancellation.has(x.contract_id))latestCancellation.set(x.contract_id,x);});
       const contracts=(data||[]).map(c=>({...c,city_name:cityMap.get(requestMap.get(c.request_id)?.city_id)||'',
         pickup_area:requestMap.get(c.request_id)?.pickup_area||'',cancellation_request:latestCancellation.get(c.id)||null}));
-      return res.status(200).json({ success: true, contracts });
+      const safeContracts=session.role==='passenger'?contracts.map(c=>{
+        const available=Number(c.commission_held||0)>0&&['booked','active','completion_requested','awaiting_settlement','settled','disputed'].includes(c.status);
+        const {daily_price_snapshot,commission_rate_snapshot,contract_value_snapshot,commission_due,commission_held,commission_earned,commission_released,...safe}=c;
+        return {...safe,contract_available:available};
+      }):contracts;
+      return res.status(200).json({ success: true, contracts:safeContracts });
     }
 
     if(action==='list_driver_funding'){
@@ -336,7 +342,7 @@ export default async function handler(req, res) {
       if(contractError||!contract)throw contractError||new Error('contract_not_found');
       const owns=isAdmin||(session.role==='passenger'?contract.passenger_id===id:session.role==='driver'?contract.driver_id===id:false);
       if(!owns)return fail(res,403,'لا تملك صلاحية الوصول إلى هذا العقد');
-      if(Number(contract.commission_held||0)<=0||!['booked','active','completion_requested','awaiting_settlement','settled','disputed'].includes(contract.status))
+      if(!isAdmin&&(Number(contract.commission_held||0)<=0||!['booked','active','completion_requested','awaiting_settlement','settled','disputed'].includes(contract.status)))
         return fail(res,403,'لا يمكن إصدار العقد قبل نجاح تأمين العمولة.');
       const [{data:request,error:requestError},{data:driver,error:driverError},{data:passenger,error:passengerError}]=await Promise.all([
         db.from('limousine_requests').select('city_id,pickup_area,requested_category_id,passenger_count,usage_purpose,notes').eq('id',contract.request_id).maybeSingle(),
@@ -429,13 +435,24 @@ export default async function handler(req, res) {
       if (action === 'admin_overview') {
         const [{ data: requests, error: re }, { data: contracts, error: ce }, { data: pricing, error: pe }, { data: ledger, error: le }, { data: cancellationRequests, error: xe }] = await Promise.all([
           db.from('limousine_requests').select('*').order('created_at', { ascending: false }).limit(200),
-          db.from('limousine_contracts').select('*').order('created_at', { ascending: false }).limit(200),
+          db.from('limousine_contracts').select('*').order('created_at', { ascending: false }),
           db.from('limousine_pricing').select('*,cities(name_ar),vehicle_categories(name_ar)').order('created_at', { ascending: false }),
-          db.from('limousine_ledger').select('entry_type,amount,created_at').order('created_at', { ascending: false }).limit(500),
+          db.from('limousine_ledger').select('entry_type,amount,created_at,contract_id').order('created_at', { ascending: false }).limit(500),
           db.from('limousine_cancellation_requests').select('*').order('created_at', { ascending: false }).limit(200)
         ]);
         if (re || ce || pe || le || xe) throw re || ce || pe || le || xe;
-        return res.status(200).json({ success: true, requests, contracts, pricing, ledger, cancellationRequests });
+        const passengerIds=[...new Set((cancellationRequests||[]).filter(x=>x.requested_by_role==='passenger'||x.other_party_role==='passenger').flatMap(x=>[x.requested_by_role==='passenger'?x.requested_by_id:null,x.other_party_role==='passenger'?x.other_party_id:null]).filter(Boolean))];
+        const driverIds=[...new Set((cancellationRequests||[]).filter(x=>x.requested_by_role==='driver'||x.other_party_role==='driver').flatMap(x=>[x.requested_by_role==='driver'?x.requested_by_id:null,x.other_party_role==='driver'?x.other_party_id:null]).filter(Boolean))];
+        const [{data:passengerNames,error:pnError},{data:driverNames,error:dnError}]=await Promise.all([
+          passengerIds.length?db.from('customers').select('id,full_name').in('id',passengerIds):Promise.resolve({data:[],error:null}),
+          driverIds.length?db.from('drivers').select('id,full_name,name').in('id',driverIds):Promise.resolve({data:[],error:null})
+        ]);
+        if(pnError||dnError)throw pnError||dnError;
+        const people=new Map([...(passengerNames||[]).map(x=>[x.id,x.full_name]),...(driverNames||[]).map(x=>[x.id,x.full_name||x.name])]);
+        const namedCancellations=(cancellationRequests||[]).map(x=>({...x,requested_by_name:people.get(x.requested_by_id)||(x.requested_by_role==='passenger'?'الراكب':'السائق'),other_party_name:people.get(x.other_party_id)||(x.other_party_role==='passenger'?'الراكب':'السائق')}));
+        const contractNumbers=new Map((contracts||[]).map(x=>[x.id,x.contract_number||String(x.id).slice(0,8)]));
+        const ledgerWithContracts=(ledger||[]).map(x=>({...x,contract_number:contractNumbers.get(x.contract_id)||String(x.contract_id||'').slice(0,8)}));
+        return res.status(200).json({ success: true, requests, contracts, pricing, ledger:ledgerWithContracts, cancellationRequests:namedCancellations });
       }
       if (action === 'admin_resolve_cancellation') {
         if (!b.contractId || !['no_penalty','penalty'].includes(b.resolution)) return fail(res, 400, 'بيانات اعتماد الإلغاء غير مكتملة');
