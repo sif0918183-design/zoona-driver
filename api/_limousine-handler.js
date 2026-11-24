@@ -363,11 +363,9 @@ export default async function handler(req, res) {
       ]);
       if(error||driverError)throw error||driverError;
       const requestIds=[...new Set((funding||[]).map(x=>x.request_id).filter(Boolean))];
-      const [{data:requests,error:requestError},{data:cities,error:cityError},{data:categories,error:categoryError}]=await Promise.all([
-        requestIds.length?db.from('limousine_requests').select('id,city_id,requested_category_id,pickup_area').in('id',requestIds):Promise.resolve({data:[],error:null}),
-        Promise.resolve({data:[],error:null}),
-        Promise.resolve({data:[],error:null})
-      ]);
+      const {data:requests,error:requestError}=requestIds.length
+        ? await db.from('limousine_requests').select('id,city_id,requested_category_id,pickup_area').in('id',requestIds)
+        : {data:[],error:null};
       if(requestError)throw requestError;
       const cityIds=[...new Set((requests||[]).map(x=>x.city_id).filter(Boolean))];
       const categoryIds=[...new Set((requests||[]).map(x=>x.requested_category_id).filter(Boolean))];
