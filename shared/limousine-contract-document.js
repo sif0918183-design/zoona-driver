@@ -4,7 +4,7 @@ const esc=v=>String(v??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>'
 const money=v=>Math.round(Number(v||0)).toLocaleString('en-US')+' ج.س';
 const dateOnly=v=>v?new Date(v).toLocaleDateString('ar-SD',{year:'numeric',month:'long',day:'numeric'}):'—';
 const dateTime=v=>v?dateOnly(v)+' — '+new Date(v).toLocaleTimeString('ar-SD',{hour:'2-digit',minute:'2-digit',hour12:true}):'—';
-const status=v=>({confirmed:'مؤكد',booked:'ساري',active:'ساري',completion_requested:'طلب إنهاء الخدمة',awaiting_settlement:'بانتظار التسوية',settled:'تمت التسوية',disputed:'قيد مراجعة النزاع',cancelled:'ملغي'})[v]||v||'—';
+const status=v=>({confirmed:'مؤكد',awaiting_funding:'جارٍ استكمال التعاقد',booked:'ساري',active:'ساري',completion_requested:'طلب إنهاء الخدمة',awaiting_settlement:'بانتظار التسوية',settled:'تمت التسوية',disputed:'قيد مراجعة النزاع',cancelled:'ملغي'})[v]||v||'—';
 const shortId=v=>String(v||'').split('-')[0]||'—',contractNumber=c=>c.contract_number||shortId(c.id);
 function field(label,value,extra=''){return '<div class="limo-doc-field '+extra+'"><small>'+esc(label)+'</small><strong>'+esc(value||'—')+'</strong></div>';}
 function render(c){
