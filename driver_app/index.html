@@ -3257,6 +3257,18 @@
         const toggleBtn = document.getElementById('toggle-online-btn');
 
         if (!isDriverOnline) {
+            try {
+                const limoToken=localStorage.getItem('session_token')||localStorage.getItem('tarhal_session_token')||'';
+                const limoRes=await fetch('/api/travel-platform?module=limousine',{method:'POST',headers:{'Content-Type':'application/json','Authorization':limoToken?'Bearer '+limoToken:''},body:JSON.stringify({action:'get_active_contract'})});
+                const limoData=await limoRes.json();
+                if(limoRes.ok&&limoData.success&&limoData.contract){
+                    showNotification('لا يمكنك تفعيل وضع العمل أثناء سريان عقد الليموزين.','error');
+                    return;
+                }
+            } catch(e) {
+                showNotification('تعذر التحقق من حالة عقد الليموزين. حاول مرة أخرى قبل تفعيل وضع العمل.','error');
+                return;
+            }
             console.log(' Activating DRIVER ONLINE mode...');
             
             toggleBtn.innerHTML = '<span class="loading"></span> انتظار...';
