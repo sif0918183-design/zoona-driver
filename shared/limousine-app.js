@@ -125,8 +125,8 @@
           (canSelect?'<button class="small" data-select="'+esc(r.id)+'" data-driver="'+esc(d.id)+'">اختيار</button>':a?.status==='selected'?'<span class="pill">تم الاختيار</span>':'')+'</div>';
       }).join('');
       return '<article class="card"><div class="line"><strong>طلب تأجير</strong><span class="pill">'+esc(statusNames[r.status]||r.status)+'</span></div>'+
-        '<p>'+esc(r.pickup_area)+' — '+date(r.start_at)+'</p><p>فئة السيارة: '+esc(r.category_name||'—')+'</p><p>'+r.duration_days+' يوم</p>'+
-        (acc.length?'<div class="driver-list"><b>السائقون الذين قبلوا ('+acc.length+')</b>'+driverCards+'</div>':'<p class="muted">بانتظار قبول السائقين.</p>')+
+        '<p><b>المدينة:</b> '+esc(r.city_name||'—')+'</p><p><b>موقع الاستلام:</b> '+esc(r.pickup_area||'—')+' — '+date(r.start_at)+'</p><p>فئة السيارة: '+esc(r.category_name||'—')+'</p><p>'+r.duration_days+' يوم</p>'+
+        (acc.length?'<div class="driver-list"><b>السائقون الذين قبلوا ('+acc.length+')</b>'+driverCards+'</div>':r.status==='awaiting_driver_selection'?'<p class="muted">بانتظار قبول سائقين آخرين حتى تتمكن من اختيار سائق بديل.</p>':'<p class="muted">بانتظار قبول السائقين.</p>')+
         (contract?'<p class="muted">العقد: '+esc(statusNames[contract.status]||contract.status)+'</p>':'')+
         (canCancelRequest?'<button class="secondary" data-cancel-request="'+esc(r.id)+'">إلغاء الطلب</button>':'')+'</article>';
     }).join('');
@@ -151,7 +151,8 @@
     const commission=Number(r.commission_due ?? (Number(r.estimated_total||0)*Number(r.commission_rate||0)/100));
     return '<div class="limo-rental-details">'+
       '<p><b>فئة السيارة:</b> '+esc(r.category_name||'—')+'</p>'+
-      '<p><b>المدينة:</b> '+esc(r.city_name||r.pickup_area||'—')+'</p>'+
+      '<p><b>المدينة:</b> '+esc(r.city_name||'—')+'</p>'+
+      '<p><b>موقع الاستلام:</b> '+esc(r.pickup_area||'—')+'</p>'+
       '<p><b>تاريخ البداية:</b> '+date(r.start_at)+'</p>'+
       '<p><b>عدد الأيام:</b> '+Number(r.duration_days||0)+' يوم</p>'+
       '<p><b>سعر اليوم:</b> '+money(r.daily_price_snapshot)+'</p>'+
@@ -217,7 +218,7 @@
         :cx?.status==='rejected'?'<p class="muted">رُفض طلب الإلغاء السابق. يظل العقد قائماً.</p>'
         :cx?.status==='approved'?'<p class="muted">اعتمدت الإدارة إلغاء العقد والتسوية.</p>':'';
       return '<article class="card"><div class="line"><strong>عقد تأجير</strong><span class="pill">'+esc(statusNames[c.status]||c.status)+'</span></div>'+
-      '<p><b>المدينة:</b> '+esc(c.city_name||c.pickup_area||'—')+'</p><p><b>بداية العقد:</b> '+date(c.start_at)+'</p>'+
+      '<p><b>المدينة:</b> '+esc(c.city_name||'—')+'</p><p><b>موقع الاستلام:</b> '+esc(c.pickup_area||'—')+'</p><p><b>بداية العقد:</b> '+date(c.start_at)+'</p>'+
       '<p><b>رقم العقد:</b> '+esc(c.contract_number||String(c.id).slice(0,8))+'</p><p><b>المدة:</b> '+Number(c.duration_days||0)+' يوم</p><p><b>نهاية العقد:</b> '+date(c.scheduled_end_at)+'</p>'+
       (canView?'<button class="primary" data-contract-document="'+esc(c.id)+'">عرض العقد الكامل</button>':'<p class="muted">'+(role==='passenger'?'سيظهر العقد بعد اكتمال إجراءات التعاقد.':'سيظهر العقد الكامل بعد تأمين العمولة وبدء العقد.')+'</p>')+
       (['booked','active','completion_requested','awaiting_settlement','settled','disputed'].includes(c.status)?'<button class="small" data-contact="'+esc(c.id)+'">عرض بيانات التواصل</button><div id="contact-'+esc(c.id)+'" class="muted" hidden></div>':'')+
