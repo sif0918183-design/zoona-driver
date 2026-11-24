@@ -10,12 +10,12 @@ create unique index if not exists vehicle_categories_instant_vehicle_id_uidx
 update public.vehicle_categories
 set instant_vehicle_id='economy', name_ar='إقتصادي', name_en='Economy',
     icon_emoji='🚗', sort_order=1, is_active=true, updated_at=now()
-where id='b2d16f32-e331-4596-8dba-f64f8762588a'::uuid;
+where name_ar='اقتصادي' and instant_vehicle_id is null;
 
 update public.vehicle_categories
 set instant_vehicle_id='comfort', name_ar='عائلي', name_en='Family',
     icon_emoji='🚙', sort_order=2, is_active=true, updated_at=now()
-where id='26e1284c-4dab-4e4f-ab42-3daab6ac12e2'::uuid;
+where name_ar='مريح' and instant_vehicle_id is null;
 
 -- Add the remaining current categories without inventing daily prices.
 insert into public.vehicle_categories
