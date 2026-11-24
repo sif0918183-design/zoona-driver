@@ -62,10 +62,9 @@ export default async function handler(req, res) {
         db.from('vehicle_categories').select('name_ar,instant_vehicle_id').eq('id',request?.requested_category_id || '').maybeSingle()
       ]);
       if(re||de||ce)throw re||de||ce;
-      const start=new Date(contract.start_at);
-      const today=new Date(new Date().toLocaleString('en-US',{timeZone:'Africa/Khartoum'}));
-      const startDay=new Date(start.toLocaleString('en-US',{timeZone:'Africa/Khartoum'}));
-      const elapsed=Math.max(0,Math.min(Number(contract.duration_days||1),Math.floor((Date.UTC(today.getFullYear(),today.getMonth(),today.getDate())-Date.UTC(startDay.getFullYear(),startDay.getMonth(),startDay.getDate()))/86400000)));
+      const startDateKey=new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Khartoum',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(contract.start_at));
+      const firstDayEnd=new Date(startDateKey+'T17:00:00+02:00');
+      const elapsed=Date.now()<firstDayEnd.getTime()?0:Math.min(Number(contract.duration_days||1),1+Math.floor((Date.now()-firstDayEnd.getTime())/86400000));
       return res.status(200).json({success:true,contract:{
         id:contract.id,status:contract.status,start_at:contract.start_at,duration_days:Number(contract.duration_days||1),
         days_completed:elapsed,days_remaining:Math.max(0,Number(contract.duration_days||1)-elapsed),
