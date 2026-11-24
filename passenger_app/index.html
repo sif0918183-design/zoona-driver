@@ -5400,7 +5400,7 @@ document.getElementById('complaints-modal').addEventListener('click', function(e
       const toggle=document.getElementById('toggle-online-btn');
       const search=document.getElementById('confirm-ride-btn');
       if(toggle){toggle.disabled=!!c;toggle.title=c?'لا يمكن تفعيل وضع العمل أثناء سريان عقد الليموزين':'';}
-      if(search){search.disabled=!!c||search.dataset.limoDisabled==='true';search.title=c?'لا يمكن طلب رحلة داخلية أثناء سريان عقد الليموزين':'';}
+      if(search){if(c){if(search.dataset.limoLocked!=='1'){search.dataset.limoWasDisabled=String(search.disabled);search.dataset.limoLocked='1';}search.disabled=true;}else if(search.dataset.limoLocked==='1'){search.disabled=search.dataset.limoWasDisabled==='true';delete search.dataset.limoLocked;delete search.dataset.limoWasDisabled;}search.title=c?'لا يمكن طلب رحلة داخلية أثناء سريان عقد الليموزين':'';}
       let card=document.getElementById('main-limo-contract-banner');
       if(!c){if(card)card.remove();return;}
       if(!card){
