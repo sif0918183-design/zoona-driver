@@ -273,7 +273,7 @@ async function evaluateTrip10hCommission(tripId, rideId, settings, serverTime) {
 async function hasActiveLimousineContract(userId, role) {
     const column = role === 'driver' ? 'driver_id' : 'passenger_id';
     const { data, error } = await supabase.from('limousine_contracts').select('id')
-        .eq(column, userId).in('status', ['booked', 'active'])
+        .eq(column, userId).in('status', ['booked', 'active', 'completion_requested', 'awaiting_settlement', 'disputed'])
         .gt('commission_held', 0)
         .gt('scheduled_end_at', new Date().toISOString()).limit(1);
     if (error) throw error;
