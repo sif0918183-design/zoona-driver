@@ -374,7 +374,7 @@
       if(timer)timer.textContent='جارٍ تحديث حالة الطلب...';
       throw e;
     }finally{
-      if(fundingContractId!==contractId)fundingExpiryProcessing=false;
+      fundingExpiryProcessing=false;
     }
   }
   function updateFundingClock(){
