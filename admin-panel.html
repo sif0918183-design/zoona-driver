@@ -2092,8 +2092,9 @@
 
                 <section id="limousine-section" class="section">
                     <div class="tables-container" style="padding:0; overflow:hidden;">
-                        <iframe src="/admin-limousine.html" title="إدارة منصة ليموزين تراكا" style="display:block;width:100%;height:1200px;border:0;background:var(--tech-bg,#f5f7fa);" loading="lazy"></iframe>
+                        <iframe id="limousine-admin-frame" src="/admin-limousine.html" title="إدارة منصة ليموزين تراكا" style="display:block;width:100%;height:600px;min-height:500px;border:0;background:var(--tech-bg,#f5f7fa);" loading="lazy"></iframe>
                     </div>
+                    <script>(()=>{const frame=document.getElementById("limousine-admin-frame");if(!frame)return;window.addEventListener("message",event=>{if(event.origin!==window.location.origin||event.source!==frame.contentWindow||event.data?.type!=="tracka-limo-height")return;const height=Number(event.data.height);if(Number.isFinite(height)&&height>0)frame.style.height=Math.ceil(height)+"px";});})();</script>
                 </section>
 
                 <section id="settings-section" class="section">
