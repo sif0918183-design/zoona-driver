@@ -137,18 +137,27 @@ export default async function handler(req, res) {
       if (error) throw error;
       const requestIds = (requests || []).map(x => x.id);
       const categoryIds = [...new Set((requests || []).map(x => x.requested_category_id).filter(Boolean))];
-      const { data: requestCategories, error: requestCategoryError } = categoryIds.length
-        ? await db.from('vehicle_categories').select('id,name_ar').in('id', categoryIds)
-        : { data: [], error: null };
-      if (requestCategoryError) throw requestCategoryError;
+      const cityIds = [...new Set((requests || []).map(x => x.city_id).filter(Boolean))];
+      const [{ data: requestCategories, error: requestCategoryError }, { data: requestCities, error: requestCityError }] = await Promise.all([
+        categoryIds.length
+          ? await db.from('vehicle_categories').select('id,name_ar').in('id', categoryIds)
+          : { data: [], error: null },
+        cityIds.length
+          ? await db.from('cities').select('id,name_ar').in('id', cityIds)
+          : { data: [], error: null }
+      ]);
+      if (requestCategoryError || requestCityError) throw requestCategoryError || requestCityError;
       const requestCategoryMap = new Map((requestCategories || []).map(x => [String(x.id), x.name_ar]));
+      const requestCityMap = new Map((requestCities || []).map(x => [String(x.id), x.name_ar]));
       const passengerSafeRequests=(requests||[]).map(({estimated_total,...request})=>({
-        ...request, category_name:requestCategoryMap.get(String(request.requested_category_id))||'—'
+        ...request,
+        category_name:requestCategoryMap.get(String(request.requested_category_id))||'—',
+        city_name:requestCityMap.get(String(request.city_id))||'—'
       }));
       if (!requestIds.length) return res.status(200).json({ success: true, requests: [], acceptances: [], contracts: [], drivers: [] });
       const [{ data: acceptances, error: ae }, { data: contracts, error: ce }, { data: cancellationRows, error: xe }] = await Promise.all([
         db.from('limousine_acceptances').select('id,request_id,driver_id,status,accepted_at').in('request_id', requestIds),
-        db.from('limousine_contracts').select('id,request_id,status').in('request_id', requestIds).order('created_at', { ascending: false }),
+        db.from('limousine_contracts').select('id,request_id,status').in('request_id', requestIds).neq('status','funding_expired').order('created_at', { ascending: false }),
         db.from('limousine_cancellation_requests').select('*').in('request_id', requestIds).order('created_at', { ascending: false })
       ]);
       if (ae || ce || xe) throw ae || ce || xe;
@@ -327,7 +336,7 @@ export default async function handler(req, res) {
 
     if (action === 'list_contracts') {
       if (!['passenger','driver'].includes(session?.role)) return fail(res, 403, 'غير مصرح');
-      let query = db.from('limousine_contracts').select('*').order('created_at', { ascending: false }).limit(100);
+      let query = db.from('limousine_contracts').select('*').neq('status','funding_expired').order('created_at', { ascending: false }).limit(100);
       query = session.role === 'passenger' ? query.eq('passenger_id', id) : query.eq('driver_id', id);
       const { data, error } = await query;
       if (error) throw error;
