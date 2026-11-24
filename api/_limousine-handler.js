@@ -53,7 +53,7 @@ export default async function handler(req, res) {
       if (!['passenger','driver'].includes(session?.role)) return fail(res,403,'غير مصرح');
       const ownerColumn=session.role==='passenger'?'passenger_id':'driver_id';
       const {data: contract,error}=await db.from('limousine_contracts').select('*').eq(ownerColumn,id)
-        .in('status',['booked','active']).gt('commission_held',0).order('created_at',{ascending:false}).limit(1).maybeSingle();
+        .in('status',['booked','active','completion_requested','awaiting_settlement','disputed']).gt('commission_held',0).order('created_at',{ascending:false}).limit(1).maybeSingle();
       if(error)throw error;
       if(!contract)return res.status(200).json({success:true,contract:null});
       const [{data:request,error:re},{data:driver,error:de},{data:category,error:ce}]=await Promise.all([
