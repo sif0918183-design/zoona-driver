@@ -224,14 +224,39 @@ export default async function handler(req, res) {
         : [{data:[],error:null},{data:[],error:null}];
       if (liveAcceptedError || expiredAcceptedError) throw liveAcceptedError || expiredAcceptedError;
       const acceptedRows=[...(liveAcceptedRows||[]),...(expiredAcceptedRows||[])];
+      const allRows=[...(eligible||[]),...acceptedRows];
+      const cityIds=[...new Set(allRows.map(r=>r.city_id).filter(Boolean))];
+      const categoryIds=[...new Set(allRows.map(r=>r.requested_category_id).filter(Boolean))];
+      const [{data:cityRows,error:cityError},{data:categoryRows,error:categoryError},{data:fundingContracts,error:fundingContractError}] = await Promise.all([
+        cityIds.length?db.from('cities').select('id,name_ar').in('id',cityIds):Promise.resolve({data:[],error:null}),
+        categoryIds.length?db.from('vehicle_categories').select('id,name_ar').in('id',categoryIds):Promise.resolve({data:[],error:null}),
+        acceptedRequestIds.length?db.from('limousine_contracts').select('request_id,status,commission_due,funding_deadline,hold_due_at').eq('driver_id',id).in('request_id',acceptedRequestIds).in('status',['confirmed','awaiting_funding']):Promise.resolve({data:[],error:null})
+      ]);
+      if(cityError||categoryError||fundingContractError)throw cityError||categoryError||fundingContractError;
+      const cityMap=new Map((cityRows||[]).map(x=>[String(x.id),x.name_ar]));
+      const categoryNameMap=new Map((categoryRows||[]).map(x=>[String(x.id),x.name_ar]));
+      const contractMap=new Map((fundingContracts||[]).map(x=>[String(x.request_id),x]));
+      const enrichRequest=r=>{
+        const contract=contractMap.get(String(r.id));
+        const commissionDue=contract?Number(contract.commission_due):Math.round(Number(r.estimated_total||0)*Number(r.commission_rate_snapshot||0)/100*100)/100;
+        return {
+          ...r,
+          city_name:cityMap.get(String(r.city_id))||r.pickup_area||'—',
+          category_name:categoryNameMap.get(String(r.requested_category_id))||'—',
+          daily_price_snapshot:Number(r.daily_price_snapshot||0),
+          commission_rate:Number(r.commission_rate_snapshot||0),
+          commission_due:commissionDue,
+          funding_required_by:contract?.status==='awaiting_funding'?contract.funding_deadline:contract?.hold_due_at||new Date(new Date(r.start_at).getTime()-20*60*60*1000).toISOString()
+        };
+      };
       const acceptedSet = new Set((ownAcceptances || []).filter(x=>['accepted','selected','contracted','funding_expired','withdrawn'].includes(x.status)).map(x => x.request_id));
       const countMap = new Map();
       (counts || []).forEach(x => countMap.set(x.request_id, (countMap.get(x.request_id) || 0) + 1));
       return res.status(200).json({
         success:true,
         profile:{ full_name:driver.full_name, balance:driver.balance },
-        accepted_requests:(acceptedRows || []).map(r => ({ ...r, acceptance_status:(ownAcceptances || []).find(a => a.request_id === r.id)?.status || 'accepted' })),
-        requests:eligible.filter(r => !acceptedSet.has(r.id)).map(r => ({ ...r, accepted_count:countMap.get(r.id) || 0 }))
+        accepted_requests:(acceptedRows || []).map(r => ({ ...enrichRequest(r), acceptance_status:(ownAcceptances || []).find(a => a.request_id === r.id)?.status || 'accepted' })),
+        requests:eligible.filter(r => !acceptedSet.has(r.id)).map(r => ({ ...enrichRequest(r), accepted_count:countMap.get(r.id) || 0 }))
       });
     }
     if (action === 'cancel_request') {
@@ -333,11 +358,46 @@ export default async function handler(req, res) {
     if(action==='list_driver_funding'){
       if(session?.role!=='driver'||id!==b.driverId)return fail(res,403,'غير مصرح');
       const [{data: funding,error},{data: driver,error: driverError}]=await Promise.all([
-        db.from('limousine_contracts').select('id,request_id,status,funding_deadline,commission_due,start_at,duration_days').eq('driver_id',id).eq('status','awaiting_funding').not('funding_deadline','is',null).order('funding_deadline').limit(5),
+        db.from('limousine_contracts').select('id,request_id,status,funding_deadline,commission_due,start_at,duration_days,daily_price_snapshot,commission_rate_snapshot,contract_value_snapshot').eq('driver_id',id).eq('status','awaiting_funding').not('funding_deadline','is',null).order('funding_deadline').limit(5),
         db.from('drivers').select('balance').eq('id',id).maybeSingle()
       ]);
       if(error||driverError)throw error||driverError;
-      return res.status(200).json({success:true,funding:funding||[],balance:Number(driver?.balance||0)});
+      const requestIds=[...new Set((funding||[]).map(x=>x.request_id).filter(Boolean))];
+      const [{data:requests,error:requestError},{data:cities,error:cityError},{data:categories,error:categoryError}]=await Promise.all([
+        requestIds.length?db.from('limousine_requests').select('id,city_id,requested_category_id,pickup_area').in('id',requestIds):Promise.resolve({data:[],error:null}),
+        Promise.resolve({data:[],error:null}),
+        Promise.resolve({data:[],error:null})
+      ]);
+      if(requestError)throw requestError;
+      const cityIds=[...new Set((requests||[]).map(x=>x.city_id).filter(Boolean))];
+      const categoryIds=[...new Set((requests||[]).map(x=>x.requested_category_id).filter(Boolean))];
+      const [{data:cityRows,error:cityRowsError},{data:categoryRows,error:categoryRowsError}]=await Promise.all([
+        cityIds.length?db.from('cities').select('id,name_ar').in('id',cityIds):Promise.resolve({data:[],error:null}),
+        categoryIds.length?db.from('vehicle_categories').select('id,name_ar').in('id',categoryIds):Promise.resolve({data:[],error:null})
+      ]);
+      if(cityRowsError||categoryRowsError)throw cityRowsError||categoryRowsError;
+      const requestMap=new Map((requests||[]).map(x=>[String(x.id),x]));
+      const cityMap=new Map((cityRows||[]).map(x=>[String(x.id),x.name_ar]));
+      const categoryMap=new Map((categoryRows||[]).map(x=>[String(x.id),x.name_ar]));
+      const enrichedFunding=(funding||[]).map(x=>{
+        const request=requestMap.get(String(x.request_id))||{};
+        return {...x,city_name:cityMap.get(String(request.city_id))||request.pickup_area||'—',
+          category_name:categoryMap.get(String(request.requested_category_id))||'—'};
+      });
+      return res.status(200).json({success:true,funding:enrichedFunding,balance:Number(driver?.balance||0)});
+    }
+
+    if(action==='expire_driver_funding'){
+      if(session?.role!=='driver'||id!==b.driverId||!b.contractId)return fail(res,403,'غير مصرح');
+      const {data:contract,error:contractError}=await db.from('limousine_contracts')
+        .select('id,driver_id,status,funding_deadline').eq('id',b.contractId).eq('driver_id',id).maybeSingle();
+      if(contractError||!contract)throw contractError||new Error('contract_not_found');
+      if(contract.status!=='awaiting_funding')return res.status(200).json({success:true,expired:false,status:contract.status});
+      if(!contract.funding_deadline||new Date(contract.funding_deadline).getTime()>Date.now())
+        return res.status(200).json({success:true,expired:false,status:'awaiting_funding'});
+      const {data,error}=await db.rpc('limousine_expire_funding',{p_contract_id:contract.id});
+      if(error)throw error;
+      return res.status(200).json({success:true,expired:true,result:data});
     }
 
     if(action==='get_contract_document'){
