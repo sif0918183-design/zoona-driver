@@ -21,7 +21,7 @@
   const statusNames = {
     open:'بانتظار قبول السائقين', awaiting_driver_selection:'بانتظار اختيار سائق',
     driver_selected:'تم اختيار السائق', confirmed:'مؤكد', awaiting_funding:'بانتظار تأمين العمولة',
-    booked:'ساري', active:'نشط', completion_requested:'طلب إنهاء الخدمة',
+    booked:'ساري', active:'ساري', completion_requested:'طلب إنهاء الخدمة',
     awaiting_settlement:'بانتظار التسوية', settled:'تمت التسوية', disputed:'نزاع',
     cancelled:'ملغي', expired:'فات وقته', accepted:'قبول مبدئي', selected:'تم الاختيار', contracted:'تم التعاقد'
   };
