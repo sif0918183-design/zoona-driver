@@ -59,7 +59,7 @@ export default async function handler(req, res) {
       const [{data:request,error:re},{data:driver,error:de},{data:category,error:ce}]=await Promise.all([
         db.from('limousine_requests').select('requested_category_id,pickup_area').eq('id',contract.request_id).maybeSingle(),
         db.from('drivers').select('car_model,car_type,vehicle_type').eq('id',contract.driver_id).maybeSingle(),
-        db.from('vehicle_categories').select('name_ar,instant_vehicle_id').eq('id',contract.requested_category_id || '').maybeSingle()
+        db.from('vehicle_categories').select('name_ar,instant_vehicle_id').eq('id',request?.requested_category_id || '').maybeSingle()
       ]);
       if(re||de||ce)throw re||de||ce;
       const start=new Date(contract.start_at);
