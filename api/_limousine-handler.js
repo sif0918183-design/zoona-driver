@@ -135,8 +135,16 @@ export default async function handler(req, res) {
       if (session?.role !== 'passenger' || id !== b.passengerId) return fail(res, 403, 'غير مصرح');
       const { data: requests, error } = await db.from('limousine_requests').select('*').eq('passenger_id', id).order('created_at', { ascending: false }).limit(50);
       if (error) throw error;
-      const passengerSafeRequests=(requests||[]).map(({estimated_total,...request})=>request);
       const requestIds = (requests || []).map(x => x.id);
+      const categoryIds = [...new Set((requests || []).map(x => x.requested_category_id).filter(Boolean))];
+      const { data: requestCategories, error: requestCategoryError } = categoryIds.length
+        ? await db.from('vehicle_categories').select('id,name_ar').in('id', categoryIds)
+        : { data: [], error: null };
+      if (requestCategoryError) throw requestCategoryError;
+      const requestCategoryMap = new Map((requestCategories || []).map(x => [String(x.id), x.name_ar]));
+      const passengerSafeRequests=(requests||[]).map(({estimated_total,...request})=>({
+        ...request, category_name:requestCategoryMap.get(String(request.requested_category_id))||'—'
+      }));
       if (!requestIds.length) return res.status(200).json({ success: true, requests: [], acceptances: [], contracts: [], drivers: [] });
       const [{ data: acceptances, error: ae }, { data: contracts, error: ce }, { data: cancellationRows, error: xe }] = await Promise.all([
         db.from('limousine_acceptances').select('id,request_id,driver_id,status,accepted_at').in('request_id', requestIds),
@@ -186,22 +194,18 @@ export default async function handler(req, res) {
       if(activeContractError)throw activeContractError;
       const hasActiveContract=!!activeContract;
       if(!driver.is_available&&!hasActiveContract)return fail(res,403,'driver_not_eligible');
-      const { data: cats, error: catErr } = await db.from('vehicle_categories').select('id,name_ar,sort_order').eq('is_active', true).order('sort_order');
+      const { data: cats, error: catErr } = await db.from('vehicle_categories')
+        .select('id,instant_vehicle_id').eq('is_active', true).not('instant_vehicle_id', 'is', null);
       if (catErr) throw catErr;
-      const driverCategory = (cats || []).find(c => String(c.id) === String(driver.car_type || driver.vehicle_type));
-      const legacyDriverRank = vehicleRank(driver.car_type || driver.vehicle_type);
-      const categoryMap = new Map((cats || []).map(c => [String(c.id), c]));
+      // Match the same exact category key enforced by limousine_accept_request.
+      const driverCategoryKey = String(driver.car_type || driver.vehicle_type || '').trim().toLowerCase();
+      const categoryMap = new Map((cats || []).map(c => [String(c.id), c.instant_vehicle_id]));
       const { data: rows, error } = await db.from('limousine_requests').select('*')
         .in('status', ['open','awaiting_driver_selection']).gt('start_at', new Date().toISOString()).order('start_at').limit(100);
       if (error) throw error;
-      const eligible = hasActiveContract ? [] : (rows || []).filter(r => {
-        const requestedCategory = categoryMap.get(String(r.requested_category_id));
-        if (!requestedCategory) return false;
-        if (driverCategory) return Number(driverCategory.sort_order || 0) >= Number(requestedCategory.sort_order || 0);
-        // Backward compatibility for older drivers whose car_type stores legacy text keys.
-        const requestedRank = categoryRank(requestedCategory.name_ar);
-        return legacyDriverRank > 0 && requestedRank < 99 && legacyDriverRank >= requestedRank;
-      });
+      const eligible = hasActiveContract || !driverCategoryKey ? [] : (rows || []).filter(r =>
+        String(categoryMap.get(String(r.requested_category_id)) || '').trim().toLowerCase() === driverCategoryKey
+      );
       const ids = eligible.map(r => r.id);
       const [{ data: ownAcceptances, error: ownError }, { data: counts, error: countErr }] = await Promise.all([
         db.from('limousine_acceptances').select('request_id,status').eq('driver_id', id).in('status', ['accepted','selected','contracted','funding_expired','withdrawn']),
