@@ -11,7 +11,6 @@ as $$
     where case when p_role='driver' then c.driver_id=p_user_id else c.passenger_id=p_user_id end
       and c.status in ('booked','active')
       and coalesce(c.commission_held,0)>0
-      and c.start_at<=now()
       and c.scheduled_end_at>now()
   );
 $$;
