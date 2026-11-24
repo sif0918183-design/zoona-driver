@@ -56,12 +56,16 @@ export default async function handler(req, res) {
         .in('status',['booked','active','completion_requested','awaiting_settlement','disputed']).gt('commission_held',0).order('created_at',{ascending:false}).limit(1).maybeSingle();
       if(error)throw error;
       if(!contract)return res.status(200).json({success:true,contract:null});
-      const [{data:request,error:re},{data:driver,error:de},{data:category,error:ce}]=await Promise.all([
-        db.from('limousine_requests').select('requested_category_id,pickup_area').eq('id',contract.request_id).maybeSingle(),
+      const {data:request,error:re}=await db.from('limousine_requests')
+        .select('requested_category_id,pickup_area').eq('id',contract.request_id).maybeSingle();
+      if(re)throw re;
+      const [{data:driver,error:de},{data:category,error:ce}]=await Promise.all([
         db.from('drivers').select('car_model,car_type,vehicle_type').eq('id',contract.driver_id).maybeSingle(),
-        db.from('vehicle_categories').select('name_ar,instant_vehicle_id').eq('id',request?.requested_category_id || '').maybeSingle()
+        request?.requested_category_id
+          ? db.from('vehicle_categories').select('name_ar,instant_vehicle_id').eq('id',request.requested_category_id).maybeSingle()
+          : Promise.resolve({data:null,error:null})
       ]);
-      if(re||de||ce)throw re||de||ce;
+      if(de||ce)throw de||ce;
       const startDateKey=new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Khartoum',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(contract.start_at));
       const firstDayEnd=new Date(startDateKey+'T17:00:00+02:00');
       const elapsed=Date.now()<firstDayEnd.getTime()?0:Math.min(Number(contract.duration_days||1),1+Math.floor((Date.now()-firstDayEnd.getTime())/86400000));
@@ -173,7 +177,14 @@ export default async function handler(req, res) {
         .select('id,full_name,balance,car_type,vehicle_type,is_active,is_approved,is_banned,is_available,status')
         .eq('id', id).maybeSingle();
       if (dre || !driver) throw dre || new Error('driver_not_found');
-      if (!driver.is_active || !driver.is_approved || driver.is_banned || !driver.is_available || driver.status === 'SUSPENDED') return fail(res, 403, 'driver_not_eligible');
+      if (!driver.is_active || !driver.is_approved || driver.is_banned || driver.status === 'SUSPENDED') return fail(res, 403, 'driver_not_eligible');
+      const {data:activeContract,error:activeContractError}=await db.from('limousine_contracts')
+        .select('id').eq('driver_id',id)
+        .in('status',['booked','active','completion_requested','awaiting_settlement','disputed'])
+        .gt('commission_held',0).order('created_at',{ascending:false}).limit(1).maybeSingle();
+      if(activeContractError)throw activeContractError;
+      const hasActiveContract=!!activeContract;
+      if(!driver.is_available&&!hasActiveContract)return fail(res,403,'driver_not_eligible');
       const { data: cats, error: catErr } = await db.from('vehicle_categories').select('id,name_ar,sort_order').eq('is_active', true).order('sort_order');
       if (catErr) throw catErr;
       const driverCategory = (cats || []).find(c => String(c.id) === String(driver.car_type || driver.vehicle_type));
@@ -182,7 +193,7 @@ export default async function handler(req, res) {
       const { data: rows, error } = await db.from('limousine_requests').select('*')
         .in('status', ['open','awaiting_driver_selection']).gt('start_at', new Date().toISOString()).order('start_at').limit(100);
       if (error) throw error;
-      const eligible = (rows || []).filter(r => {
+      const eligible = hasActiveContract ? [] : (rows || []).filter(r => {
         const requestedCategory = categoryMap.get(String(r.requested_category_id));
         if (!requestedCategory) return false;
         if (driverCategory) return Number(driverCategory.sort_order || 0) >= Number(requestedCategory.sort_order || 0);
