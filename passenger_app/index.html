@@ -4250,6 +4250,18 @@ function calculateRidePrice() {
 }
 
 async function confirmRide() {
+    try {
+        const limoToken=localStorage.getItem('session_token')||localStorage.getItem('tarhal_session_token')||'';
+        const limoRes=await fetch('/api/travel-platform?module=limousine',{method:'POST',headers:{'Content-Type':'application/json','Authorization':limoToken?'Bearer '+limoToken:''},body:JSON.stringify({action:'get_active_contract'})});
+        const limoData=await limoRes.json();
+        if(limoRes.ok&&limoData.success&&limoData.contract){
+            showNotification('لديك عقد ليموزين سارٍ. لا يمكنك طلب رحلة داخلية حتى انتهاء العقد.','error');
+            return;
+        }
+    } catch(e) {
+        showNotification('تعذر التحقق من حالة عقد الليموزين. حاول مرة أخرى.','error');
+        return;
+    }
     if (!selectedVehicleType || !destinationPosition || !currentRoute) {
         showNotification('الرجاء تحديد الوجهة واختيار نوع المركبة', 'warning');
         return;
