@@ -270,9 +270,23 @@ async function evaluateTrip10hCommission(tripId, rideId, settings, serverTime) {
     return { success: true, result: commStatus === 'held' ? 'commission_held' : 'waiting_for_10h_window', hoursUntilDeparture: Math.round(hoursUntilDeparture * 10) / 10, contactsRevealed: (trip?.contact_revealed || rideReq?.contact_revealed) || false };
 }
 
+async function hasActiveLimousineContract(userId, role) {
+    const column = role === 'driver' ? 'driver_id' : 'passenger_id';
+    const { data, error } = await supabase.from('limousine_contracts').select('id')
+        .eq(column, userId).in('status', ['booked', 'active'])
+        .gt('commission_held', 0).lte('start_at', new Date().toISOString())
+        .gt('scheduled_end_at', new Date().toISOString()).limit(1);
+    if (error) throw error;
+    return !!(data && data.length);
+}
+
 // Check passenger eligibility and behavioral constraints before creating a ride
 async function checkPassengerRestrictions(passengerId, departureTimeISO, fromCity, toCity, settings) {
     const serverTime = getSudanServerTime();
+
+    if (await hasActiveLimousineContract(passengerId, 'passenger')) {
+        throw new Error('لديك عقد ليموزين سارٍ. لا يمكنك إنشاء رحلة سفرية حتى انتهاء العقد.');
+    }
 
     // 1. Check customer account restrictions
     const { data: customer, error: cErr } = await supabase
@@ -494,6 +508,10 @@ export default async function handler(req, res) {
             // التحقق من الصلاحيات: سائق ومطابق للـ driverId
             if (!session || session.role !== 'driver' || String(session.id).trim() !== String(driverId).trim()) {
                 return res.status(403).json({ success: false, error: 'غير مصرح: لا يمكنك قبول رحلة باسم سائق آخر' });
+            }
+
+            if (await hasActiveLimousineContract(driverId, 'driver')) {
+                return res.status(403).json({ success: false, error: 'لديك عقد ليموزين سارٍ. لا يمكنك قبول رحلات سفرية خلال مدة العقد.' });
             }
 
             // Fetch driver details
