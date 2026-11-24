@@ -3898,6 +3898,17 @@
       const data=await res.json();
       if(!res.ok||!data.success)return;
       const c=data.contract;
+      if(c&&window.__limoForcedOfflineContractId!==c.id){
+        window.__limoForcedOfflineContractId=c.id;
+        try{if(typeof foreverOnlineManager!=='undefined'&&foreverOnlineManager){await foreverOnlineManager.deactivate();foreverOnlineManager=null;}}catch(e){console.warn('Could not stop driver work mode for limousine contract:',e);}
+        try{if(typeof isDriverOnline!=='undefined')isDriverOnline=false;}catch(e){}
+        localStorage.removeItem('driver_forever_online');localStorage.removeItem('driver_online_since');localStorage.removeItem('driver_online_id');
+        const indicator=document.getElementById('driver-status-indicator'),statusText=document.getElementById('driver-status-text');
+        if(indicator)indicator.className='status-indicator status-offline';
+        if(statusText)statusText.textContent='غير متصل — عقد ليموزين سارٍ';
+        if(window.FlutterBridge?.postMessage)window.FlutterBridge.postMessage('driver_status_change',{online:false});
+      }
+      if(!c)window.__limoForcedOfflineContractId=null;
       const toggle=document.getElementById('toggle-online-btn');
       const search=document.getElementById('confirm-ride-btn');
       if(toggle){if(c){if(toggle.dataset.limoLocked!=='1'){toggle.dataset.limoWasDisabled=String(toggle.disabled);toggle.dataset.limoLocked='1';}toggle.disabled=true;}else if(toggle.dataset.limoLocked==='1'){toggle.disabled=toggle.dataset.limoWasDisabled==='true';delete toggle.dataset.limoLocked;delete toggle.dataset.limoWasDisabled;}toggle.title=c?'لا يمكن تفعيل وضع العمل أثناء سريان عقد الليموزين':'';}
