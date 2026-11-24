@@ -15,7 +15,7 @@
   const date = d => d ? new Date(d).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
   const statusNames = {
     open:'بانتظار قبول السائقين', awaiting_driver_selection:'بانتظار اختيار سائق',
-    driver_selected:'تم اختيار السائق', confirmed:'مؤكد', awaiting_funding:'بانتظار تأمين العمولة',
+    driver_selected:'تم اختيار السائق', confirmed:'مؤكد', awaiting_funding:role==='passenger'?'جارٍ استكمال التعاقد':'بانتظار تأمين العمولة',
     booked:'ساري', active:'ساري', completion_requested:'طلب إنهاء الخدمة',
     awaiting_settlement:'بانتظار التسوية', settled:'تمت التسوية', disputed:'نزاع',
     cancelled:'ملغي', expired:'فات وقته', accepted:'قبول مبدئي', selected:'تم الاختيار', contracted:'تم التعاقد'
@@ -26,7 +26,7 @@
     'outside_service_hours':'الموعد خارج ساعات الخدمة المتاحة.',
     'invalid_duration':'مدة التأجير غير صالحة.',
     'invalid_request_details':'يرجى مراجعة بيانات طلب التأجير.',
-    'pricing_unavailable':'لا يتوفر سعر لهذه المدينة وفئة السيارة حالياً.',
+    'pricing_unavailable':'لا تتوفر خدمة التأجير لهذه المدينة وفئة السيارة حالياً.',
     'duration_out_of_pricing_range':'مدة التأجير خارج المدة المتاحة لهذه الفئة.',
     'request_not_available':'هذا الطلب لم يعد متاحاً للقبول.',
     'driver_not_eligible':'سيارتك غير مؤهلة لهذا الطلب.',
@@ -35,8 +35,8 @@
     'driver_has_overlapping_limo_contract':'لديك عقد تأجير متداخل مع هذا الموعد.',
     'request_not_selectable':'لا يمكن اختيار هذا السائق لهذا الطلب.',
     'driver_has_not_accepted':'هذا السائق لم يقبل الطلب.',
-    'insufficient_balance':'رصيد السائق غير كافٍ لتأمين العمولة.',
-    'بيانات التواصل محجوبة حتى نجاح تأمين العمولة.':'ستظهر بيانات التواصل بعد تأمين العمولة بنجاح.'
+    'insufficient_balance':role==='passenger'?'تعذر إتمام اختيار هذا السائق حالياً. يرجى اختيار سائق آخر.':'رصيد السائق غير كافٍ لتأمين العمولة.',
+    'بيانات التواصل محجوبة حتى نجاح تأمين العمولة.':'ستظهر بيانات التواصل بعد اكتمال إجراءات التعاقد.'
   };
   async function api(action, payload = {}) {
     const res = await fetch('/api/travel-platform?module=limousine', {
@@ -129,14 +129,14 @@
       try {
         btn.disabled=true;
         await api('select_driver',{passengerId:user.id,requestId:btn.dataset.select,driverId:btn.dataset.driver});
-        notice('تم تسجيل اختيار السائق. يبدأ تأمين العمولة وفق الموعد المحدد قبل بداية التأجير.');
+        notice('تم تسجيل اختيار السائق. ستظهر حالة العقد بعد اكتمال إجراءات التعاقد.');
         await passengerRequests();
       } catch(e) { notice(e.message,true); btn.disabled=false; }
     });
     list.querySelectorAll('[data-cancel-request]').forEach(btn=>btn.onclick=async()=>{
-      if(!confirm('هل تريد إلغاء طلب التأجير؟ لن تُحجز أي عمولة في هذه المرحلة.'))return;
+      if(!confirm('هل تريد إلغاء طلب التأجير قبل اكتمال التعاقد؟'))return;
       try{btn.disabled=true;await api('cancel_request',{passengerId:user.id,requestId:btn.dataset.cancelRequest});
-        notice('تم إلغاء الطلب قبل حجز العمولة.');await passengerRequests();}
+        notice('تم إلغاء طلب التأجير.');await passengerRequests();}
       catch(e){notice(e.message,true);btn.disabled=false;}
     });
   }
@@ -198,7 +198,7 @@
       return '<article class="card"><div class="line"><strong>عقد تأجير</strong><span class="pill">'+esc(statusNames[c.status]||c.status)+'</span></div>'+
       '<p><b>المدينة:</b> '+esc(c.city_name||c.pickup_area||'—')+'</p><p><b>بداية العقد:</b> '+date(c.start_at)+'</p>'+
       '<p><b>رقم العقد:</b> '+esc(c.contract_number||String(c.id).slice(0,8))+'</p><p><b>المدة:</b> '+Number(c.duration_days||0)+' يوم</p><p><b>نهاية العقد:</b> '+date(c.scheduled_end_at)+'</p>'+
-      (canView?'<button class="primary" data-contract-document="'+esc(c.id)+'">عرض العقد الكامل</button>':'<p class="muted">سيظهر العقد الكامل بعد تأمين العمولة وبدء العقد.</p>')+
+      (canView?'<button class="primary" data-contract-document="'+esc(c.id)+'">عرض العقد الكامل</button>':'<p class="muted">'+(role==='passenger'?'سيظهر العقد بعد اكتمال إجراءات التعاقد.':'سيظهر العقد الكامل بعد تأمين العمولة وبدء العقد.')+'</p>')+
       (['booked','active','completion_requested','awaiting_settlement','settled','disputed'].includes(c.status)?'<button class="small" data-contact="'+esc(c.id)+'">عرض بيانات التواصل</button><div id="contact-'+esc(c.id)+'" class="muted" hidden></div>':'')+
       (c.status==='active'?'<button class="secondary" data-end="'+esc(c.id)+'">طلب إنهاء الخدمة</button>':'')+
       (['active','completion_requested','awaiting_settlement'].includes(c.status)?'<button class="small" data-dispute="'+esc(c.id)+'">رفع نزاع للإدارة</button>':'')+
@@ -290,7 +290,7 @@
     const panel=document.createElement('div');
     panel.dir='rtl';
     panel.style.cssText='width:min(440px,100%);background:#fff;border-radius:20px;padding:24px 20px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.28);border-top:6px solid #0f9b8e;font-family:Tajawal,sans-serif;';
-    panel.innerHTML='<div style="font-size:38px;margin-bottom:8px">🚘</div><h2 style="margin:0 0 10px;color:#065f46">عقد الليموزين أصبح سارياً</h2><p style="line-height:1.9;color:#475569;margin:0 0 18px">تم تأمين عمولة العقد بنجاح. أصبح العقد سارياً، وستظهر تفاصيله في بطاقته المخصصة. وخلال مدة العقد لن يكون بإمكانك طلب أو استقبال رحلات داخلية أو سفرية.</p><button type="button" style="width:100%;border:0;border-radius:11px;padding:12px;background:#087e73;color:#fff;font:inherit;font-weight:800">حسناً</button>';
+    panel.innerHTML='<div style="font-size:38px;margin-bottom:8px">🚘</div><h2 style="margin:0 0 10px;color:#065f46">عقد الليموزين أصبح سارياً</h2><p style="line-height:1.9;color:#475569;margin:0 0 18px">'+(role==='passenger'?'اكتملت إجراءات التعاقد وأصبح العقد سارياً. ستجد تفاصيله في قسم العقود، وخلال مدة العقد لن يكون بإمكانك طلب رحلات داخلية أو سفرية.':'تم تأمين عمولة العقد بنجاح. أصبح العقد سارياً، وستظهر تفاصيله في بطاقته المخصصة. وخلال مدة العقد لن يكون بإمكانك طلب أو استقبال رحلات داخلية أو سفرية.')+'</p><button type="button" style="width:100%;border:0;border-radius:11px;padding:12px;background:#087e73;color:#fff;font:inherit;font-weight:800">حسناً</button>';
     panel.querySelector('button').onclick=()=>overlay.remove();
     overlay.appendChild(panel);document.body.appendChild(overlay);
   }
