@@ -49,6 +49,32 @@ export default async function handler(req, res) {
     const id = session?.id;
     const isAdmin = adminSession(session);
 
+    if (action === 'get_active_contract') {
+      if (!['passenger','driver'].includes(session?.role)) return fail(res,403,'غير مصرح');
+      const ownerColumn=session.role==='passenger'?'passenger_id':'driver_id';
+      const {data: contract,error}=await db.from('limousine_contracts').select('*').eq(ownerColumn,id)
+        .in('status',['booked','active']).gt('commission_held',0).order('created_at',{ascending:false}).limit(1).maybeSingle();
+      if(error)throw error;
+      if(!contract)return res.status(200).json({success:true,contract:null});
+      const [{data:request,error:re},{data:driver,error:de},{data:category,error:ce}]=await Promise.all([
+        db.from('limousine_requests').select('requested_category_id,pickup_area').eq('id',contract.request_id).maybeSingle(),
+        db.from('drivers').select('car_model,car_type,vehicle_type').eq('id',contract.driver_id).maybeSingle(),
+        db.from('vehicle_categories').select('name_ar,instant_vehicle_id').eq('id',contract.requested_category_id || '').maybeSingle()
+      ]);
+      if(re||de||ce)throw re||de||ce;
+      const start=new Date(contract.start_at);
+      const today=new Date(new Date().toLocaleString('en-US',{timeZone:'Africa/Khartoum'}));
+      const startDay=new Date(start.toLocaleString('en-US',{timeZone:'Africa/Khartoum'}));
+      const elapsed=Math.max(0,Math.min(Number(contract.duration_days||1),Math.floor((Date.UTC(today.getFullYear(),today.getMonth(),today.getDate())-Date.UTC(startDay.getFullYear(),startDay.getMonth(),startDay.getDate()))/86400000)));
+      return res.status(200).json({success:true,contract:{
+        id:contract.id,status:contract.status,start_at:contract.start_at,duration_days:Number(contract.duration_days||1),
+        days_completed:elapsed,days_remaining:Math.max(0,Number(contract.duration_days||1)-elapsed),
+        daily_price:Number(contract.daily_price_snapshot||0),total:Number(contract.contract_value_snapshot||0),
+        category_name:category?.name_ar||'سيارة',car_model:driver?.car_model||'—',
+        pickup_area:request?.pickup_area||'—',scheduled_end_at:contract.scheduled_end_at
+      }});
+    }
+
     if (action === 'list_config') {
       const [{ data: cities, error: ce }, { data: settings, error: se }, { data: categoryRows, error: ve }, { data: prices, error: pe }] = await Promise.all([
         db.from('cities').select('id,name_ar').order('name_ar'),
