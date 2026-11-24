@@ -9,6 +9,8 @@
   let activeSection = role === 'passenger' ? 'request' : 'available';
   let sectionLoaded = {};
   let fundingDeadline = null;
+  let fundingContractId = null;
+  let fundingExpiryProcessing = false;
   let fundingRefreshTimer = null;
   let fundingClockTimer = null;
   const money = n => Math.round(Number(n || 0)).toLocaleString('en-US') + ' ج.س';
@@ -143,10 +145,25 @@
       catch(e){notice(e.message,true);btn.disabled=false;}
     });
   }
+  function rentalDetails(r) {
+    const start=r.start_at ? new Date(r.start_at) : null;
+    const due=r.funding_required_by || (start ? new Date(start.getTime()-20*60*60*1000).toISOString() : null);
+    const commission=Number(r.commission_due ?? (Number(r.estimated_total||0)*Number(r.commission_rate||0)/100));
+    return '<div class="limo-rental-details">'+
+      '<p><b>فئة السيارة:</b> '+esc(r.category_name||'—')+'</p>'+
+      '<p><b>المدينة:</b> '+esc(r.city_name||r.pickup_area||'—')+'</p>'+
+      '<p><b>تاريخ البداية:</b> '+date(r.start_at)+'</p>'+
+      '<p><b>عدد الأيام:</b> '+Number(r.duration_days||0)+' يوم</p>'+
+      '<p><b>سعر اليوم:</b> '+money(r.daily_price_snapshot)+'</p>'+
+      '<p><b>الإجمالي:</b> '+money(r.estimated_total)+'</p>'+
+      '<p><b>نسبة العمولة:</b> '+Number(r.commission_rate||0)+'%</p>'+
+      '<p><b>العمولة:</b> '+money(commission)+'</p>'+
+      '<p class="limo-funding-reminder">يجب توفر مبلغ '+money(commission)+' على الأقل في رصيدك بحلول الساعة '+date(due)+'.</p></div>';
+  }
   function renderDriverRequests() {
     $('requests').innerHTML=requests.length?requests.map(r=>
       '<article class="card"><div class="line"><strong>طلب تأجير جديد</strong><span class="pill">'+esc(r.accepted_count)+' / 10 قبول</span></div>'+
-      '<p>'+esc(r.pickup_area)+' · '+date(r.start_at)+'</p><p>'+r.duration_days+' يوم · '+money(r.estimated_total)+'</p>'+
+      rentalDetails(r)+
       '<p>عدد الركاب: '+r.passenger_count+' · '+esc(r.usage_purpose||'')+'</p><p class="muted">'+esc(r.notes||'')+'</p>'+
       '<button class="primary" data-accept="'+esc(r.id)+'">قبول مبدئي</button></article>').join(''):'<div class="empty">لا توجد طلبات تأجير مناسبة لسيارتك حالياً.</div>';
     $('requests').querySelectorAll('[data-accept]').forEach(btn=>btn.onclick=async()=>{
@@ -167,7 +184,7 @@
       const label=expired?'فات وقته':fundingExpired?'انتهت مهلة تأمين العمولة':withdrawn?'سحبت قبولك':r.acceptance_status==='accepted'?'بانتظار اختيار الراكب':r.acceptance_status==='selected'?'تم اختيارك — بانتظار تأمين العمولة':'تم التعاقد';
       const detail=expired?'انتهى موعد بداية التأجير دون اختيار سائق وتأمين العمولة، وأُغلق الطلب تلقائياً.':fundingExpired?'لم يتم تأمين العمولة خلال المهلة، ويمكن للراكب اختيار سائق بديل.':withdrawn?'سحبت قبولك لهذا الطلب.':r.acceptance_status==='accepted'?'ينتظر الطلب اختيار الراكب. لا يتم حجز العمولة عند القبول المبدئي.':r.acceptance_status==='selected'?'تم اختيارك لهذا الطلب. تبدأ إجراءات تأمين العمولة وفق موعد الحجز.':'راجع قسم العقود لمتابعة الحجز.';
       return '<article class="card"><div class="line"><strong>طلب قبلته</strong><span class="pill">'+label+'</span></div>'+
-        '<p>'+esc(r.pickup_area)+' · '+date(r.start_at)+'</p><p>'+r.duration_days+' يوم · '+money(r.estimated_total)+'</p>'+
+        rentalDetails(r)+
         '<p class="muted">'+detail+'</p>'+
         (canWithdraw?'<button class="secondary" data-withdraw="'+esc(r.id)+'">سحب القبول</button>':'')+'</article>';
     }).join(''):'<div class="empty">لا توجد طلبات قبلتها وتنتظر اختيار الراكب.</div>';
@@ -325,15 +342,51 @@
     if(!fundingRefreshTimer)fundingRefreshTimer=setInterval(()=>loadDriverFunding().catch(()=>{}),30000);
     const d=await api('list_driver_funding',{driverId:user.id}),item=(d.funding||[])[0],card=$('limo-funding-card');
     if(!card)return;
-    if(!item){card.hidden=true;fundingDeadline=null;return;}
-    fundingDeadline=item.funding_deadline;$('limo-funding-required').textContent=money(item.commission_due);$('limo-funding-balance').textContent=money(d.balance);card.hidden=false;updateFundingClock();
+    if(!item){
+      card.hidden=true;fundingDeadline=null;fundingContractId=null;fundingExpiryProcessing=false;
+      return;
+    }
+    fundingDeadline=item.funding_deadline;fundingContractId=item.id;
+    $('limo-funding-required').textContent=money(item.commission_due);
+    $('limo-funding-balance').textContent=money(d.balance);
+    $('limo-funding-details').textContent=[
+      item.category_name||'—',item.city_name||'—',date(item.start_at),
+      Number(item.duration_days||0)+' يوم','اليوم '+money(item.daily_price_snapshot),
+      'الإجمالي '+money(item.contract_value_snapshot),
+      'العمولة '+Number(item.commission_rate_snapshot||0)+'%',
+      'المطلوب '+money(item.commission_due)
+    ].join(' · ');
+    $('limo-funding-reminder').textContent='وفّر '+money(item.commission_due)+' على الأقل في رصيدك بحلول '+date(item.funding_deadline)+'.';
+    card.hidden=false;updateFundingClock();
     if(!fundingClockTimer)fundingClockTimer=setInterval(updateFundingClock,1000);
+  }
+  async function processExpiredFunding(){
+    if(fundingExpiryProcessing||!fundingContractId)return;
+    fundingExpiryProcessing=true;
+    const contractId=fundingContractId;
+    try{
+      await api('expire_driver_funding',{driverId:user.id,contractId});
+      await driverRequests();
+      await loadDriverFunding();
+    }catch(e){
+      fundingExpiryProcessing=false;
+      const timer=$('limo-funding-timer');
+      if(timer)timer.textContent='جارٍ تحديث حالة الطلب...';
+      throw e;
+    }finally{
+      if(fundingContractId!==contractId)fundingExpiryProcessing=false;
+    }
   }
   function updateFundingClock(){
     const timer=$('limo-funding-timer');if(!timer||!fundingDeadline)return;
     const remaining=Math.max(0,Math.floor((new Date(fundingDeadline).getTime()-Date.now())/1000));
     const h=Math.floor(remaining/3600),m=Math.floor((remaining%3600)/60),s=remaining%60;
-    timer.textContent=remaining?[h,m,s].map(v=>String(v).padStart(2,'0')).join(':'):'انتهت المهلة — جارٍ تحديث الحالة';
+    if(remaining){
+      timer.textContent=[h,m,s].map(v=>String(v).padStart(2,'0')).join(':');
+      return;
+    }
+    timer.textContent='جارٍ تحديث حالة الطلب...';
+    processExpiredFunding().catch(()=>{fundingExpiryProcessing=false;});
   }
 
   async function loadSection(section, force=false) {
