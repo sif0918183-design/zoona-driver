@@ -1,11 +1,6 @@
 (() => {
   'use strict';
   const role = document.body.dataset.role;
-  document.addEventListener('DOMContentLoaded',()=>{
-    const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
-    const orphanNodes=[];while(walker.nextNode()){const node=walker.currentNode;if(node.textContent.trim()==='n')orphanNodes.push(node);}
-    orphanNodes.forEach(node=>node.remove());
-  });
   const $ = id => document.getElementById(id);
   const user = (() => { try { return JSON.parse(localStorage.getItem(role === 'passenger' ? 'tarhal_customer' : 'tarhal_driver') || 'null'); } catch { return null; } })();
   const token = localStorage.getItem('session_token') || '';
