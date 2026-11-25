@@ -367,7 +367,7 @@ export default async function handler(req, res) {
     if(action==='list_driver_funding'){
       if(session?.role!=='driver'||id!==b.driverId)return fail(res,403,'غير مصرح');
       const [{data: funding,error},{data: driver,error: driverError}]=await Promise.all([
-        db.from('limousine_contracts').select('id,request_id,status,funding_deadline,commission_due,start_at,duration_days,daily_price_snapshot,commission_rate_snapshot,contract_value_snapshot').eq('driver_id',id).eq('status','awaiting_funding').not('funding_deadline','is',null).order('funding_deadline').limit(5),
+        db.from('limousine_contracts').select('id,request_id,status,funding_deadline,funding_attempted_at,commission_due,start_at,duration_days,daily_price_snapshot,commission_rate_snapshot,contract_value_snapshot').eq('driver_id',id).eq('status','awaiting_funding').not('funding_deadline','is',null).order('funding_deadline').limit(5),
         db.from('drivers').select('balance').eq('id',id).maybeSingle()
       ]);
       if(error||driverError)throw error||driverError;
@@ -392,6 +392,33 @@ export default async function handler(req, res) {
           category_name:categoryMap.get(String(request.requested_category_id))||'—'};
       });
       return res.status(200).json({success:true,funding:enrichedFunding,balance:Number(driver?.balance||0)});
+    }
+
+    if(action==='retry_driver_funding'){
+      if(session?.role!=='driver'||id!==b.driverId||!b.contractId)return fail(res,403,'غير مصرح');
+      const {data:contract,error:contractError}=await db.from('limousine_contracts')
+        .select('id,driver_id,status,funding_deadline,funding_attempted_at,hold_due_at,commission_due')
+        .eq('id',b.contractId).eq('driver_id',id).maybeSingle();
+      if(contractError||!contract)throw contractError||new Error('contract_not_found');
+      if(contract.status!=='awaiting_funding')
+        return res.status(200).json({success:true,result:{ok:contract.status==='booked',status:contract.status}});
+      const deadline=contract.funding_deadline?new Date(contract.funding_deadline).getTime():0;
+      if(!deadline||deadline<=Date.now())
+        return res.status(200).json({success:true,result:{ok:false,reason:'funding_deadline_reached',status:contract.status}});
+      const {data:driver,error:driverError}=await db.from('drivers').select('balance').eq('id',id).maybeSingle();
+      if(driverError||!driver)throw driverError||new Error('driver_not_found');
+      const available=Number(driver.balance||0),required=Number(contract.commission_due||0);
+      if(available<required)
+        return res.status(200).json({success:true,result:{ok:false,reason:'insufficient_balance',available,required,status:'awaiting_funding'}});
+      const {data:holdResult,error:holdError}=await db.rpc('limousine_hold_commission',{p_contract_id:contract.id});
+      if(holdError)throw holdError;
+      if(holdResult?.reason==='insufficient_balance'){
+        const {error:restoreError}=await db.from('limousine_contracts')
+          .update({funding_deadline:contract.funding_deadline,funding_attempted_at:contract.funding_attempted_at})
+          .eq('id',contract.id).eq('status','awaiting_funding');
+        if(restoreError)throw restoreError;
+      }
+      return res.status(200).json({success:true,result:holdResult});
     }
 
     if(action==='expire_driver_funding'){
