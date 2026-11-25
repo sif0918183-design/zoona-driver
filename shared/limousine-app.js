@@ -378,7 +378,7 @@
     const lastKey='limo_funding_retry_last_'+contractId;
     let last=0;
     try{last=Number(localStorage.getItem(lastKey)||0);}catch{}
-    if(last&&now-last<60000){
+    if(slot!=='final'&&last&&now-last<60000){
       fundingRetrySlots.add(slotKey);
       try{localStorage.setItem(marker,String(now));}catch{}
       return;
