@@ -103,6 +103,18 @@
   function carDescription(d) {
     return [d.car_model || d.car_type || 'سيارة', d.car_color || ''].filter(Boolean).join(' · ');
   }
+  function passengerRentalDetails(r) {
+    return '<div class="limo-rental-details">'+
+      '<p><b>فئة السيارة:</b> '+esc(r.category_name||'—')+'</p>'+
+      '<p><b>المدينة:</b> '+esc(r.city_name||'—')+'</p>'+
+      '<p><b>موقع الاستلام:</b> '+esc(r.pickup_area||'—')+'</p>'+
+      '<p><b>تاريخ البداية:</b> '+date(r.start_at)+'</p>'+
+      '<p><b>عدد الأيام:</b> '+Number(r.duration_days||0)+' يوم</p>'+
+      '<p><b>سعر اليوم:</b> '+money(r.daily_price_snapshot)+'</p>'+
+      '<p><b>الإجمالي:</b> '+money(r.estimated_total)+'</p>'+
+      '<p>عدد الركاب: '+Number(r.passenger_count||1)+' · '+esc(r.usage_purpose||'')+'</p>'+
+      '<p class="muted">'+esc(r.notes||'')+'</p></div>';
+  }
   async function passengerRequests() {
     const data=await api('list_passenger_requests',{passengerId:user.id});
     requests=data.requests||[];
@@ -128,7 +140,7 @@
           (canSelect?'<button class="small" data-select="'+esc(r.id)+'" data-driver="'+esc(d.id)+'">اختيار</button>':a?.status==='selected'?'<span class="pill">تم الاختيار</span>':'')+'</div>';
       }).join('');
       return '<article class="card"><div class="line"><strong>طلب تأجير</strong><span class="pill">'+esc(statusNames[r.status]||r.status)+'</span></div>'+
-        '<p><b>المدينة:</b> '+esc(r.city_name||'—')+'</p><p><b>موقع الاستلام:</b> '+esc(r.pickup_area||'—')+' — '+date(r.start_at)+'</p><p>فئة السيارة: '+esc(r.category_name||'—')+'</p><p>'+r.duration_days+' يوم</p>'+
+        passengerRentalDetails(r)+
         (acc.length?'<div class="driver-list"><b>السائقون الذين قبلوا ('+acc.length+')</b>'+driverCards+'</div>':r.status==='awaiting_driver_selection'?'<p class="muted">بانتظار قبول سائقين آخرين حتى تتمكن من اختيار سائق بديل.</p>':'<p class="muted">بانتظار قبول السائقين.</p>')+
         (contract?'<p class="muted">العقد: '+esc(statusNames[contract.status]||contract.status)+'</p>':'')+
         (canCancelRequest?'<button class="secondary" data-cancel-request="'+esc(r.id)+'">إلغاء الطلب</button>':'')+'</article>';
@@ -262,12 +274,26 @@
     });
   }
 
+  let contractViewerLoadPromise=null;
+  async function ensureContractDocumentViewer(){
+    if(typeof window.showLimousineContractDocument==='function')return;
+    if(!contractViewerLoadPromise)contractViewerLoadPromise=new Promise((resolve,reject)=>{
+      const script=document.createElement('script');
+      script.src='/shared/limousine-contract-document.js';
+      script.onload=()=>typeof window.showLimousineContractDocument==='function'
+        ?resolve():reject(new Error('تعذر تهيئة عارض العقد.'));
+      script.onerror=()=>reject(new Error('تعذر تحميل عارض العقد.'));
+      document.head.appendChild(script);
+    });
+    await contractViewerLoadPromise;
+  }
   async function showContractDocument(contractId) {
     try {
       const d=await api('get_contract_document',{contractId});
-      if(!window.showLimousineContractDocument)throw new Error('عارض العقد غير متاح حالياً.');
+      await ensureContractDocumentViewer();
       window.showLimousineContractDocument(d.contract||{});
-    } catch(e){notice(e.message,true);}
+    } catch(e){notice(e.message==='تعذر تحميل عارض العقد.'||e.message==='تعذر تهيئة عارض العقد.'
+      ?'تعذر فتح العقد الآن. أعد تحميل الصفحة وحاول مرة أخرى.':e.message,true);}
   }
   async function loadChats() {
     const d=await api('list_contracts',{driverId:user.id,passengerId:user.id});
