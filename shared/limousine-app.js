@@ -15,6 +15,7 @@
   let fundingClockTimer = null;
   let fundingAttemptedAt = null;
   let fundingRetryProcessing = false;
+  const fundingRetrySlots = new Set();
   const money = n => Math.round(Number(n || 0)).toLocaleString('en-US') + ' ج.س';
   const date = d => d ? new Date(d).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
   const statusNames = {
@@ -370,15 +371,19 @@
     if(role!=='driver'||fundingRetryProcessing||!fundingContractId||!fundingDeadline)return;
     const contractId=fundingContractId,now=Date.now(),deadline=new Date(fundingDeadline).getTime();
     if(!Number.isFinite(deadline)||now>=deadline)return;
+    const slotKey=contractId+':'+slot;
+    if(fundingRetrySlots.has(slotKey))return;
     const marker='limo_funding_retry_'+contractId+'_'+slot;
-    try{if(localStorage.getItem(marker))return;}catch{}
+    try{if(localStorage.getItem(marker)){fundingRetrySlots.add(slotKey);return;}}catch{}
     const lastKey='limo_funding_retry_last_'+contractId;
     let last=0;
     try{last=Number(localStorage.getItem(lastKey)||0);}catch{}
     if(last&&now-last<60000){
+      fundingRetrySlots.add(slotKey);
       try{localStorage.setItem(marker,String(now));}catch{}
       return;
     }
+    fundingRetrySlots.add(slotKey);
     try{
       localStorage.setItem(marker,String(now));
       localStorage.setItem(lastKey,String(now));
