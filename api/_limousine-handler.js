@@ -72,7 +72,7 @@ export default async function handler(req, res) {
       return res.status(200).json({success:true,contract:{
         id:contract.id,status:contract.status,start_at:contract.start_at,duration_days:Number(contract.duration_days||1),
         days_completed:elapsed,days_remaining:Math.max(0,Number(contract.duration_days||1)-elapsed),
-        ...(session.role==='driver'?{daily_price:Number(contract.daily_price_snapshot||0),total:Number(contract.contract_value_snapshot||0)}:{}),
+        daily_price:Number(contract.daily_price_snapshot||0),total:Number(contract.contract_value_snapshot||0),
         category_name:category?.name_ar||'سيارة',car_model:driver?.car_model||'—',
         pickup_area:request?.pickup_area||'—',scheduled_end_at:contract.scheduled_end_at
       }});
@@ -149,8 +149,10 @@ export default async function handler(req, res) {
       if (requestCategoryError || requestCityError) throw requestCategoryError || requestCityError;
       const requestCategoryMap = new Map((requestCategories || []).map(x => [String(x.id), x.name_ar]));
       const requestCityMap = new Map((requestCities || []).map(x => [String(x.id), x.name_ar]));
-      const passengerSafeRequests=(requests||[]).map(({estimated_total,...request})=>({
+      const passengerSafeRequests=(requests||[]).map(request=>({
         ...request,
+        daily_price_snapshot:Number(request.daily_price_snapshot||0),
+        estimated_total:Number(request.estimated_total||0),
         category_name:requestCategoryMap.get(String(request.requested_category_id))||'—',
         city_name:requestCityMap.get(String(request.city_id))||'—'
       }));
