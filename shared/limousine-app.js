@@ -13,6 +13,8 @@
   let fundingExpiryProcessing = false;
   let fundingRefreshTimer = null;
   let fundingClockTimer = null;
+  let fundingAttemptedAt = null;
+  let fundingRetryProcessing = false;
   const money = n => Math.round(Number(n || 0)).toLocaleString('en-US') + ' ج.س';
   const date = d => d ? new Date(d).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
   const statusNames = {
@@ -345,10 +347,12 @@
     const d=await api('list_driver_funding',{driverId:user.id}),item=(d.funding||[])[0],card=$('limo-funding-card');
     if(!card)return;
     if(!item){
-      card.hidden=true;fundingDeadline=null;fundingContractId=null;fundingExpiryProcessing=false;
+      card.hidden=true;fundingDeadline=null;fundingContractId=null;fundingAttemptedAt=null;fundingExpiryProcessing=false;
+      if(fundingClockTimer){clearInterval(fundingClockTimer);fundingClockTimer=null;}
       return;
     }
     fundingDeadline=item.funding_deadline;fundingContractId=item.id;
+    fundingAttemptedAt=item.funding_attempted_at;
     $('limo-funding-required').textContent=money(item.commission_due);
     $('limo-funding-balance').textContent=money(d.balance);
     $('limo-funding-details').textContent=[
@@ -361,6 +365,44 @@
     $('limo-funding-reminder').textContent='وفّر '+money(item.commission_due)+' على الأقل في رصيدك بحلول '+date(item.funding_deadline)+'.';
     card.hidden=false;updateFundingClock();
     if(!fundingClockTimer)fundingClockTimer=setInterval(updateFundingClock,1000);
+  }
+  async function attemptFundingRetry(slot){
+    if(role!=='driver'||fundingRetryProcessing||!fundingContractId||!fundingDeadline)return;
+    const contractId=fundingContractId,now=Date.now(),deadline=new Date(fundingDeadline).getTime();
+    if(!Number.isFinite(deadline)||now>=deadline)return;
+    const marker='limo_funding_retry_'+contractId+'_'+slot;
+    try{if(localStorage.getItem(marker))return;}catch{}
+    const lastKey='limo_funding_retry_last_'+contractId;
+    let last=0;
+    try{last=Number(localStorage.getItem(lastKey)||0);}catch{}
+    if(last&&now-last<60000){
+      try{localStorage.setItem(marker,String(now));}catch{}
+      return;
+    }
+    try{
+      localStorage.setItem(marker,String(now));
+      localStorage.setItem(lastKey,String(now));
+    }catch{}
+    fundingRetryProcessing=true;
+    try{
+      const response=await api('retry_driver_funding',{driverId:user.id,contractId});
+      const result=response.result||{};
+      if(result.status==='booked'||(result.ok===true&&result.held!==undefined)){
+        fundingDeadline=null;fundingContractId=null;fundingAttemptedAt=null;
+        const card=$('limo-funding-card');if(card)card.hidden=true;
+        if(fundingClockTimer){clearInterval(fundingClockTimer);fundingClockTimer=null;}
+        await Promise.all([driverRequests(),loadDriverFunding(),loadActiveContract()]);
+        sectionLoaded.contracts=false;
+        if(activeSection==='contracts')await loadContracts();
+      }else if(Number.isFinite(Number(result.available))){
+        $('limo-funding-balance').textContent=money(result.available);
+        $('current-balance').textContent=money(result.available);
+      }
+    }catch{
+      // A failed retry must not stop or reset the funding countdown.
+    }finally{
+      fundingRetryProcessing=false;
+    }
   }
   async function processExpiredFunding(){
     if(fundingExpiryProcessing||!fundingContractId)return;
@@ -385,6 +427,15 @@
     const h=Math.floor(remaining/3600),m=Math.floor((remaining%3600)/60),s=remaining%60;
     if(remaining){
       timer.textContent=[h,m,s].map(v=>String(v).padStart(2,'0')).join(':');
+      if(remaining<=120000){
+        attemptFundingRetry('final').catch(()=>{});
+      }else if(fundingAttemptedAt){
+        const attempted=new Date(fundingAttemptedAt).getTime();
+        if(Number.isFinite(attempted)){
+          const retrySlot=Math.floor((Date.now()-attempted)/600000);
+          if(retrySlot>=1)attemptFundingRetry('periodic_'+retrySlot).catch(()=>{});
+        }
+      }
       return;
     }
     timer.textContent='جارٍ تحديث حالة الطلب...';
