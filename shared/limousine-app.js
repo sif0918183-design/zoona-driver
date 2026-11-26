@@ -41,7 +41,9 @@
     'request_not_selectable':'لا يمكن اختيار هذا السائق لهذا الطلب.',
     'driver_has_not_accepted':'هذا السائق لم يقبل الطلب.',
     'insufficient_balance':role==='passenger'?'تعذر إتمام اختيار هذا السائق حالياً. يرجى اختيار سائق آخر.':'رصيد السائق غير كافٍ لتأمين العمولة.',
-    'بيانات التواصل محجوبة حتى نجاح تأمين العمولة.':'ستظهر بيانات التواصل بعد اكتمال إجراءات التعاقد.'
+    'بيانات التواصل محجوبة حتى نجاح تأمين العمولة.':'ستظهر بيانات التواصل بعد اكتمال إجراءات التعاقد.',
+    'تم تأمين العمولة؛ يجب تقديم طلب إلغاء بموافقة الطرفين ثم اعتماد الإدارة.':'يجب تقديم طلب إلغاء بموافقة الطرفين ثم اعتماد الإدارة.',
+    'لم يتم تأمين العمولة بعد.':'لم يكتمل اعتماد العقد بعد.'
   };
   async function api(action, payload = {}) {
     const res = await fetch('/api/travel-platform?module=limousine', {
@@ -320,12 +322,30 @@
     const target=$('messages-'+contractId);
     if(target) target.innerHTML=(d.messages||[]).map(m=>'<div class="message '+(m.sender_type===role?'mine':'')+'">'+esc(m.message)+'<small>'+date(m.created_at)+'</small></div>').join('');
   }
+  function passengerSafeNotification(n) {
+    if(role!=='passenger')return n;
+    const copy={
+      LIMO_FUNDING_PENDING:{title:'بانتظار اعتماد العقد',body:'تم اختيار السائق، وسيبدأ اعتماد العقد قبل موعد التأجير بـ20 ساعة.'},
+      LIMO_DRIVER_SELECTED:{title:'تم اختيار السائق',body:'تم اختيار السائق، وسيبدأ اعتماد العقد قبل موعد التأجير بـ20 ساعة.'},
+      LIMO_COMMISSION_RESERVED:{title:'تم اعتماد الحجز',body:'تم اعتماد العقد وأصبح الحجز مؤكداً.'},
+      LIMO_BOOKING_CONFIRMED:{title:'تم اعتماد العقد',body:'تم اعتماد العقد وأصبح الحجز مؤكداً.'},
+      LIMO_FUNDING_EXPIRED:{title:'انتهت مهلة اعتماد العقد',body:'لم يكتمل اعتماد العقد خلال المهلة المحددة، ويمكنك اختيار سائق بديل.'},
+      LIMO_REQUEST_EXPIRED:{title:'انتهى موعد الطلب',body:'انتهى موعد بداية التأجير دون اختيار سائق، ولذلك أُغلق الطلب تلقائياً.'},
+      LIMO_REQUEST_CANCELLED:{title:'تم إلغاء الطلب',body:'تم إلغاء طلب التأجير.'},
+      LIMO_DRIVER_WITHDREW:{title:'سحب سائق قبوله',body:'سحب السائق قبوله لهذا الطلب. يمكنك اختيار سائق آخر من القائمة.'}
+    };
+    const mapped=copy[n.event_code];
+    if(mapped)return {...n,...mapped};
+    if(/عمولة|العموله|تأمين العمولة|تأمين عموله|حجز العمولة|خصم عمولة/.test(String(n.title||'')+' '+String(n.body||'')))
+      return {...n,title:'تحديث عقد التأجير',body:'تم تحديث حالة عقد التأجير. يرجى مراجعة تفاصيل الحجز.'};
+    return n;
+  }
   async function loadNotifications() {
     const d=await api('list_notifications');
-    const items=d.notifications||[];
+    const items=(d.notifications||[]).map(passengerSafeNotification);
     const unread=Number(d.unread_count||0),badge=$('unread-count'),preview=$('notification-preview');
     if(badge){badge.textContent=unread>99?'99+':String(unread);badge.hidden=unread===0;}
-    if(preview){preview.textContent=unread>0?(d.last_unread?.body||items.find(n=>!n.read_at)?.body||'لديك تنبيه جديد').slice(0,90):'لا توجد تنبيهات غير مقروءة';preview.hidden=unread===0;}
+    if(preview){preview.textContent=unread>0?(items.find(n=>!n.read_at)?.body||'لديك تنبيه جديد').slice(0,90):'لا توجد تنبيهات غير مقروءة';preview.hidden=unread===0;}
     $('notifications').innerHTML=items.length?items.map(n=>
       '<div class="message"><div class="line"><b>'+esc(n.title)+'</b><small>'+date(n.created_at)+'</small></div><p>'+esc(n.body)+'</p>'+
       (n.read_at?'':'<button class="small" data-read="'+esc(n.id)+'">تمت القراءة</button>')+'</div>').join(''):'<div class="empty">لا توجد تنبيهات جديدة.</div>';
