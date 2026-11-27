@@ -1117,6 +1117,10 @@
                     <i class="ph-light ph-path"></i>
                     <span>إدارة الرحلات</span>
                 </a>
+                <a class="nav-item" onclick="showSection('limousine')">
+                    <i class="ph-light ph-car-profile"></i>
+                    <span>منصة ليموزين تراكا</span>
+                </a>
                 
                 <a class="nav-item" onclick="showSection('prices')">
                     <i class="ph-light ph-tag"></i>
@@ -2086,6 +2090,13 @@
                     </div>
                 </section>
 
+                <section id="limousine-section" class="section">
+                    <div class="tables-container" style="padding:0; overflow:hidden;">
+                        <iframe id="limousine-admin-frame" src="/admin-limousine.html" title="إدارة منصة ليموزين تراكا" style="display:block;width:100%;height:600px;border:0;background:var(--tech-bg,#f5f7fa);" loading="lazy"></iframe>
+                    </div>
+                    <script>(()=>{const frame=document.getElementById("limousine-admin-frame");if(!frame)return;window.addEventListener("message",event=>{if(event.origin!==window.location.origin||event.source!==frame.contentWindow||event.data?.type!=="tracka-limo-height")return;const height=Number(event.data.height);if(Number.isFinite(height)&&height>0)frame.style.height=Math.ceil(height)+"px";});})();</script>
+                </section>
+
                 <section id="settings-section" class="section">
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem;">
                         <!-- Travel Platform Settings -->
@@ -2776,6 +2787,7 @@
             const titles = {
                 'dashboard': 'لوحة التحكم',
                 'rides': 'إدارة الرحلات',
+                'limousine': 'منصة ليموزين تراكا',
                 'prices': 'أسعار الرحلات',
                 'drivers': 'السائقون',
                 'passengers': 'الركاب',
@@ -2790,6 +2802,7 @@
             const icons = {
                 'dashboard': 'ph-gauge',
                 'rides': 'ph-path',
+                'limousine': 'ph-car-profile',
                 'prices': 'ph-tag',
                 'drivers': 'ph-steering-wheel',
                 'passengers': 'ph-users-three',
@@ -2880,8 +2893,8 @@
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${ride.driver_name}</td>
-                    <td>${ride.final_price.toLocaleString()} ج</td>
-                    <td style="font-weight: 700; color: var(--danger);">${ride.commission_amount.toLocaleString()} ج</td>
+                    <td>${ride.final_price.toLocaleString('en-US')} ج</td>
+                    <td style="font-weight: 700; color: var(--danger);">${ride.commission_amount.toLocaleString('en-US')} ج</td>
                     <td>${formatDateShort(ride.created_at)}</td>
                     <td>
                         <button class="btn btn-outline btn-sm" onclick="viewRideDetails('${ride.id}')">
@@ -2943,7 +2956,7 @@
                 row.innerHTML = `
                     <td>${driver.full_name}</td>
                     <td style="font-weight: 700; color: ${driver.balance < STOP_BALANCE_THRESHOLD ? 'var(--danger)' : 'var(--warning)'};">
-                        ${(driver.balance || 0).toLocaleString()} ج
+                        ${(driver.balance || 0).toLocaleString('en-US')} ج
                     </td>
                     <td><span class="badge ${driver.is_active ? 'badge-success' : 'badge-danger'}">${driver.is_active ? 'نشط' : 'موقف'}</span></td>
                     <td>${driver.last_balance_alert ? formatDateShort(driver.last_balance_alert) : 'لا يوجد'}</td>
@@ -3150,7 +3163,7 @@
                     drivers.forEach(driver => {
                         const option = document.createElement('option');
                         option.value = driver.id;
-                        option.textContent = `${driver.full_name} (${driver.phone}) - ${(driver.balance || 0).toLocaleString()} ج`;
+                        option.textContent = `${driver.full_name} (${driver.phone}) - ${(driver.balance || 0).toLocaleString('en-US')} ج`;
                         select.appendChild(option);
                     });
                 }
@@ -3185,7 +3198,7 @@
             try {
                 await manageDriverBalance(driverId, action, amount, notes);
 
-                showNotification(`تم ${action === 'add' ? 'إضافة' : 'خصم'} ${amount.toLocaleString()} جنيـه بنجاح`, 'success');
+                showNotification(`تم ${action === 'add' ? 'إضافة' : 'خصم'} ${amount.toLocaleString('en-US')} جنيـه بنجاح`, 'success');
 
                 // تحديث البيانات
                 await populateDriverSelect();
@@ -3525,7 +3538,7 @@
                                 rtl: true,
                                 callbacks: {
                                     label: function(context) {
-                                        return `الإيرادات: ${context.raw.toLocaleString()} ألف جنيه`;
+                                        return `الإيرادات: ${context.raw.toLocaleString('en-US')} ألف جنيه`;
                                     }
                                 }
                             }
@@ -3615,7 +3628,7 @@
         // ============================================
         function updateStats() {
             // Total rides
-            document.getElementById('total-rides').textContent = allRides.length.toLocaleString();
+            document.getElementById('total-rides').textContent = allRides.length.toLocaleString('en-US');
             
             // Total revenue
             const totalRevenue = allRides
@@ -3625,11 +3638,11 @@
             
             // Active drivers
             const activeDrivers = allDrivers.filter(driver => driver.is_active).length;
-            document.getElementById('active-drivers').textContent = activeDrivers.toLocaleString();
+            document.getElementById('active-drivers').textContent = activeDrivers.toLocaleString('en-US');
             
             // Pending rides
             const pendingRides = allRides.filter(ride => ride.status === 'pending' || ride.status === 'searching').length;
-            document.getElementById('pending-rides').textContent = pendingRides.toLocaleString();
+            document.getElementById('pending-rides').textContent = pendingRides.toLocaleString('en-US');
 
             // Update new stats
             const totalCommission = allRides
@@ -3677,7 +3690,7 @@
                     </td>
                     <td>${ride.passenger_name || ride.customer_name || 'راكب'}</td>
                     <td>${ride.driver_name || '-'}</td>
-                    <td style="font-weight: 700; color: var(--success);">${price.toLocaleString()} ج</td>
+                    <td style="font-weight: 700; color: var(--success);">${price.toLocaleString('en-US')} ج</td>
                     <td>${statusBadge}</td>
                     <td>${formatDateShort(ride.created_at)}</td>
                     <td>
@@ -3764,7 +3777,7 @@
                     <td>${ride.passenger_name || ride.customer_name || 'راكب'}</td>
                     <td>${ride.driver_name || '-'}</td>
                     <td><span class="badge badge-primary">${vehicleCategory}</span></td>
-                    <td style="font-weight: 700; color: var(--success);">${price.toLocaleString()} ج</td>
+                    <td style="font-weight: 700; color: var(--success);">${price.toLocaleString('en-US')} ج</td>
                     <td>${statusBadge}</td>
                     <td>${formatDateShort(ride.created_at)}</td>
                     <td>
@@ -3851,8 +3864,8 @@
                 row.innerHTML = `
                     <td>${price.from_city}</td>
                     <td>${price.to_city}</td>
-                    <td style="font-weight: 600;">${(parseFloat(price.distance_km) || 0).toLocaleString()} كم</td>
-                    <td style="font-weight: 700; color: var(--success);">${calculatedEcoPrice.toLocaleString()} ج</td>
+                    <td style="font-weight: 600;">${(parseFloat(price.distance_km) || 0).toLocaleString('en-US')} كم</td>
+                    <td style="font-weight: 700; color: var(--success);">${calculatedEcoPrice.toLocaleString('en-US')} ج</td>
                     <td><span class="badge ${price.is_active ? 'badge-success' : 'badge-danger'}">${price.is_active ? 'نشط' : 'غير نشط'}</span></td>
                     <td>${formatDateShort(price.updated_at)}</td>
                     <td>
@@ -4556,8 +4569,8 @@
                 row.innerHTML = `
                     <td>${formatDateShort(day.date)}</td>
                     <td>${day.rides}</td>
-                    <td style="font-weight: 700; color: var(--success);">${day.revenue.toLocaleString()} ج</td>
-                    <td>${Math.round(day.avgPrice).toLocaleString()} ج</td>
+                    <td style="font-weight: 700; color: var(--success);">${day.revenue.toLocaleString('en-US')} ج</td>
+                    <td>${Math.round(day.avgPrice).toLocaleString('en-US')} ج</td>
                     <td><span class="badge badge-primary">${day.popularCategory}</span></td>
                 `;
                 container.appendChild(row);
@@ -4809,7 +4822,7 @@
             }
 
             tbody.innerHTML = complaintsList.map(c => {
-                const dateStr = c.created_at ? new Date(c.created_at).toLocaleString('ar-EG', {
+                const dateStr = c.created_at ? new Date(c.created_at).toLocaleString('en-US', {
                     year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                 }) : '-';
 
@@ -4894,7 +4907,7 @@
             };
             document.getElementById('cd-complaint-type').innerText = typeNames[complaint.complaint_type] || complaint.complaint_type || 'عامة';
 
-            const dateStr = complaint.created_at ? new Date(complaint.created_at).toLocaleString('ar-EG', {
+            const dateStr = complaint.created_at ? new Date(complaint.created_at).toLocaleString('en-US', {
                 year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
             }) : '-';
             document.getElementById('cd-created-at').innerText = dateStr;
@@ -5070,7 +5083,7 @@
         function formatPopupDate(dateString) {
             try {
                 const d = new Date(dateString);
-                return d.toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                return d.toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
             } catch (e) {
                 return '—';
             }
@@ -5488,7 +5501,7 @@
             if (!distanceInput || !calculatedEl) return;
             const distance = parseFloat(distanceInput.value) || 0;
             const calculated = Math.round(distance * travelPricePerKm);
-            calculatedEl.value = distance > 0 ? calculated.toLocaleString() + ' ج' : 'سيتم حسابه تلقائياً';
+            calculatedEl.value = distance > 0 ? calculated.toLocaleString('en-US') + ' ج' : 'سيتم حسابه تلقائياً';
         }
 
         function showAddPriceModal() {
@@ -5654,7 +5667,7 @@
         function formatDateShort(dateString) {
             try {
                 const date = new Date(dateString);
-                return date.toLocaleDateString('ar-SA', {
+                return date.toLocaleDateString('en-GB', {
                     month: 'short',
                     day: 'numeric'
                 });

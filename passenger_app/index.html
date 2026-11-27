@@ -1876,15 +1876,19 @@
                 </div>
             </div>
 
-            <div class="home-actions btn-row" style="margin-bottom: 20px;">
-                <button class="btn btn-driver" onclick="requestRide()" style="height: 100px; font-size: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
+            <div class="home-actions btn-row" style="margin-bottom: 20px; display:flex; flex-direction:column; gap:10px;">
+                <button class="btn btn-driver" onclick="requestRide()" style="height:64px; width:100%; font-size:15px; display:flex; flex-direction:row; align-items:center; justify-content:flex-start; gap:12px; padding:0 18px;">
                     <i class="ph-bold ph-car" style="font-size: 28px;"></i>
                     <span>اطلب رحلة داخلية</span>
                 </button>
                 
-                <button class="btn btn-driver" onclick="openTravelPlatform()" style="height: 100px; font-size: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
+                <button class="btn btn-driver" onclick="openTravelPlatform()" style="height:64px; width:100%; font-size:15px; display:flex; flex-direction:row; align-items:center; justify-content:flex-start; gap:12px; padding:0 18px;">
                     <i class="ph-bold ph-suitcase-simple" style="font-size: 28px;"></i>
                     <span>دخول منصة الرحلات السفرية </span>
+                </button>
+                <button class="btn btn-driver" onclick="window.location.href='/passenger_app/limousine.html'" style="height:64px; width:100%; font-size:15px; display:flex; flex-direction:row; align-items:center; justify-content:flex-start; gap:12px; padding:0 18px;">
+                    <i class="ph-bold ph-car-profile" style="font-size: 28px;"></i>
+                    <span>ليموزين تراكا (تأجير يومي)</span>
                 </button>
             </div>
             
@@ -4246,6 +4250,18 @@ function calculateRidePrice() {
 }
 
 async function confirmRide() {
+    try {
+        const limoToken=localStorage.getItem('session_token')||localStorage.getItem('tarhal_session_token')||'';
+        const limoRes=await fetch('/api/travel-platform?module=limousine',{method:'POST',headers:{'Content-Type':'application/json','Authorization':limoToken?'Bearer '+limoToken:''},body:JSON.stringify({action:'get_active_contract'})});
+        const limoData=await limoRes.json();
+        if(limoRes.ok&&limoData.success&&limoData.contract){
+            showNotification('لديك عقد ليموزين سارٍ. لا يمكنك طلب رحلة داخلية حتى انتهاء العقد.','error');
+            return;
+        }
+    } catch(e) {
+        showNotification('تعذر التحقق من حالة عقد الليموزين. حاول مرة أخرى.','error');
+        return;
+    }
     if (!selectedVehicleType || !destinationPosition || !currentRoute) {
         showNotification('الرجاء تحديد الوجهة واختيار نوع المركبة', 'warning');
         return;
@@ -5382,5 +5398,48 @@ document.getElementById('complaints-modal').addEventListener('click', function(e
 });
 </script>
 
-</body>
+<script>
+(function(){
+  function showMainLimoNotice(){
+    const overlay=document.createElement('div');overlay.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,.62);display:grid;place-items:center;padding:20px;';
+    const panel=document.createElement('div');panel.dir='rtl';panel.style.cssText='width:min(440px,100%);background:#fff;border-radius:16px;padding:14px 16px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.28);border-top:6px solid #0f9b8e;font-family:Tajawal,sans-serif;';
+    panel.innerHTML='<div style="font-size:28px;margin-bottom:4px">🚘</div><h2 style="margin:0 0 6px;color:#065f46">عقد الليموزين أصبح سارياً</h2><p style="line-height:1.55;color:#475569;margin:0 0 10px">عقد التأجير معتمد وساري. يمكنك متابعة تفاصيله من قسم العقود، وخلال مدته لن يكون بإمكانك طلب أو استقبال رحلات داخلية أو سفرية.</p><button type="button" style="width:100%;border:0;border-radius:11px;padding:8px;background:#087e73;color:#fff;font:inherit;font-weight:800">حسناً</button>';
+    panel.querySelector('button').onclick=()=>overlay.remove();overlay.appendChild(panel);document.body.appendChild(overlay);
+  }
+  async function refreshLimoContract(){
+    const token=localStorage.getItem('session_token')||localStorage.getItem('tarhal_session_token')||'';
+    const role=location.pathname.includes('/driver_app/')?'driver':'passenger';
+    const user=(()=>{try{return JSON.parse(localStorage.getItem(role==='driver'?'tarhal_driver':'tarhal_customer')||'null')}catch(e){return null}})();
+    if(!user?.id)return;
+    try{
+      const res=await fetch('/api/travel-platform?module=limousine',{method:'POST',headers:{'Content-Type':'application/json','Authorization':token?'Bearer '+token:''},body:JSON.stringify({action:'get_active_contract'})});
+      const data=await res.json();
+      if(!res.ok||!data.success)return;
+      const c=data.contract;
+      const toggle=document.getElementById('toggle-online-btn');
+      const search=document.getElementById('confirm-ride-btn');
+      if(toggle){toggle.disabled=!!c;toggle.title=c?'لا يمكن تفعيل وضع العمل أثناء سريان عقد الليموزين':'';}
+      if(search){if(c){if(search.dataset.limoLocked!=='1'){search.dataset.limoWasDisabled=String(search.disabled);search.dataset.limoLocked='1';}search.disabled=true;}else if(search.dataset.limoLocked==='1'){search.disabled=search.dataset.limoWasDisabled==='true';delete search.dataset.limoLocked;delete search.dataset.limoWasDisabled;}search.title=c?'لا يمكن طلب رحلة داخلية أثناء سريان عقد الليموزين':'';}
+      let card=document.getElementById('main-limo-contract-banner');
+      if(!c){if(card)card.remove();return;}
+      if(!card){
+        card=document.createElement('section');card.id='main-limo-contract-banner';
+        card.style.cssText='margin:6px 14px;padding:8px 10px;border:1px solid #0f9b8e;border-radius:12px;background:linear-gradient(135deg,#ecfdf5,#d1fae5);color:#064e3b;box-shadow:0 3px 10px rgba(15,155,142,.10);width:auto;';
+        const header=document.querySelector('header');
+        if(header)header.insertAdjacentElement('afterend',card);else document.body.prepend(card);
+      }
+      const fmt=n=>Math.round(Number(n||0)).toLocaleString('en-US');
+      card.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;line-height:1.3"><b>🚘 عقد تأجير ساري — '+(c.category_name||'سيارة')+'</b><b style="background:#065f46;color:white;padding:2px 8px;border-radius:14px;font-size:11px;white-space:nowrap">ساري</b></div>'+
+       '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:5px;font-size:12px;line-height:1.4"><span>'+(c.car_model||'')+' · '+c.duration_days+' يوم · المنفذ '+c.days_completed+' · المتبقي '+c.days_remaining+'</span>'+
+       '<span style="white-space:nowrap">اليومي '+fmt(c.daily_price)+' ج.س · الإجمالي '+fmt(c.total)+' ج.س</span>'+
+       '<button type="button" id="main-limo-contract-view" style="border:0;border-radius:8px;padding:5px 10px;background:#087e73;color:#fff;font:inherit;font-size:12px;font-weight:800;white-space:nowrap">عرض العقد</button></div>';
+      document.getElementById('main-limo-contract-view').onclick=()=>location.href=((role==='driver'?'/driver_app/limousine.html':'/passenger_app/limousine.html')+'?contract='+encodeURIComponent(c.id));
+      const key='limo_active_contract_notice_'+c.id;
+      if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');showMainLimoNotice();}
+    }catch(e){console.warn('Active limousine contract check failed:',e);}
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',refreshLimoContract);else refreshLimoContract();
+  setInterval(refreshLimoContract,30000);
+})();
+</script></body>
 </html>

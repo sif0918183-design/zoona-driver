@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { verifyToken } from './_token-utils.js';
+import limousineHandler from './_limousine-handler.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -269,9 +270,23 @@ async function evaluateTrip10hCommission(tripId, rideId, settings, serverTime) {
     return { success: true, result: commStatus === 'held' ? 'commission_held' : 'waiting_for_10h_window', hoursUntilDeparture: Math.round(hoursUntilDeparture * 10) / 10, contactsRevealed: (trip?.contact_revealed || rideReq?.contact_revealed) || false };
 }
 
+async function hasActiveLimousineContract(userId, role) {
+    const column = role === 'driver' ? 'driver_id' : 'passenger_id';
+    const { data, error } = await supabase.from('limousine_contracts').select('id')
+        .eq(column, userId).in('status', ['booked', 'active', 'completion_requested', 'awaiting_settlement', 'disputed'])
+        .gt('commission_held', 0)
+        .gt('scheduled_end_at', new Date().toISOString()).limit(1);
+    if (error) throw error;
+    return !!(data && data.length);
+}
+
 // Check passenger eligibility and behavioral constraints before creating a ride
 async function checkPassengerRestrictions(passengerId, departureTimeISO, fromCity, toCity, settings) {
     const serverTime = getSudanServerTime();
+
+    if (await hasActiveLimousineContract(passengerId, 'passenger')) {
+        throw new Error('لديك عقد ليموزين سارٍ. لا يمكنك إنشاء رحلة سفرية حتى انتهاء العقد.');
+    }
 
     // 1. Check customer account restrictions
     const { data: customer, error: cErr } = await supabase
@@ -347,8 +362,7 @@ async function checkPassengerRestrictions(passengerId, departureTimeISO, fromCit
 
         if (normFromExisting === normFromNew && normToExisting === normToNew && ride.departure_time) {
             const existingDepTime = new Date(ride.departure_time).getTime();
-            const newDepTime = departureTime.getTime();
-            const diffHours = Math.abs(existingDepTime - newDepTime) / (1000 * 60 * 60);
+            const newDepTime = departureTime.getTime();            const diffHours = Math.abs(existingDepTime - newDepTime) / (1000 * 60 * 60);
 
             if (diffHours < 2) {
                 throw new Error('لديك بالفعل طلب رحلة مماثل لهذا الموعد. يمكنك تعديل الطلب الحالي أو إلغاؤه قبل إنشاء طلب جديد.');
@@ -374,6 +388,7 @@ async function checkPassengerRestrictions(passengerId, departureTimeISO, fromCit
 }
 
 export default async function handler(req, res) {
+    if (req.query?.module === 'limousine') return limousineHandler(req, res);
     // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -493,6 +508,10 @@ export default async function handler(req, res) {
             // التحقق من الصلاحيات: سائق ومطابق للـ driverId
             if (!session || session.role !== 'driver' || String(session.id).trim() !== String(driverId).trim()) {
                 return res.status(403).json({ success: false, error: 'غير مصرح: لا يمكنك قبول رحلة باسم سائق آخر' });
+            }
+
+            if (await hasActiveLimousineContract(driverId, 'driver')) {
+                return res.status(403).json({ success: false, error: 'لديك عقد ليموزين سارٍ. لا يمكنك قبول رحلات سفرية خلال مدة العقد.' });
             }
 
             // Fetch driver details
@@ -697,8 +716,7 @@ export default async function handler(req, res) {
                 }
                 // Already selected the same driver -> return existing trip
                 const { data: existingTrip } = await supabase
-                    .from('travel_trips')
-                    .select('*')
+                    .from('travel_trips')                    .select('*')
                     .eq('ride_request_id', rideId)
                     .maybeSingle();
 
@@ -1047,8 +1065,7 @@ export default async function handler(req, res) {
                     status_at_cancellation: trip?.status || 'pending',
                     driver_selected: isDriverSelected,
                     contact_revealed: isContactRevealed,
-                    commission_held: isCommissionHeld,
-                    cancellation_reason: reason || 'إلغاء من الراكب',
+                    commission_held: isCommissionHeld,                    cancellation_reason: reason || 'إلغاء من الراكب',
                     cancelled_by: 'passenger',
                     impact_level: impactLevel,
                     created_at: serverTime.toISOString()

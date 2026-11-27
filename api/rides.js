@@ -11,6 +11,16 @@ export function setSupabaseClient(client) {
     supabase = client;
 }
 
+async function hasActiveLimousineContract(userId, role) {
+    const column = role === 'driver' ? 'driver_id' : 'passenger_id';
+    const { data, error } = await supabase.from('limousine_contracts').select('id')
+        .eq(column, userId).in('status', ['booked', 'active', 'completion_requested', 'awaiting_settlement', 'disputed'])
+        .gt('commission_held', 0)
+        .gt('scheduled_end_at', new Date().toISOString()).limit(1);
+    if (error) throw error;
+    return !!(data && data.length);
+}
+
 export default async function handler(req, res) {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -60,6 +70,10 @@ export default async function handler(req, res) {
             // التحقق من الصلاحيات: يجب أن يكون المستخدم راكباً ومطابقاً للـ passengerId
             if (!session || session.role !== 'passenger' || String(session.id).trim() !== String(passengerId).trim()) {
                 return res.status(403).json({ success: false, error: 'غير مصرح: لا يمكنك إنشاء رحلة باسم مستخدم آخر' });
+            }
+
+            if (await hasActiveLimousineContract(passengerId, 'passenger')) {
+                return res.status(403).json({ success: false, error: 'لديك عقد ليموزين سارٍ. لا يمكنك طلب رحلة داخلية حتى انتهاء العقد.' });
             }
 
             // Verify passenger exists and is verified
@@ -137,6 +151,10 @@ export default async function handler(req, res) {
             // التحقق من الصلاحيات: يجب أن يكون المستخدم سائقاً ومطابقاً للـ driverId
             if (!session || session.role !== 'driver' || String(session.id).trim() !== String(driverId).trim()) {
                 return res.status(403).json({ success: false, error: 'غير مصرح: لا يمكنك قبول رحلة باسم سائق آخر' });
+            }
+
+            if (await hasActiveLimousineContract(driverId, 'driver')) {
+                return res.status(403).json({ success: false, error: 'لديك عقد ليموزين سارٍ. لا يمكنك قبول رحلات داخلية خلال مدة العقد.' });
             }
 
             // Check if driver is active

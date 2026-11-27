@@ -641,6 +641,17 @@ export default async function handler(req, res) {
             return res.status(200).json({ success: true });
         }
 
+        // --- ACTIVE VEHICLE CATEGORIES FOR DRIVER REGISTRATION ---
+        if (action === 'get_vehicle_categories') {
+            const { data, error } = await supabase
+                .from('vehicle_categories')
+                .select('id,name_ar,description_ar,price_multiplier,is_active,sort_order')
+                .eq('is_active', true)
+                .order('sort_order', { ascending: true });
+            if (error) throw error;
+            return res.status(200).json({ success: true, categories: data || [] });
+        }
+
         // --- ADD VEHICLE CATEGORY ---
         if (action === 'add_category') {
             const { name, description, multiplier, sort_order } = req.body;
