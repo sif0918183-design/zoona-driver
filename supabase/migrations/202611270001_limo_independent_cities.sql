@@ -11,6 +11,8 @@ insert into public.limousine_cities (id, name_ar)
 select id, name_ar from public.cities
 on conflict (id) do nothing;
 
+alter table public.limousine_cities enable row level security;
+
 create unique index if not exists limousine_cities_name_ar_lower_uidx
   on public.limousine_cities (lower(name_ar));
 
