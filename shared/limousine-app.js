@@ -17,7 +17,7 @@
   let fundingRetryProcessing = false;
   const fundingRetrySlots = new Set();
   const money = n => Math.round(Number(n || 0)).toLocaleString('en-US') + ' ج.س';
-  const date = d => d ? new Date(d).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+  const date = d => { if (!d) return '—'; const value=new Date(d); if (!Number.isFinite(value.getTime())) return '—'; const day=new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short',year:'numeric'}).format(value); const parts=new Intl.DateTimeFormat('en-US',{hour:'numeric',minute:'2-digit',hour12:true}).formatToParts(value); const hour=parts.find(x=>x.type==='hour')?.value||''; const minute=parts.find(x=>x.type==='minute')?.value||'00'; const period=parts.find(x=>x.type==='dayPeriod')?.value==='AM'?'ص':'م'; return day+' — الساعة '+hour+':'+minute+' '+period; };
   const statusNames = {
     open:'بانتظار قبول السائقين', awaiting_driver_selection:'بانتظار اختيار سائق',
     driver_selected:'تم اختيار السائق', confirmed:'مؤكد', awaiting_funding:role==='passenger'?'جارٍ استكمال التعاقد':'بانتظار تأمين العمولة',
