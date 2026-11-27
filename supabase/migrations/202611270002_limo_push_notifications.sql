@@ -49,49 +49,5 @@ create trigger trg_limo_notification_push
 after insert on public.limousine_notifications
 for each row execute function public.limousine_enqueue_notification_push();
 
-create or replace function public.limousine_notify_chat_message()
-returns trigger
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $$
-declare
-  v_chat public.limousine_chats%rowtype;
-  v_recipient_id uuid;
-  v_recipient_type text;
-begin
-  select * into v_chat
-  from public.limousine_chats
-  where id = new.chat_id;
-
-  if not found or new.sender_type not in ('passenger','driver') then
-    return new;
-  end if;
-
-  if new.sender_type = 'passenger' then
-    v_recipient_id := v_chat.driver_id;
-    v_recipient_type := 'driver';
-  else
-    v_recipient_id := v_chat.passenger_id;
-    v_recipient_type := 'passenger';
-  end if;
-
-  insert into public.limousine_notifications(
-    request_id,contract_id,recipient_id,recipient_type,event_code,title,body,payload
-  ) values (
-    v_chat.request_id,v_chat.contract_id,v_recipient_id,v_recipient_type,
-    'LIMO_NEW_MESSAGE','رسالة جديدة في عقد التأجير',
-    'لديك رسالة جديدة من الطرف الآخر في محادثة عقد التأجير.',
-    jsonb_build_object('chat_id',v_chat.id,'message_id',new.id,'contract_id',v_chat.contract_id)
-  );
-
-  return new;
-end;
-$$;
-
-drop trigger if exists trg_limo_chat_message_notification on public.limousine_chat_messages;
-create trigger trg_limo_chat_message_notification
-after insert on public.limousine_chat_messages
-for each row execute function public.limousine_notify_chat_message();
 
 commit;
