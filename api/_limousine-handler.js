@@ -565,8 +565,8 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true, result: data });
       }
       if (action === 'admin_create_city') {
-        const name = String(b.name || '').trim().replace(/\\s+/g, ' ');
-        if (name.length < 2 || name.length > 80 || !/^[\\p{L}\\p{M}\\s.'()-]+$/u.test(name))
+        const name = String(b.name || '').trim().replace(/\s+/g, ' ');
+        if (name.length < 2 || name.length > 80 || !/^[\p{L}\p{M}\s.'()-]+$/u.test(name))
           return fail(res, 400, 'اسم المدينة غير صالح. أدخل اسم المدينة فقط.');
         const { data: existing, error: existingError } = await db.from('limousine_cities')
           .select('id,name_ar').ilike('name_ar', name).limit(1).maybeSingle();
