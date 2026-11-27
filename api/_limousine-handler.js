@@ -80,7 +80,7 @@ export default async function handler(req, res) {
 
     if (action === 'list_config') {
       const [{ data: cities, error: ce }, { data: settings, error: se }, { data: categoryRows, error: ve }, { data: prices, error: pe }] = await Promise.all([
-        db.from('cities').select('id,name_ar').order('name_ar'),
+        db.from('limousine_cities').select('id,name_ar').order('name_ar'),
         db.from('system_settings').select('value').eq('key', 'instant_vehicle_prices').maybeSingle(),
         db.from('vehicle_categories').select('id,instant_vehicle_id,is_active').eq('is_active', true).not('instant_vehicle_id', 'is', null),
         db.from('limousine_pricing').select('city_id,vehicle_category_id,daily_price,commission_rate,min_days,max_days').eq('is_active', true)
@@ -143,7 +143,7 @@ export default async function handler(req, res) {
           ? await db.from('vehicle_categories').select('id,name_ar').in('id', categoryIds)
           : { data: [], error: null },
         cityIds.length
-          ? await db.from('cities').select('id,name_ar').in('id', cityIds)
+          ? await db.from('limousine_cities').select('id,name_ar').in('id', cityIds)
           : { data: [], error: null }
       ]);
       if (requestCategoryError || requestCityError) throw requestCategoryError || requestCityError;
@@ -239,7 +239,7 @@ export default async function handler(req, res) {
       const cityIds=[...new Set(allRows.map(r=>r.city_id).filter(Boolean))];
       const categoryIds=[...new Set(allRows.map(r=>r.requested_category_id).filter(Boolean))];
       const [{data:cityRows,error:cityError},{data:categoryRows,error:categoryError},{data:fundingContracts,error:fundingContractError}] = await Promise.all([
-        cityIds.length?db.from('cities').select('id,name_ar').in('id',cityIds):Promise.resolve({data:[],error:null}),
+        cityIds.length?db.from('limousine_cities').select('id,name_ar').in('id',cityIds):Promise.resolve({data:[],error:null}),
         categoryIds.length?db.from('vehicle_categories').select('id,name_ar').in('id',categoryIds):Promise.resolve({data:[],error:null}),
         acceptedRequestIds.length?db.from('limousine_contracts').select('request_id,status,commission_due,funding_deadline,hold_due_at').eq('driver_id',id).in('request_id',acceptedRequestIds).in('status',['confirmed','awaiting_funding']):Promise.resolve({data:[],error:null})
       ]);
@@ -346,7 +346,7 @@ export default async function handler(req, res) {
       const {data: requestRows,error: requestError}=requestIds.length?await db.from('limousine_requests').select('id,city_id,pickup_area').in('id',requestIds):{data:[],error:null};
       if(requestError)throw requestError;
       const cityIds=[...new Set((requestRows||[]).map(r=>r.city_id))];
-      const {data: cityRows,error: cityError}=cityIds.length?await db.from('cities').select('id,name_ar').in('id',cityIds):{data:[],error:null};
+      const {data: cityRows,error: cityError}=cityIds.length?await db.from('limousine_cities').select('id,name_ar').in('id',cityIds):{data:[],error:null};
       if(cityError)throw cityError;
       const requestMap=new Map((requestRows||[]).map(r=>[r.id,r])),cityMap=new Map((cityRows||[]).map(c=>[c.id,c.name_ar]));
       const contractIds=(data||[]).map(c=>c.id);
@@ -381,7 +381,7 @@ export default async function handler(req, res) {
       const cityIds=[...new Set((requests||[]).map(x=>x.city_id).filter(Boolean))];
       const categoryIds=[...new Set((requests||[]).map(x=>x.requested_category_id).filter(Boolean))];
       const [{data:cityRows,error:cityRowsError},{data:categoryRows,error:categoryRowsError}]=await Promise.all([
-        cityIds.length?db.from('cities').select('id,name_ar').in('id',cityIds):Promise.resolve({data:[],error:null}),
+        cityIds.length?db.from('limousine_cities').select('id,name_ar').in('id',cityIds):Promise.resolve({data:[],error:null}),
         categoryIds.length?db.from('vehicle_categories').select('id,name_ar').in('id',categoryIds):Promise.resolve({data:[],error:null})
       ]);
       if(cityRowsError||categoryRowsError)throw cityRowsError||categoryRowsError;
@@ -451,7 +451,7 @@ export default async function handler(req, res) {
       ]);
       if(requestError||driverError||passengerError||!request||!driver||!passenger)throw requestError||driverError||passengerError||new Error('contract_details_not_found');
       const [{data:city,error:cityError},{data:category,error:categoryError}]=await Promise.all([
-        db.from('cities').select('name_ar').eq('id',request.city_id).maybeSingle(),
+        db.from('limousine_cities').select('name_ar').eq('id',request.city_id).maybeSingle(),
         db.from('vehicle_categories').select('name_ar').eq('id',request.requested_category_id).maybeSingle()
       ]);
       if(cityError||categoryError)throw cityError||categoryError;
@@ -530,13 +530,13 @@ export default async function handler(req, res) {
       }
     }
 
-    if (action === 'admin_overview' || action === 'admin_update_pricing' || action === 'admin_resolve' || action === 'admin_resolve_cancellation') {
+    if (action === 'admin_overview' || action === 'admin_update_pricing' || action === 'admin_create_city' || action === 'admin_resolve' || action === 'admin_resolve_cancellation') {
       if (!isAdmin) return fail(res, 403, 'صلاحيات الإدارة مطلوبة');
       if (action === 'admin_overview') {
         const [{ data: requests, error: re }, { data: contracts, error: ce }, { data: pricing, error: pe }, { data: ledger, error: le }, { data: cancellationRequests, error: xe }] = await Promise.all([
           db.from('limousine_requests').select('*').order('created_at', { ascending: false }).limit(200),
           db.from('limousine_contracts').select('*').order('created_at', { ascending: false }),
-          db.from('limousine_pricing').select('*,cities(name_ar),vehicle_categories(name_ar)').order('created_at', { ascending: false }),
+          db.from('limousine_pricing').select('*,limousine_cities(name_ar),vehicle_categories(name_ar)').order('created_at', { ascending: false }),
           db.from('limousine_ledger').select('entry_type,amount,created_at,contract_id').order('created_at', { ascending: false }).limit(500),
           db.from('limousine_cancellation_requests').select('*').order('created_at', { ascending: false }).limit(200)
         ]);
@@ -563,6 +563,21 @@ export default async function handler(req, res) {
         });
         if (error) throw error;
         return res.status(200).json({ success: true, result: data });
+      }
+      if (action === 'admin_create_city') {
+        const name = String(b.name || '').trim().replace(/\\s+/g, ' ');
+        if (name.length < 2 || name.length > 80 || !/^[\\p{L}\\p{M}\\s.'()-]+$/u.test(name))
+          return fail(res, 400, 'اسم المدينة غير صالح. أدخل اسم المدينة فقط.');
+        const { data: existing, error: existingError } = await db.from('limousine_cities')
+          .select('id,name_ar').ilike('name_ar', name).limit(1).maybeSingle();
+        if (existingError) throw existingError;
+        if (existing) return fail(res, 409, 'هذه المدينة موجودة بالفعل ضمن مدن ليموزين تراكا.');
+        const { data: city, error } = await db.from('limousine_cities').insert({ name_ar: name }).select('id,name_ar').single();
+        if (error) {
+          if (error.code === '23505') return fail(res, 409, 'هذه المدينة موجودة بالفعل ضمن مدن ليموزين تراكا.');
+          throw error;
+        }
+        return res.status(200).json({ success: true, city });
       }
       if (action === 'admin_update_pricing') {
         const price = Number(b.dailyPrice), rate = Number(b.commissionRate);
