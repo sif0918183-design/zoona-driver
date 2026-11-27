@@ -9,7 +9,7 @@ create or replace function public.limousine_enqueue_notification_push()
 returns trigger
 language plpgsql
 security definer
-set search_path = public, vault, net, pg_temp
+set search_path = public, vault, extensions, pg_temp
 as $$
 declare
   v_secret text;
@@ -28,7 +28,7 @@ begin
     return new;
   end if;
 
-  perform net.http_post(
+  perform extensions.http_post(
     url := 'https://tracka-git-feature-limousine-platform-wdkush995-9294.vercel.app/api/travel-platform?module=limousine',
     body := jsonb_build_object('action','dispatch_notification','notification_id',new.id),
     headers := jsonb_build_object(
@@ -42,7 +42,9 @@ exception when others then
   raise warning '[LIMO_PUSH] Could not queue notification %: %', new.id, sqlerrm;
   return new;
 end;
-$$;
+$;
+
+revoke all on function public.limousine_enqueue_notification_push() from public, anon, authenticated;
 
 drop trigger if exists trg_limo_notification_push on public.limousine_notifications;
 create trigger trg_limo_notification_push
