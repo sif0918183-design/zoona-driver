@@ -1,5 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
+import admin from 'firebase-admin';
 import { verifyToken } from './_token-utils.js';
+
+if (!admin.apps.length && process.env.FIREBASE_SERVICE_ACCOUNT) {
+  try { admin.initializeApp({ credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)) }); }
+  catch (error) { console.error('[LIMO_PUSH] Firebase initialization failed:', error.message); }
+}
 
 const db = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
@@ -23,6 +29,53 @@ function categoryRank(value) {
   return 99;
 }
 
+async function dispatchLimousineNotification(notificationId) {
+  if (!admin.apps.length) return { sent: false, skipped: 'firebase_not_configured' };
+  if (!notificationId) throw new Error('notification_id_required');
+  const { data: notification, error } = await db.from('limousine_notifications')
+    .select('id,recipient_id,recipient_type,event_code,title,body,request_id,contract_id,payload')
+    .eq('id', notificationId).maybeSingle();
+  if (error) throw error;
+  if (!notification || !['passenger','driver'].includes(notification.recipient_type)) {
+    return { sent: false, skipped: 'notification_not_found_or_not_push_recipient' };
+  }
+  const table = notification.recipient_type === 'driver' ? 'drivers' : 'customers';
+  const { data: recipient, error: recipientError } = await db.from(table)
+    .select('fcm_token').eq('id', notification.recipient_id).maybeSingle();
+  if (recipientError) throw recipientError;
+  const token = recipient?.fcm_token;
+  if (!token || ['false','null','undefined'].includes(String(token))) {
+    return { sent: false, skipped: 'recipient_token_missing' };
+  }
+  const payload = notification.payload && typeof notification.payload === 'object' ? notification.payload : {};
+  const page = notification.recipient_type === 'driver'
+    ? '/driver_app/limousine.html'
+    : '/passenger_app/limousine.html';
+  const params = new URLSearchParams();
+  params.set('section', payload.chat_id ? 'chats' : 'notifications');
+  params.set('notification', String(notification.id));
+  if (notification.contract_id) params.set('contract', String(notification.contract_id));
+  if (payload.chat_id) params.set('chat_id', String(payload.chat_id));
+  const data = {
+    type: String(notification.event_code || 'LIMO_UPDATE'),
+    url: page + '?' + params.toString(),
+    notification_id: String(notification.id),
+    request_id: String(notification.request_id || ''),
+    contract_id: String(notification.contract_id || ''),
+    chat_id: String(payload.chat_id || ''),
+    message_id: String(payload.message_id || ''),
+    click_action: 'FLUTTER_NOTIFICATION_CLICK'
+  };
+  const response = await admin.messaging().send({
+    token,
+    notification: { title: String(notification.title || 'تراكا ليموزين'), body: String(notification.body || 'لديك إشعار جديد') },
+    data,
+    android: { priority: 'high', notification: { channelId: 'travel_notifications', sound: 'default', clickAction: 'FLUTTER_NOTIFICATION_CLICK' } },
+    apns: { payload: { aps: { sound: 'default', badge: 1 } } }
+  });
+  return { sent: true, messageId: response };
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -36,7 +89,10 @@ export default async function handler(req, res) {
   if (!action) return fail(res, 400, 'Action is required');
 
   let session = null;
-  if (action === 'process_due') {
+  if (action === 'dispatch_notification') {
+    const secret = process.env.CRON_SECRET;
+    if (!secret || req.headers.authorization !== `Bearer ${secret}`) return fail(res, 401, 'غير مصرح');
+  } else if (action === 'process_due') {
     const secret = process.env.CRON_SECRET;
     if (!secret || req.headers.authorization !== `Bearer ${secret}`) return fail(res, 401, 'غير مصرح');
   } else {
@@ -48,6 +104,11 @@ export default async function handler(req, res) {
     const b = req.body || {};
     const id = session?.id;
     const isAdmin = adminSession(session);
+
+    if (action === 'dispatch_notification') {
+      const result = await dispatchLimousineNotification(b.notification_id);
+      return res.status(200).json({ success: true, result });
+    }
 
     if (action === 'get_active_contract') {
       if (!['passenger','driver'].includes(session?.role)) return fail(res,403,'غير مصرح');
