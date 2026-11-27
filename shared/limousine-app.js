@@ -6,7 +6,9 @@
   const token = localStorage.getItem('session_token') || '';
   let config = { cities: [], categories: [], pricing: [] };
   let requests = [], acceptances = [], drivers = [], contracts = [], acceptedRequests = [];
-  let activeSection = role === 'passenger' ? 'request' : 'available';
+  const requestedSection = new URLSearchParams(location.search).get('section');
+  const validSections = role === 'passenger' ? ['notifications','request','requests','contracts','chats'] : ['notifications','available','accepted','contracts','chats'];
+  let activeSection = validSections.includes(requestedSection) ? requestedSection : (role === 'passenger' ? 'request' : 'available');
   let sectionLoaded = {};
   let fundingDeadline = null;
   let fundingContractId = null;
@@ -515,7 +517,7 @@
       el.classList.toggle('active',selected);
       el.setAttribute('aria-selected',selected?'true':'false');
     });
-    loadSection(section).catch(e=>notice(e.message,true));
+    return loadSection(section).catch(e=>{notice(e.message,true);});
   }
   document.querySelectorAll('[data-section-button]').forEach(btn=>btn.addEventListener('click',()=>showSection(btn.dataset.sectionButton,btn)));
   $('refresh').onclick=()=>{sectionLoaded[activeSection]=false;loadSection(activeSection,true).catch(e=>notice(e.message,true));};
@@ -549,7 +551,13 @@
       role==='passenger'?loadConfig():Promise.all([driverRequests(),loadDriverFunding()])
     ]).then(()=>{
       if(role==='driver') sectionLoaded.available=true;
-      showSection(activeSection);
+      showSection(activeSection).then(()=>{
+        const chatContract=new URLSearchParams(location.search).get('chat_contract');
+        if(chatContract){
+          const chatButton=document.querySelector('[data-open-chat="'+chatContract+'"]');
+          if(chatButton)chatButton.click();
+        }
+      });
       const contractId=new URLSearchParams(location.search).get('contract');
       if(contractId)showContractDocument(contractId);
     }).catch(e=>notice(e.message,true));
