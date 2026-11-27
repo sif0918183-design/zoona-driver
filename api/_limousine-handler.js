@@ -54,7 +54,8 @@ async function dispatchLimousineNotification(notificationId) {
   const params = new URLSearchParams();
   params.set('section', payload.chat_id ? 'chats' : 'notifications');
   params.set('notification', String(notification.id));
-  if (notification.contract_id) params.set('contract', String(notification.contract_id));
+  if (payload.chat_id) params.set('chat_contract', String(notification.contract_id || ''));
+  else if (notification.contract_id) params.set('contract', String(notification.contract_id));
   if (payload.chat_id) params.set('chat_id', String(payload.chat_id));
   const data = {
     type: String(notification.event_code || 'LIMO_UPDATE'),
