@@ -362,7 +362,7 @@
     const panel=document.createElement('div');
     panel.dir='rtl';
     panel.style.cssText='width:min(440px,100%);background:#fff;border-radius:20px;padding:24px 20px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.28);border-top:6px solid #0f9b8e;font-family:Tajawal,sans-serif;';
-    panel.innerHTML='<div style="font-size:38px;margin-bottom:8px">🚘</div><h2 style="margin:0 0 10px;color:#065f46">عقد الليموزين أصبح سارياً</h2><p style="line-height:1.9;color:#475569;margin:0 0 18px">'+(role==='passenger'?'اكتملت إجراءات التعاقد وأصبح العقد سارياً. ستجد تفاصيله في قسم العقود، وخلال مدة العقد لن يكون بإمكانك طلب رحلات داخلية أو سفرية.':'تم تأمين عمولة العقد بنجاح. أصبح العقد سارياً، وستظهر تفاصيله في بطاقته المخصصة. وخلال مدة العقد لن يكون بإمكانك طلب أو استقبال رحلات داخلية أو سفرية.')+'</p><button type="button" style="width:100%;border:0;border-radius:11px;padding:12px;background:#087e73;color:#fff;font:inherit;font-weight:800">حسناً</button>';
+    panel.innerHTML='<div style="font-size:38px;margin-bottom:8px">🚘</div><h2 style="margin:0 0 10px;color:#065f46">عقد الليموزين أصبح سارياً</h2><p style="line-height:1.9;color:#475569;margin:0 0 18px">'+'تم اعتماد عقد التأجير وأصبح سارياً. يمكنك متابعة تفاصيله من قسم العقود. وخلال مدة العقد لن يكون بإمكانك طلب رحلات داخلية أو سفرية.'+'</p><button type="button" style="width:100%;border:0;border-radius:11px;padding:12px;background:#087e73;color:#fff;font:inherit;font-weight:800">حسناً</button>';
     panel.querySelector('button').onclick=()=>overlay.remove();
     overlay.appendChild(panel);document.body.appendChild(overlay);
   }
